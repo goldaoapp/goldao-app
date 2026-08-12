@@ -5,12 +5,12 @@ import {
 } from "@tanstack/react-router";
 
 import Layout from "@/components/Layout";
-import DocumentationPage from "@/pages/DocumentationPage";
-import HomePage from "@/pages/HomePage";
-import NewsPage from "@/pages/NewsPage";
-import ProposalsPage from "@/pages/ProposalsPage";
-import RewardsPage from "@/pages/RewardsPage";
-import TreasuryPage from "@/pages/TreasuryPage";
+import DocumentationPage from "@/pages/documentation/DocumentationPage";
+import HomePage from "@/pages/home/HomePage";
+import NewsPage from "@/pages/news/NewsPage";
+import ProposalsPage from "@/pages/proposals/ProposalsPage";
+import RewardsPage from "@/pages/rewards/RewardsPage";
+import TreasuryPage from "@/pages/treasury/TreasuryPage";
 
 const rootRoute = createRootRoute({
   component: Layout,
