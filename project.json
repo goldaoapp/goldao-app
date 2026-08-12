@@ -1,0 +1,22 @@
+{
+  "overview": "A dark-themed skeleton web app for GOLDAO, a DAO governance platform, with navigation between Home, Treasury Dashboard, Proposals, Rewards Simulator, Documentation, and News sections.",
+  "features": [
+    "Dark-themed navigation between six sections",
+    "Home landing page with hero and section cards",
+    "Treasury Dashboard with placeholder stat cards",
+    "Proposals page with sample proposal cards",
+    "Rewards Simulator with placeholder inputs",
+    "Documentation page with doc category cards",
+    "News page with sample article cards",
+    "Responsive layout with mobile menu"
+  ],
+  "category": "showcase",
+  "tags": [
+    "dao",
+    "governance",
+    "dark-theme",
+    "skeleton",
+    "showcase"
+  ],
+  "last_updated": "2026-08-10T15:37:47.209Z"
+}

@@ -1,0 +1,133 @@
+@import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=JetBrains+Mono:wght@400;500;600&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --font-display: "Space Grotesk", sans-serif;
+    --font-body: "DM Sans", sans-serif;
+    --font-mono: "JetBrains Mono", monospace;
+    --radius: 0.625rem;
+
+    --background: 0.99 0 0;
+    --foreground: 0.15 0 0;
+    --card: 1.0 0 0;
+    --card-foreground: 0.15 0 0;
+    --popover: 1.0 0 0;
+    --popover-foreground: 0.15 0 0;
+
+    --primary: 0.78 0.15 85;
+    --primary-foreground: 0.145 0 0;
+
+    --secondary: 0.95 0 0;
+    --secondary-foreground: 0.25 0 0;
+    --muted: 0.95 0 0;
+    --muted-foreground: 0.5 0 0;
+
+    --accent: 0.78 0.15 85;
+    --accent-foreground: 0.145 0 0;
+
+    --destructive: 0.55 0.22 25;
+    --destructive-foreground: 0.98 0 0;
+
+    --border: 0.9 0 0;
+    --input: 0.9 0 0;
+    --ring: 0.78 0.15 85;
+
+    --chart-1: 0.78 0.15 85;
+    --chart-2: 0.7 0.12 185;
+    --chart-3: 0.6 0.1 227;
+    --chart-4: 0.83 0.13 70;
+    --chart-5: 0.72 0.14 50;
+
+    --sidebar: 0.98 0 0;
+    --sidebar-foreground: 0.15 0 0;
+    --sidebar-primary: 0.78 0.15 85;
+    --sidebar-primary-foreground: 0.145 0 0;
+    --sidebar-accent: 0.95 0 0;
+    --sidebar-accent-foreground: 0.25 0 0;
+    --sidebar-border: 0.9 0 0;
+    --sidebar-ring: 0.78 0.15 85;
+  }
+
+  .dark {
+    --background: 0.145 0 0;
+    --foreground: 0.95 0 0;
+    --card: 0.18 0 0;
+    --card-foreground: 0.95 0 0;
+    --popover: 0.22 0 0;
+    --popover-foreground: 0.95 0 0;
+
+    --primary: 0.82 0.15 85;
+    --primary-foreground: 0.145 0 0;
+
+    --secondary: 0.22 0 0;
+    --secondary-foreground: 0.85 0 0;
+    --muted: 0.22 0 0;
+    --muted-foreground: 0.6 0 0;
+
+    --accent: 0.82 0.15 85;
+    --accent-foreground: 0.145 0 0;
+
+    --destructive: 0.65 0.19 22;
+    --destructive-foreground: 0.145 0 0;
+
+    --border: 0.28 0 0;
+    --input: 0.28 0 0;
+    --ring: 0.82 0.15 85;
+
+    --chart-1: 0.82 0.15 85;
+    --chart-2: 0.7 0.17 162;
+    --chart-3: 0.77 0.13 70;
+    --chart-4: 0.63 0.18 304;
+    --chart-5: 0.65 0.2 16;
+
+    --sidebar: 0.18 0 0;
+    --sidebar-foreground: 0.95 0 0;
+    --sidebar-primary: 0.82 0.15 85;
+    --sidebar-primary-foreground: 0.145 0 0;
+    --sidebar-accent: 0.22 0 0;
+    --sidebar-accent-foreground: 0.85 0 0;
+    --sidebar-border: 0.28 0 0;
+    --sidebar-ring: 0.82 0.15 85;
+  }
+
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground font-body antialiased;
+  }
+}
+
+@layer utilities {
+  .transition-smooth {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .gradient-primary {
+    background-image: linear-gradient(
+      135deg,
+      oklch(0.82 0.15 85) 0%,
+      oklch(0.72 0.13 50) 100%
+    );
+  }
+  .gradient-subtle {
+    background-image: linear-gradient(
+      180deg,
+      oklch(0.18 0 0) 0%,
+      oklch(0.145 0 0) 100%
+    );
+  }
+  .text-gradient-gold {
+    background-image: linear-gradient(
+      135deg,
+      oklch(0.88 0.14 85) 0%,
+      oklch(0.72 0.15 50) 100%
+    );
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+}
