@@ -117,6 +117,7 @@ export function Sidebar() {
       <div className="p-2.5 flex flex-col gap-2 border-t border-border">
         {/* Collapse toggle */}
         <button
+          type="button"
           onClick={toggle}
           aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
           className={cn(
@@ -191,7 +192,7 @@ export function MobileTabBar() {
             : "text-muted-foreground",
         )}
       >
-        <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" className="size-5">
+        <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" className="size-5" role="img" aria-label="More">
           <circle cx="10" cy="10" r="2" />
           <path d="M10 3v2M10 15v2M3 10h2M15 10h2" />
         </svg>
