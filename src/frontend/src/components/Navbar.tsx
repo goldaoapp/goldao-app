@@ -1,24 +1,43 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { Menu, Wallet } from "lucide-react";
+import {
+  BookOpen,
+  ChevronLeft,
+  ChevronRight,
+  FileText,
+  Gift,
+  Gavel,
+  Home,
+  Lock,
+  Wallet,
+  type LucideIcon,
+} from "lucide-react";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 
 type NavItem = {
   label: string;
   to: string;
+  icon: LucideIcon;
   ocid: string;
 };
 
 const NAV_ITEMS: NavItem[] = [
-  { label: "Home", to: "/", ocid: "nav.home" },
-  { label: "Treasury", to: "/treasury", ocid: "nav.treasury" },
-  { label: "Proposals", to: "/proposals", ocid: "nav.proposals" },
-  { label: "Rewards Simulator", to: "/rewards", ocid: "nav.rewards" },
-  { label: "Documentation", to: "/documentation", ocid: "nav.documentation" },
-  { label: "News", to: "/news", ocid: "nav.news" },
+  { label: "Home", to: "/", icon: Home, ocid: "nav.home" },
+  { label: "Treasury", to: "/treasury", icon: Lock, ocid: "nav.treasury" },
+  { label: "Proposals", to: "/proposals", icon: Gavel, ocid: "nav.proposals" },
+  { label: "Rewards", to: "/rewards", icon: Gift, ocid: "nav.rewards" },
+  { label: "Docs", to: "/documentation", icon: BookOpen, ocid: "nav.documentation" },
+  { label: "News", to: "/news", icon: FileText, ocid: "nav.news" },
+];
+
+// Mobile bottom tab order: Home, Treasury, Rewards, Proposals, More
+const MOBILE_TABS: NavItem[] = [
+  NAV_ITEMS[0], // Home
+  NAV_ITEMS[1], // Treasury
+  NAV_ITEMS[3], // Rewards
+  NAV_ITEMS[2], // Proposals
 ];
 
 function isActive(currentPath: string, to: string): boolean {
@@ -26,132 +45,163 @@ function isActive(currentPath: string, to: string): boolean {
   return currentPath === to || currentPath.startsWith(`${to}/`);
 }
 
-function NavLink({
-  item,
-  onNavigate,
-}: { item: NavItem; onNavigate?: () => void }) {
+/* ─── Desktop Sidebar ─── */
+export function Sidebar() {
+  const [collapsed, setCollapsed] = useState(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("sidebar-collapsed") === "true";
+    }
+    return false;
+  });
   const { location } = useRouterState();
-  const active = isActive(location.pathname, item.to);
+
+  const toggle = () => {
+    const next = !collapsed;
+    setCollapsed(next);
+    localStorage.setItem("sidebar-collapsed", String(next));
+  };
 
   return (
-    <Link
-      to={item.to}
-      data-ocid={item.ocid}
-      aria-current={active ? "page" : undefined}
-      onClick={onNavigate}
+    <aside
+      data-ocid="sidebar"
       className={cn(
-        "relative text-sm font-medium transition-colors duration-200 rounded-md px-3 py-2 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-        active ? "text-primary" : "text-muted-foreground hover:text-foreground",
+        "hidden md:flex flex-col border-r border-border bg-card/80 backdrop-blur-md transition-all duration-300 flex-shrink-0",
+        collapsed ? "w-[68px]" : "w-[220px]",
       )}
     >
-      {item.label}
-      {active && (
-        <span
-          aria-hidden="true"
-          className="absolute inset-x-3 -bottom-px h-px bg-primary"
-        />
-      )}
-    </Link>
-  );
-}
-
-export default function Navbar() {
-  const [open, setOpen] = useState(false);
-
-  return (
-    <header
-      data-ocid="navbar"
-      className="sticky top-0 z-40 w-full border-b border-border bg-card/80 backdrop-blur-md shadow-subtle"
-    >
-      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-        {/* Brand */}
+      {/* Brand */}
+      <div className={cn("flex items-center gap-2.5 border-b border-border h-16 flex-shrink-0", collapsed ? "justify-center px-2" : "px-5")}>
         <Link
           to="/"
           data-ocid="nav.brand"
           aria-label="GOLDAO home"
-          className="flex items-center gap-2 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded-md"
+          className="flex items-center gap-2.5 outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-md"
         >
-          <span className="flex size-8 items-center justify-center rounded-md gradient-primary text-primary-foreground font-display font-bold text-sm shadow-subtle">
-            G
-          </span>
-          <span className="font-display text-lg font-semibold tracking-tight text-foreground">
-            GOLDAO
-          </span>
+          <img src="/assets/images/goldao-icon.png" alt="GOLDAO" className="size-8 rounded-md flex-shrink-0" />
+          {!collapsed && (
+            <span className="font-display text-lg font-semibold tracking-tight text-foreground">
+              GOLDAO
+            </span>
+          )}
         </Link>
-
-        {/* Desktop nav */}
-        <nav aria-label="Primary" className="hidden items-center gap-1 md:flex">
-          {NAV_ITEMS.map((item) => (
-            <NavLink key={item.to} item={item} />
-          ))}
-        </nav>
-
-        {/* Desktop CTA */}
-        <div className="hidden md:flex items-center gap-3">
-          <Button
-            data-ocid="nav.connect_wallet"
-            size="sm"
-            className="rounded-full gradient-primary text-primary-foreground font-medium shadow-subtle hover:opacity-90 transition-opacity"
-          >
-            <Wallet className="size-4" />
-            Connect Wallet
-          </Button>
-        </div>
-
-        {/* Mobile menu trigger */}
-        <div className="md:hidden">
-          <Sheet open={open} onOpenChange={setOpen}>
-            <SheetTrigger asChild>
-              <Button
-                data-ocid="nav.mobile_menu"
-                variant="ghost"
-                size="icon"
-                aria-label="Open navigation menu"
-                className="text-foreground"
-              >
-                <Menu className="size-5" />
-              </Button>
-            </SheetTrigger>
-            <SheetContent
-              side="right"
-              className="w-72 bg-card border-border"
-              aria-label="Mobile navigation"
-            >
-              <div className="flex h-full flex-col">
-                <div className="flex items-center gap-2 px-2 pb-4 pt-2">
-                  <span className="flex size-8 items-center justify-center rounded-md gradient-primary text-primary-foreground font-display font-bold text-sm">
-                    G
-                  </span>
-                  <span className="font-display text-lg font-semibold tracking-tight text-foreground">
-                    GOLDAO
-                  </span>
-                </div>
-                <nav
-                  aria-label="Mobile primary"
-                  className="flex flex-1 flex-col gap-1 px-2"
-                >
-                  {NAV_ITEMS.map((item) => (
-                    <NavLink
-                      key={item.to}
-                      item={item}
-                      onNavigate={() => setOpen(false)}
-                    />
-                  ))}
-                </nav>
-                <div className="px-2 pb-6">
-                  <Button
-                    data-ocid="nav.mobile.connect_wallet"
-                    className="w-full rounded-full gradient-primary text-primary-foreground font-medium shadow-subtle hover:opacity-90 transition-opacity"
-                  >
-                    <Wallet className="size-4" />
-                    Connect Wallet
-                  </Button>
-                </div>
-              </div>
-            </SheetContent>
-          </Sheet>
-        </div>
       </div>
-    </header>
+
+      {/* Nav items */}
+      <nav aria-label="Primary" className="flex flex-1 flex-col gap-1 p-2.5 overflow-y-auto">
+        {NAV_ITEMS.map((item) => {
+          const active = isActive(location.pathname, item.to);
+          const Icon = item.icon;
+          return (
+            <Link
+              key={item.to}
+              to={item.to}
+              data-ocid={item.ocid}
+              aria-current={active ? "page" : undefined}
+              title={collapsed ? item.label : undefined}
+              className={cn(
+                "flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-[13px] font-medium transition-smooth outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                active
+                  ? "bg-primary/12 text-primary"
+                  : "text-muted-foreground hover:text-foreground hover:bg-secondary",
+                collapsed && "justify-center px-0",
+              )}
+            >
+              <Icon className="size-[18px] flex-shrink-0" aria-hidden="true" />
+              {!collapsed && item.label}
+            </Link>
+          );
+        })}
+      </nav>
+
+      {/* Bottom section */}
+      <div className="p-2.5 flex flex-col gap-2 border-t border-border">
+        {/* Collapse toggle */}
+        <button
+          onClick={toggle}
+          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          className={cn(
+            "flex items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] font-medium text-muted-foreground hover:text-foreground hover:bg-secondary transition-smooth outline-none focus-visible:ring-2 focus-visible:ring-ring",
+            collapsed && "justify-center px-0",
+          )}
+        >
+          {collapsed ? (
+            <ChevronRight className="size-[18px]" />
+          ) : (
+            <>
+              <ChevronLeft className="size-[18px] flex-shrink-0" />
+              Collapse
+            </>
+          )}
+        </button>
+
+        {/* Connect wallet */}
+        <Button
+          data-ocid="nav.connect_wallet"
+          size="sm"
+          className={cn(
+            "rounded-full gradient-primary text-primary-foreground font-medium shadow-subtle hover:opacity-90 transition-opacity",
+            collapsed && "rounded-lg px-0 w-full",
+          )}
+        >
+          <Wallet className="size-4 flex-shrink-0" />
+          {!collapsed && "Connect Wallet"}
+        </Button>
+      </div>
+    </aside>
   );
+}
+
+/* ─── Mobile Bottom Tab Bar ─── */
+export function MobileTabBar() {
+  const { location } = useRouterState();
+
+  return (
+    <nav
+      data-ocid="mobile-tabs"
+      aria-label="Mobile navigation"
+      className="fixed bottom-0 left-0 right-0 z-40 flex items-center justify-around border-t border-border bg-card/95 backdrop-blur-md px-2 pb-[env(safe-area-inset-bottom,0px)] pt-2 md:hidden"
+    >
+      {MOBILE_TABS.map((item) => {
+        const active = isActive(location.pathname, item.to);
+        const Icon = item.icon;
+        return (
+          <Link
+            key={item.to}
+            to={item.to}
+            data-ocid={`mobile.${item.ocid}`}
+            aria-current={active ? "page" : undefined}
+            className={cn(
+              "flex flex-col items-center gap-1 py-1.5 px-3 rounded-md transition-colors outline-none",
+              active ? "text-primary" : "text-muted-foreground",
+            )}
+          >
+            <Icon className="size-5" aria-hidden="true" />
+            <span className="text-[9px] font-medium">{item.label}</span>
+          </Link>
+        );
+      })}
+      {/* More button — opens remaining items */}
+      <Link
+        to="/documentation"
+        data-ocid="mobile.nav.more"
+        className={cn(
+          "flex flex-col items-center gap-1 py-1.5 px-3 rounded-md transition-colors outline-none",
+          isActive(location.pathname, "/documentation") || isActive(location.pathname, "/news")
+            ? "text-primary"
+            : "text-muted-foreground",
+        )}
+      >
+        <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" className="size-5">
+          <circle cx="10" cy="10" r="2" />
+          <path d="M10 3v2M10 15v2M3 10h2M15 10h2" />
+        </svg>
+        <span className="text-[9px] font-medium">More</span>
+      </Link>
+    </nav>
+  );
+}
+
+// Keep default export for backward compatibility
+export default function Navbar() {
+  return null;
 }
