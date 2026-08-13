@@ -84,8 +84,9 @@ function useLiveData(
         if (max) apply("goldao_eligible", Math.round(max.total_stake));
       } catch (_) { /* default */ }
 
-      // ── 2. ICPSwap tickers (GOLDAO_ICP only) ──
+      // ── 2. ICPSwap tickers (GOLDAO + OGY pools by canister ID) ──
       let icpswapGoldao: number | null = null;
+      let icpswapOgyPerIcp: number | null = null;
 
       try {
         const res = await fetch(ICPSWAP_API);
@@ -94,6 +95,9 @@ function useLiveData(
         for (const t of tickers) {
           if (t.ticker_id === "k46ek-4qaaa-aaaag-qcyzq-cai") {
             icpswapGoldao = validNum(Number.parseFloat(t.last_price));
+          }
+          if (t.ticker_id === "ttnzy-lyaaa-aaaag-qj2bq-cai") {
+            icpswapOgyPerIcp = validNum(Number.parseFloat(t.last_price));
           }
         }
       } catch (_) { /* fallback */ }
@@ -124,8 +128,12 @@ function useLiveData(
       const icpUsd = avg(binanceIcp, geckoIcp);
       apply("price_icp_usd", icpUsd);
 
-      // ── 5. OGY price USD — CoinGecko only ──
-      apply("price_ogy_usd", geckoOgy);
+      // ── 5. OGY price USD — CoinGecko + ICPSwap pool ttnzy, average ──
+      let icpswapOgyUsd: number | null = null;
+      if (icpswapOgyPerIcp !== null && icpUsd !== null) {
+        icpswapOgyUsd = icpUsd / icpswapOgyPerIcp;
+      }
+      apply("price_ogy_usd", avg(geckoOgy, icpswapOgyUsd));
     }
 
     fetchAll();
