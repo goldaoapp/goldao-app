@@ -34,12 +34,12 @@ const NAV_ITEMS: NavItem[] = [
   { label: "News", to: "/news", icon: FileText, ocid: "nav.news" },
 ];
 
-// Mobile bottom tab order: Home, Treasury, Rewards, Proposals, More
+// Mobile bottom tab order: Home, Treasury, Rewards, Fair Value, More
 const MOBILE_TABS: NavItem[] = [
   NAV_ITEMS[0], // Home
   NAV_ITEMS[1], // Treasury
   NAV_ITEMS[3], // Rewards
-  NAV_ITEMS[2], // Proposals
+  NAV_ITEMS[4], // Fair Value
 ];
 
 function isActive(currentPath: string, to: string): boolean {
@@ -184,14 +184,30 @@ export function MobileTabBar() {
         );
       })}
       {/* More button — opens remaining items */}
-      <Link
-        to="/documentation"
+      <MoreMenu pathname={location.pathname} />
+    </nav>
+  );
+}
+
+const MORE_ITEMS: NavItem[] = [
+  NAV_ITEMS[2], // Proposals
+  NAV_ITEMS[5], // Docs
+  NAV_ITEMS[6], // News
+];
+
+function MoreMenu({ pathname }: { pathname: string }) {
+  const [open, setOpen] = useState(false);
+  const moreActive = MORE_ITEMS.some((item) => isActive(pathname, item.to));
+
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
         data-ocid="mobile.nav.more"
         className={cn(
           "flex flex-col items-center gap-1 py-1.5 px-3 rounded-md transition-colors outline-none",
-          isActive(location.pathname, "/documentation") || isActive(location.pathname, "/news")
-            ? "text-primary"
-            : "text-muted-foreground",
+          moreActive ? "text-primary" : "text-muted-foreground",
         )}
       >
         <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" className="size-5" role="img" aria-label="More">
@@ -199,8 +215,33 @@ export function MobileTabBar() {
           <path d="M10 3v2M10 15v2M3 10h2M15 10h2" />
         </svg>
         <span className="text-[9px] font-medium">More</span>
-      </Link>
-    </nav>
+      </button>
+      {open && (
+        <>
+          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} onKeyDown={() => {}} role="presentation" />
+          <div className="absolute bottom-full right-0 mb-2 z-50 min-w-[160px] rounded-lg border border-border bg-card/95 backdrop-blur-md shadow-lg py-1">
+            {MORE_ITEMS.map((item) => {
+              const active = isActive(pathname, item.to);
+              const Icon = item.icon;
+              return (
+                <Link
+                  key={item.to}
+                  to={item.to}
+                  onClick={() => setOpen(false)}
+                  className={cn(
+                    "flex items-center gap-2.5 px-4 py-2.5 text-[13px] font-medium transition-colors",
+                    active ? "text-primary" : "text-muted-foreground",
+                  )}
+                >
+                  <Icon className="size-4" aria-hidden="true" />
+                  {item.label}
+                </Link>
+              );
+            })}
+          </div>
+        </>
+      )}
+    </div>
   );
 }
 
