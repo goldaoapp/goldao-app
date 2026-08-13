@@ -42,7 +42,7 @@ function useLiveData(
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const groups: DissolveGroup[] = await res.json();
         const max = groups.find((g) =>
-          g.dissolve_delay_group.includes("24 months"),
+          g.dissolve_delay_group.includes("max delay"),
         );
         if (!cancelled && max) onUpdate("goldao_eligible", Math.round(max.total_stake));
         results.push({ label: "Eligible (api.gldt.org)", ok: true });
