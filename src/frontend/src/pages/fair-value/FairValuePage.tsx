@@ -24,6 +24,7 @@ interface DissolveGroup {
 }
 
 interface ICPSwapTicker {
+  ticker_id: string;
   ticker_name: string;
   last_price: string;
 }
