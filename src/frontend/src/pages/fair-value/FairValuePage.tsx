@@ -157,6 +157,7 @@ function fmtNum(v: number, decimals = 1): string {
 }
 
 function fmtDefault(v: number): string {
+  if (v === 0) return "";
   if (v === Math.floor(v)) return Math.floor(v).toLocaleString("en-US");
   return String(v);
 }
