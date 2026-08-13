@@ -9,44 +9,96 @@ import {
 
 const DISSOLVE_API =
   "https://api.gldt.org/v1/daos/golddao/neurons/dissolve-delays";
+const BINANCE_API =
+  "https://api.binance.com/api/v3/ticker/price?symbol=ICPUSDT";
+const COINGECKO_API =
+  "https://api.coingecko.com/api/v3/simple/price?ids=origyn-foundation&vs_currencies=usd";
 
 interface DissolveGroup {
   dissolve_delay_group: string;
   total_stake: number;
 }
 
-function useEligibleFromApi(
-  onResult: (val: number) => void,
-): { loading: boolean; error: string | null } {
+interface LiveDataStatus {
+  loading: boolean;
+  sources: { label: string; ok: boolean; error?: string }[];
+}
+
+function useLiveData(
+  onUpdate: (key: keyof FairValueParams, val: number) => void,
+): LiveDataStatus {
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [sources, setSources] = useState<LiveDataStatus["sources"]>([]);
 
   useEffect(() => {
     let cancelled = false;
-    fetch(DISSOLVE_API)
-      .then((res) => {
+
+    async function fetchAll() {
+      const results: LiveDataStatus["sources"] = [];
+
+      // 1 — Eligible GOLDAO
+      try {
+        const res = await fetch(DISSOLVE_API);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        return res.json() as Promise<DissolveGroup[]>;
-      })
-      .then((groups) => {
-        if (cancelled) return;
+        const groups: DissolveGroup[] = await res.json();
         const max = groups.find((g) =>
           g.dissolve_delay_group.includes("24 months"),
         );
-        if (max) onResult(Math.round(max.total_stake));
+        if (!cancelled && max) onUpdate("goldao_eligible", Math.round(max.total_stake));
+        results.push({ label: "Eligible (api.gldt.org)", ok: true });
+      } catch (err) {
+        results.push({
+          label: "Eligible (api.gldt.org)",
+          ok: false,
+          error: err instanceof Error ? err.message : "failed",
+        });
+      }
+
+      // 2 — ICP price
+      try {
+        const res = await fetch(BINANCE_API);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data: { price: string } = await res.json();
+        const price = Number.parseFloat(data.price);
+        if (!cancelled && Number.isFinite(price)) onUpdate("price_icp_usd", price);
+        results.push({ label: "ICP price (Binance)", ok: true });
+      } catch (err) {
+        results.push({
+          label: "ICP price (Binance)",
+          ok: false,
+          error: err instanceof Error ? err.message : "failed",
+        });
+      }
+
+      // 3 — OGY price
+      try {
+        const res = await fetch(COINGECKO_API);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data: Record<string, { usd: number }> = await res.json();
+        const price = data["origyn-foundation"]?.usd;
+        if (!cancelled && price && Number.isFinite(price)) onUpdate("price_ogy_usd", price);
+        results.push({ label: "OGY price (CoinGecko)", ok: true });
+      } catch (err) {
+        results.push({
+          label: "OGY price (CoinGecko)",
+          ok: false,
+          error: err instanceof Error ? err.message : "failed",
+        });
+      }
+
+      if (!cancelled) {
+        setSources(results);
         setLoading(false);
-      })
-      .catch((err) => {
-        if (cancelled) return;
-        setError(err instanceof Error ? err.message : "fetch failed");
-        setLoading(false);
-      });
+      }
+    }
+
+    fetchAll();
     return () => {
       cancelled = true;
     };
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [onUpdate]);
 
-  return { loading, error };
+  return { loading, sources };
 }
 
 /* ── Helpers ─────────────────────────────────────────────────────────────── */
@@ -453,11 +505,11 @@ export default function FairValuePage() {
     return init;
   });
 
-  const applyEligible = useCallback((val: number) => {
-    setRaw((prev) => ({ ...prev, goldao_eligible: fmtDefault(val) }));
+  const applyLive = useCallback((key: keyof FairValueParams, val: number) => {
+    setRaw((prev) => ({ ...prev, [key]: fmtDefault(val) }));
   }, []);
 
-  const { loading: apiLoading, error: apiError } = useEligibleFromApi(applyEligible);
+  const { loading: liveLoading, sources: liveSources } = useLiveData(applyLive);
 
   const handleChange = useCallback(
     (key: keyof FairValueParams, val: string) => {
@@ -504,16 +556,20 @@ export default function FairValuePage() {
             <InputSection key={s.title} section={s} values={raw} onChange={handleChange} />
           ))}
           {/* API status */}
-          <div className="text-[10px] font-mono px-1">
-            {apiLoading && (
-              <span className="text-muted-foreground">Loading eligible from api.gldt.org…</span>
+          <div className="text-[10px] font-mono px-1 space-y-0.5">
+            {liveLoading && (
+              <span className="text-muted-foreground">Loading live data…</span>
             )}
-            {!apiLoading && !apiError && (
-              <span className="text-[oklch(0.72_0.17_162)]">✓ Eligible loaded from api.gldt.org</span>
-            )}
-            {apiError && (
-              <span className="text-destructive">✗ API error: {apiError} — using default</span>
-            )}
+            {!liveLoading &&
+              liveSources.map((s) => (
+                <div key={s.label}>
+                  {s.ok ? (
+                    <span className="text-[oklch(0.72_0.17_162)]">✓ {s.label}</span>
+                  ) : (
+                    <span className="text-destructive">✗ {s.label}: {s.error}</span>
+                  )}
+                </div>
+              ))}
           </div>
           <div className="flex gap-2 pt-1">
             <button
