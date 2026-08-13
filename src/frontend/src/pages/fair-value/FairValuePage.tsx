@@ -1,3 +1,4 @@
+import type React from "react";
 import { useCallback, useMemo, useState } from "react";
 import {
   type FairValueParams,
@@ -88,10 +89,10 @@ function InputField({
   onChange: (key: keyof FairValueParams, val: string) => void;
 }) {
   return (
-    <div className="flex items-center gap-2 py-1">
-      <label className="text-xs text-muted-foreground w-40 shrink-0 font-mono">
+    <label className="flex items-center gap-2 py-1">
+      <span className="text-xs text-muted-foreground w-40 shrink-0 font-mono">
         {field.label}
-      </label>
+      </span>
       <input
         type="text"
         value={value}
@@ -101,7 +102,7 @@ function InputField({
       <span className="text-[10px] text-muted-foreground font-mono w-12 shrink-0">
         {field.unit}
       </span>
-    </div>
+    </label>
   );
 }
 
