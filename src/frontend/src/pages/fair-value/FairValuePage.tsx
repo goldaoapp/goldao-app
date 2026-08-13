@@ -1,11 +1,53 @@
 import type React from "react";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   type FairValueParams,
   type FairValueResult,
   DEFAULTS,
   calcular,
 } from "@/lib/fairvalue-calc";
+
+const DISSOLVE_API =
+  "https://api.gldt.org/v1/daos/golddao/neurons/dissolve-delays";
+
+interface DissolveGroup {
+  dissolve_delay_group: string;
+  total_stake: number;
+}
+
+function useEligibleFromApi(
+  onResult: (val: number) => void,
+): { loading: boolean; error: string | null } {
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch(DISSOLVE_API)
+      .then((res) => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.json() as Promise<DissolveGroup[]>;
+      })
+      .then((groups) => {
+        if (cancelled) return;
+        const max = groups.find((g) =>
+          g.dissolve_delay_group.includes("24 months"),
+        );
+        if (max) onResult(Math.round(max.total_stake));
+        setLoading(false);
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        setError(err instanceof Error ? err.message : "fetch failed");
+        setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  return { loading, error };
+}
 
 /* ── Helpers ─────────────────────────────────────────────────────────────── */
 
@@ -411,6 +453,12 @@ export default function FairValuePage() {
     return init;
   });
 
+  const applyEligible = useCallback((val: number) => {
+    setRaw((prev) => ({ ...prev, goldao_eligible: fmtDefault(val) }));
+  }, []);
+
+  const { loading: apiLoading, error: apiError } = useEligibleFromApi(applyEligible);
+
   const handleChange = useCallback(
     (key: keyof FairValueParams, val: string) => {
       setRaw((prev) => ({ ...prev, [key]: val }));
@@ -455,6 +503,18 @@ export default function FairValuePage() {
           {INPUT_SECTIONS.map((s) => (
             <InputSection key={s.title} section={s} values={raw} onChange={handleChange} />
           ))}
+          {/* API status */}
+          <div className="text-[10px] font-mono px-1">
+            {apiLoading && (
+              <span className="text-muted-foreground">Loading eligible from api.gldt.org…</span>
+            )}
+            {!apiLoading && !apiError && (
+              <span className="text-[oklch(0.72_0.17_162)]">✓ Eligible loaded from api.gldt.org</span>
+            )}
+            {apiError && (
+              <span className="text-destructive">✗ API error: {apiError} — using default</span>
+            )}
+          </div>
           <div className="flex gap-2 pt-1">
             <button
               type="button"
