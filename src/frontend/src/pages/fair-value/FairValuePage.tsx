@@ -172,13 +172,21 @@ function parseInput(s: string, fallback: number): number {
 type FieldDef = { key: keyof FairValueParams; label: string; unit: string };
 type SectionDef = { title: string; fields: FieldDef[] };
 
-const INPUT_SECTIONS: SectionDef[] = [
+/* Live-updated fields shown below the spectrum bar */
+const LIVE_FIELDS: FieldDef[] = [
+  { key: "market_ratio", label: "Market Ratio (GOLDAO/ICP)", unit: "ratio" },
+  { key: "goldao_eligible", label: "Eligible (rewards)", unit: "GOLDAO" },
+  { key: "price_ogy_usd", label: "OGY Price", unit: "USD" },
+  { key: "price_icp_usd", label: "ICP Price", unit: "USD" },
+];
+
+/* Collapsible input sections (without the live fields) */
+const COLLAPSIBLE_SECTIONS: SectionDef[] = [
   {
     title: "NNS Neurons (ICP)",
     fields: [
       { key: "icp_staked", label: "ICP Staked", unit: "ICP" },
       { key: "nns_apy", label: "NNS Max APY", unit: "%" },
-      { key: "price_icp_usd", label: "ICP Price", unit: "USD" },
     ],
   },
   {
@@ -195,19 +203,6 @@ const INPUT_SECTIONS: SectionDef[] = [
     fields: [
       { key: "ogy_staked", label: "OGY Staked", unit: "OGY" },
       { key: "ogy_apy", label: "OGY APY", unit: "%" },
-      { key: "price_ogy_usd", label: "OGY Price", unit: "USD" },
-    ],
-  },
-  {
-    title: "GOLDAO Supply",
-    fields: [
-      { key: "goldao_eligible", label: "Eligible (rewards)", unit: "GOLDAO" },
-    ],
-  },
-  {
-    title: "Market",
-    fields: [
-      { key: "market_ratio", label: "Market Ratio (GOLDAO/ICP)", unit: "ratio" },
     ],
   },
 ];
@@ -278,6 +273,100 @@ function InputSection({
           live={flash.has(f.key)}
         />
       ))}
+    </div>
+  );
+}
+
+function CollapsibleInputSection({
+  section,
+  values,
+  onChange,
+  flash,
+}: {
+  section: SectionDef;
+  values: Record<string, string>;
+  onChange: (key: keyof FairValueParams, val: string) => void;
+  flash: Set<string>;
+}) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <div className="rounded-lg border border-border bg-card/50 overflow-hidden">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="flex items-center justify-between w-full px-3 py-2.5 text-left hover:bg-secondary/30 transition-colors"
+      >
+        <h3 className="text-[10px] tracking-widest uppercase text-primary font-mono">
+          {section.title}
+        </h3>
+        <svg
+          width="14"
+          height="14"
+          viewBox="0 0 14 14"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          className={`text-muted-foreground transition-transform duration-200 ${
+            open ? "rotate-180" : ""
+          }`}
+        >
+          <path d="M3.5 5.5L7 9l3.5-3.5" />
+        </svg>
+      </button>
+      <div
+        className="grid transition-[grid-template-rows] duration-200"
+        style={{ gridTemplateRows: open ? "1fr" : "0fr" }}
+      >
+        <div className="overflow-hidden">
+          <div className="px-3 pb-3">
+            {section.fields.map((f) => (
+              <InputField
+                key={f.key}
+                field={f}
+                value={values[f.key]}
+                onChange={onChange}
+                live={flash.has(f.key)}
+              />
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function LiveFieldsRow({
+  fields,
+  values,
+  onChange,
+  flash,
+}: {
+  fields: FieldDef[];
+  values: Record<string, string>;
+  onChange: (key: keyof FairValueParams, val: string) => void;
+  flash: Set<string>;
+}) {
+  return (
+    <div className="rounded-lg border border-border bg-card/50 p-3">
+      <h3 className="text-[10px] tracking-widest uppercase text-primary font-mono mb-2 flex items-center gap-1.5">
+        Live Data
+        <span
+          className="inline-block size-1.5 rounded-full bg-[oklch(0.72_0.17_162)] animate-pulse"
+          title="Auto-updated from APIs"
+        />
+      </h3>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4">
+        {fields.map((f) => (
+          <InputField
+            key={f.key}
+            field={f}
+            value={values[f.key]}
+            onChange={onChange}
+            live={flash.has(f.key)}
+          />
+        ))}
+      </div>
     </div>
   );
 }
@@ -384,54 +473,102 @@ function Note({ children }: { children: React.ReactNode }) {
   );
 }
 
-/* ── Spectrum bar (Paso 7) ───────────────────────────────────────────────── */
+/* ── Spectrum bar — Top hero (option 1b) ──────────────────────────────────── */
 
-function SpectrumBar({ r }: { r: FairValueResult }) {
+function SpectrumBarTop({ r }: { r: FairValueResult }) {
   const eq = r.ratio_eq;
   const mkt = r.market_ratio;
   if (eq <= 0) return null;
+
   const maxVal = Math.max(eq, mkt) * 1.5;
-  const pct = (v: number) => `${Math.min((v / maxVal) * 100, 98)}%`;
-  const mktColor = mkt > eq ? "oklch(0.72 0.17 162)" : "oklch(0.65 0.19 22)";
+  const eqPct = Math.min((eq / maxVal) * 100, 95);
+  const mktPct = Math.min((mkt / maxVal) * 100, 95);
+  const isCheap = mkt > eq;
+  const diffPct = Math.abs(((mkt - eq) / eq) * 100);
 
   return (
-    <div className="relative h-14 rounded bg-secondary/60 border border-border overflow-hidden mt-2 mb-1">
-      <div
-        className="absolute inset-0"
-        style={{
-          background: "linear-gradient(to right, oklch(0.65 0.19 22), oklch(0.72 0.17 162))",
-          opacity: 0.25,
-        }}
-      />
-      <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[9px] font-mono text-destructive/80">
-        EXPENSIVE
-      </span>
-      <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[9px] font-mono text-[oklch(0.72_0.17_162)]/80">
-        CHEAP
-      </span>
-      {/* EQ marker */}
-      <div className="absolute top-0 bottom-0 w-px" style={{ left: pct(eq), background: "oklch(0.83 0.13 70)" }}>
-        <span className="absolute -top-0.5 left-1/2 -translate-x-1/2 text-[8px] font-mono text-[oklch(0.83_0.13_70)] whitespace-nowrap">
-          EQ {fmtNum(eq, 0)}
-        </span>
-      </div>
-      {/* MKT triangle */}
-      <div
-        className="absolute bottom-2"
-        style={{ left: pct(mkt), transform: "translateX(-50%)" }}
-      >
-        <div
-          className="w-0 h-0 mx-auto"
-          style={{
-            borderLeft: "6px solid transparent",
-            borderRight: "6px solid transparent",
-            borderBottom: `8px solid ${mktColor}`,
-            transform: "rotate(180deg)",
-          }}
-        />
-        <span className="text-[8px] font-mono whitespace-nowrap" style={{ color: mktColor }}>
-          MKT {fmtNum(mkt, 0)}
-        </span>
+    <div
+      className="rounded-lg border border-border bg-card/50 overflow-hidden"
+      style={{ background: "linear-gradient(180deg, oklch(0.83 0.13 70 / 0.04) 0%, transparent 100%)" }}
+    >
+      <div className="px-4 sm:px-6 pt-5 pb-4">
+        {/* Top row: two big numbers + verdict */}
+        <div className="flex items-end justify-between mb-5 flex-wrap gap-4">
+          <div className="flex items-end gap-8 sm:gap-10">
+            {/* Equilibrium */}
+            <div>
+              <div className="text-[8px] tracking-[0.1em] uppercase font-mono text-[oklch(0.83_0.13_70)] opacity-70 mb-1">
+                Equilibrium
+              </div>
+              <div className="flex items-baseline gap-1.5">
+                <span className="text-[28px] sm:text-[32px] font-extrabold font-mono text-[oklch(0.83_0.13_70)] leading-none">
+                  {fmtNum(eq, 0)}
+                </span>
+                <span className="text-[11px] font-mono text-muted-foreground">GOLDAO/ICP</span>
+              </div>
+            </div>
+            {/* Market */}
+            <div>
+              <div className="text-[8px] tracking-[0.1em] uppercase font-mono text-muted-foreground mb-1">
+                Market
+              </div>
+              <div className="flex items-baseline gap-1.5">
+                <span className="text-[28px] sm:text-[32px] font-extrabold font-mono text-foreground leading-none">
+                  {fmtNum(mkt, 0)}
+                </span>
+                <span className="text-[11px] font-mono text-muted-foreground">GOLDAO/ICP</span>
+              </div>
+            </div>
+          </div>
+          {/* Verdict badge */}
+          <div
+            className={`flex items-center gap-1.5 px-4 py-1.5 rounded-lg border text-[11px] font-mono font-semibold ${
+              isCheap
+                ? "bg-[oklch(0.72_0.17_162)]/6 border-[oklch(0.72_0.17_162)]/10 text-[oklch(0.72_0.17_162)]"
+                : "bg-destructive/6 border-destructive/10 text-destructive"
+            }`}
+          >
+            <span
+              className={`inline-block size-1.5 rounded-full ${
+                isCheap ? "bg-[oklch(0.72_0.17_162)]" : "bg-destructive"
+              }`}
+            />
+            {isCheap ? "CHEAP" : "EXPENSIVE"} +{fmtNum(diffPct, 1)}%
+          </div>
+        </div>
+
+        {/* Thin track */}
+        <div className="relative h-1.5 rounded-full bg-secondary/60 overflow-visible">
+          <div
+            className="absolute inset-0 rounded-full"
+            style={{
+              background:
+                "linear-gradient(to right, oklch(0.65 0.19 22 / 0.35), oklch(0.5 0.05 160 / 0.03) 45%, oklch(0.72 0.17 162 / 0.35))",
+            }}
+          />
+          {/* EQ tick */}
+          <div
+            className="absolute -top-[5px] -bottom-[5px] w-0.5 rounded-full bg-[oklch(0.83_0.13_70)]"
+            style={{ left: `${eqPct}%` }}
+          />
+          {/* MKT dot */}
+          <div
+            className="absolute top-1/2 -translate-y-1/2 size-3.5 rounded-full border-2 border-background"
+            style={{
+              left: `${mktPct}%`,
+              transform: "translate(-50%, -50%)",
+              background: isCheap ? "oklch(0.72 0.17 162)" : "oklch(0.65 0.19 22)",
+              boxShadow: isCheap
+                ? "0 0 12px oklch(0.72 0.17 162 / 0.5)"
+                : "0 0 12px oklch(0.65 0.19 22 / 0.5)",
+              transition: "left 1s cubic-bezier(0.22, 1, 0.36, 1)",
+            }}
+          />
+        </div>
+        <div className="flex justify-between mt-2">
+          <span className="text-[8px] font-mono text-muted-foreground/40 tracking-[0.06em]">EXPENSIVE</span>
+          <span className="text-[8px] font-mono text-muted-foreground/40 tracking-[0.06em]">CHEAP</span>
+        </div>
       </div>
     </div>
   );
@@ -516,46 +653,7 @@ function Results({
         />
       </StepCard>
 
-      {/* Paso 7 — Mercado vs equilibrio */}
-      <StepCard
-        step={7}
-        title="Market vs Equilibrium"
-        accent={r.esta_barato ? "green" : "destructive"}
-      >
-        <div className="space-y-0.5">
-          <Row label="Equilibrium" value={`1 ICP = ${fmtNum(r.ratio_eq, 0)} GOLDAO`} accent="amber" />
-          <Row label="Market" value={`1 ICP = ${fmtNum(r.market_ratio, 0)} GOLDAO`} />
-        </div>
 
-        <SpectrumBar r={r} />
-
-        {/* Verdict */}
-        {(() => {
-          const dif = Math.abs(r.diferencia_pct);
-          if (r.esta_barato) {
-            return (
-              <div className="rounded-md border-l-4 border-[oklch(0.72_0.17_162)] bg-[oklch(0.72_0.17_162)]/10 px-3 py-2 mt-2">
-                <p className="text-sm font-mono font-semibold text-[oklch(0.72_0.17_162)]">
-                  GOLDAO is CHEAP ({fmtNum(dif)}% above equilibrium)
-                </p>
-                <p className="text-[10px] text-muted-foreground font-mono mt-0.5">
-                  Buying GOLDAO yields more than staking ICP directly on the NNS.
-                </p>
-              </div>
-            );
-          }
-          return (
-            <div className="rounded-md border-l-4 border-destructive bg-destructive/10 px-3 py-2 mt-2">
-              <p className="text-sm font-mono font-semibold text-destructive">
-                GOLDAO is EXPENSIVE ({fmtNum(dif)}% below equilibrium)
-              </p>
-              <p className="text-[10px] text-muted-foreground font-mono mt-0.5">
-                Staking ICP directly on the NNS yields more than buying GOLDAO today.
-              </p>
-            </div>
-          );
-        })()}
-      </StepCard>
     </div>
   );
 }
@@ -614,12 +712,18 @@ export default function FairValuePage() {
         </p>
       </div>
 
+      {/* Spectrum bar — full width between header and columns */}
+      <SpectrumBarTop r={result} />
+
+      {/* Live data fields — full width below bar */}
+      <LiveFieldsRow fields={LIVE_FIELDS} values={raw} onChange={handleChange} flash={flash} />
+
       {/* Two columns */}
       <div className="grid grid-cols-1 lg:grid-cols-[minmax(340px,1fr)_minmax(400px,1.4fr)] gap-6">
-        {/* Inputs */}
+        {/* Inputs — collapsible */}
         <div className="space-y-3">
-          {INPUT_SECTIONS.map((s) => (
-            <InputSection key={s.title} section={s} values={raw} onChange={handleChange} flash={flash} />
+          {COLLAPSIBLE_SECTIONS.map((s) => (
+            <CollapsibleInputSection key={s.title} section={s} values={raw} onChange={handleChange} flash={flash} />
           ))}
           <div className="flex gap-2 pt-1">
             <button
