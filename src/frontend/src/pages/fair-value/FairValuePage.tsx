@@ -57,9 +57,17 @@ function useLiveData(
       }, 1500);
     }
 
+    const decimalsMap: Partial<Record<keyof FairValueParams, number>> = {
+      price_icp_usd: 3,
+      price_ogy_usd: 6,
+      market_ratio: 1,
+    };
+
     function apply(key: keyof FairValueParams, val: number | null) {
       if (!cancelled && val !== null && Number.isFinite(val) && val > 0) {
-        onUpdate(key, val);
+        const d = decimalsMap[key];
+        const rounded = d !== undefined ? Number(val.toFixed(d)) : val;
+        onUpdate(key, rounded);
         triggerFlash(key);
       }
     }
