@@ -278,6 +278,7 @@ function CollapsibleInputSection({
           fill="none"
           stroke="currentColor"
           strokeWidth="1.5"
+          role="img"
           aria-label="Toggle section"
           className={`text-muted-foreground transition-transform duration-200 ${
             open ? "rotate-180" : ""
