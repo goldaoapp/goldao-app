@@ -8,6 +8,7 @@ import {
   Gavel,
   Home,
   Lock,
+  Scale,
   Wallet,
   type LucideIcon,
 } from "lucide-react";
@@ -28,6 +29,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: "Treasury", to: "/treasury", icon: Lock, ocid: "nav.treasury" },
   { label: "Proposals", to: "/proposals", icon: Gavel, ocid: "nav.proposals" },
   { label: "Rewards", to: "/rewards", icon: Gift, ocid: "nav.rewards" },
+  { label: "Fair Value", to: "/fair-value", icon: Scale, ocid: "nav.fair-value" },
   { label: "Docs", to: "/documentation", icon: BookOpen, ocid: "nav.documentation" },
   { label: "News", to: "/news", icon: FileText, ocid: "nav.news" },
 ];
