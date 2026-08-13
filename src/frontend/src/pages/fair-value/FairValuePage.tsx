@@ -46,7 +46,7 @@ const INPUT_SECTIONS: SectionDef[] = [
     fields: [
       { key: "pct_stakers", label: "% Stakers (direct ICP)", unit: "%" },
       { key: "pct_gldt", label: "% GLDT Rewards", unit: "%" },
-      { key: "pct_burn", label: "% Buyback / Burn", unit: "%" },
+      { key: "pct_burn", label: "% Buyback (treasury)", unit: "%" },
       { key: "pct_cecil", label: "% Good DAO (external)", unit: "%" },
     ],
   },
@@ -62,17 +62,12 @@ const INPUT_SECTIONS: SectionDef[] = [
     title: "GOLDAO Supply",
     fields: [
       { key: "goldao_eligible", label: "Eligible (rewards)", unit: "GOLDAO" },
-      { key: "supply_current", label: "Current Supply", unit: "GOLDAO" },
-      { key: "burn_team", label: "Team Neuron Burn", unit: "GOLDAO" },
-      { key: "burn_treasury", label: "Treasury Burn", unit: "GOLDAO" },
     ],
   },
   {
-    title: "Market / Triggers",
+    title: "Market",
     fields: [
       { key: "market_ratio", label: "Market Ratio (GOLDAO/ICP)", unit: "ratio" },
-      { key: "trigger_goldao", label: "GOLDAO Buy Trigger", unit: "ratio" },
-      { key: "trigger_ogy", label: "OGY Buy Trigger", unit: "ratio" },
     ],
   },
 ];
@@ -229,20 +224,18 @@ function Note({ children }: { children: React.ReactNode }) {
   );
 }
 
-/* ── Spectrum bar (Paso 9) ───────────────────────────────────────────────── */
+/* ── Spectrum bar (Paso 7) ───────────────────────────────────────────────── */
 
 function SpectrumBar({ r }: { r: FairValueResult }) {
   const eq = r.ratio_eq;
   const mkt = r.market_ratio;
-  const trg = r.trigger_goldao;
   if (eq <= 0) return null;
-  const maxVal = Math.max(eq, mkt, trg) * 1.5;
+  const maxVal = Math.max(eq, mkt) * 1.5;
   const pct = (v: number) => `${Math.min((v / maxVal) * 100, 98)}%`;
   const mktColor = mkt > eq ? "oklch(0.72 0.17 162)" : "oklch(0.65 0.19 22)";
 
   return (
     <div className="relative h-14 rounded bg-secondary/60 border border-border overflow-hidden mt-2 mb-1">
-      {/* gradient */}
       <div
         className="absolute inset-0"
         style={{
@@ -250,7 +243,6 @@ function SpectrumBar({ r }: { r: FairValueResult }) {
           opacity: 0.25,
         }}
       />
-      {/* labels */}
       <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[9px] font-mono text-destructive/80">
         EXPENSIVE
       </span>
@@ -261,12 +253,6 @@ function SpectrumBar({ r }: { r: FairValueResult }) {
       <div className="absolute top-0 bottom-0 w-px" style={{ left: pct(eq), background: "oklch(0.83 0.13 70)" }}>
         <span className="absolute -top-0.5 left-1/2 -translate-x-1/2 text-[8px] font-mono text-[oklch(0.83_0.13_70)] whitespace-nowrap">
           EQ {fmtNum(eq, 0)}
-        </span>
-      </div>
-      {/* TRG marker */}
-      <div className="absolute top-0 bottom-0 w-px" style={{ left: pct(trg), background: "oklch(0.7 0.12 185)" }}>
-        <span className="absolute bottom-0 left-1/2 -translate-x-1/2 text-[8px] font-mono text-[oklch(0.7_0.12_185)] whitespace-nowrap">
-          TRG {fmtNum(trg, 0)}
         </span>
       </div>
       {/* MKT triangle */}
@@ -310,62 +296,43 @@ function Results({
         </div>
       )}
 
-      {/* Paso 1 */}
+      {/* Paso 1 — ICP bruto */}
       <StepCard step={1} title="Gross ICP Generated (NNS)" accent="primary">
         <Row label="▶ Gross ICP / year" value={`${fmtNum(r.icp_gross)} ICP`} accent="primary" />
       </StepCard>
 
-      {/* Paso 2 */}
+      {/* Paso 2 — Distribución */}
       <StepCard step={2} title="ICP Distribution" accent="teal">
-        <Row label="→ Stakers (direct ICP)" value={`${fmtNum(r.icp_stakers)} ICP`} />
-        <Row label="→ GLDT Rewards" value={`${fmtNum(r.icp_gldt)} ICP`} />
-        <Row label="→ Buyback / Burn" value={`${fmtNum(r.icp_burn)} ICP`} accent="amber" />
+        <Row label="→ Stakers (direct ICP)" value={`${fmtNum(r.icp_stakers)} ICP`} accent="green" />
+        <Row label="→ GLDT Rewards" value={`${fmtNum(r.icp_gldt)} ICP`} accent="green" />
+        <Row label="→ Buyback (treasury)" value={`${fmtNum(r.icp_burn)} ICP`} dim />
         <Row label="→ Good DAO (external)" value={`${fmtNum(r.icp_cecil)} ICP`} dim />
+        <Note>
+          Only stakers + GLDT flow to holders as direct yield.
+          Buyback and Good DAO are treasury actions — not staker income.
+        </Note>
       </StepCard>
 
-      {/* Paso 3 */}
+      {/* Paso 3 — OGY */}
       <StepCard step={3} title="OGY Neuron → ICP Equivalent" accent="purple">
         <Row label="OGY earned" value={`${fmtNum(r.ogy_rewards, 0)} OGY`} dim />
         <Row label="= USD" value={`$${fmtNum(r.ogy_usd, 0)}`} dim />
         <Row label="▶ OGY → ICP / year" value={`${fmtNum(r.ogy_icp)} ICP`} accent="purple" />
       </StepCard>
 
-      {/* Paso 4 */}
-      <StepCard step={4} title="Direct Yield to Eligible Stakers" accent="green">
+      {/* Paso 4 — Yield directo */}
+      <StepCard step={4} title="Direct Yield per GOLDAO" accent="gold">
         <Note>(ICP stakers + GLDT + OGY) ÷ eligible GOLDAO</Note>
         <Row label="Direct pool" value={`${fmtNum(r.pool_directo)} ICP`} />
         <Row
           label={`÷ ${fmtNum(params.goldao_eligible / 1e6)}M eligible`}
           value={`${r.yield_directo.toFixed(9)} ICP/GOLDAO`}
-          accent="green"
-        />
-      </StepCard>
-
-      {/* Paso 5 */}
-      <StepCard step={5} title="Burn Yield (over effective supply)" accent="amber">
-        <Note>
-          effective supply = current − pending burns: {fmtNum(r.supply_eff / 1e6)}M
-          (−{fmtNum(r.burn_total_pend / 1e6)}M pending)
-        </Note>
-        <Row label="Burn pool" value={`${fmtNum(r.icp_burn)} ICP`} />
-        <Row
-          label={`÷ ${fmtNum(r.supply_eff / 1e6)}M supply`}
-          value={`${r.yield_burn.toFixed(9)} ICP/GOLDAO`}
-          accent="amber"
-        />
-      </StepCard>
-
-      {/* Paso 6 */}
-      <StepCard step={6} title="Total Yield per GOLDAO" accent="gold">
-        <Row
-          label="direct + burn"
-          value={`${r.yield_total.toFixed(9)} ICP/GOLDAO`}
           accent="gold"
         />
       </StepCard>
 
-      {/* Paso 7 */}
-      <StepCard step={7} title="Effective APY (at market price)" accent="green">
+      {/* Paso 5 — APY efectivo */}
+      <StepCard step={5} title="Effective APY (at market price)" accent="green">
         <Note>APY = yield per GOLDAO ÷ GOLDAO price in ICP × 100</Note>
         <Row
           label="Effective GOLDAO APY"
@@ -375,8 +342,8 @@ function Results({
         <Row label="NNS Benchmark APY" value={`${fmtNum(params.nns_apy)}%`} accent="primary" />
       </StepCard>
 
-      {/* Paso 8 */}
-      <StepCard step={8} title="Equilibrium Ratio" accent="amber">
+      {/* Paso 6 — Equilibrio */}
+      <StepCard step={6} title="Equilibrium Ratio" accent="amber">
         <Note>price_eq = yield per GOLDAO ÷ APY NNS · ratio = 1 / price_eq</Note>
         <Row
           label="Equilibrium price"
@@ -387,24 +354,17 @@ function Results({
           value={`1 ICP : ${fmtNum(r.ratio_eq, 0)} GOLDAO`}
           accent="amber"
         />
-        <Row
-          label="(direct only, no burn)"
-          value={`1 ICP : ${fmtNum(r.ratio_eq_solo_directo, 0)} GOLDAO`}
-          dim
-        />
       </StepCard>
 
-      {/* Paso 9 */}
+      {/* Paso 7 — Mercado vs equilibrio */}
       <StepCard
-        step={9}
-        title="Market vs Equilibrium vs Triggers"
+        step={7}
+        title="Market vs Equilibrium"
         accent={r.esta_barato ? "green" : "destructive"}
       >
-        <div className="space-y-0.5 text-xs font-mono">
+        <div className="space-y-0.5">
           <Row label="Equilibrium" value={`1 ICP = ${fmtNum(r.ratio_eq, 0)} GOLDAO`} accent="amber" />
           <Row label="Market" value={`1 ICP = ${fmtNum(r.market_ratio, 0)} GOLDAO`} />
-          <Row label="GOLDAO trigger" value={`1 ICP = ${fmtNum(r.trigger_goldao, 0)} GOLDAO`} accent="teal" />
-          <Row label="OGY trigger" value={`1 ICP = ${fmtNum(r.trigger_ogy, 0)} OGY`} dim />
         </div>
 
         <SpectrumBar r={r} />
@@ -433,25 +393,6 @@ function Results({
                 Staking ICP directly on the NNS yields more than buying GOLDAO today.
               </p>
             </div>
-          );
-        })()}
-
-        {/* Trigger note */}
-        {(() => {
-          const gap = r.trigger_goldao - r.ratio_eq;
-          if (gap > 0) {
-            return (
-              <p className="text-[10px] text-muted-foreground font-mono mt-2 leading-relaxed">
-                Burn trigger (1:{fmtNum(r.trigger_goldao, 0)}) is {fmtNum(gap, 0)} above equilibrium
-                (1:{fmtNum(r.ratio_eq, 0)}): conservative config — only buys back at a real discount.
-              </p>
-            );
-          }
-          return (
-            <p className="text-[10px] text-[oklch(0.83_0.13_70)] font-mono mt-2 leading-relaxed">
-              Burn trigger (1:{fmtNum(r.trigger_goldao, 0)}) is below equilibrium
-              (1:{fmtNum(r.ratio_eq, 0)}): may be buying back GOLDAO even when not undervalued.
-            </p>
           );
         })()}
       </StepCard>
@@ -503,7 +444,7 @@ export default function FairValuePage() {
           <span className="text-gradient-gold">Fair Value</span>
         </h1>
         <p className="text-xs sm:text-sm text-muted-foreground font-mono mt-1">
-          GOLDAO vs ICP — Equilibrium Calculator · Buyback strategy: burn GOLDAO ≥1:500 · OGY ≥1:1000 · else compound ICP
+          GOLDAO vs ICP — Equilibrium based on direct staker yield
         </p>
       </div>
 
