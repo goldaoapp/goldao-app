@@ -12,31 +12,60 @@ const DISSOLVE_API =
 const BINANCE_API =
   "https://api.binance.com/api/v3/ticker/price?symbol=ICPUSDT";
 const COINGECKO_API =
-  "https://api.coingecko.com/api/v3/simple/price?ids=origyn-foundation&vs_currencies=usd";
+  "https://api.coingecko.com/api/v3/simple/price?ids=internet-computer,origyn-foundation&vs_currencies=usd";
+const ICPSWAP_API =
+  "https://uvevg-iyaaa-aaaak-ac27q-cai.raw.ic0.app/tickers";
+
+const POLL_INTERVAL = 30_000;
 
 interface DissolveGroup {
   dissolve_delay_group: string;
   total_stake: number;
 }
 
-interface LiveDataStatus {
-  loading: boolean;
-  sources: { label: string; ok: boolean; error?: string }[];
+interface ICPSwapTicker {
+  ticker_name: string;
+  last_price: string;
+}
+
+function avg(a: number | null, b: number | null): number | null {
+  if (a !== null && b !== null) return (a + b) / 2;
+  return a ?? b;
+}
+
+function validNum(v: number | undefined | null): number | null {
+  if (v !== null && v !== undefined && Number.isFinite(v) && v > 0) return v;
+  return null;
 }
 
 function useLiveData(
   onUpdate: (key: keyof FairValueParams, val: number) => void,
-): LiveDataStatus {
-  const [loading, setLoading] = useState(true);
-  const [sources, setSources] = useState<LiveDataStatus["sources"]>([]);
+): { flash: Set<string> } {
+  const [flash, setFlash] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     let cancelled = false;
 
-    async function fetchAll() {
-      const results: LiveDataStatus["sources"] = [];
+    function triggerFlash(key: string) {
+      setFlash((prev) => new Set(prev).add(key));
+      setTimeout(() => {
+        setFlash((prev) => {
+          const next = new Set(prev);
+          next.delete(key);
+          return next;
+        });
+      }, 1500);
+    }
 
-      // 1 — Eligible GOLDAO
+    function apply(key: keyof FairValueParams, val: number | null) {
+      if (!cancelled && val !== null && Number.isFinite(val) && val > 0) {
+        onUpdate(key, val);
+        triggerFlash(key);
+      }
+    }
+
+    async function fetchAll() {
+      // ── 1. Eligible GOLDAO ──
       try {
         const res = await fetch(DISSOLVE_API);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -44,61 +73,70 @@ function useLiveData(
         const max = groups.find((g) =>
           g.dissolve_delay_group.includes("max delay"),
         );
-        if (!cancelled && max) onUpdate("goldao_eligible", Math.round(max.total_stake));
-        results.push({ label: "Eligible (api.gldt.org)", ok: true });
-      } catch (err) {
-        results.push({
-          label: "Eligible (api.gldt.org)",
-          ok: false,
-          error: err instanceof Error ? err.message : "failed",
-        });
-      }
+        if (max) apply("goldao_eligible", Math.round(max.total_stake));
+      } catch (_) { /* default */ }
 
-      // 2 — ICP price
+      // ── 2. ICPSwap tickers (GOLDAO_ICP + OGY_ICP) ──
+      let icpswapGoldao: number | null = null;
+      let icpswapOgyPerIcp: number | null = null;
+
+      try {
+        const res = await fetch(ICPSWAP_API);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const tickers: ICPSwapTicker[] = await res.json();
+        for (const t of tickers) {
+          if (t.ticker_name === "GOLDAO_ICP") {
+            icpswapGoldao = validNum(Number.parseFloat(t.last_price));
+          }
+          if (t.ticker_name === "OGY_ICP" && t.last_price !== "0.000000") {
+            icpswapOgyPerIcp = validNum(Number.parseFloat(t.last_price));
+          }
+        }
+      } catch (_) { /* fallback to other sources */ }
+
+      // ── 3. Market ratio — ICPSwap only ──
+      apply("market_ratio", icpswapGoldao);
+
+      // ── 4. ICP price USD — Binance + CoinGecko, average ──
+      let binanceIcp: number | null = null;
+      let geckoIcp: number | null = null;
+      let geckoOgy: number | null = null;
+
       try {
         const res = await fetch(BINANCE_API);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data: { price: string } = await res.json();
-        const price = Number.parseFloat(data.price);
-        if (!cancelled && Number.isFinite(price)) onUpdate("price_icp_usd", price);
-        results.push({ label: "ICP price (Binance)", ok: true });
-      } catch (err) {
-        results.push({
-          label: "ICP price (Binance)",
-          ok: false,
-          error: err instanceof Error ? err.message : "failed",
-        });
-      }
+        binanceIcp = validNum(Number.parseFloat(data.price));
+      } catch (_) { /* fallback */ }
 
-      // 3 — OGY price
       try {
         const res = await fetch(COINGECKO_API);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const data: Record<string, { usd: number }> = await res.json();
-        const price = data["origyn-foundation"]?.usd;
-        if (!cancelled && price && Number.isFinite(price)) onUpdate("price_ogy_usd", price);
-        results.push({ label: "OGY price (CoinGecko)", ok: true });
-      } catch (err) {
-        results.push({
-          label: "OGY price (CoinGecko)",
-          ok: false,
-          error: err instanceof Error ? err.message : "failed",
-        });
-      }
+        const data: Record<string, { usd?: number }> = await res.json();
+        geckoIcp = validNum(data["internet-computer"]?.usd);
+        geckoOgy = validNum(data["origyn-foundation"]?.usd);
+      } catch (_) { /* fallback */ }
 
-      if (!cancelled) {
-        setSources(results);
-        setLoading(false);
+      const icpUsd = avg(binanceIcp, geckoIcp);
+      apply("price_icp_usd", icpUsd);
+
+      // ── 5. OGY price USD — CoinGecko + ICPSwap-derived, average ──
+      let icpswapOgyUsd: number | null = null;
+      if (icpswapOgyPerIcp !== null && icpUsd !== null) {
+        icpswapOgyUsd = icpUsd / icpswapOgyPerIcp;
       }
+      apply("price_ogy_usd", avg(geckoOgy, icpswapOgyUsd));
     }
 
     fetchAll();
+    const id = setInterval(fetchAll, POLL_INTERVAL);
     return () => {
       cancelled = true;
+      clearInterval(id);
     };
   }, [onUpdate]);
 
-  return { loading, sources };
+  return { flash };
 }
 
 /* ── Helpers ─────────────────────────────────────────────────────────────── */
@@ -172,21 +210,33 @@ function InputField({
   field,
   value,
   onChange,
+  live,
 }: {
   field: FieldDef;
   value: string;
   onChange: (key: keyof FairValueParams, val: string) => void;
+  live?: boolean;
 }) {
   return (
     <label className="flex items-center gap-2 py-1">
-      <span className="text-xs text-muted-foreground w-40 shrink-0 font-mono">
+      <span className="text-xs text-muted-foreground w-40 shrink-0 font-mono flex items-center gap-1.5">
         {field.label}
+        {live && (
+          <span
+            className="inline-block size-1.5 rounded-full bg-[oklch(0.72_0.17_162)] animate-pulse"
+            title="Live from API"
+          />
+        )}
       </span>
       <input
         type="text"
         value={value}
         onChange={(e) => onChange(field.key, e.target.value)}
-        className="flex-1 min-w-0 bg-secondary/60 border border-border rounded px-2 py-1.5 text-right text-sm font-mono text-foreground outline-none focus:ring-1 focus:ring-primary/50"
+        className={`flex-1 min-w-0 border rounded px-2 py-1.5 text-right text-sm font-mono text-foreground outline-none focus:ring-1 focus:ring-primary/50 transition-colors duration-700 ${
+          live
+            ? "bg-[oklch(0.72_0.17_162)]/10 border-[oklch(0.72_0.17_162)]/30"
+            : "bg-secondary/60 border-border"
+        }`}
       />
       <span className="text-[10px] text-muted-foreground font-mono w-12 shrink-0">
         {field.unit}
@@ -199,10 +249,12 @@ function InputSection({
   section,
   values,
   onChange,
+  flash,
 }: {
   section: SectionDef;
   values: Record<string, string>;
   onChange: (key: keyof FairValueParams, val: string) => void;
+  flash: Set<string>;
 }) {
   return (
     <div className="rounded-lg border border-border bg-card/50 p-3">
@@ -210,7 +262,13 @@ function InputSection({
         {section.title}
       </h3>
       {section.fields.map((f) => (
-        <InputField key={f.key} field={f} value={values[f.key]} onChange={onChange} />
+        <InputField
+          key={f.key}
+          field={f}
+          value={values[f.key]}
+          onChange={onChange}
+          live={flash.has(f.key)}
+        />
       ))}
     </div>
   );
@@ -509,7 +567,7 @@ export default function FairValuePage() {
     setRaw((prev) => ({ ...prev, [key]: fmtDefault(val) }));
   }, []);
 
-  const { loading: liveLoading, sources: liveSources } = useLiveData(applyLive);
+  const { flash } = useLiveData(applyLive);
 
   const handleChange = useCallback(
     (key: keyof FairValueParams, val: string) => {
@@ -553,24 +611,8 @@ export default function FairValuePage() {
         {/* Inputs */}
         <div className="space-y-3">
           {INPUT_SECTIONS.map((s) => (
-            <InputSection key={s.title} section={s} values={raw} onChange={handleChange} />
+            <InputSection key={s.title} section={s} values={raw} onChange={handleChange} flash={flash} />
           ))}
-          {/* API status */}
-          <div className="text-[10px] font-mono px-1 space-y-0.5">
-            {liveLoading && (
-              <span className="text-muted-foreground">Loading live data…</span>
-            )}
-            {!liveLoading &&
-              liveSources.map((s) => (
-                <div key={s.label}>
-                  {s.ok ? (
-                    <span className="text-[oklch(0.72_0.17_162)]">✓ {s.label}</span>
-                  ) : (
-                    <span className="text-destructive">✗ {s.label}: {s.error}</span>
-                  )}
-                </div>
-              ))}
-          </div>
           <div className="flex gap-2 pt-1">
             <button
               type="button"
