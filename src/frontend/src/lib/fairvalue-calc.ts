@@ -77,7 +77,7 @@ export interface FairValueResult {
 export const DEFAULTS: FairValueParams = {
   icp_staked: 555_888,
   nns_apy: 8.15,
-  price_icp_usd: 2.35,
+  price_icp_usd: 0,
 
   pct_stakers: 33,
   pct_gldt: 33,
@@ -86,11 +86,11 @@ export const DEFAULTS: FairValueParams = {
 
   ogy_staked: 500_000_000,
   ogy_apy: 6,
-  price_ogy_usd: 0.000864,
+  price_ogy_usd: 0,
 
-  goldao_eligible: 248_600_000,
+  goldao_eligible: 0,
 
-  market_ratio: 500,
+  market_ratio: 0,
 };
 
 export function calcular(p: FairValueParams): FairValueResult {
