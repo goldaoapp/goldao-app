@@ -248,35 +248,6 @@ function InputField({
   );
 }
 
-function InputSection({
-  section,
-  values,
-  onChange,
-  flash,
-}: {
-  section: SectionDef;
-  values: Record<string, string>;
-  onChange: (key: keyof FairValueParams, val: string) => void;
-  flash: Set<string>;
-}) {
-  return (
-    <div className="rounded-lg border border-border bg-card/50 p-3">
-      <h3 className="text-[10px] tracking-widest uppercase text-primary font-mono mb-2">
-        {section.title}
-      </h3>
-      {section.fields.map((f) => (
-        <InputField
-          key={f.key}
-          field={f}
-          value={values[f.key]}
-          onChange={onChange}
-          live={flash.has(f.key)}
-        />
-      ))}
-    </div>
-  );
-}
-
 function CollapsibleInputSection({
   section,
   values,
@@ -307,6 +278,7 @@ function CollapsibleInputSection({
           fill="none"
           stroke="currentColor"
           strokeWidth="1.5"
+          aria-label="Toggle section"
           className={`text-muted-foreground transition-transform duration-200 ${
             open ? "rotate-180" : ""
           }`}
