@@ -11,6 +11,7 @@ import NewsPage from "@/pages/news/NewsPage";
 import ProposalsPage from "@/pages/proposals/ProposalsPage";
 import RewardsPage from "@/pages/rewards/RewardsPage";
 import TreasuryPage from "@/pages/treasury/TreasuryPage";
+import FairValuePage from "@/pages/fair-value/FairValuePage";
 
 const rootRoute = createRootRoute({
   component: Layout,
@@ -46,6 +47,12 @@ const documentationRoute = createRoute({
   component: DocumentationPage,
 });
 
+const fairValueRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/fair-value",
+  component: FairValuePage,
+});
+
 const newsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/news",
@@ -57,6 +64,7 @@ const routeTree = rootRoute.addChildren([
   treasuryRoute,
   proposalsRoute,
   rewardsRoute,
+  fairValueRoute,
   documentationRoute,
   newsRoute,
 ]);
