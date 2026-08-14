@@ -196,7 +196,7 @@ const COLLAPSIBLE_SECTIONS: SectionDef[] = [
     fields: [
       { key: "pct_stakers", label: "% Stakers (direct ICP)", unit: "%" },
       { key: "pct_gldt", label: "% GLDT Rewards", unit: "%" },
-      { key: "pct_burn", label: "% Buyback (treasury)", unit: "%" },
+      { key: "pct_burn", label: "% Buyback / Auto-Compound ICP (treasury)", unit: "%" },
       { key: "pct_cecil", label: "% Good DAO (external)", unit: "%" },
     ],
   },
