@@ -196,7 +196,7 @@ const COLLAPSIBLE_SECTIONS: SectionDef[] = [
     fields: [
       { key: "pct_stakers", label: "% Stakers (direct ICP)", unit: "%" },
       { key: "pct_gldt", label: "% GLDT Rewards", unit: "%" },
-      { key: "pct_burn", label: "% Buyback / Auto-Compound ICP (treasury)", unit: "%" },
+      { key: "pct_burn", label: "% Buyback / Auto-Compound ICP", unit: "%" },
       { key: "pct_cecil", label: "% Good DAO (external)", unit: "%" },
     ],
   },
@@ -577,11 +577,10 @@ function Results({
       <StepCard step={2} title="ICP Distribution" accent="teal">
         <Row label="→ Stakers (direct ICP)" value={`${fmtNum(r.icp_stakers)} ICP`} accent="green" />
         <Row label="→ GLDT Rewards" value={`${fmtNum(r.icp_gldt)} ICP`} accent="green" />
-        <Row label="→ Buyback (treasury)" value={`${fmtNum(r.icp_burn)} ICP`} dim />
+        <Row label="→ Buyback / Auto-Compound ICP (treasury)" value={`${fmtNum(r.icp_burn)} ICP`} dim />
         <Row label="→ Good DAO (external)" value={`${fmtNum(r.icp_cecil)} ICP`} dim />
         <Note>
-          Only stakers + GLDT flow to holders as direct yield.
-          Buyback and Good DAO are treasury actions — not staker income.
+          Only stakers + GLDT flow to holders as direct yield.         
         </Note>
       </StepCard>
 
