@@ -1,5 +1,5 @@
 import type React from "react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   type FairValueParams,
   type FairValueResult,
@@ -15,8 +15,11 @@ const COINGECKO_API =
   "https://api.coingecko.com/api/v3/simple/price?ids=internet-computer,origyn-foundation&vs_currencies=usd";
 const ICPSWAP_API =
   "https://uvevg-iyaaa-aaaak-ac27q-cai.raw.ic0.app/tickers";
+const OGY_NEURON_API =
+  "https://sns-api.internetcomputer.org/api/v1/snses/leu43-oiaaa-aaaaq-aadgq-cai/neurons/bf941a42ede5c1513b87375677e30fe6174a5f790be5850290182ebfa3b5f74d";
 
-const POLL_INTERVAL = 30_000;
+const POLL_FAST = 30_000; // Binance, CoinGecko, gldt.org — lightweight
+const POLL_SLOW = 120_000; // ICPSwap /tickers — ~700 KB payload
 
 interface DissolveGroup {
   dissolve_delay_group: string;
@@ -43,6 +46,9 @@ function useLiveData(
   onUpdate: (key: keyof FairValueParams, val: number) => void,
 ): { flash: Set<string> } {
   const [flash, setFlash] = useState<Set<string>>(new Set());
+
+  // Shared mutable ref for ICPSwap data (used by fast loop for OGY derivation)
+  const icpswapRef = useRef<{ ogyPerIcp: number | null }>({ ogyPerIcp: null });
 
   useEffect(() => {
     let cancelled = false;
@@ -73,8 +79,26 @@ function useLiveData(
       }
     }
 
-    async function fetchAll() {
-      // ── 1. Eligible GOLDAO ──
+    // ── SLOW: ICPSwap tickers (~700 KB, every 120s) ──
+    async function fetchICPSwap() {
+      try {
+        const res = await fetch(ICPSWAP_API);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const tickers: ICPSwapTicker[] = await res.json();
+        for (const t of tickers) {
+          if (t.ticker_id === "k46ek-4qaaa-aaaag-qcyzq-cai") {
+            apply("market_ratio", validNum(Number.parseFloat(t.last_price)));
+          }
+          if (t.ticker_id === "ttnzy-lyaaa-aaaag-qj2bq-cai") {
+            icpswapRef.current.ogyPerIcp = validNum(Number.parseFloat(t.last_price));
+          }
+        }
+      } catch (_) { /* fallback */ }
+    }
+
+    // ── FAST: lightweight APIs (every 30s) ──
+    async function fetchLight() {
+      // 1 — Eligible GOLDAO
       try {
         const res = await fetch(DISSOLVE_API);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -85,28 +109,7 @@ function useLiveData(
         if (max) apply("goldao_eligible", Math.round(max.total_stake));
       } catch (_) { /* default */ }
 
-      // ── 2. ICPSwap tickers (GOLDAO + OGY pools by canister ID) ──
-      let icpswapGoldao: number | null = null;
-      let icpswapOgyPerIcp: number | null = null;
-
-      try {
-        const res = await fetch(ICPSWAP_API);
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const tickers: ICPSwapTicker[] = await res.json();
-        for (const t of tickers) {
-          if (t.ticker_id === "k46ek-4qaaa-aaaag-qcyzq-cai") {
-            icpswapGoldao = validNum(Number.parseFloat(t.last_price));
-          }
-          if (t.ticker_id === "ttnzy-lyaaa-aaaag-qj2bq-cai") {
-            icpswapOgyPerIcp = validNum(Number.parseFloat(t.last_price));
-          }
-        }
-      } catch (_) { /* fallback */ }
-
-      // ── 3. Market ratio — ICPSwap only ──
-      apply("market_ratio", icpswapGoldao);
-
-      // ── 4. ICP price USD — Binance + CoinGecko, average ──
+      // 2 — ICP price USD (Binance + CoinGecko)
       let binanceIcp: number | null = null;
       let geckoIcp: number | null = null;
       let geckoOgy: number | null = null;
@@ -129,19 +132,34 @@ function useLiveData(
       const icpUsd = avg(binanceIcp, geckoIcp);
       apply("price_icp_usd", icpUsd);
 
-      // ── 5. OGY price USD — CoinGecko + ICPSwap pool ttnzy, average ──
+      // 3 — OGY price (CoinGecko + ICPSwap-derived)
       let icpswapOgyUsd: number | null = null;
-      if (icpswapOgyPerIcp !== null && icpUsd !== null) {
-        icpswapOgyUsd = icpUsd / icpswapOgyPerIcp;
+      const ogyPerIcp = icpswapRef.current.ogyPerIcp;
+      if (ogyPerIcp !== null && icpUsd !== null) {
+        icpswapOgyUsd = icpUsd / ogyPerIcp;
       }
       apply("price_ogy_usd", avg(geckoOgy, icpswapOgyUsd));
+
+      // 4 — OGY neuron (stake + maturity)
+      try {
+        const res = await fetch(OGY_NEURON_API);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data: { stake_e8s: number; total_maturity_e8s_equivalent: number } = await res.json();
+        const total = (data.stake_e8s + data.total_maturity_e8s_equivalent) / 1e8;
+        apply("ogy_staked", Math.round(total));
+      } catch (_) { /* default */ }
     }
 
-    fetchAll();
-    const id = setInterval(fetchAll, POLL_INTERVAL);
+    // Initial fetch: both
+    fetchICPSwap();
+    fetchLight();
+
+    const fastId = setInterval(fetchLight, POLL_FAST);
+    const slowId = setInterval(fetchICPSwap, POLL_SLOW);
     return () => {
       cancelled = true;
-      clearInterval(id);
+      clearInterval(fastId);
+      clearInterval(slowId);
     };
   }, [onUpdate]);
 
@@ -196,7 +214,7 @@ const COLLAPSIBLE_SECTIONS: SectionDef[] = [
     fields: [
       { key: "pct_stakers", label: "% Stakers (direct ICP)", unit: "%" },
       { key: "pct_gldt", label: "% GLDT Rewards", unit: "%" },
-      { key: "pct_burn", label: "% Buyback / Auto-Compound ICP", unit: "%" },
+      { key: "pct_burn", label: "% Buyback / Auto-Compound ICP (treasury)", unit: "%" },
       { key: "pct_cecil", label: "% Good DAO (external)", unit: "%" },
     ],
   },
@@ -577,10 +595,11 @@ function Results({
       <StepCard step={2} title="ICP Distribution" accent="teal">
         <Row label="→ Stakers (direct ICP)" value={`${fmtNum(r.icp_stakers)} ICP`} accent="green" />
         <Row label="→ GLDT Rewards" value={`${fmtNum(r.icp_gldt)} ICP`} accent="green" />
-        <Row label="→ Buyback / Auto-Compound ICP (treasury)" value={`${fmtNum(r.icp_burn)} ICP`} dim />
+        <Row label="→ Buyback (treasury)" value={`${fmtNum(r.icp_burn)} ICP`} dim />
         <Row label="→ Good DAO (external)" value={`${fmtNum(r.icp_cecil)} ICP`} dim />
         <Note>
-          Only stakers + GLDT flow to holders as direct yield.         
+          Only stakers + GLDT flow to holders as direct yield.
+          Buyback and Good DAO are treasury actions — not staker income.
         </Note>
       </StepCard>
 
