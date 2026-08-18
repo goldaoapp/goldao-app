@@ -5,7 +5,7 @@ import { useLiveData } from "@/lib/use-live-data";
 /* ── Page ──────────────────────────────────────────────────────────────── */
 
 export default function HomePage() {
-  const { params: liveParams } = useLiveData();
+  const { params: liveParams, extra } = useLiveData();
 
   const stats = useMemo(() => {
     const full: FairValueParams = { ...DEFAULTS, ...liveParams };
@@ -102,11 +102,13 @@ export default function HomePage() {
       <section>
         <div className="grid grid-cols-3 gap-3">
           <StatCard
-            value="12"
-            label="Active Proposals"
+            value={extra.proposalsActive !== null && extra.proposalsTotal !== null
+              ? `${extra.proposalsActive} / ${extra.proposalsTotal}`
+              : "—"}
+            label="Active / Total Proposals"
           />
           <StatCard
-            value="1,847"
+            value={extra.members !== null ? extra.members.toLocaleString("en-US") : "—"}
             label="Members"
           />
           <StatCard
