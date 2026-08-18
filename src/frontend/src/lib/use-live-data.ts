@@ -48,6 +48,10 @@ export interface LiveExtra {
   members: number | null;
   proposalsActive: number | null;
   proposalsTotal: number | null;
+  /** Total WTN across 3 neurons (stake + maturity) */
+  wtnTotal: number | null;
+  /** WTN value in ICP (wtnTotal / wtnPerIcp) */
+  wtnIcp: number | null;
 }
 
 export interface LiveData {
@@ -66,8 +70,14 @@ export function useLiveData(): LiveData {
     members: null,
     proposalsActive: null,
     proposalsTotal: null,
+    wtnTotal: null,
+    wtnIcp: null,
   });
-  const icpswapRef = useRef<{ ogyPerIcp: number | null }>({ ogyPerIcp: null });
+  const icpswapRef = useRef<{
+    ogyPerIcp: number | null;
+    wtnPerIcp: number | null;
+    wtnTotal: number | null;
+  }>({ ogyPerIcp: null, wtnPerIcp: null, wtnTotal: null });
 
   useEffect(() => {
     let cancelled = false;
@@ -106,9 +116,50 @@ export function useLiveData(): LiveData {
               Number.parseFloat(t.last_price),
             );
           }
+          // WTN price
+          if (t.ticker_id === POOLS.WTN_ICP) {
+            const wtnPerIcp = validNum(Number.parseFloat(t.last_price));
+            if (wtnPerIcp) {
+              icpswapRef.current.wtnPerIcp = wtnPerIcp;
+              apply("wtn_per_icp", wtnPerIcp);
+            }
+          }
+        }
+        // Recalc WTN ICP value if we have both
+        const wtn = icpswapRef.current.wtnTotal;
+        const wtnRate = icpswapRef.current.wtnPerIcp;
+        if (wtn !== null && wtnRate !== null && wtnRate > 0) {
+          setExtra((prev) => ({ ...prev, wtnIcp: wtn / wtnRate }));
         }
       } catch (_) {
         /* fallback */
+      }
+    }
+
+    // ── ONE-TIME: WTN neurons (3 neurons, no polling) ──
+    async function fetchWTN() {
+      try {
+        const results = await Promise.all(
+          API.WTN_NEURONS.map(async (url) => {
+            const res = await fetch(url);
+            if (!res.ok) return 0;
+            const data: OGYNeuronResponse = await res.json();
+            return (data.stake_e8s + data.total_maturity_e8s_equivalent) / 1e8;
+          }),
+        );
+        const total = Math.round(results.reduce((a, b) => a + b, 0));
+        icpswapRef.current.wtnTotal = total;
+        setExtra((prev) => ({ ...prev, wtnTotal: total }));
+        // Set as calc param
+        apply("wtn_total", total);
+        // Calc ICP value if price already available
+        const wtnRate = icpswapRef.current.wtnPerIcp;
+        if (wtnRate !== null && wtnRate > 0) {
+          apply("wtn_per_icp", wtnRate);
+          setExtra((prev) => ({ ...prev, wtnIcp: total / wtnRate }));
+        }
+      } catch (_) {
+        /* default */
       }
     }
 
@@ -205,9 +256,10 @@ export function useLiveData(): LiveData {
       }
     }
 
-    // Initial fetch: both
+    // Initial fetch: all (WTN only once)
     fetchICPSwap();
     fetchLight();
+    fetchWTN();
 
     const fastId = setInterval(fetchLight, POLL.FAST);
     const slowId = setInterval(fetchICPSwap, POLL.SLOW);
