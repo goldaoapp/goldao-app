@@ -23,6 +23,10 @@ export const API = {
   /** OGY SNS neuron (stake + maturity) */
   OGY_NEURON:
     "https://sns-api.internetcomputer.org/api/v1/snses/leu43-oiaaa-aaaaq-aadgq-cai/neurons/bf941a42ede5c1513b87375677e30fe6174a5f790be5850290182ebfa3b5f74d",
+
+  /** GOLDAO SNS proposals (v2, cursor pagination) */
+  GOLDAO_PROPOSALS:
+    "https://sns-api.internetcomputer.org/api/v2/snses/tw2vt-hqaaa-aaaaq-aab6a-cai/proposals?limit=100",
 } as const;
 
 /** ICPSwap pool canister IDs used for price lookup */
@@ -42,6 +46,7 @@ export const POLL = {
 export interface DissolveGroup {
   dissolve_delay_group: string;
   total_stake: number;
+  unique_owners: number;
 }
 
 export interface ICPSwapTicker {
@@ -53,4 +58,13 @@ export interface ICPSwapTicker {
 export interface OGYNeuronResponse {
   stake_e8s: number;
   total_maturity_e8s_equivalent: number;
+}
+
+export interface SNSProposal {
+  id: number;
+  status: string;
+}
+
+export interface SNSProposalsResponse {
+  data: SNSProposal[];
 }
