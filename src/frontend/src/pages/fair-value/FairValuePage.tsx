@@ -1,170 +1,12 @@
 import type React from "react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   type FairValueParams,
   type FairValueResult,
   DEFAULTS,
   calcular,
 } from "@/lib/fairvalue-calc";
-
-const DISSOLVE_API =
-  "https://api.gldt.org/v1/daos/golddao/neurons/dissolve-delays";
-const BINANCE_API =
-  "https://api.binance.com/api/v3/ticker/price?symbol=ICPUSDT";
-const COINGECKO_API =
-  "https://api.coingecko.com/api/v3/simple/price?ids=internet-computer,origyn-foundation&vs_currencies=usd";
-const ICPSWAP_API =
-  "https://uvevg-iyaaa-aaaak-ac27q-cai.raw.ic0.app/tickers";
-const OGY_NEURON_API =
-  "https://sns-api.internetcomputer.org/api/v1/snses/leu43-oiaaa-aaaaq-aadgq-cai/neurons/bf941a42ede5c1513b87375677e30fe6174a5f790be5850290182ebfa3b5f74d";
-
-const POLL_FAST = 30_000; // Binance, CoinGecko, gldt.org — lightweight
-const POLL_SLOW = 120_000; // ICPSwap /tickers — ~700 KB payload
-
-interface DissolveGroup {
-  dissolve_delay_group: string;
-  total_stake: number;
-}
-
-interface ICPSwapTicker {
-  ticker_id: string;
-  ticker_name: string;
-  last_price: string;
-}
-
-function avg(a: number | null, b: number | null): number | null {
-  if (a !== null && b !== null) return (a + b) / 2;
-  return a ?? b;
-}
-
-function validNum(v: number | undefined | null): number | null {
-  if (v !== null && v !== undefined && Number.isFinite(v) && v > 0) return v;
-  return null;
-}
-
-function useLiveData(
-  onUpdate: (key: keyof FairValueParams, val: number) => void,
-): { flash: Set<string> } {
-  const [flash, setFlash] = useState<Set<string>>(new Set());
-
-  // Shared mutable ref for ICPSwap data (used by fast loop for OGY derivation)
-  const icpswapRef = useRef<{ ogyPerIcp: number | null }>({ ogyPerIcp: null });
-
-  useEffect(() => {
-    let cancelled = false;
-
-    function triggerFlash(key: string) {
-      setFlash((prev) => new Set(prev).add(key));
-      setTimeout(() => {
-        setFlash((prev) => {
-          const next = new Set(prev);
-          next.delete(key);
-          return next;
-        });
-      }, 1500);
-    }
-
-    const decimalsMap: Partial<Record<keyof FairValueParams, number>> = {
-      price_icp_usd: 3,
-      price_ogy_usd: 6,
-      market_ratio: 1,
-    };
-
-    function apply(key: keyof FairValueParams, val: number | null) {
-      if (!cancelled && val !== null && Number.isFinite(val) && val > 0) {
-        const d = decimalsMap[key];
-        const rounded = d !== undefined ? Number(val.toFixed(d)) : val;
-        onUpdate(key, rounded);
-        triggerFlash(key);
-      }
-    }
-
-    // ── SLOW: ICPSwap tickers (~700 KB, every 120s) ──
-    async function fetchICPSwap() {
-      try {
-        const res = await fetch(ICPSWAP_API);
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const tickers: ICPSwapTicker[] = await res.json();
-        for (const t of tickers) {
-          if (t.ticker_id === "k46ek-4qaaa-aaaag-qcyzq-cai") {
-            apply("market_ratio", validNum(Number.parseFloat(t.last_price)));
-          }
-          if (t.ticker_id === "ttnzy-lyaaa-aaaag-qj2bq-cai") {
-            icpswapRef.current.ogyPerIcp = validNum(Number.parseFloat(t.last_price));
-          }
-        }
-      } catch (_) { /* fallback */ }
-    }
-
-    // ── FAST: lightweight APIs (every 30s) ──
-    async function fetchLight() {
-      // 1 — Eligible GOLDAO
-      try {
-        const res = await fetch(DISSOLVE_API);
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const groups: DissolveGroup[] = await res.json();
-        const max = groups.find((g) =>
-          g.dissolve_delay_group.includes("max delay"),
-        );
-        if (max) apply("goldao_eligible", Math.round(max.total_stake));
-      } catch (_) { /* default */ }
-
-      // 2 — ICP price USD (Binance + CoinGecko)
-      let binanceIcp: number | null = null;
-      let geckoIcp: number | null = null;
-      let geckoOgy: number | null = null;
-
-      try {
-        const res = await fetch(BINANCE_API);
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const data: { price: string } = await res.json();
-        binanceIcp = validNum(Number.parseFloat(data.price));
-      } catch (_) { /* fallback */ }
-
-      try {
-        const res = await fetch(COINGECKO_API);
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const data: Record<string, { usd?: number }> = await res.json();
-        geckoIcp = validNum(data["internet-computer"]?.usd);
-        geckoOgy = validNum(data["origyn-foundation"]?.usd);
-      } catch (_) { /* fallback */ }
-
-      const icpUsd = avg(binanceIcp, geckoIcp);
-      apply("price_icp_usd", icpUsd);
-
-      // 3 — OGY price (CoinGecko + ICPSwap-derived)
-      let icpswapOgyUsd: number | null = null;
-      const ogyPerIcp = icpswapRef.current.ogyPerIcp;
-      if (ogyPerIcp !== null && icpUsd !== null) {
-        icpswapOgyUsd = icpUsd / ogyPerIcp;
-      }
-      apply("price_ogy_usd", avg(geckoOgy, icpswapOgyUsd));
-
-      // 4 — OGY neuron (stake + maturity)
-      try {
-        const res = await fetch(OGY_NEURON_API);
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const data: { stake_e8s: number; total_maturity_e8s_equivalent: number } = await res.json();
-        const total = (data.stake_e8s + data.total_maturity_e8s_equivalent) / 1e8;
-        apply("ogy_staked", Math.round(total));
-      } catch (_) { /* default */ }
-    }
-
-    // Initial fetch: both
-    fetchICPSwap();
-    fetchLight();
-
-    const fastId = setInterval(fetchLight, POLL_FAST);
-    const slowId = setInterval(fetchICPSwap, POLL_SLOW);
-    return () => {
-      cancelled = true;
-      clearInterval(fastId);
-      clearInterval(slowId);
-    };
-  }, [onUpdate]);
-
-  return { flash };
-}
+import { useLiveData } from "@/lib/use-live-data";
 
 /* ── Helpers ─────────────────────────────────────────────────────────────── */
 
@@ -192,15 +34,14 @@ function parseInput(s: string, fallback: number): number {
 type FieldDef = { key: keyof FairValueParams; label: string; unit: string };
 type SectionDef = { title: string; fields: FieldDef[] };
 
-/* Live-updated fields shown below the spectrum bar */
 const LIVE_FIELDS: FieldDef[] = [
   { key: "market_ratio", label: "Market Ratio (GOLDAO/ICP)", unit: "ratio" },
   { key: "goldao_eligible", label: "Eligible (rewards)", unit: "GOLDAO" },
+  { key: "ogy_staked", label: "OGY Staked", unit: "OGY" },
   { key: "price_ogy_usd", label: "OGY Price", unit: "USD" },
   { key: "price_icp_usd", label: "ICP Price", unit: "USD" },
 ];
 
-/* Collapsible input sections (without the live fields) */
 const COLLAPSIBLE_SECTIONS: SectionDef[] = [
   {
     title: "NNS Neurons (ICP)",
@@ -221,7 +62,6 @@ const COLLAPSIBLE_SECTIONS: SectionDef[] = [
   {
     title: "OGY Neuron",
     fields: [
-      { key: "ogy_staked", label: "OGY Staked", unit: "OGY" },
       { key: "ogy_apy", label: "OGY APY", unit: "%" },
     ],
   },
@@ -466,102 +306,55 @@ function Note({ children }: { children: React.ReactNode }) {
   );
 }
 
-/* ── Spectrum bar — Top hero (option 1b) ──────────────────────────────────── */
+/* ── Spectrum bar ────────────────────────────────────────────────────────── */
 
 function SpectrumBarTop({ r }: { r: FairValueResult }) {
   const eq = r.ratio_eq;
   const mkt = r.market_ratio;
-  if (eq <= 0) return null;
-
+  if (eq <= 0 || mkt <= 0) return null;
   const maxVal = Math.max(eq, mkt) * 1.5;
-  const eqPct = Math.min((eq / maxVal) * 100, 95);
-  const mktPct = Math.min((mkt / maxVal) * 100, 95);
+  const pct = (v: number) => Math.min((v / maxVal) * 100, 98);
   const isCheap = mkt > eq;
-  const diffPct = Math.abs(((mkt - eq) / eq) * 100);
+  const dif = Math.abs(r.diferencia_pct);
 
   return (
-    <div
-      className="rounded-lg border border-border bg-card/50 overflow-hidden"
-      style={{ background: "linear-gradient(180deg, oklch(0.83 0.13 70 / 0.04) 0%, transparent 100%)" }}
-    >
-      <div className="px-4 sm:px-6 pt-5 pb-4">
-        {/* Top row: two big numbers + verdict */}
-        <div className="flex items-end justify-between mb-5 flex-wrap gap-4">
-          <div className="flex items-end gap-8 sm:gap-10">
-            {/* Equilibrium */}
-            <div>
-              <div className="text-[8px] tracking-[0.1em] uppercase font-mono text-[oklch(0.83_0.13_70)] opacity-70 mb-1">
-                Equilibrium
-              </div>
-              <div className="flex items-baseline gap-1.5">
-                <span className="text-[28px] sm:text-[32px] font-extrabold font-mono text-[oklch(0.83_0.13_70)] leading-none">
-                  {fmtNum(eq, 0)}
-                </span>
-                <span className="text-[11px] font-mono text-muted-foreground">GOLDAO/ICP</span>
-              </div>
-            </div>
-            {/* Market */}
-            <div>
-              <div className="text-[8px] tracking-[0.1em] uppercase font-mono text-muted-foreground mb-1">
-                Market
-              </div>
-              <div className="flex items-baseline gap-1.5">
-                <span className="text-[28px] sm:text-[32px] font-extrabold font-mono text-foreground leading-none">
-                  {fmtNum(mkt, 0)}
-                </span>
-                <span className="text-[11px] font-mono text-muted-foreground">GOLDAO/ICP</span>
-              </div>
-            </div>
+    <div className="rounded-lg border border-border bg-card/50 p-4">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-3">
+        <div className="flex items-baseline gap-6">
+          <div>
+            <span className="text-[10px] text-muted-foreground font-mono uppercase tracking-wider">Equilibrium</span>
+            <p className="text-2xl font-mono font-bold text-foreground">{fmtNum(eq, 0)}<span className="text-xs text-muted-foreground ml-1">GOLDAO/ICP</span></p>
           </div>
-          {/* Verdict badge */}
-          <div
-            className={`flex items-center gap-1.5 px-4 py-1.5 rounded-lg border text-[11px] font-mono font-semibold ${
-              isCheap
-                ? "bg-[oklch(0.72_0.17_162)]/6 border-[oklch(0.72_0.17_162)]/10 text-[oklch(0.72_0.17_162)]"
-                : "bg-destructive/6 border-destructive/10 text-destructive"
-            }`}
-          >
-            <span
-              className={`inline-block size-1.5 rounded-full ${
-                isCheap ? "bg-[oklch(0.72_0.17_162)]" : "bg-destructive"
-              }`}
-            />
-            {isCheap ? "CHEAP" : "EXPENSIVE"} +{fmtNum(diffPct, 1)}%
+          <div>
+            <span className="text-[10px] text-muted-foreground font-mono uppercase tracking-wider">Market</span>
+            <p className="text-2xl font-mono font-bold text-foreground">{fmtNum(mkt, 0)}<span className="text-xs text-muted-foreground ml-1">GOLDAO/ICP</span></p>
           </div>
         </div>
-
-        {/* Thin track */}
-        <div className="relative h-1.5 rounded-full bg-secondary/60 overflow-visible">
-          <div
-            className="absolute inset-0 rounded-full"
-            style={{
-              background:
-                "linear-gradient(to right, oklch(0.65 0.19 22 / 0.35), oklch(0.5 0.05 160 / 0.03) 45%, oklch(0.72 0.17 162 / 0.35))",
-            }}
-          />
-          {/* EQ tick */}
-          <div
-            className="absolute -top-[5px] -bottom-[5px] w-0.5 rounded-full bg-[oklch(0.83_0.13_70)]"
-            style={{ left: `${eqPct}%` }}
-          />
-          {/* MKT dot */}
-          <div
-            className="absolute top-1/2 -translate-y-1/2 size-3.5 rounded-full border-2 border-background"
-            style={{
-              left: `${mktPct}%`,
-              transform: "translate(-50%, -50%)",
-              background: isCheap ? "oklch(0.72 0.17 162)" : "oklch(0.65 0.19 22)",
-              boxShadow: isCheap
-                ? "0 0 12px oklch(0.72 0.17 162 / 0.5)"
-                : "0 0 12px oklch(0.65 0.19 22 / 0.5)",
-              transition: "left 1s cubic-bezier(0.22, 1, 0.36, 1)",
-            }}
-          />
-        </div>
-        <div className="flex justify-between mt-2">
-          <span className="text-[8px] font-mono text-muted-foreground/40 tracking-[0.06em]">EXPENSIVE</span>
-          <span className="text-[8px] font-mono text-muted-foreground/40 tracking-[0.06em]">CHEAP</span>
-        </div>
+        <span className={`text-xs font-mono font-semibold px-2 py-1 rounded ${
+          isCheap ? "text-[oklch(0.72_0.17_162)] bg-[oklch(0.72_0.17_162)]/10" : "text-destructive bg-destructive/10"
+        }`}>
+          ● {isCheap ? "CHEAP" : "EXPENSIVE"} {isCheap ? "+" : "-"}{fmtNum(dif, 1)}%
+        </span>
+      </div>
+      <div className="relative h-3 rounded-full bg-secondary/60 overflow-hidden">
+        <div
+          className="absolute inset-0"
+          style={{
+            background: "linear-gradient(to right, oklch(0.65 0.19 22), oklch(0.72 0.17 162))",
+            opacity: 0.35,
+          }}
+        />
+        <div className="absolute top-0 bottom-0 w-0.5" style={{ left: `${pct(eq)}%`, background: "oklch(0.83 0.13 70)" }} />
+        <div className="absolute top-1/2 -translate-y-1/2 size-3 rounded-full border-2" style={{
+          left: `${pct(mkt)}%`,
+          transform: "translate(-50%, -50%)",
+          background: isCheap ? "oklch(0.72 0.17 162)" : "oklch(0.65 0.19 22)",
+          borderColor: isCheap ? "oklch(0.72 0.17 162)" : "oklch(0.65 0.19 22)",
+        }} />
+      </div>
+      <div className="flex justify-between mt-1">
+        <span className="text-[9px] font-mono text-muted-foreground">EXPENSIVE</span>
+        <span className="text-[9px] font-mono text-muted-foreground">CHEAP</span>
       </div>
     </div>
   );
@@ -586,12 +379,10 @@ function Results({
         </div>
       )}
 
-      {/* Paso 1 — ICP bruto */}
       <StepCard step={1} title="Gross ICP Generated (NNS)" accent="primary">
         <Row label="▶ Gross ICP / year" value={`${fmtNum(r.icp_gross)} ICP`} accent="primary" />
       </StepCard>
 
-      {/* Paso 2 — Distribución */}
       <StepCard step={2} title="ICP Distribution" accent="teal">
         <Row label="→ Stakers (direct ICP)" value={`${fmtNum(r.icp_stakers)} ICP`} accent="green" />
         <Row label="→ GLDT Rewards" value={`${fmtNum(r.icp_gldt)} ICP`} accent="green" />
@@ -603,14 +394,12 @@ function Results({
         </Note>
       </StepCard>
 
-      {/* Paso 3 — OGY */}
       <StepCard step={3} title="OGY Neuron → ICP Equivalent" accent="purple">
         <Row label="OGY earned" value={`${fmtNum(r.ogy_rewards, 0)} OGY`} dim />
         <Row label="= USD" value={`$${fmtNum(r.ogy_usd, 0)}`} dim />
         <Row label="▶ OGY → ICP / year" value={`${fmtNum(r.ogy_icp)} ICP`} accent="purple" />
       </StepCard>
 
-      {/* Paso 4 — Yield directo */}
       <StepCard step={4} title="Direct Yield per GOLDAO" accent="gold">
         <Note>(ICP stakers + GLDT + OGY) ÷ eligible GOLDAO</Note>
         <Row label="Direct pool" value={`${fmtNum(r.pool_directo)} ICP`} />
@@ -621,18 +410,16 @@ function Results({
         />
       </StepCard>
 
-      {/* Paso 5 — APY efectivo */}
-      <StepCard step={5} title="Effective APY (at market price)" accent="green">
+      <StepCard step={5} title="Effective APY (ICP)" accent="green">
         <Note>APY = yield per GOLDAO ÷ GOLDAO price in ICP × 100</Note>
         <Row
-          label="Effective GOLDAO APY"
+          label="Effective APY (ICP)"
           value={`${fmtNum(r.apy_efectivo, 2)}%`}
           accent={r.apy_efectivo >= params.nns_apy ? "green" : "destructive"}
         />
         <Row label="NNS Benchmark APY" value={`${fmtNum(params.nns_apy)}%`} accent="primary" />
       </StepCard>
 
-      {/* Paso 6 — Equilibrio */}
       <StepCard step={6} title="Equilibrium Ratio" accent="amber">
         <Note>price_eq = yield per GOLDAO ÷ APY NNS · ratio = 1 / price_eq</Note>
         <Row
@@ -646,7 +433,41 @@ function Results({
         />
       </StepCard>
 
-
+      <StepCard
+        step={7}
+        title="Market vs Equilibrium"
+        accent={r.esta_barato ? "green" : "destructive"}
+      >
+        <div className="space-y-0.5">
+          <Row label="Equilibrium" value={`1 ICP = ${fmtNum(r.ratio_eq, 0)} GOLDAO`} accent="amber" />
+          <Row label="Market" value={`1 ICP = ${fmtNum(r.market_ratio, 0)} GOLDAO`} />
+        </div>
+        {(() => {
+          const dif = Math.abs(r.diferencia_pct);
+          if (r.esta_barato) {
+            return (
+              <div className="rounded-md border-l-4 border-[oklch(0.72_0.17_162)] bg-[oklch(0.72_0.17_162)]/10 px-3 py-2 mt-2">
+                <p className="text-sm font-mono font-semibold text-[oklch(0.72_0.17_162)]">
+                  GOLDAO is CHEAP ({fmtNum(dif)}% above equilibrium)
+                </p>
+                <p className="text-[10px] text-muted-foreground font-mono mt-0.5">
+                  Buying GOLDAO yields more than staking ICP directly on the NNS.
+                </p>
+              </div>
+            );
+          }
+          return (
+            <div className="rounded-md border-l-4 border-destructive bg-destructive/10 px-3 py-2 mt-2">
+              <p className="text-sm font-mono font-semibold text-destructive">
+                GOLDAO is EXPENSIVE ({fmtNum(dif)}% below equilibrium)
+              </p>
+              <p className="text-[10px] text-muted-foreground font-mono mt-0.5">
+                Staking ICP directly on the NNS yields more than buying GOLDAO today.
+              </p>
+            </div>
+          );
+        })()}
+      </StepCard>
     </div>
   );
 }
@@ -654,6 +475,8 @@ function Results({
 /* ── Page ─────────────────────────────────────────────────────────────────── */
 
 export default function FairValuePage() {
+  const { params: liveParams, flash } = useLiveData();
+
   const [raw, setRaw] = useState<Record<string, string>>(() => {
     const init: Record<string, string> = {};
     for (const [k, v] of Object.entries(DEFAULTS)) {
@@ -662,11 +485,16 @@ export default function FairValuePage() {
     return init;
   });
 
-  const applyLive = useCallback((key: keyof FairValueParams, val: number) => {
-    setRaw((prev) => ({ ...prev, [key]: fmtDefault(val) }));
-  }, []);
-
-  const { flash } = useLiveData(applyLive);
+  // Sync live values → form state
+  useEffect(() => {
+    setRaw((prev) => {
+      const next = { ...prev };
+      for (const [k, v] of Object.entries(liveParams)) {
+        if (v !== undefined) next[k] = fmtDefault(v);
+      }
+      return next;
+    });
+  }, [liveParams]);
 
   const handleChange = useCallback(
     (key: keyof FairValueParams, val: string) => {
@@ -695,7 +523,6 @@ export default function FairValuePage() {
 
   return (
     <div className="flex flex-col gap-6 p-4 sm:p-6 lg:p-10 max-w-6xl mx-auto">
-      {/* Header */}
       <div>
         <h1 className="font-display text-2xl sm:text-3xl font-bold tracking-tight">
           <span className="text-gradient-gold">Fair Value</span>
@@ -705,15 +532,11 @@ export default function FairValuePage() {
         </p>
       </div>
 
-      {/* Spectrum bar — full width between header and columns */}
       <SpectrumBarTop r={result} />
 
-      {/* Live data fields — full width below bar */}
       <LiveFieldsRow fields={LIVE_FIELDS} values={raw} onChange={handleChange} flash={flash} />
 
-      {/* Two columns */}
       <div className="grid grid-cols-1 lg:grid-cols-[minmax(340px,1fr)_minmax(400px,1.4fr)] gap-6">
-        {/* Inputs — collapsible */}
         <div className="space-y-3">
           {COLLAPSIBLE_SECTIONS.map((s) => (
             <CollapsibleInputSection key={s.title} section={s} values={raw} onChange={handleChange} flash={flash} />
@@ -728,8 +551,6 @@ export default function FairValuePage() {
             </button>
           </div>
         </div>
-
-        {/* Results */}
         <Results r={result} params={params} />
       </div>
     </div>
