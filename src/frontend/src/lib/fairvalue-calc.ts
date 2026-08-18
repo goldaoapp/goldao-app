@@ -84,7 +84,7 @@ export const DEFAULTS: FairValueParams = {
   pct_burn: 33,
   pct_cecil: 1,
 
-  ogy_staked: 500_000_000,
+  ogy_staked: 0,
   ogy_apy: 6,
   price_ogy_usd: 0,
 
