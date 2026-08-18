@@ -1,156 +1,28 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useMemo } from "react";
 import { DEFAULTS, type FairValueParams, calcular } from "@/lib/fairvalue-calc";
-
-/* ── Live data (reuses same sources as FairValuePage) ──────────────────── */
-
-const ICPSWAP_API =
-  "https://uvevg-iyaaa-aaaak-ac27q-cai.raw.ic0.app/tickers";
-const BINANCE_API =
-  "https://api.binance.com/api/v3/ticker/price?symbol=ICPUSDT";
-const COINGECKO_API =
-  "https://api.coingecko.com/api/v3/simple/price?ids=internet-computer,origyn-foundation&vs_currencies=usd";
-const DISSOLVE_API =
-  "https://api.gldt.org/v1/daos/golddao/neurons/dissolve-delays";
-const OGY_NEURON_API =
-  "https://sns-api.internetcomputer.org/api/v1/snses/leu43-oiaaa-aaaaq-aadgq-cai/neurons/bf941a42ede5c1513b87375677e30fe6174a5f790be5850290182ebfa3b5f74d";
-
-interface ICPSwapTicker {
-  ticker_id: string;
-  last_price: string;
-}
-
-interface DissolveGroup {
-  dissolve_delay_group: string;
-  total_stake: number;
-}
-
-function validNum(v: number | undefined | null): number | null {
-  if (v !== null && v !== undefined && Number.isFinite(v) && v > 0) return v;
-  return null;
-}
-
-function avg(a: number | null, b: number | null): number | null {
-  if (a !== null && b !== null) return (a + b) / 2;
-  return a ?? b;
-}
-
-interface HomeStats {
-  marketRatio: number | null;
-  equilibrium: number | null;
-  ogyStaked: number | null;
-}
-
-function useHomeStats(): HomeStats {
-  const [stats, setStats] = useState<HomeStats>({ marketRatio: null, equilibrium: null, ogyStaked: null });
-  const paramsRef = useRef<Partial<FairValueParams>>({});
-
-  const recalc = useCallback(() => {
-    const p = paramsRef.current;
-    if (!p.market_ratio || !p.price_icp_usd || !p.goldao_eligible) return;
-    const full: FairValueParams = { ...DEFAULTS, ...p };
-    const r = calcular(full);
-    setStats({
-      marketRatio: Math.round(p.market_ratio),
-      equilibrium: r.ratio_eq > 0 ? Math.round(r.ratio_eq) : null,
-      ogyStaked: p.ogy_staked ? Math.round(p.ogy_staked) : null,
-    });
-  }, []);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    async function fetchICPSwap() {
-      try {
-        const res = await fetch(ICPSWAP_API);
-        if (!res.ok) return;
-        const tickers: ICPSwapTicker[] = await res.json();
-        for (const t of tickers) {
-          if (t.ticker_id === "k46ek-4qaaa-aaaag-qcyzq-cai") {
-            const v = validNum(Number.parseFloat(t.last_price));
-            if (v) paramsRef.current.market_ratio = v;
-          }
-          if (t.ticker_id === "ttnzy-lyaaa-aaaag-qj2bq-cai") {
-            const v = validNum(Number.parseFloat(t.last_price));
-            if (v && paramsRef.current.price_icp_usd) {
-              paramsRef.current.price_ogy_usd = paramsRef.current.price_icp_usd / v;
-            }
-          }
-        }
-      } catch (_) { /* silent */ }
-    }
-
-    async function fetchLight() {
-      try {
-        const res = await fetch(DISSOLVE_API);
-        if (!res.ok) throw new Error();
-        const groups: DissolveGroup[] = await res.json();
-        const max = groups.find((g) => g.dissolve_delay_group.includes("max delay"));
-        if (max) paramsRef.current.goldao_eligible = Math.round(max.total_stake);
-      } catch (_) { /* silent */ }
-
-      let binanceIcp: number | null = null;
-      let geckoIcp: number | null = null;
-
-      try {
-        const res = await fetch(BINANCE_API);
-        if (!res.ok) throw new Error();
-        const data: { price: string } = await res.json();
-        binanceIcp = validNum(Number.parseFloat(data.price));
-      } catch (_) { /* silent */ }
-
-      try {
-        const res = await fetch(COINGECKO_API);
-        if (!res.ok) throw new Error();
-        const data: Record<string, { usd?: number }> = await res.json();
-        geckoIcp = validNum(data["internet-computer"]?.usd);
-        const ogyPrice = validNum(data["origyn-foundation"]?.usd);
-        if (ogyPrice) paramsRef.current.price_ogy_usd = ogyPrice;
-      } catch (_) { /* silent */ }
-
-      const icpUsd = avg(binanceIcp, geckoIcp);
-      if (icpUsd) paramsRef.current.price_icp_usd = icpUsd;
-
-      // OGY neuron (stake + maturity)
-      try {
-        const res = await fetch(OGY_NEURON_API);
-        if (!res.ok) throw new Error();
-        const data: { stake_e8s: number; total_maturity_e8s_equivalent: number } = await res.json();
-        const total = (data.stake_e8s + data.total_maturity_e8s_equivalent) / 1e8;
-        paramsRef.current.ogy_staked = Math.round(total);
-      } catch (_) { /* silent */ }
-
-      if (!cancelled) recalc();
-    }
-
-    async function init() {
-      await Promise.all([fetchICPSwap(), fetchLight()]);
-      if (!cancelled) recalc();
-    }
-    init();
-
-    const fastId = setInterval(fetchLight, 30_000);
-    const slowId = setInterval(async () => {
-      await fetchICPSwap();
-      if (!cancelled) recalc();
-    }, 120_000);
-
-    return () => {
-      cancelled = true;
-      clearInterval(fastId);
-      clearInterval(slowId);
-    };
-  }, [recalc]);
-
-  return stats;
-}
+import { useLiveData } from "@/lib/use-live-data";
 
 /* ── Page ──────────────────────────────────────────────────────────────── */
 
 export default function HomePage() {
-  const { marketRatio, equilibrium, ogyStaked } = useHomeStats();
+  const { params: liveParams } = useLiveData();
 
-  const fmtOgy = ogyStaked !== null
-    ? `${(ogyStaked / 1e6).toFixed(1)} M`
+  const stats = useMemo(() => {
+    const full: FairValueParams = { ...DEFAULTS, ...liveParams };
+    if (!full.market_ratio || !full.price_icp_usd || !full.goldao_eligible) {
+      return { marketRatio: null, equilibrium: null, ogyStaked: null, apyEfectivo: null };
+    }
+    const r = calcular(full);
+    return {
+      marketRatio: Math.round(full.market_ratio),
+      equilibrium: r.ratio_eq > 0 ? Math.round(r.ratio_eq) : null,
+      ogyStaked: full.ogy_staked > 0 ? Math.round(full.ogy_staked) : null,
+      apyEfectivo: r.apy_efectivo > 0 ? r.apy_efectivo.toFixed(1) : null,
+    };
+  }, [liveParams]);
+
+  const fmtOgy = stats.ogyStaked !== null
+    ? `${(stats.ogyStaked / 1e6).toFixed(1)} M`
     : "—";
 
   return (
@@ -184,12 +56,12 @@ export default function HomePage() {
         </h2>
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           <StatCard
-            value={marketRatio !== null ? String(marketRatio) : "—"}
+            value={stats.marketRatio !== null ? String(stats.marketRatio) : "—"}
             label="ICP / GOLDAO Ratio"
             accent
           />
           <StatCard
-            value={equilibrium !== null ? String(equilibrium) : "—"}
+            value={stats.equilibrium !== null ? String(stats.equilibrium) : "—"}
             label="ICP / GOLDAO Equilibrium"
             accent
           />
@@ -238,8 +110,8 @@ export default function HomePage() {
             label="Members"
           />
           <StatCard
-            value="8.2%"
-            label="APY Estimate"
+            value={stats.apyEfectivo !== null ? `${stats.apyEfectivo}%` : "—"}
+            label="Effective APY (ICP)"
             accent
           />
         </div>
