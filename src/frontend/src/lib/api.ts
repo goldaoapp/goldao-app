@@ -24,13 +24,9 @@ export const API = {
   OGY_NEURON:
     "https://sns-api.internetcomputer.org/api/v1/snses/leu43-oiaaa-aaaaq-aadgq-cai/neurons/bf941a42ede5c1513b87375677e30fe6174a5f790be5850290182ebfa3b5f74d",
 
-  /** GOLDAO SNS proposals — latest (for total count) */
-  GOLDAO_PROPOSALS_LATEST:
-    "https://sns-api.internetcomputer.org/api/v2/snses/tw2vt-hqaaa-aaaaq-aab6a-cai/proposals?limit=1",
-
-  /** GOLDAO SNS proposals — open only */
-  GOLDAO_PROPOSALS_OPEN:
-    "https://sns-api.internetcomputer.org/api/v2/snses/tw2vt-hqaaa-aaaaq-aab6a-cai/proposals?limit=50&status=Open",
+  /** GOLDAO SNS proposals — latest 10 (v1, newest first) */
+  GOLDAO_PROPOSALS:
+    "https://sns-api.internetcomputer.org/api/v1/snses/tw2vt-hqaaa-aaaaq-aab6a-cai/proposals?offset=0&limit=10&sort_by=-id",
 } as const;
 
 /** ICPSwap pool canister IDs used for price lookup */
@@ -65,8 +61,10 @@ export interface OGYNeuronResponse {
 }
 
 export interface SNSProposal {
-  id: number;
-  status: string;
+  id: string;
+  decided_timestamp_seconds: number;
+  executed_timestamp_seconds: number;
+  failed_timestamp_seconds: number;
 }
 
 export interface SNSProposalsResponse {
