@@ -27,12 +27,20 @@ export const API = {
   /** GOLDAO SNS proposals — latest 10 (v1, newest first) */
   GOLDAO_PROPOSALS:
     "https://sns-api.internetcomputer.org/api/v1/snses/tw2vt-hqaaa-aaaaq-aab6a-cai/proposals?offset=0&limit=10&sort_by=-id",
+
+  /** WTN SNS neurons (3 neurons held by Gold DAO) */
+  WTN_NEURONS: [
+    "https://sns-api.internetcomputer.org/api/v1/snses/jmod6-4iaaa-aaaaq-aadkq-cai/neurons/884ce73eb8022314f5a454feba94656a7bf3b80c2173c898dae0d7fcdd25b356",
+    "https://sns-api.internetcomputer.org/api/v1/snses/jmod6-4iaaa-aaaaq-aadkq-cai/neurons/238d59f677414f0f82c09b4c4b6975c3768818a0400f1c6ae5bad618be51bc22",
+    "https://sns-api.internetcomputer.org/api/v1/snses/jmod6-4iaaa-aaaaq-aadkq-cai/neurons/e6b2425b794513f375f8b44b94b6a41152db76b0b0c1122a863ee14a02f38a77",
+  ],
 } as const;
 
 /** ICPSwap pool canister IDs used for price lookup */
 export const POOLS = {
   GOLDAO_ICP: "k46ek-4qaaa-aaaag-qcyzq-cai",
   OGY_ICP: "ttnzy-lyaaa-aaaag-qj2bq-cai",
+  WTN_ICP: "oqn67-kaaaa-aaaag-qj72q-cai",
 } as const;
 
 /** Polling intervals */
