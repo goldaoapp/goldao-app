@@ -179,21 +179,27 @@ export function useLiveData(): LiveData {
 
       // 5 — GOLDAO proposals (active + total)
       try {
-        const res = await fetch(API.GOLDAO_PROPOSALS);
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const body: SNSProposalsResponse = await res.json();
-        const proposals = body.data ?? [];
-        const active = proposals.filter(
-          (p) => p.status === "Open",
-        ).length;
-        const total = proposals.length > 0
-          ? Math.max(...proposals.map((p) => p.id))
-          : 0;
-        setExtra((prev) => ({
-          ...prev,
-          proposalsActive: active,
-          proposalsTotal: total,
-        }));
+        // Total = highest proposal ID (fetch latest 1)
+        const rLatest = await fetch(API.GOLDAO_PROPOSALS_LATEST);
+        if (rLatest.ok) {
+          const body: SNSProposalsResponse = await rLatest.json();
+          const proposals = body.data ?? [];
+          if (proposals.length > 0) {
+            const maxId = Math.max(...proposals.map((p) => p.id));
+            setExtra((prev) => ({ ...prev, proposalsTotal: maxId }));
+          }
+        }
+        // Active = count proposals with status Open/1
+        const rOpen = await fetch(API.GOLDAO_PROPOSALS_OPEN);
+        if (rOpen.ok) {
+          const body: SNSProposalsResponse = await rOpen.json();
+          const proposals = body.data ?? [];
+          // Accept both string "Open" and numeric 1 as open status
+          const active = proposals.filter(
+            (p) => p.status === "Open" || p.status === "1" || (p.status as unknown) === 1,
+          ).length;
+          setExtra((prev) => ({ ...prev, proposalsActive: active }));
+        }
       } catch (_) {
         /* default */
       }
