@@ -15,6 +15,7 @@ import {
   type DissolveGroup,
   type ICPSwapTicker,
   type OGYNeuronResponse,
+  type SNSProposalsResponse,
 } from "@/lib/api";
 
 /* ── Helpers ─────────────────────────────────────────────────────────────── */
@@ -43,16 +44,29 @@ function round(key: keyof FairValueParams, val: number): number {
 
 /* ── Public interface ────────────────────────────────────────────────────── */
 
+export interface LiveExtra {
+  members: number | null;
+  proposalsActive: number | null;
+  proposalsTotal: number | null;
+}
+
 export interface LiveData {
   /** Latest values fetched from APIs (subset of FairValueParams) */
   params: Partial<FairValueParams>;
   /** Keys that were updated in the last 1.5 s (for flash animation) */
   flash: Set<string>;
+  /** Non-calculation stats (members, proposals) */
+  extra: LiveExtra;
 }
 
 export function useLiveData(): LiveData {
   const [params, setParams] = useState<Partial<FairValueParams>>({});
   const [flash, setFlash] = useState<Set<string>>(new Set());
+  const [extra, setExtra] = useState<LiveExtra>({
+    members: null,
+    proposalsActive: null,
+    proposalsTotal: null,
+  });
   const icpswapRef = useRef<{ ogyPerIcp: number | null }>({ ogyPerIcp: null });
 
   useEffect(() => {
@@ -100,7 +114,7 @@ export function useLiveData(): LiveData {
 
     // ── FAST: lightweight APIs (every 30 s) ──
     async function fetchLight() {
-      // 1 — Eligible GOLDAO
+      // 1 — Eligible GOLDAO + Members
       try {
         const res = await fetch(API.DISSOLVE);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -108,7 +122,10 @@ export function useLiveData(): LiveData {
         const max = groups.find((g) =>
           g.dissolve_delay_group.includes("max delay"),
         );
-        if (max) apply("goldao_eligible", Math.round(max.total_stake));
+        if (max) {
+          apply("goldao_eligible", Math.round(max.total_stake));
+          setExtra((prev) => ({ ...prev, members: max.unique_owners }));
+        }
       } catch (_) {
         /* default */
       }
@@ -159,6 +176,27 @@ export function useLiveData(): LiveData {
       } catch (_) {
         /* default */
       }
+
+      // 5 — GOLDAO proposals (active + total)
+      try {
+        const res = await fetch(API.GOLDAO_PROPOSALS);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const body: SNSProposalsResponse = await res.json();
+        const proposals = body.data ?? [];
+        const active = proposals.filter(
+          (p) => p.status === "Open",
+        ).length;
+        const total = proposals.length > 0
+          ? Math.max(...proposals.map((p) => p.id))
+          : 0;
+        setExtra((prev) => ({
+          ...prev,
+          proposalsActive: active,
+          proposalsTotal: total,
+        }));
+      } catch (_) {
+        /* default */
+      }
     }
 
     // Initial fetch: both
@@ -174,5 +212,5 @@ export function useLiveData(): LiveData {
     };
   }, []);
 
-  return { params, flash };
+  return { params, flash, extra };
 }
