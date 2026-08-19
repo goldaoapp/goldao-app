@@ -14,9 +14,6 @@ export const API = {
   COINGECKO:
     "https://api.coingecko.com/api/v3/simple/price?ids=internet-computer,origyn-foundation&vs_currencies=usd",
 
-  /** All ICPSwap pool tickers (~700 KB) */
-  ICPSWAP_TICKERS: "https://uvevg-iyaaa-aaaak-ac27q-cai.raw.ic0.app/tickers",
-
   /** OGY SNS neuron (stake + maturity) */
   OGY_NEURON:
     "https://sns-api.internetcomputer.org/api/v1/snses/leu43-oiaaa-aaaaq-aadgq-cai/neurons/bf941a42ede5c1513b87375677e30fe6174a5f790be5850290182ebfa3b5f74d",
@@ -37,17 +34,20 @@ export const API = {
     "https://sns-api.internetcomputer.org/api/v1/snses/tw2vt-hqaaa-aaaaq-aab6a-cai",
 } as const;
 
-/** ICPSwap pool canister IDs used for price lookup */
+/** ICPSwap pool canister IDs and swap directions for ICP→token quotes */
 export const POOLS = {
-  GOLDAO_ICP: "k46ek-4qaaa-aaaag-qcyzq-cai",
-  OGY_ICP: "ttnzy-lyaaa-aaaag-qj2bq-cai",
-  WTN_ICP: "oqn67-kaaaa-aaaag-qj72q-cai",
+  /** token0=ICP, token1=GOLDAO → ICP→GOLDAO = zeroForOne: true */
+  GOLDAO_ICP: { id: "k46ek-4qaaa-aaaag-qcyzq-cai", zeroForOne: true },
+  /** token0=OGY, token1=ICP → ICP→OGY = zeroForOne: false */
+  OGY_ICP: { id: "ttnzy-lyaaa-aaaag-qj2bq-cai", zeroForOne: false },
+  /** token0=WTN, token1=ICP → ICP→WTN = zeroForOne: false */
+  WTN_ICP: { id: "oqn67-kaaaa-aaaag-qj72q-cai", zeroForOne: false },
 } as const;
 
 /** Polling intervals */
 export const POLL = {
-  FAST: 30_000, // Binance, CoinGecko, gldt.org, SNS neuron
-  SLOW: 120_000, // ICPSwap /tickers (~700 KB)
+  FAST: 30_000,   // Binance, CoinGecko, gldt.org, SNS neuron
+  SLOW: 120_000,  // ICPSwap pool quotes via Candid
 } as const;
 
 /* ── Response types ──────────────────────────────────────────────────────── */
@@ -56,12 +56,6 @@ export interface DissolveGroup {
   dissolve_delay_group: string;
   total_stake: number;
   unique_owners: number;
-}
-
-export interface ICPSwapTicker {
-  ticker_id: string;
-  ticker_name: string;
-  last_price: string;
 }
 
 export interface OGYNeuronResponse {
