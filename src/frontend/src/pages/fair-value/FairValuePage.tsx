@@ -1,12 +1,12 @@
-import type React from "react";
-import { useCallback, useEffect, useMemo, useState } from "react";
 import {
+  DEFAULTS,
   type FairValueParams,
   type FairValueResult,
-  DEFAULTS,
   calcular,
 } from "@/lib/fairvalue-calc";
 import { useLiveData } from "@/lib/use-live-data";
+import type React from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 /* ── Helpers ─────────────────────────────────────────────────────────────── */
 
@@ -57,15 +57,17 @@ const COLLAPSIBLE_SECTIONS: SectionDef[] = [
     fields: [
       { key: "pct_stakers", label: "% Stakers (direct ICP)", unit: "%" },
       { key: "pct_gldt", label: "% GLDT Rewards", unit: "%" },
-      { key: "pct_burn", label: "% Buyback / Auto-Compound ICP (treasury)", unit: "%" },
+      {
+        key: "pct_burn",
+        label: "% Buyback / Auto-Compound ICP (treasury)",
+        unit: "%",
+      },
       { key: "pct_cecil", label: "% Good DAO (external)", unit: "%" },
     ],
   },
   {
     title: "OGY Neuron",
-    fields: [
-      { key: "ogy_apy", label: "OGY APY", unit: "%" },
-    ],
+    fields: [{ key: "ogy_apy", label: "OGY APY", unit: "%" }],
   },
 ];
 
@@ -252,7 +254,9 @@ function StepCard({
   return (
     <div className="rounded-lg border border-border bg-card/50 overflow-hidden">
       <div className="flex items-center gap-2.5 px-4 pt-3 pb-2">
-        <span className={`inline-flex items-center justify-center rounded text-xs font-mono font-bold size-6 ${cls.badge}`}>
+        <span
+          className={`inline-flex items-center justify-center rounded text-xs font-mono font-bold size-6 ${cls.badge}`}
+        >
           {step}
         </span>
         <span className={`text-sm font-display font-semibold ${cls.title}`}>
@@ -287,13 +291,17 @@ function Row({
   const valColor = dim
     ? "text-muted-foreground"
     : accent
-      ? colorMap[accent] ?? "text-foreground"
+      ? (colorMap[accent] ?? "text-foreground")
       : "text-foreground";
 
   return (
     <div className="flex items-baseline justify-between gap-4 py-0.5">
-      <span className="text-xs text-muted-foreground font-mono truncate">{label}</span>
-      <span className={`text-sm font-mono font-semibold whitespace-nowrap ${valColor}`}>
+      <span className="text-xs text-muted-foreground font-mono truncate">
+        {label}
+      </span>
+      <span
+        className={`text-sm font-mono font-semibold whitespace-nowrap ${valColor}`}
+      >
         {value}
       </span>
     </div>
@@ -324,39 +332,73 @@ function SpectrumBarTop({ r }: { r: FairValueResult }) {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-3">
         <div className="flex items-baseline gap-6">
           <div>
-            <span className="text-[10px] text-muted-foreground font-mono uppercase tracking-wider">Equilibrium</span>
-            <p className="text-2xl font-mono font-bold text-foreground">{fmtNum(eq, 0)}<span className="text-xs text-muted-foreground ml-1">GOLDAO/ICP</span></p>
+            <span className="text-[10px] text-muted-foreground font-mono uppercase tracking-wider">
+              Equilibrium
+            </span>
+            <p className="text-2xl font-mono font-bold text-foreground">
+              {fmtNum(eq, 0)}
+              <span className="text-xs text-muted-foreground ml-1">
+                GOLDAO/ICP
+              </span>
+            </p>
           </div>
           <div>
-            <span className="text-[10px] text-muted-foreground font-mono uppercase tracking-wider">Market</span>
-            <p className="text-2xl font-mono font-bold text-foreground">{fmtNum(mkt, 0)}<span className="text-xs text-muted-foreground ml-1">GOLDAO/ICP</span></p>
+            <span className="text-[10px] text-muted-foreground font-mono uppercase tracking-wider">
+              Market
+            </span>
+            <p className="text-2xl font-mono font-bold text-foreground">
+              {fmtNum(mkt, 0)}
+              <span className="text-xs text-muted-foreground ml-1">
+                GOLDAO/ICP
+              </span>
+            </p>
           </div>
         </div>
-        <span className={`text-xs font-mono font-semibold px-2 py-1 rounded ${
-          isCheap ? "text-[oklch(0.72_0.17_162)] bg-[oklch(0.72_0.17_162)]/10" : "text-destructive bg-destructive/10"
-        }`}>
-          ● {isCheap ? "CHEAP" : "EXPENSIVE"} {isCheap ? "+" : "-"}{fmtNum(dif, 1)}%
+        <span
+          className={`text-xs font-mono font-semibold px-2 py-1 rounded ${
+            isCheap
+              ? "text-[oklch(0.72_0.17_162)] bg-[oklch(0.72_0.17_162)]/10"
+              : "text-destructive bg-destructive/10"
+          }`}
+        >
+          ● {isCheap ? "CHEAP" : "EXPENSIVE"} {isCheap ? "+" : "-"}
+          {fmtNum(dif, 1)}%
         </span>
       </div>
       <div className="relative h-3 rounded-full bg-secondary/60 overflow-hidden">
         <div
           className="absolute inset-0"
           style={{
-            background: "linear-gradient(to right, oklch(0.65 0.19 22), oklch(0.72 0.17 162))",
+            background:
+              "linear-gradient(to right, oklch(0.65 0.19 22), oklch(0.72 0.17 162))",
             opacity: 0.35,
           }}
         />
-        <div className="absolute top-0 bottom-0 w-0.5" style={{ left: `${pct(eq)}%`, background: "oklch(0.83 0.13 70)" }} />
-        <div className="absolute top-1/2 -translate-y-1/2 size-3 rounded-full border-2" style={{
-          left: `${pct(mkt)}%`,
-          transform: "translate(-50%, -50%)",
-          background: isCheap ? "oklch(0.72 0.17 162)" : "oklch(0.65 0.19 22)",
-          borderColor: isCheap ? "oklch(0.72 0.17 162)" : "oklch(0.65 0.19 22)",
-        }} />
+        <div
+          className="absolute top-0 bottom-0 w-0.5"
+          style={{ left: `${pct(eq)}%`, background: "oklch(0.83 0.13 70)" }}
+        />
+        <div
+          className="absolute top-1/2 -translate-y-1/2 size-3 rounded-full border-2"
+          style={{
+            left: `${pct(mkt)}%`,
+            transform: "translate(-50%, -50%)",
+            background: isCheap
+              ? "oklch(0.72 0.17 162)"
+              : "oklch(0.65 0.19 22)",
+            borderColor: isCheap
+              ? "oklch(0.72 0.17 162)"
+              : "oklch(0.65 0.19 22)",
+          }}
+        />
       </div>
       <div className="flex justify-between mt-1">
-        <span className="text-[9px] font-mono text-muted-foreground">EXPENSIVE</span>
-        <span className="text-[9px] font-mono text-muted-foreground">CHEAP</span>
+        <span className="text-[9px] font-mono text-muted-foreground">
+          EXPENSIVE
+        </span>
+        <span className="text-[9px] font-mono text-muted-foreground">
+          CHEAP
+        </span>
       </div>
     </div>
   );
@@ -382,36 +424,76 @@ function Results({
       )}
 
       <StepCard step={1} title="Gross ICP Generated (NNS)" accent="primary">
-        <Row label="▶ Gross ICP / year" value={`${fmtNum(r.icp_gross)} ICP`} accent="primary" />
+        <Row
+          label="▶ Gross ICP / year"
+          value={`${fmtNum(r.icp_gross)} ICP`}
+          accent="primary"
+        />
       </StepCard>
 
       <StepCard step={2} title="ICP Distribution" accent="teal">
-        <Row label="→ Stakers (direct ICP)" value={`${fmtNum(r.icp_stakers)} ICP`} accent="green" />
-        <Row label="→ GLDT Rewards" value={`${fmtNum(r.icp_gldt)} ICP`} accent="green" />
-        <Row label="→ Buyback (treasury)" value={`${fmtNum(r.icp_burn)} ICP`} dim />
-        <Row label="→ Good DAO (external)" value={`${fmtNum(r.icp_cecil)} ICP`} dim />
+        <Row
+          label="→ Stakers (direct ICP)"
+          value={`${fmtNum(r.icp_stakers)} ICP`}
+          accent="green"
+        />
+        <Row
+          label="→ GLDT Rewards"
+          value={`${fmtNum(r.icp_gldt)} ICP`}
+          accent="green"
+        />
+        <Row
+          label="→ Buyback (treasury)"
+          value={`${fmtNum(r.icp_burn)} ICP`}
+          dim
+        />
+        <Row
+          label="→ Good DAO (external)"
+          value={`${fmtNum(r.icp_cecil)} ICP`}
+          dim
+        />
         <Note>
-          Only stakers + GLDT flow to holders as direct yield.
-          Buyback and Good DAO are treasury actions — not staker income.
+          Only stakers + GLDT flow to holders as direct yield. Buyback and Good
+          DAO are treasury actions — not staker income.
         </Note>
       </StepCard>
 
       <StepCard step={3} title="OGY Neuron → ICP Equivalent" accent="purple">
         <Row label="OGY earned" value={`${fmtNum(r.ogy_rewards, 0)} OGY`} dim />
         <Row label="= USD" value={`$${fmtNum(r.ogy_usd, 0)}`} dim />
-        <Row label="▶ OGY → ICP / year" value={`${fmtNum(r.ogy_icp)} ICP`} accent="purple" />
+        <Row
+          label="▶ OGY → ICP / year"
+          value={`${fmtNum(r.ogy_icp)} ICP`}
+          accent="purple"
+        />
       </StepCard>
 
       <StepCard step={4} title="WTN Neurons → ICP (amortized)" accent="teal">
         <Note>
-          WTN will be distributed to eligible holders upon dissolve.
-          Estimated distribution: 2 neurons ~Mar 2027, 1 neuron ~Sep 2027.
-          Amortized as annual yield for equilibrium comparison.
+          WTN will be distributed to eligible holders upon dissolve. Estimated
+          distribution: 2 neurons ~Mar 2027, 1 neuron ~Sep 2027. Amortized as
+          annual yield for equilibrium comparison.
         </Note>
-        <Row label="Total WTN" value={`${fmtNum(params.wtn_total, 0)} WTN`} dim />
-        <Row label="WTN/ICP ratio" value={`${fmtNum(params.wtn_per_icp, 1)}`} dim />
-        <Row label="▶ WTN → ICP (annualized)" value={`${fmtNum(r.wtn_icp)} ICP`} accent="teal" />
-        <Row label="= per day" value={`${fmtNum(r.wtn_daily_icp, 1)} ICP`} dim />
+        <Row
+          label="Total WTN"
+          value={`${fmtNum(params.wtn_total, 0)} WTN`}
+          dim
+        />
+        <Row
+          label="WTN/ICP ratio"
+          value={`${fmtNum(params.wtn_per_icp, 1)}`}
+          dim
+        />
+        <Row
+          label="▶ WTN → ICP (annualized)"
+          value={`${fmtNum(r.wtn_icp)} ICP`}
+          accent="teal"
+        />
+        <Row
+          label="= per day"
+          value={`${fmtNum(r.wtn_daily_icp, 1)} ICP`}
+          dim
+        />
       </StepCard>
 
       <StepCard step={5} title="Direct Yield per GOLDAO" accent="gold">
@@ -431,11 +513,17 @@ function Results({
           value={`${fmtNum(r.apy_efectivo, 2)}%`}
           accent={r.apy_efectivo >= params.nns_apy ? "green" : "destructive"}
         />
-        <Row label="NNS Benchmark APY" value={`${fmtNum(params.nns_apy)}%`} accent="primary" />
+        <Row
+          label="NNS Benchmark APY"
+          value={`${fmtNum(params.nns_apy)}%`}
+          accent="primary"
+        />
       </StepCard>
 
       <StepCard step={7} title="Equilibrium Ratio" accent="amber">
-        <Note>price_eq = yield per GOLDAO ÷ APY NNS · ratio = 1 / price_eq</Note>
+        <Note>
+          price_eq = yield per GOLDAO ÷ APY NNS · ratio = 1 / price_eq
+        </Note>
         <Row
           label="Equilibrium price"
           value={`${r.precio_eq.toFixed(8)} ICP ($${r.precio_eq_usd.toFixed(6)})`}
@@ -453,8 +541,15 @@ function Results({
         accent={r.esta_barato ? "green" : "destructive"}
       >
         <div className="space-y-0.5">
-          <Row label="Equilibrium" value={`1 ICP = ${fmtNum(r.ratio_eq, 0)} GOLDAO`} accent="amber" />
-          <Row label="Market" value={`1 ICP = ${fmtNum(r.market_ratio, 0)} GOLDAO`} />
+          <Row
+            label="Equilibrium"
+            value={`1 ICP = ${fmtNum(r.ratio_eq, 0)} GOLDAO`}
+            accent="amber"
+          />
+          <Row
+            label="Market"
+            value={`1 ICP = ${fmtNum(r.market_ratio, 0)} GOLDAO`}
+          />
         </div>
         {(() => {
           const dif = Math.abs(r.diferencia_pct);
@@ -465,7 +560,8 @@ function Results({
                   GOLDAO is CHEAP ({fmtNum(dif)}% above equilibrium)
                 </p>
                 <p className="text-[10px] text-muted-foreground font-mono mt-0.5">
-                  Buying GOLDAO yields more than staking ICP directly on the NNS.
+                  Buying GOLDAO yields more than staking ICP directly on the
+                  NNS.
                 </p>
               </div>
             );
@@ -476,7 +572,8 @@ function Results({
                 GOLDAO is EXPENSIVE ({fmtNum(dif)}% below equilibrium)
               </p>
               <p className="text-[10px] text-muted-foreground font-mono mt-0.5">
-                Staking ICP directly on the NNS yields more than buying GOLDAO today.
+                Staking ICP directly on the NNS yields more than buying GOLDAO
+                today.
               </p>
             </div>
           );
@@ -548,12 +645,23 @@ export default function FairValuePage() {
 
       <SpectrumBarTop r={result} />
 
-      <LiveFieldsRow fields={LIVE_FIELDS} values={raw} onChange={handleChange} flash={flash} />
+      <LiveFieldsRow
+        fields={LIVE_FIELDS}
+        values={raw}
+        onChange={handleChange}
+        flash={flash}
+      />
 
       <div className="grid grid-cols-1 lg:grid-cols-[minmax(340px,1fr)_minmax(400px,1.4fr)] gap-6">
         <div className="space-y-3">
           {COLLAPSIBLE_SECTIONS.map((s) => (
-            <CollapsibleInputSection key={s.title} section={s} values={raw} onChange={handleChange} flash={flash} />
+            <CollapsibleInputSection
+              key={s.title}
+              section={s}
+              values={raw}
+              onChange={handleChange}
+              flash={flash}
+            />
           ))}
           <div className="flex gap-2 pt-1">
             <button

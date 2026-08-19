@@ -6,17 +6,17 @@
  * All fetch logic lives here — consumers never call APIs directly.
  */
 
-import { useEffect, useRef, useState } from "react";
-import type { FairValueParams } from "@/lib/fairvalue-calc";
 import {
   API,
-  POOLS,
-  POLL,
   type DissolveGroup,
   type ICPSwapTicker,
   type OGYNeuronResponse,
+  POLL,
+  POOLS,
   type SNSProposalsResponse,
 } from "@/lib/api";
+import type { FairValueParams } from "@/lib/fairvalue-calc";
+import { useEffect, useRef, useState } from "react";
 
 /* ── Helpers ─────────────────────────────────────────────────────────────── */
 
@@ -254,13 +254,12 @@ export function useLiveData(): LiveData {
         const res = await fetch(API.GOLDAO_PROPOSALS);
         if (res.ok) {
           const body = await res.json();
-          const proposals: SNSProposalsResponse["data"] =
-            Array.isArray(body) ? body : body.data ?? [];
+          const proposals: SNSProposalsResponse["data"] = Array.isArray(body)
+            ? body
+            : (body.data ?? []);
           if (proposals.length > 0) {
             // Total = highest ID (first in desc order)
-            const total = Math.max(
-              ...proposals.map((p) => Number(p.id)),
-            );
+            const total = Math.max(...proposals.map((p) => Number(p.id)));
             // Open = decided_timestamp_seconds is 0 (not yet decided)
             const active = proposals.filter(
               (p) => p.decided_timestamp_seconds === 0,

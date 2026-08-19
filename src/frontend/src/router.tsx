@@ -6,12 +6,12 @@ import {
 
 import Layout from "@/components/Layout";
 import DocumentationPage from "@/pages/documentation/DocumentationPage";
+import FairValuePage from "@/pages/fair-value/FairValuePage";
 import HomePage from "@/pages/home/HomePage";
 import NewsPage from "@/pages/news/NewsPage";
 import ProposalsPage from "@/pages/proposals/ProposalsPage";
 import RewardsPage from "@/pages/rewards/RewardsPage";
 import TreasuryPage from "@/pages/treasury/TreasuryPage";
-import FairValuePage from "@/pages/fair-value/FairValuePage";
 
 const rootRoute = createRootRoute({
   component: Layout,

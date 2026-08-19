@@ -1,6 +1,6 @@
-import { useMemo } from "react";
 import { DEFAULTS, type FairValueParams, calcular } from "@/lib/fairvalue-calc";
 import { useLiveData } from "@/lib/use-live-data";
+import { useMemo } from "react";
 
 /* ── Page ──────────────────────────────────────────────────────────────── */
 
@@ -10,7 +10,12 @@ export default function HomePage() {
   const stats = useMemo(() => {
     const full: FairValueParams = { ...DEFAULTS, ...liveParams };
     if (!full.market_ratio || !full.price_icp_usd || !full.goldao_eligible) {
-      return { marketRatio: null, equilibrium: null, ogyStaked: null, apyEfectivo: null };
+      return {
+        marketRatio: null,
+        equilibrium: null,
+        ogyStaked: null,
+        apyEfectivo: null,
+      };
     }
     const r = calcular(full);
     return {
@@ -21,13 +26,11 @@ export default function HomePage() {
     };
   }, [liveParams]);
 
-  const fmtOgy = stats.ogyStaked !== null
-    ? `${(stats.ogyStaked / 1e6).toFixed(1)} M`
-    : "—";
+  const fmtOgy =
+    stats.ogyStaked !== null ? `${(stats.ogyStaked / 1e6).toFixed(1)} M` : "—";
 
-  const fmtWtn = extra.wtnTotal !== null
-    ? `${(extra.wtnTotal / 1e6).toFixed(1)} M`
-    : "—";
+  const fmtWtn =
+    extra.wtnTotal !== null ? `${(extra.wtnTotal / 1e6).toFixed(1)} M` : "—";
 
   return (
     <div className="flex flex-col gap-8 p-4 sm:p-6 lg:p-10 max-w-5xl mx-auto">
@@ -70,11 +73,19 @@ export default function HomePage() {
             accent
           />
           <StatCard
-            value={extra.totalBurned !== null ? `${(extra.totalBurned / 1e6).toFixed(1)} M` : "—"}
+            value={
+              extra.totalBurned !== null
+                ? `${(extra.totalBurned / 1e6).toFixed(1)} M`
+                : "—"
+            }
             label="Total Burn"
           />
           <StatCard
-            value={extra.supply !== null ? `${(extra.supply / 1e6).toFixed(1)} M` : "—"}
+            value={
+              extra.supply !== null
+                ? `${(extra.supply / 1e6).toFixed(1)} M`
+                : "—"
+            }
             label="Supply"
           />
         </div>
@@ -86,19 +97,9 @@ export default function HomePage() {
           Treasury Overview
         </h2>
         <div className="grid grid-cols-3 gap-3">
-          <StatCard
-            value="580 K"
-            label="ICP"
-            accent
-          />
-          <StatCard
-            value={fmtOgy}
-            label="OGY"
-          />
-          <StatCard
-            value={fmtWtn}
-            label="WTN"
-          />
+          <StatCard value="580 K" label="ICP" accent />
+          <StatCard value={fmtOgy} label="OGY" />
+          <StatCard value={fmtWtn} label="WTN" />
         </div>
       </section>
 
@@ -106,13 +107,19 @@ export default function HomePage() {
       <section>
         <div className="grid grid-cols-3 gap-3">
           <StatCard
-            value={extra.proposalsActive !== null && extra.proposalsTotal !== null
-              ? `${extra.proposalsActive} / ${extra.proposalsTotal}`
-              : "—"}
+            value={
+              extra.proposalsActive !== null && extra.proposalsTotal !== null
+                ? `${extra.proposalsActive} / ${extra.proposalsTotal}`
+                : "—"
+            }
             label="Active / Total Proposals"
           />
           <StatCard
-            value={extra.members !== null ? extra.members.toLocaleString("en-US") : "—"}
+            value={
+              extra.members !== null
+                ? extra.members.toLocaleString("en-US")
+                : "—"
+            }
             label="Members"
           />
           <StatCard

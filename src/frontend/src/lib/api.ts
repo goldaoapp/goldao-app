@@ -5,20 +5,17 @@
 
 export const API = {
   /** GOLDAO eligible neurons (24-month max delay group) */
-  DISSOLVE:
-    "https://api.gldt.org/v1/daos/golddao/neurons/dissolve-delays",
+  DISSOLVE: "https://api.gldt.org/v1/daos/golddao/neurons/dissolve-delays",
 
   /** ICP/USDT spot price */
-  BINANCE:
-    "https://api.binance.com/api/v3/ticker/price?symbol=ICPUSDT",
+  BINANCE: "https://api.binance.com/api/v3/ticker/price?symbol=ICPUSDT",
 
   /** ICP + OGY prices in USD (single call) */
   COINGECKO:
     "https://api.coingecko.com/api/v3/simple/price?ids=internet-computer,origyn-foundation&vs_currencies=usd",
 
   /** All ICPSwap pool tickers (~700 KB) */
-  ICPSWAP_TICKERS:
-    "https://uvevg-iyaaa-aaaak-ac27q-cai.raw.ic0.app/tickers",
+  ICPSWAP_TICKERS: "https://uvevg-iyaaa-aaaak-ac27q-cai.raw.ic0.app/tickers",
 
   /** OGY SNS neuron (stake + maturity) */
   OGY_NEURON:
@@ -49,8 +46,8 @@ export const POOLS = {
 
 /** Polling intervals */
 export const POLL = {
-  FAST: 30_000,   // Binance, CoinGecko, gldt.org, SNS neuron
-  SLOW: 120_000,  // ICPSwap /tickers (~700 KB)
+  FAST: 30_000, // Binance, CoinGecko, gldt.org, SNS neuron
+  SLOW: 120_000, // ICPSwap /tickers (~700 KB)
 } as const;
 
 /* ── Response types ──────────────────────────────────────────────────────── */

@@ -11,6 +11,11 @@
       "sourceType": "github",
       "computedHash": "af327fce44737cf1166fb600ddba74f583a9ed57a708ee759bdece32cd3f6400"
     },
+    "connector-slack": {
+      "source": "caffeinelabs/skills",
+      "sourceType": "github",
+      "computedHash": "319aacf657c15355af70cf5b59a324cadb136e081b7cc13172b32e54038648e7"
+    },
     "extension-authorization": {
       "source": "caffeinelabs/skills",
       "sourceType": "github",
@@ -54,12 +59,12 @@
     "extension-http-outcalls": {
       "source": "caffeinelabs/skills",
       "sourceType": "github",
-      "computedHash": "91d1bfb53b1c2c82dbce61ca641ed96bb272027287aa532c56b2ae736db4fbf7"
+      "computedHash": "ba1c6e5556a89a17e72e823300488db45944663971ed7ea60121f8aeb85024f9"
     },
     "extension-invite-links": {
       "source": "caffeinelabs/skills",
       "sourceType": "github",
-      "computedHash": "8c7a2d7aa943b4fd4be1c6057fb9a69921bc82aaf52cbaab7852a73e454b7f8f"
+      "computedHash": "390d3d7ce4ddc3da6b2e7e948e45d216f39ae0b01f4b54d3944dd24550ad558c"
     },
     "extension-object-storage": {
       "source": "caffeinelabs/skills",
@@ -99,7 +104,7 @@
     "extension-user-approval": {
       "source": "caffeinelabs/skills",
       "sourceType": "github",
-      "computedHash": "3fc3f0077fc47897203d7f6b85ff5a742f337e40c29504c85a60d8ace12e7522"
+      "computedHash": "10206a26f8963339cfdeac95044c22a58402291c6bfe5a1b8e55dc613c6c057e"
     }
   }
 }

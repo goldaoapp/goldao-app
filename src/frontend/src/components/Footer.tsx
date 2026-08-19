@@ -6,7 +6,12 @@ const SOCIAL_LINKS: {
   icon: typeof Github;
   ocid: string;
 }[] = [
-  { label: "Discord", href: "#", icon: MessageCircle, ocid: "footer.social.discord" },
+  {
+    label: "Discord",
+    href: "#",
+    icon: MessageCircle,
+    ocid: "footer.social.discord",
+  },
   { label: "GitHub", href: "#", icon: Github, ocid: "footer.social.github" },
   { label: "Telegram", href: "#", icon: Send, ocid: "footer.social.telegram" },
 ];

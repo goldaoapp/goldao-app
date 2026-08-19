@@ -4,13 +4,13 @@ import {
   ChevronLeft,
   ChevronRight,
   FileText,
-  Gift,
   Gavel,
+  Gift,
   Home,
   Lock,
+  type LucideIcon,
   Scale,
   Wallet,
-  type LucideIcon,
 } from "lucide-react";
 import { useState } from "react";
 
@@ -29,8 +29,18 @@ const NAV_ITEMS: NavItem[] = [
   { label: "Treasury", to: "/treasury", icon: Lock, ocid: "nav.treasury" },
   { label: "Proposals", to: "/proposals", icon: Gavel, ocid: "nav.proposals" },
   { label: "Rewards", to: "/rewards", icon: Gift, ocid: "nav.rewards" },
-  { label: "Fair Value", to: "/fair-value", icon: Scale, ocid: "nav.fair-value" },
-  { label: "Docs", to: "/documentation", icon: BookOpen, ocid: "nav.documentation" },
+  {
+    label: "Fair Value",
+    to: "/fair-value",
+    icon: Scale,
+    ocid: "nav.fair-value",
+  },
+  {
+    label: "Docs",
+    to: "/documentation",
+    icon: BookOpen,
+    ocid: "nav.documentation",
+  },
   { label: "News", to: "/news", icon: FileText, ocid: "nav.news" },
 ];
 
@@ -72,14 +82,23 @@ export function Sidebar() {
       )}
     >
       {/* Brand */}
-      <div className={cn("flex items-center gap-2.5 border-b border-border h-16 flex-shrink-0", collapsed ? "justify-center px-2" : "px-5")}>
+      <div
+        className={cn(
+          "flex items-center gap-2.5 border-b border-border h-16 flex-shrink-0",
+          collapsed ? "justify-center px-2" : "px-5",
+        )}
+      >
         <Link
           to="/"
           data-ocid="nav.brand"
           aria-label="GOLDAO home"
           className="flex items-center gap-2.5 outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-md"
         >
-          <img src="/assets/images/goldao-icon.png" alt="GOLDAO" className="size-8 rounded-md flex-shrink-0" />
+          <img
+            src="/assets/images/goldao-icon.png"
+            alt="GOLDAO"
+            className="size-8 rounded-md flex-shrink-0"
+          />
           {!collapsed && (
             <span className="font-display text-lg font-semibold tracking-tight text-foreground">
               GOLDAO
@@ -89,7 +108,10 @@ export function Sidebar() {
       </div>
 
       {/* Nav items */}
-      <nav aria-label="Primary" className="flex flex-1 flex-col gap-1 p-2.5 overflow-y-auto">
+      <nav
+        aria-label="Primary"
+        className="flex flex-1 flex-col gap-1 p-2.5 overflow-y-auto"
+      >
         {NAV_ITEMS.map((item) => {
           const active = isActive(location.pathname, item.to);
           const Icon = item.icon;
@@ -210,7 +232,16 @@ function MoreMenu({ pathname }: { pathname: string }) {
           moreActive ? "text-primary" : "text-muted-foreground",
         )}
       >
-        <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" className="size-5" role="img" aria-label="More">
+        <svg
+          width="20"
+          height="20"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.8"
+          className="size-5"
+          role="img"
+          aria-label="More"
+        >
           <circle cx="10" cy="10" r="2" />
           <path d="M10 3v2M10 15v2M3 10h2M15 10h2" />
         </svg>
@@ -218,7 +249,12 @@ function MoreMenu({ pathname }: { pathname: string }) {
       </button>
       {open && (
         <>
-          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} onKeyDown={() => {}} role="presentation" />
+          <div
+            className="fixed inset-0 z-40"
+            onClick={() => setOpen(false)}
+            onKeyDown={() => {}}
+            role="presentation"
+          />
           <div className="absolute bottom-full right-0 mb-2 z-50 min-w-[160px] rounded-lg border border-border bg-card/95 backdrop-blur-md shadow-lg py-1">
             {MORE_ITEMS.map((item) => {
               const active = isActive(pathname, item.to);
