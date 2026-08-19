@@ -34,6 +34,10 @@ export const API = {
     "https://sns-api.internetcomputer.org/api/v1/snses/jmod6-4iaaa-aaaaq-aadkq-cai/neurons/238d59f677414f0f82c09b4c4b6975c3768818a0400f1c6ae5bad618be51bc22",
     "https://sns-api.internetcomputer.org/api/v1/snses/jmod6-4iaaa-aaaaq-aadkq-cai/neurons/e6b2425b794513f375f8b44b94b6a41152db76b0b0c1122a863ee14a02f38a77",
   ],
+
+  /** GOLDAO SNS info (supply, metadata) */
+  GOLDAO_SNS_INFO:
+    "https://sns-api.internetcomputer.org/api/v1/snses/tw2vt-hqaaa-aaaaq-aab6a-cai",
 } as const;
 
 /** ICPSwap pool canister IDs used for price lookup */
