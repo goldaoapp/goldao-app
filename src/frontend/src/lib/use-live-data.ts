@@ -52,6 +52,10 @@ export interface LiveExtra {
   wtnTotal: number | null;
   /** WTN value in ICP (wtnTotal / wtnPerIcp) */
   wtnIcp: number | null;
+  /** Current GOLDAO supply */
+  supply: number | null;
+  /** Total GOLDAO burned (1B - supply) */
+  totalBurned: number | null;
 }
 
 export interface LiveData {
@@ -72,6 +76,8 @@ export function useLiveData(): LiveData {
     proposalsTotal: null,
     wtnTotal: null,
     wtnIcp: null,
+    supply: null,
+    totalBurned: null,
   });
   const icpswapRef = useRef<{
     ogyPerIcp: number | null;
@@ -158,6 +164,21 @@ export function useLiveData(): LiveData {
           apply("wtn_per_icp", wtnRate);
           setExtra((prev) => ({ ...prev, wtnIcp: total / wtnRate }));
         }
+      } catch (_) {
+        /* default */
+      }
+    }
+
+    // ── ONE-TIME: GOLDAO supply (no polling) ──
+    const ORIGINAL_SUPPLY = 1_000_000_000;
+    async function fetchSupply() {
+      try {
+        const res = await fetch(API.GOLDAO_SNS_INFO);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data: { total_supply_e8s: number } = await res.json();
+        const supply = Math.round(data.total_supply_e8s / 1e8);
+        const burned = ORIGINAL_SUPPLY - supply;
+        setExtra((prev) => ({ ...prev, supply, totalBurned: burned }));
       } catch (_) {
         /* default */
       }
@@ -256,10 +277,11 @@ export function useLiveData(): LiveData {
       }
     }
 
-    // Initial fetch: all (WTN only once)
+    // Initial fetch: all (WTN + supply only once)
     fetchICPSwap();
     fetchLight();
     fetchWTN();
+    fetchSupply();
 
     const fastId = setInterval(fetchLight, POLL.FAST);
     const slowId = setInterval(fetchICPSwap, POLL.SLOW);
