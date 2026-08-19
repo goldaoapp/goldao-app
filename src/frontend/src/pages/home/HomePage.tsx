@@ -49,7 +49,7 @@ export default function HomePage() {
           <span className="text-gradient-gold">GOLDAO APP</span>
         </h1>
         <p className="font-display text-lg sm:text-xl font-medium text-foreground">
-          Your DAO. Your treasury. Fully on-chain.
+          Your DAO. Your treasury. Real-time.
         </p>
         <p className="max-w-xl text-sm sm:text-base text-muted-foreground leading-relaxed">
           Real-time treasury tracking, governance proposals, rewards simulation,
