@@ -70,11 +70,11 @@ export default function HomePage() {
             accent
           />
           <StatCard
-            value="442.5 M"
+            value={extra.totalBurned !== null ? `${(extra.totalBurned / 1e6).toFixed(1)} M` : "—"}
             label="Total Burn"
           />
           <StatCard
-            value="557.5 M"
+            value={extra.supply !== null ? `${(extra.supply / 1e6).toFixed(1)} M` : "—"}
             label="Supply"
           />
         </div>
