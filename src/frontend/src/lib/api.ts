@@ -46,8 +46,8 @@ export const POOLS = {
 
 /** Polling intervals */
 export const POLL = {
-  FAST: 30_000,   // Binance, CoinGecko, gldt.org, SNS neuron
-  SLOW: 120_000,  // ICPSwap pool quotes via Candid
+  FAST: 30_000, // Binance, CoinGecko, gldt.org, SNS neuron
+  SLOW: 120_000, // ICPSwap pool quotes via Candid
 } as const;
 
 /* ── Response types ──────────────────────────────────────────────────────── */

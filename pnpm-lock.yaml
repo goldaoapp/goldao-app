@@ -26,6 +26,9 @@ importers:
       '@dfinity/agent':
         specifier: ^3.4.3
         version: 3.4.3(@dfinity/candid@3.4.3(@dfinity/principal@3.4.3))(@dfinity/principal@3.4.3)(@noble/hashes@1.8.0)
+      '@dfinity/candid':
+        specifier: ^3.4.3
+        version: 3.4.3(@dfinity/principal@3.4.3)
       '@icp-sdk/auth':
         specifier: ^7.1.0
         version: 7.1.0(@icp-sdk/core@5.4.0)
@@ -409,7 +412,6 @@ packages:
 
   '@dfinity/agent@3.4.3':
     resolution: {integrity: sha512-qOJqvZdMzncbbYX3eUjlAqvP66DQuOQgBFQE06yzI3m/lVXnefxvY7wE9Y1Sb2wjVIQs6W2rfjixnn4EEjHAZg==}
-    deprecated: 'This package has been deprecated. Use @icp-sdk/core/agent instead. Migration guide: https://js.icp.build/core/latest/upgrading/v5'
     peerDependencies:
       '@dfinity/candid': 3.4.3
       '@dfinity/principal': 3.4.3
