@@ -36,7 +36,8 @@ export default function HomePage() {
     <div className="flex flex-col gap-8 p-4 sm:p-6 lg:p-10 max-w-5xl mx-auto">
       {/* Alpha Banner */}
       <div className="rounded-lg bg-primary/10 border border-primary/20 px-4 py-3 text-center text-sm text-primary font-medium">
-        ALPHA VERSION — Data is under development and may be inaccurate.
+        ALPHA VERSION — Data is under active development and may be out of date
+        or inaccurate.
       </div>
 
       {/* Hero */}

@@ -37161,7 +37161,7 @@ function HomePage() {
   const fmtOgy = stats.ogyStaked !== null ? `${(stats.ogyStaked / 1e6).toFixed(1)} M` : "—";
   const fmtWtn = extra.wtnTotal !== null ? `${(extra.wtnTotal / 1e6).toFixed(1)} M` : "—";
   return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-col gap-8 p-4 sm:p-6 lg:p-10 max-w-5xl mx-auto", children: [
-    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "rounded-lg bg-primary/10 border border-primary/20 px-4 py-3 text-center text-sm text-primary font-medium", children: "ALPHA VERSION — Data is under development and may be inaccurate." }),
+    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "rounded-lg bg-primary/10 border border-primary/20 px-4 py-3 text-center text-sm text-primary font-medium", children: "ALPHA VERSION — Data is under active development and may be out of date or inaccurate." }),
     /* @__PURE__ */ jsxRuntimeExports.jsxs("section", { className: "flex flex-col items-center text-center gap-4 py-8 sm:py-12 animate-fade-in-up", children: [
       /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "inline-flex items-center rounded-full border border-border bg-card px-4 py-1.5 text-xs font-mono font-medium text-primary tracking-wider uppercase", children: "100% On-Chain" }),
       /* @__PURE__ */ jsxRuntimeExports.jsx("h1", { className: "font-display text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight", children: /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-gradient-gold", children: "GOLDAO APP" }) }),

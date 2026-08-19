@@ -6,17 +6,17 @@
  * All fetch logic lives here — consumers never call APIs directly.
  */
 
-import { useEffect, useRef, useState } from "react";
-import type { FairValueParams } from "@/lib/fairvalue-calc";
 import {
   API,
-  POOLS,
-  POLL,
   type DissolveGroup,
+  type ICPSwapTicker,
   type OGYNeuronResponse,
+  POLL,
+  POOLS,
   type SNSProposalsResponse,
 } from "@/lib/api";
-import { getPoolRatio } from "@/lib/icpswap-quote";
+import type { FairValueParams } from "@/lib/fairvalue-calc";
+import { useEffect, useRef, useState } from "react";
 
 /* ── Helpers ─────────────────────────────────────────────────────────────── */
 
@@ -107,28 +107,38 @@ export function useLiveData(): LiveData {
       }
     }
 
-    // ── SLOW: ICPSwap pool quotes via Candid (~0.5 KB each, every 120 s) ──
-    async function fetchPoolQuotes() {
-      // GOLDAO/ICP ratio
-      const goldaoRatio = await getPoolRatio(POOLS.GOLDAO_ICP.id, POOLS.GOLDAO_ICP.zeroForOne);
-      apply("market_ratio", goldaoRatio);
-
-      // OGY/ICP ratio (for OGY price derivation)
-      const ogyRatio = await getPoolRatio(POOLS.OGY_ICP.id, POOLS.OGY_ICP.zeroForOne);
-      if (ogyRatio) icpswapRef.current.ogyPerIcp = ogyRatio;
-
-      // WTN/ICP ratio
-      const wtnRatio = await getPoolRatio(POOLS.WTN_ICP.id, POOLS.WTN_ICP.zeroForOne);
-      if (wtnRatio) {
-        icpswapRef.current.wtnPerIcp = wtnRatio;
-        apply("wtn_per_icp", wtnRatio);
-      }
-
-      // Recalc WTN ICP value if we have both
-      const wtn = icpswapRef.current.wtnTotal;
-      const wtnRate = icpswapRef.current.wtnPerIcp;
-      if (wtn !== null && wtnRate !== null && wtnRate > 0) {
-        setExtra((prev) => ({ ...prev, wtnIcp: wtn / wtnRate }));
+    // ── SLOW: ICPSwap tickers (~700 KB, every 120 s) ──
+    async function fetchICPSwap() {
+      try {
+        const res = await fetch(API.ICPSWAP_TICKERS);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const tickers: ICPSwapTicker[] = await res.json();
+        for (const t of tickers) {
+          if (t.ticker_id === POOLS.GOLDAO_ICP) {
+            apply("market_ratio", validNum(Number.parseFloat(t.last_price)));
+          }
+          if (t.ticker_id === POOLS.OGY_ICP) {
+            icpswapRef.current.ogyPerIcp = validNum(
+              Number.parseFloat(t.last_price),
+            );
+          }
+          // WTN price
+          if (t.ticker_id === POOLS.WTN_ICP) {
+            const wtnPerIcp = validNum(Number.parseFloat(t.last_price));
+            if (wtnPerIcp) {
+              icpswapRef.current.wtnPerIcp = wtnPerIcp;
+              apply("wtn_per_icp", wtnPerIcp);
+            }
+          }
+        }
+        // Recalc WTN ICP value if we have both
+        const wtn = icpswapRef.current.wtnTotal;
+        const wtnRate = icpswapRef.current.wtnPerIcp;
+        if (wtn !== null && wtnRate !== null && wtnRate > 0) {
+          setExtra((prev) => ({ ...prev, wtnIcp: wtn / wtnRate }));
+        }
+      } catch (_) {
+        /* fallback */
       }
     }
 
@@ -244,13 +254,12 @@ export function useLiveData(): LiveData {
         const res = await fetch(API.GOLDAO_PROPOSALS);
         if (res.ok) {
           const body = await res.json();
-          const proposals: SNSProposalsResponse["data"] =
-            Array.isArray(body) ? body : body.data ?? [];
+          const proposals: SNSProposalsResponse["data"] = Array.isArray(body)
+            ? body
+            : (body.data ?? []);
           if (proposals.length > 0) {
             // Total = highest ID (first in desc order)
-            const total = Math.max(
-              ...proposals.map((p) => Number(p.id)),
-            );
+            const total = Math.max(...proposals.map((p) => Number(p.id)));
             // Open = decided_timestamp_seconds is 0 (not yet decided)
             const active = proposals.filter(
               (p) => p.decided_timestamp_seconds === 0,
@@ -268,13 +277,13 @@ export function useLiveData(): LiveData {
     }
 
     // Initial fetch: all (WTN + supply only once)
-    fetchPoolQuotes();
+    fetchICPSwap();
     fetchLight();
     fetchWTN();
     fetchSupply();
 
     const fastId = setInterval(fetchLight, POLL.FAST);
-    const slowId = setInterval(fetchPoolQuotes, POLL.SLOW);
+    const slowId = setInterval(fetchICPSwap, POLL.SLOW);
     return () => {
       cancelled = true;
       clearInterval(fastId);

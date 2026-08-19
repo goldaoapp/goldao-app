@@ -5,16 +5,17 @@
 
 export const API = {
   /** GOLDAO eligible neurons (24-month max delay group) */
-  DISSOLVE:
-    "https://api.gldt.org/v1/daos/golddao/neurons/dissolve-delays",
+  DISSOLVE: "https://api.gldt.org/v1/daos/golddao/neurons/dissolve-delays",
 
   /** ICP/USDT spot price */
-  BINANCE:
-    "https://api.binance.com/api/v3/ticker/price?symbol=ICPUSDT",
+  BINANCE: "https://api.binance.com/api/v3/ticker/price?symbol=ICPUSDT",
 
   /** ICP + OGY prices in USD (single call) */
   COINGECKO:
     "https://api.coingecko.com/api/v3/simple/price?ids=internet-computer,origyn-foundation&vs_currencies=usd",
+
+  /** All ICPSwap pool tickers (~700 KB) */
+  ICPSWAP_TICKERS: "https://uvevg-iyaaa-aaaak-ac27q-cai.raw.ic0.app/tickers",
 
   /** OGY SNS neuron (stake + maturity) */
   OGY_NEURON:
@@ -36,20 +37,17 @@ export const API = {
     "https://sns-api.internetcomputer.org/api/v1/snses/tw2vt-hqaaa-aaaaq-aab6a-cai",
 } as const;
 
-/** ICPSwap pool canister IDs and swap directions for ICP→token quotes */
+/** ICPSwap pool canister IDs used for price lookup */
 export const POOLS = {
-  /** token0=ICP, token1=GOLDAO → ICP→GOLDAO = zeroForOne: true */
-  GOLDAO_ICP: { id: "k46ek-4qaaa-aaaag-qcyzq-cai", zeroForOne: true },
-  /** token0=OGY, token1=ICP → ICP→OGY = zeroForOne: false */
-  OGY_ICP: { id: "ttnzy-lyaaa-aaaag-qj2bq-cai", zeroForOne: false },
-  /** token0=WTN, token1=ICP → ICP→WTN = zeroForOne: false */
-  WTN_ICP: { id: "oqn67-kaaaa-aaaag-qj72q-cai", zeroForOne: false },
+  GOLDAO_ICP: "k46ek-4qaaa-aaaag-qcyzq-cai",
+  OGY_ICP: "ttnzy-lyaaa-aaaag-qj2bq-cai",
+  WTN_ICP: "oqn67-kaaaa-aaaag-qj72q-cai",
 } as const;
 
 /** Polling intervals */
 export const POLL = {
-  FAST: 30_000,   // Binance, CoinGecko, gldt.org, SNS neuron
-  SLOW: 120_000,  // ICPSwap /tickers (~700 KB)
+  FAST: 30_000, // Binance, CoinGecko, gldt.org, SNS neuron
+  SLOW: 120_000, // ICPSwap /tickers (~700 KB)
 } as const;
 
 /* ── Response types ──────────────────────────────────────────────────────── */
@@ -58,6 +56,12 @@ export interface DissolveGroup {
   dissolve_delay_group: string;
   total_stake: number;
   unique_owners: number;
+}
+
+export interface ICPSwapTicker {
+  ticker_id: string;
+  ticker_name: string;
+  last_price: string;
 }
 
 export interface OGYNeuronResponse {
