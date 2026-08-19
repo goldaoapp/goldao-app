@@ -28,8 +28,6 @@ export default function HomePage() {
   const fmtWtn = extra.wtnTotal !== null
     ? `${(extra.wtnTotal / 1e6).toFixed(1)} M`
     : "—";
-    ? `${(stats.ogyStaked / 1e6).toFixed(1)} M`
-    : "—";
 
   return (
     <div className="flex flex-col gap-8 p-4 sm:p-6 lg:p-10 max-w-5xl mx-auto">
