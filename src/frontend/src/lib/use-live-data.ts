@@ -9,13 +9,13 @@
 import {
   API,
   type DissolveGroup,
+  type ICPSwapTicker,
   type OGYNeuronResponse,
   POLL,
   POOLS,
   type SNSProposalsResponse,
 } from "@/lib/api";
 import type { FairValueParams } from "@/lib/fairvalue-calc";
-import { getPoolRatio } from "@/lib/icpswap-quote";
 import { useEffect, useRef, useState } from "react";
 
 /* ── Helpers ─────────────────────────────────────────────────────────────── */
@@ -48,14 +48,6 @@ export interface LiveExtra {
   members: number | null;
   proposalsActive: number | null;
   proposalsTotal: number | null;
-  /** Total WTN across 3 neurons (stake + maturity) */
-  wtnTotal: number | null;
-  /** WTN value in ICP (wtnTotal / wtnPerIcp) */
-  wtnIcp: number | null;
-  /** Current GOLDAO supply */
-  supply: number | null;
-  /** Total GOLDAO burned (1B - supply) */
-  totalBurned: number | null;
 }
 
 export interface LiveData {
@@ -63,7 +55,7 @@ export interface LiveData {
   params: Partial<FairValueParams>;
   /** Keys that were updated in the last 1.5 s (for flash animation) */
   flash: Set<string>;
-  /** Non-calculation stats (members, proposals, supply) */
+  /** Non-calculation stats (members, proposals) */
   extra: LiveExtra;
 }
 
@@ -74,16 +66,8 @@ export function useLiveData(): LiveData {
     members: null,
     proposalsActive: null,
     proposalsTotal: null,
-    wtnTotal: null,
-    wtnIcp: null,
-    supply: null,
-    totalBurned: null,
   });
-  const icpswapRef = useRef<{
-    ogyPerIcp: number | null;
-    wtnPerIcp: number | null;
-    wtnTotal: number | null;
-  }>({ ogyPerIcp: null, wtnPerIcp: null, wtnTotal: null });
+  const icpswapRef = useRef<{ ogyPerIcp: number | null }>({ ogyPerIcp: null });
 
   useEffect(() => {
     let cancelled = false;
@@ -107,78 +91,24 @@ export function useLiveData(): LiveData {
       }
     }
 
-    // ── SLOW: ICPSwap pool quotes via Candid (~0.5 KB each, every 120 s) ──
-    async function fetchPoolQuotes() {
-      // GOLDAO/ICP ratio
-      const goldaoRatio = await getPoolRatio(
-        POOLS.GOLDAO_ICP.id,
-        POOLS.GOLDAO_ICP.zeroForOne,
-      );
-      apply("market_ratio", goldaoRatio);
-
-      // OGY/ICP ratio (for OGY price derivation)
-      const ogyRatio = await getPoolRatio(
-        POOLS.OGY_ICP.id,
-        POOLS.OGY_ICP.zeroForOne,
-      );
-      if (ogyRatio) icpswapRef.current.ogyPerIcp = ogyRatio;
-
-      // WTN/ICP ratio
-      const wtnRatio = await getPoolRatio(
-        POOLS.WTN_ICP.id,
-        POOLS.WTN_ICP.zeroForOne,
-      );
-      if (wtnRatio) {
-        icpswapRef.current.wtnPerIcp = wtnRatio;
-        apply("wtn_per_icp", wtnRatio);
-      }
-
-      // Recalc WTN ICP value if we have both
-      const wtn = icpswapRef.current.wtnTotal;
-      const wtnRate = icpswapRef.current.wtnPerIcp;
-      if (wtn !== null && wtnRate !== null && wtnRate > 0) {
-        setExtra((prev) => ({ ...prev, wtnIcp: wtn / wtnRate }));
-      }
-    }
-
-    // ── ONE-TIME: WTN neurons (3 neurons, no polling) ──
-    async function fetchWTN() {
+    // ── SLOW: ICPSwap tickers (~700 KB, every 120 s) ──
+    async function fetchICPSwap() {
       try {
-        const results = await Promise.all(
-          API.WTN_NEURONS.map(async (url) => {
-            const res = await fetch(url);
-            if (!res.ok) return 0;
-            const data: OGYNeuronResponse = await res.json();
-            return (data.stake_e8s + data.total_maturity_e8s_equivalent) / 1e8;
-          }),
-        );
-        const total = Math.round(results.reduce((a, b) => a + b, 0));
-        icpswapRef.current.wtnTotal = total;
-        setExtra((prev) => ({ ...prev, wtnTotal: total }));
-        apply("wtn_total", total);
-        // Calc ICP value if price already available
-        const wtnRate = icpswapRef.current.wtnPerIcp;
-        if (wtnRate !== null && wtnRate > 0) {
-          apply("wtn_per_icp", wtnRate);
-          setExtra((prev) => ({ ...prev, wtnIcp: total / wtnRate }));
+        const res = await fetch(API.ICPSWAP_TICKERS);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const tickers: ICPSwapTicker[] = await res.json();
+        for (const t of tickers) {
+          if (t.ticker_id === POOLS.GOLDAO_ICP) {
+            apply("market_ratio", validNum(Number.parseFloat(t.last_price)));
+          }
+          if (t.ticker_id === POOLS.OGY_ICP) {
+            icpswapRef.current.ogyPerIcp = validNum(
+              Number.parseFloat(t.last_price),
+            );
+          }
         }
       } catch (_) {
-        /* default */
-      }
-    }
-
-    // ── ONE-TIME: GOLDAO supply (no polling) ──
-    const ORIGINAL_SUPPLY = 1_000_000_000;
-    async function fetchSupply() {
-      try {
-        const res = await fetch(API.GOLDAO_SNS_INFO);
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const data: { total_supply_e8s: number } = await res.json();
-        const supply = Math.round(data.total_supply_e8s / 1e8);
-        const burned = ORIGINAL_SUPPLY - supply;
-        setExtra((prev) => ({ ...prev, supply, totalBurned: burned }));
-      } catch (_) {
-        /* default */
+        /* fallback */
       }
     }
 
@@ -256,7 +186,9 @@ export function useLiveData(): LiveData {
             ? body
             : (body.data ?? []);
           if (proposals.length > 0) {
+            // Total = highest ID (first in desc order)
             const total = Math.max(...proposals.map((p) => Number(p.id)));
+            // Open = decided_timestamp_seconds is 0 (not yet decided)
             const active = proposals.filter(
               (p) => p.decided_timestamp_seconds === 0,
             ).length;
@@ -272,14 +204,12 @@ export function useLiveData(): LiveData {
       }
     }
 
-    // Initial fetch: all (WTN + supply only once)
-    fetchPoolQuotes();
+    // Initial fetch: both
+    fetchICPSwap();
     fetchLight();
-    fetchWTN();
-    fetchSupply();
 
     const fastId = setInterval(fetchLight, POLL.FAST);
-    const slowId = setInterval(fetchPoolQuotes, POLL.SLOW);
+    const slowId = setInterval(fetchICPSwap, POLL.SLOW);
     return () => {
       cancelled = true;
       clearInterval(fastId);

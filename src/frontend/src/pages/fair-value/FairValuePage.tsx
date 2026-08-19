@@ -40,8 +40,6 @@ const LIVE_FIELDS: FieldDef[] = [
   { key: "ogy_staked", label: "OGY Staked", unit: "OGY" },
   { key: "price_ogy_usd", label: "OGY Price", unit: "USD" },
   { key: "price_icp_usd", label: "ICP Price", unit: "USD" },
-  { key: "wtn_total", label: "WTN Total", unit: "WTN" },
-  { key: "wtn_per_icp", label: "WTN/ICP Ratio", unit: "ratio" },
 ];
 
 const COLLAPSIBLE_SECTIONS: SectionDef[] = [
@@ -468,36 +466,8 @@ function Results({
         />
       </StepCard>
 
-      <StepCard step={4} title="WTN Neurons → ICP (amortized)" accent="teal">
-        <Note>
-          WTN will be distributed to eligible holders upon dissolve. Estimated
-          distribution: 2 neurons ~Mar 2027, 1 neuron ~Sep 2027. Amortized as
-          annual yield for equilibrium comparison.
-        </Note>
-        <Row
-          label="Total WTN"
-          value={`${fmtNum(params.wtn_total, 0)} WTN`}
-          dim
-        />
-        <Row
-          label="WTN/ICP ratio"
-          value={`${fmtNum(params.wtn_per_icp, 1)}`}
-          dim
-        />
-        <Row
-          label="▶ WTN → ICP (annualized)"
-          value={`${fmtNum(r.wtn_icp)} ICP`}
-          accent="teal"
-        />
-        <Row
-          label="= per day"
-          value={`${fmtNum(r.wtn_daily_icp, 1)} ICP`}
-          dim
-        />
-      </StepCard>
-
-      <StepCard step={5} title="Direct Yield per GOLDAO" accent="gold">
-        <Note>(ICP stakers + GLDT + OGY + WTN) ÷ eligible GOLDAO</Note>
+      <StepCard step={4} title="Direct Yield per GOLDAO" accent="gold">
+        <Note>(ICP stakers + GLDT + OGY) ÷ eligible GOLDAO</Note>
         <Row label="Direct pool" value={`${fmtNum(r.pool_directo)} ICP`} />
         <Row
           label={`÷ ${fmtNum(params.goldao_eligible / 1e6)}M eligible`}
@@ -506,7 +476,7 @@ function Results({
         />
       </StepCard>
 
-      <StepCard step={6} title="Effective APY (ICP)" accent="green">
+      <StepCard step={5} title="Effective APY (ICP)" accent="green">
         <Note>APY = yield per GOLDAO ÷ GOLDAO price in ICP × 100</Note>
         <Row
           label="Effective APY (ICP)"
@@ -520,7 +490,7 @@ function Results({
         />
       </StepCard>
 
-      <StepCard step={7} title="Equilibrium Ratio" accent="amber">
+      <StepCard step={6} title="Equilibrium Ratio" accent="amber">
         <Note>
           price_eq = yield per GOLDAO ÷ APY NNS · ratio = 1 / price_eq
         </Note>
@@ -536,7 +506,7 @@ function Results({
       </StepCard>
 
       <StepCard
-        step={8}
+        step={7}
         title="Market vs Equilibrium"
         accent={r.esta_barato ? "green" : "destructive"}
       >

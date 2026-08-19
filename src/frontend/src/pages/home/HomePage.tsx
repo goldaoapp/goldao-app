@@ -29,15 +29,11 @@ export default function HomePage() {
   const fmtOgy =
     stats.ogyStaked !== null ? `${(stats.ogyStaked / 1e6).toFixed(1)} M` : "—";
 
-  const fmtWtn =
-    extra.wtnTotal !== null ? `${(extra.wtnTotal / 1e6).toFixed(1)} M` : "—";
-
   return (
     <div className="flex flex-col gap-8 p-4 sm:p-6 lg:p-10 max-w-5xl mx-auto">
       {/* Alpha Banner */}
       <div className="rounded-lg bg-primary/10 border border-primary/20 px-4 py-3 text-center text-sm text-primary font-medium">
-        ALPHA VERSION — Data is under active development and may be out of date
-        or inaccurate.
+        ALPHA VERSION — Data is under development and may be inaccurate.
       </div>
 
       {/* Hero */}
@@ -49,7 +45,7 @@ export default function HomePage() {
           <span className="text-gradient-gold">GOLDAO APP</span>
         </h1>
         <p className="font-display text-lg sm:text-xl font-medium text-foreground">
-          Your DAO. Your treasury. Real-time.
+          Your DAO. Your treasury. Fully on-chain.
         </p>
         <p className="max-w-xl text-sm sm:text-base text-muted-foreground leading-relaxed">
           Real-time treasury tracking, governance proposals, rewards simulation,
@@ -73,22 +69,8 @@ export default function HomePage() {
             label="ICP / GOLDAO Equilibrium"
             accent
           />
-          <StatCard
-            value={
-              extra.totalBurned !== null
-                ? `${(extra.totalBurned / 1e6).toFixed(1)} M`
-                : "—"
-            }
-            label="Total Burn"
-          />
-          <StatCard
-            value={
-              extra.supply !== null
-                ? `${(extra.supply / 1e6).toFixed(1)} M`
-                : "—"
-            }
-            label="Supply"
-          />
+          <StatCard value="442.5 M" label="Total Burn" />
+          <StatCard value="557.5 M" label="Supply" />
         </div>
       </section>
 
@@ -100,7 +82,7 @@ export default function HomePage() {
         <div className="grid grid-cols-3 gap-3">
           <StatCard value="580 K" label="ICP" accent />
           <StatCard value={fmtOgy} label="OGY" />
-          <StatCard value={fmtWtn} label="WTN" />
+          <StatCard value="6.2 M" label="WTN" />
         </div>
       </section>
 

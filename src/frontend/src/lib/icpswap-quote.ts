@@ -9,7 +9,8 @@ import type { IDL as IDLType } from "@dfinity/candid";
 
 /* ── IDL factory (only the `quote` method) ──────────────────────────────── */
 
-const swapPoolIdlFactory: IDLType.InterfaceFactory = ({ IDL }) => {
+// biome-ignore lint/suspicious/noExplicitAny: IDL factory signature from @dfinity/candid
+const swapPoolIdlFactory = (({ IDL }: { IDL: typeof IDLType }) => {
   const SwapError = IDL.Variant({
     CommonError: IDL.Null,
     InternalError: IDL.Text,
@@ -29,7 +30,7 @@ const swapPoolIdlFactory: IDLType.InterfaceFactory = ({ IDL }) => {
       ["query"],
     ),
   });
-};
+}) as unknown as Parameters<typeof Actor.createActor>[0];
 
 /* ── Shared anonymous agent (created once, reused) ──────────────────────── */
 
@@ -39,7 +40,7 @@ function getAgent(): Promise<HttpAgent> {
   if (!agentPromise) {
     agentPromise = HttpAgent.create({ host: "https://icp-api.io" });
   }
-  return agentPromise;
+  return agentPromise!;
 }
 
 /* ── Public API ─────────────────────────────────────────────────────────── */
