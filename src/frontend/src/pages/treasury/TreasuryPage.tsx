@@ -211,6 +211,8 @@ function Sparkline({ data }: { data: TreasurySnapshot[] }) {
         viewBox={`0 0 ${w} ${h}`}
         className="w-full h-28 sm:h-32"
         preserveAspectRatio="none"
+        aria-label="Treasury value sparkline chart"
+        role="img"
       >
         <defs>
           <linearGradient id="sparkFill" x1="0" y1="0" x2="0" y2="1">
