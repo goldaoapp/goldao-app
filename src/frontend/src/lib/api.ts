@@ -26,6 +26,7 @@ export const API = {
     "https://sns-api.internetcomputer.org/api/v1/snses/jmod6-4iaaa-aaaaq-aadkq-cai/neurons/884ce73eb8022314f5a454feba94656a7bf3b80c2173c898dae0d7fcdd25b356",
     "https://sns-api.internetcomputer.org/api/v1/snses/jmod6-4iaaa-aaaaq-aadkq-cai/neurons/238d59f677414f0f82c09b4c4b6975c3768818a0400f1c6ae5bad618be51bc22",
     "https://sns-api.internetcomputer.org/api/v1/snses/jmod6-4iaaa-aaaaq-aadkq-cai/neurons/e6b2425b794513f375f8b44b94b6a41152db76b0b0c1122a863ee14a02f38a77",
+    "https://sns-api.internetcomputer.org/api/v1/snses/jmod6-4iaaa-aaaaq-aadkq-cai/neurons/cdeea7c0fcb8ded7c04ad21fbfdcd64347abfd6593e40d7e8e18f0e2b984f7ba",
   ],
 
   /** GOLDAO SNS info (supply, metadata) */
