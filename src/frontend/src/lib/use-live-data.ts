@@ -83,7 +83,8 @@ export function useLiveData(): LiveData {
     ogyPerIcp: number | null;
     wtnPerIcp: number | null;
     wtnTotal: number | null;
-  }>({ ogyPerIcp: null, wtnPerIcp: null, wtnTotal: null });
+    icpUsd: number | null;
+  }>({ ogyPerIcp: null, wtnPerIcp: null, wtnTotal: null, icpUsd: null });
 
   useEffect(() => {
     let cancelled = false;
@@ -121,7 +122,14 @@ export function useLiveData(): LiveData {
         POOLS.OGY_ICP.id,
         POOLS.OGY_ICP.zeroForOne,
       );
-      if (ogyRatio) icpswapRef.current.ogyPerIcp = ogyRatio;
+      if (ogyRatio) {
+        icpswapRef.current.ogyPerIcp = ogyRatio;
+        // Derive OGY USD immediately if ICP price already available
+        const icp = icpswapRef.current.icpUsd;
+        if (icp !== null) {
+          apply("price_ogy_usd", icp / ogyRatio);
+        }
+      }
 
       // WTN/ICP ratio
       const wtnRatio = await getPoolRatio(
@@ -200,10 +208,9 @@ export function useLiveData(): LiveData {
         /* default */
       }
 
-      // 2 — ICP price USD (Binance + CoinGecko)
+      // 2 — ICP price USD (Binance + Coinbase)
       let binanceIcp: number | null = null;
-      let geckoIcp: number | null = null;
-      let geckoOgy: number | null = null;
+      let coinbaseIcp: number | null = null;
 
       try {
         const res = await fetch(API.BINANCE);
@@ -215,25 +222,25 @@ export function useLiveData(): LiveData {
       }
 
       try {
-        const res = await fetch(API.COINGECKO);
+        const res = await fetch(API.COINBASE_ICP);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const data: Record<string, { usd?: number }> = await res.json();
-        geckoIcp = validNum(data["internet-computer"]?.usd);
-        geckoOgy = validNum(data["origyn-foundation"]?.usd);
+        const data: { data: { amount: string } } = await res.json();
+        coinbaseIcp = validNum(Number.parseFloat(data.data.amount));
       } catch (_) {
         /* fallback */
       }
 
-      const icpUsd = avg(binanceIcp, geckoIcp);
+      const icpUsd = avg(binanceIcp, coinbaseIcp);
+      icpswapRef.current.icpUsd = icpUsd;
       apply("price_icp_usd", icpUsd);
 
-      // 3 — OGY price (CoinGecko + ICPSwap-derived)
+      // 3 — OGY price (ICPSwap-derived: OGY/ICP × ICP/USD)
       let icpswapOgyUsd: number | null = null;
       const ogyPerIcp = icpswapRef.current.ogyPerIcp;
       if (ogyPerIcp !== null && icpUsd !== null) {
         icpswapOgyUsd = icpUsd / ogyPerIcp;
       }
-      apply("price_ogy_usd", avg(geckoOgy, icpswapOgyUsd));
+      apply("price_ogy_usd", icpswapOgyUsd);
 
       // 4 — OGY neuron (stake + maturity)
       try {
