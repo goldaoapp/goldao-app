@@ -34,9 +34,9 @@ interface Reading {
 /* ── Constants ──────────────────────────────────────────────────────────── */
 
 const COLORS = {
-  icp: "oklch(0.82 0.15 85)",
+  icp: "oklch(0.75 0.1 290)",
   ogy: "oklch(0.7 0.17 162)",
-  wtn: "oklch(0.77 0.13 70)",
+  wtn: "oklch(0.78 0.1 15)",
 } as const;
 
 /** Two readings are consistent if every value differs < 10% */
