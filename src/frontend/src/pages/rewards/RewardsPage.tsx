@@ -17,7 +17,7 @@ export default function RewardsPage() {
           <EmptyState
             icon={Gift}
             title="Simulator coming soon"
-            description="The staking simulator will allow you to model rewards based on stake amount, lock period, and current APY."
+            description="Staking simulator and real-time reward flow diagram — coming soon."
           />
         </CardContent>
       </Card>
