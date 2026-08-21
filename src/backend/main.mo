@@ -8,16 +8,22 @@ import Expose "mo:caffeineai-oql/Expose";
 import Entity "mo:caffeineai-oql/Entity";
 import TextValue "mo:caffeineai-oql/TextValue";
 import Principal "mo:core/Principal";
+import Map "mo:core/Map";
+import Float "mo:core/Float";
+
+import TreasuryTypes "types/treasury";
+import TreasuryMixin "mixins/treasury-api";
 
 actor {
   let accessControlState : AccessControl.AccessControlState;
   include MixinAuthorization(accessControlState, null);
 
-  // OQL (Data Intelligence) — expose the persisted `userRoles` map as a
-  // queryable `userRole` entity. The row identity (the Principal key) lives
-  // in the Map key and the value is a variant, so this uses manual mode over
-  // `.entries()`. Authorization is `.controllerOnly()` (the default): the
-  // Data Intelligence agent reads it as the controller, end users do not.
+  // ── Treasury state ─────────────────────────────────────────────────────
+  let treasurySnapshots : Map.Map<Text, TreasuryTypes.TreasurySnapshot>;
+
+  include TreasuryMixin(treasurySnapshots);
+
+  // ── OQL (Data Intelligence) ────────────────────────────────────────────
   include Expose({
     entities = [
       OQL.Entity.manual<(Principal, AccessControl.UserRole)>(
@@ -32,6 +38,23 @@ actor {
           case (#user) "user";
           case (#guest) "guest";
         })
+        .controllerOnly()
+        .build(),
+
+      OQL.Entity.manual<TreasuryTypes.TreasurySnapshot>(
+        "treasurySnapshot",
+        func () = treasurySnapshots.values(),
+        "TreasurySnapshot",
+        "date",
+      )
+        .payload("date",       func s = s.date)
+        .payload("icp_amount", func s = Float.toText(s.icp_amount))
+        .payload("icp_usd",    func s = Float.toText(s.icp_usd))
+        .payload("ogy_amount", func s = Float.toText(s.ogy_amount))
+        .payload("ogy_usd",    func s = Float.toText(s.ogy_usd))
+        .payload("wtn_amount", func s = Float.toText(s.wtn_amount))
+        .payload("wtn_usd",    func s = Float.toText(s.wtn_usd))
+        .payload("total_usd",  func s = Float.toText(s.total_usd))
         .controllerOnly()
         .build(),
     ];
