@@ -35,6 +35,7 @@ const DECIMALS: Partial<Record<keyof FairValueParams, number>> = {
   price_icp_usd: 3,
   price_ogy_usd: 6,
   market_ratio: 1,
+  wtn_per_icp: 2,
 };
 
 function round(key: keyof FairValueParams, val: number): number {
