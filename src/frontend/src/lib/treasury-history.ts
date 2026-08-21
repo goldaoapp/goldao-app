@@ -47,7 +47,6 @@ const idlFactory = (({ IDL }: { IDL: typeof IDLType }) => {
 
 /* ── Actor singleton ─────────────────────────────────────────────────────── */
 
-// biome-ignore lint/suspicious/noExplicitAny: Actor.createActor returns dynamic type based on IDL
 let actorPromise: Promise<any> | null = null;
 
 function getActor(): Promise<any> | null {
