@@ -10,9 +10,8 @@ export const API = {
   /** ICP/USDT spot price */
   BINANCE: "https://api.binance.com/api/v3/ticker/price?symbol=ICPUSDT",
 
-  /** ICP + OGY prices in USD (single call) */
-  COINGECKO:
-    "https://api.coingecko.com/api/v3/simple/price?ids=internet-computer,origyn-foundation&vs_currencies=usd",
+  /** ICP/USD spot price (Coinbase, CORS-friendly) */
+  COINBASE_ICP: "https://api.coinbase.com/v2/prices/ICP-USD/spot",
 
   /** OGY SNS neuron (stake + maturity) */
   OGY_NEURON:
@@ -46,7 +45,7 @@ export const POOLS = {
 
 /** Polling intervals */
 export const POLL = {
-  FAST: 30_000, // Binance, CoinGecko, gldt.org, SNS neuron
+  FAST: 30_000, // Binance, Coinbase, gldt.org, SNS neuron
   SLOW: 120_000, // ICPSwap pool quotes via Candid
 } as const;
 
