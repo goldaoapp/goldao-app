@@ -47,11 +47,11 @@ const idlFactory = (({ IDL }: { IDL: typeof IDLType }) => {
 
 /* ── Actor singleton ─────────────────────────────────────────────────────── */
 
-let actor: ReturnType<typeof Actor.createActor> | null = null;
-let initPromise: Promise<typeof actor> | null = null;
+// biome-ignore lint/suspicious/noExplicitAny: Actor.createActor returns dynamic type based on IDL
+let actorPromise: Promise<any> | null = null;
 
-function getActor() {
-  if (initPromise) return initPromise;
+function getActor(): Promise<any> | null {
+  if (actorPromise) return actorPromise;
 
   const id =
     (import.meta as any).env?.CANISTER_BACKEND_CANISTER_ID ??
@@ -59,29 +59,32 @@ function getActor() {
     null;
   if (!id || id === "undefined") return null;
 
-  initPromise = HttpAgent.create({ host: "https://icp-api.io" }).then((agent) => {
-    actor = Actor.createActor(idlFactory, { agent, canisterId: id });
-    return actor;
-  });
-  return initPromise;
+  actorPromise = HttpAgent.create({ host: "https://icp-api.io" }).then(
+    (agent) => Actor.createActor(idlFactory, { agent, canisterId: id }),
+  );
+  return actorPromise;
 }
 
 /* ── Public API ──────────────────────────────────────────────────────────── */
 
 export async function hasSnapshot(date: string): Promise<boolean> {
   try {
-    const a = await getActor();
-    if (!a) return false;
+    const p = getActor();
+    if (!p) return false;
+    const a = await p;
     return (await a.hasSnapshot(date)) as boolean;
   } catch {
     return false;
   }
 }
 
-export async function saveSnapshot(data: Omit<TreasurySnapshot, "date" | "timestamp">): Promise<boolean> {
+export async function saveSnapshot(
+  data: Omit<TreasurySnapshot, "date" | "timestamp">,
+): Promise<boolean> {
   try {
-    const a = await getActor();
-    if (!a) return false;
+    const p = getActor();
+    if (!p) return false;
+    const a = await p;
     const snapshot: TreasurySnapshot = {
       ...data,
       date: new Date().toISOString().slice(0, 10),
@@ -95,8 +98,9 @@ export async function saveSnapshot(data: Omit<TreasurySnapshot, "date" | "timest
 
 export async function getHistory(): Promise<TreasurySnapshot[]> {
   try {
-    const a = await getActor();
-    if (!a) return [];
+    const p = getActor();
+    if (!p) return [];
+    const a = await p;
     return (await a.getTreasuryHistory()) as TreasurySnapshot[];
   } catch {
     return [];
