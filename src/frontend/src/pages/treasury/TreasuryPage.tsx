@@ -259,7 +259,6 @@ function StackedArea({ data }: { data: TreasurySnapshot[] }) {
   const y = (v: number) => h - pad - (v / maxTot) * (h - pad * 2);
   const x = (i: number) => (i / (data.length - 1)) * w;
 
-  const icpV = (d: TreasurySnapshot) => Number(d.icp_usd);
   const ogyV = (d: TreasurySnapshot) => Number(d.ogy_usd);
   const wtnV = (d: TreasurySnapshot) => Number(d.wtn_usd);
 
@@ -392,12 +391,12 @@ function DailyChange({ data }: { data: TreasurySnapshot[] }) {
     <div>
       <div className="relative flex items-stretch gap-[3px] h-44">
         <div className="absolute inset-x-0 top-1/2 h-px bg-border" />
-        {deltas.map((d, i) => {
+        {deltas.map((d) => {
           const mag = (Math.abs(d.v) / maxAbs) * 100;
           const up = d.v >= 0;
           return (
             <div
-              key={i}
+              key={d.date}
               className="flex-1 flex flex-col"
               title={`${d.date}  ${up ? "+" : "\u2212"}${fmtUsd(Math.abs(d.v))}`}
             >
