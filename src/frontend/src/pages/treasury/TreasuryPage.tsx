@@ -8,7 +8,14 @@ import {
   type TreasurySnapshot,
 } from "@/lib/treasury-history";
 import { useLiveData } from "@/lib/use-live-data";
-import { ArrowDown, ArrowUp, TrendingUp, Wallet } from "lucide-react";
+import {
+  ArrowDown,
+  ArrowUp,
+  BarChart3,
+  Layers,
+  TrendingUp,
+  Wallet,
+} from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 /* ── Types ──────────────────────────────────────────────────────────────── */
@@ -240,6 +247,236 @@ function Sparkline({ data }: { data: TreasurySnapshot[] }) {
   );
 }
 
+/* ── Stacked area (composition over time) ───────────────────────────────── */
+
+function StackedArea({ data }: { data: TreasurySnapshot[] }) {
+  if (data.length < 2) return null;
+
+  const w = 600;
+  const h = 200;
+  const pad = 10;
+  const maxTot = Math.max(...data.map((d) => Number(d.total_usd))) || 1;
+  const y = (v: number) => h - pad - (v / maxTot) * (h - pad * 2);
+  const x = (i: number) => (i / (data.length - 1)) * w;
+
+  const icpV = (d: TreasurySnapshot) => Number(d.icp_usd);
+  const ogyV = (d: TreasurySnapshot) => Number(d.ogy_usd);
+  const wtnV = (d: TreasurySnapshot) => Number(d.wtn_usd);
+
+  const smooth = (pts: [number, number][]) => {
+    if (pts.length < 2) return pts.length ? `M${pts[0][0]},${pts[0][1]}` : "";
+    let d = `M${pts[0][0].toFixed(1)},${pts[0][1].toFixed(1)}`;
+    for (let i = 0; i < pts.length - 1; i++) {
+      const p0 = pts[i - 1] || pts[i];
+      const p1 = pts[i];
+      const p2 = pts[i + 1];
+      const p3 = pts[i + 2] || pts[i + 1];
+      const c1x = p1[0] + (p2[0] - p0[0]) / 6;
+      const c1y = p1[1] + (p2[1] - p0[1]) / 6;
+      const c2x = p2[0] - (p3[0] - p1[0]) / 6;
+      const c2y = p2[1] - (p3[1] - p1[1]) / 6;
+      d += ` C${c1x.toFixed(1)},${c1y.toFixed(1)} ${c2x.toFixed(1)},${c2y.toFixed(1)} ${p2[0].toFixed(1)},${p2[1].toFixed(1)}`;
+    }
+    return d;
+  };
+
+  const strokeAt = (fn: (d: TreasurySnapshot) => number) =>
+    smooth(data.map((d, i) => [x(i), y(fn(d))]));
+
+  const band = (
+    lower: (d: TreasurySnapshot) => number,
+    upper: (d: TreasurySnapshot) => number,
+  ) => {
+    const up: [number, number][] = data.map((d, i) => [x(i), y(upper(d))]);
+    const lo: [number, number][] = data
+      .map((d, i): [number, number] => [x(i), y(lower(d))])
+      .reverse();
+    return `${smooth(up)} L${lo[0][0].toFixed(1)},${lo[0][1].toFixed(1)} ${smooth(lo).slice(1)} Z`;
+  };
+
+  const ogyBand = band(() => 0, ogyV);
+  const wtnBand = band(ogyV, (d) => ogyV(d) + wtnV(d));
+  const icpBand = band((d) => ogyV(d) + wtnV(d), (d) => Number(d.total_usd));
+  const b1 = strokeAt(ogyV);
+  const b2 = strokeAt((d) => ogyV(d) + wtnV(d));
+  const topLine = strokeAt((d) => Number(d.total_usd));
+
+  const dates = data.map((d) => d.date);
+  const labels = [
+    0,
+    Math.floor(dates.length / 2),
+    dates.length - 1,
+  ];
+  const legend: { label: string; color: string }[] = [
+    { label: "ICP", color: COLORS.icp },
+    { label: "WTN", color: COLORS.wtn },
+    { label: "OGY", color: COLORS.ogy },
+  ];
+
+  return (
+    <div>
+      <div className="flex flex-wrap gap-4 justify-center mb-3">
+        {legend.map((l) => (
+          <div key={l.label} className="flex items-center gap-2">
+            <div
+              className="w-3 h-3 rounded-sm"
+              style={{ backgroundColor: l.color }}
+            />
+            <span className="text-xs text-muted-foreground font-mono">
+              {l.label}
+            </span>
+          </div>
+        ))}
+      </div>
+      <svg
+        viewBox={`0 0 ${w} ${h}`}
+        className="w-full h-40 sm:h-48"
+        preserveAspectRatio="none"
+        aria-label="Treasury composition over time"
+        role="img"
+      >
+        <path d={icpBand} fill={COLORS.icp} fillOpacity="0.9" />
+        <path d={wtnBand} fill={COLORS.wtn} fillOpacity="0.9" />
+        <path d={ogyBand} fill={COLORS.ogy} fillOpacity="0.9" />
+        <path
+          d={b1}
+          fill="none"
+          stroke="oklch(0.18 0 0 / 0.55)"
+          strokeWidth="1"
+          vectorEffect="non-scaling-stroke"
+        />
+        <path
+          d={b2}
+          fill="none"
+          stroke="oklch(0.18 0 0 / 0.55)"
+          strokeWidth="1"
+          vectorEffect="non-scaling-stroke"
+        />
+        <path
+          d={topLine}
+          fill="none"
+          stroke="oklch(0.95 0 0 / 0.6)"
+          strokeWidth="1.5"
+          vectorEffect="non-scaling-stroke"
+        />
+      </svg>
+      <div className="flex justify-between mt-1 px-1">
+        {labels.map((i) => (
+          <span key={i} className="text-[10px] font-mono text-muted-foreground">
+            {dates[i]?.slice(5)}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ── Daily change (delta bars) ──────────────────────────────────────────── */
+
+function DailyChange({ data }: { data: TreasurySnapshot[] }) {
+  if (data.length < 2) return null;
+
+  const deltas = data.slice(1).map((d, i) => ({
+    date: d.date,
+    v: Number(d.total_usd) - Number(data[i].total_usd),
+  }));
+  const maxAbs = Math.max(...deltas.map((d) => Math.abs(d.v))) || 1;
+
+  const labelIdx = [
+    0,
+    Math.floor(deltas.length / 2),
+    deltas.length - 1,
+  ];
+
+  return (
+    <div>
+      <div className="relative flex items-stretch gap-[3px] h-44">
+        <div className="absolute inset-x-0 top-1/2 h-px bg-border" />
+        {deltas.map((d, i) => {
+          const mag = (Math.abs(d.v) / maxAbs) * 100;
+          const up = d.v >= 0;
+          return (
+            <div
+              key={i}
+              className="flex-1 flex flex-col"
+              title={`${d.date}  ${up ? "+" : "\u2212"}${fmtUsd(Math.abs(d.v))}`}
+            >
+              <div className="h-1/2 flex flex-col justify-end">
+                <div
+                  className="rounded-t-sm"
+                  style={{
+                    height: up ? `${mag}%` : 0,
+                    backgroundColor: "oklch(0.72 0.17 162)",
+                  }}
+                />
+              </div>
+              <div className="h-1/2 flex flex-col justify-start">
+                <div
+                  className="rounded-b-sm"
+                  style={{
+                    height: up ? 0 : `${mag}%`,
+                    backgroundColor: "oklch(0.65 0.2 25)",
+                  }}
+                />
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      <div className="flex justify-between mt-2 px-1">
+        {labelIdx.map((i) => (
+          <span key={i} className="text-[10px] font-mono text-muted-foreground">
+            {deltas[i]?.date.slice(5)}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ── Trend (sparkline + KPIs) ───────────────────────────────────────────── */
+
+function TrendView({ data }: { data: TreasurySnapshot[] }) {
+  if (data.length < 2) return null;
+
+  const values = data.map((d) => Number(d.total_usd));
+  const first = values[0];
+  const last = values[values.length - 1];
+  const pct = first > 0 ? ((last - first) / first) * 100 : 0;
+
+  const kpis: { label: string; value: string; color: string }[] = [
+    { label: "Current", value: fmtUsd(last), color: "var(--foreground)" },
+    {
+      label: `${data.length}d`,
+      value: `${pct >= 0 ? "+" : ""}${pct.toFixed(1)}%`,
+      color: pct >= 0 ? "oklch(0.72 0.17 162)" : "var(--destructive)",
+    },
+    { label: "High", value: fmtUsd(Math.max(...values)), color: "var(--foreground)" },
+    { label: "Low", value: fmtUsd(Math.min(...values)), color: "var(--foreground)" },
+  ];
+
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-4 sm:gap-6">
+      <Sparkline data={data} />
+      <div className="grid grid-cols-2 sm:grid-cols-1 gap-3 sm:border-l sm:border-border sm:pl-5">
+        {kpis.map((k) => (
+          <div key={k.label}>
+            <div className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">
+              {k.label}
+            </div>
+            <div
+              className="font-mono text-lg font-bold mt-0.5"
+              style={{ color: k.color }}
+            >
+              {k.value}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 /* ── Page ────────────────────────────────────────────────────────────────── */
 
 export default function TreasuryPage() {
@@ -332,6 +569,43 @@ export default function TreasuryPage() {
 
   const isLoading = totalUsd === 0;
 
+  const [chartView, setChartView] = useState<"trend" | "composition" | "daily">(
+    "trend",
+  );
+  const [chartRange, setChartRange] = useState<"30" | "90" | "all">("90");
+  const chartRanges = [
+    { key: "30" as const, label: "30D", days: 30 },
+    { key: "90" as const, label: "90D", days: 90 },
+    { key: "all" as const, label: "All", days: Infinity },
+  ];
+  const rangeDays =
+    chartRange === "30" ? 30 : chartRange === "90" ? 90 : Infinity;
+  const chartData = Number.isFinite(rangeDays)
+    ? history.slice(-rangeDays)
+    : history;
+  const chartViews = [
+    { key: "trend" as const, label: "Trend", icon: TrendingUp },
+    { key: "composition" as const, label: "Composition", icon: Layers },
+    { key: "daily" as const, label: "Daily Change", icon: BarChart3 },
+  ];
+  const chartMeta = {
+    trend: {
+      title: "Treasury Value Over Time",
+      subtitle: "Total USD value",
+      Icon: TrendingUp,
+    },
+    composition: {
+      title: "Composition Over Time",
+      subtitle: "USD value per asset",
+      Icon: Layers,
+    },
+    daily: {
+      title: "Daily Change",
+      subtitle: "Day-over-day delta",
+      Icon: BarChart3,
+    },
+  }[chartView];
+
   return (
     <section className="mx-auto max-w-5xl px-4 py-16 sm:px-6 lg:px-8">
       <PageHeader
@@ -388,25 +662,76 @@ export default function TreasuryPage() {
       {/* Chart */}
       <Card className="overflow-hidden border-border/80 shadow-subtle">
         <CardHeader>
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-border bg-muted/40 text-primary">
-              <TrendingUp className="h-5 w-5" />
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-border bg-muted/40 text-primary">
+                <chartMeta.Icon className="h-5 w-5" />
+              </div>
+              <div>
+                <CardTitle className="text-base font-semibold">
+                  {chartMeta.title}
+                </CardTitle>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {history.length > 0
+                    ? `${chartData.length} day${chartData.length !== 1 ? "s" : ""} · ${chartMeta.subtitle}`
+                    : "Daily USD value recorded on-chain"}
+                </p>
+              </div>
             </div>
-            <div>
-              <CardTitle className="text-base font-semibold">
-                Treasury Value Over Time
-              </CardTitle>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                {history.length > 0
-                  ? `${history.length} day${history.length !== 1 ? "s" : ""} tracked`
-                  : "Daily USD value recorded on-chain"}
-              </p>
-            </div>
+            {history.length >= 2 && (
+              <div className="flex items-center gap-2 flex-wrap">
+                <div className="flex gap-1 p-1 rounded-lg border border-border bg-muted/40">
+                  {chartRanges.map((r) => {
+                    const active = chartRange === r.key;
+                    return (
+                      <button
+                        key={r.key}
+                        type="button"
+                        onClick={() => setChartRange(r.key)}
+                        className={`rounded-md px-2.5 py-1.5 text-xs font-mono transition-smooth ${
+                          active
+                            ? "bg-secondary text-secondary-foreground"
+                            : "text-muted-foreground hover:text-foreground"
+                        }`}
+                      >
+                        {r.label}
+                      </button>
+                    );
+                  })}
+                </div>
+                <div className="flex gap-1 p-1 rounded-lg border border-border bg-muted/40">
+                  {chartViews.map((v) => {
+                    const active = chartView === v.key;
+                    return (
+                      <button
+                        key={v.key}
+                        type="button"
+                        onClick={() => setChartView(v.key)}
+                        className={`flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-mono transition-smooth ${
+                          active
+                            ? "bg-primary text-primary-foreground"
+                            : "text-muted-foreground hover:text-foreground"
+                        }`}
+                      >
+                        <v.icon className="h-3.5 w-3.5" />
+                        <span className="hidden sm:inline">{v.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
         </CardHeader>
         <CardContent>
           {history.length >= 2 ? (
-            <Sparkline data={history} />
+            chartView === "trend" ? (
+              <TrendView data={chartData} />
+            ) : chartView === "composition" ? (
+              <StackedArea data={chartData} />
+            ) : (
+              <DailyChange data={chartData} />
+            )
           ) : (
             <div className="flex flex-col items-center justify-center py-12 text-center">
               <div className="flex h-12 w-12 items-center justify-center rounded-lg border border-border bg-muted/40 text-muted-foreground mb-3">
