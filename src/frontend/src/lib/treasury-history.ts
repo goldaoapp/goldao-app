@@ -47,20 +47,43 @@ const idlFactory = (({ IDL }: { IDL: typeof IDLType }) => {
 
 /* ── Actor singleton ─────────────────────────────────────────────────────── */
 
-let actorPromise: Promise<any> | null = null;
+let actorPromise: Promise<any | null> | null = null;
 
-function getActor(): Promise<any> | null {
+// Resolve the backend canister id the SAME way the rest of the app does:
+// build-time process.env (vite-plugin-environment, prefix CANISTER_), then the
+// runtime env.json served next to the SPA. import.meta.env never carries the
+// CANISTER_ vars, so the previous lookup was always undefined.
+async function resolveCanisterId(): Promise<string | null> {
+  const fromEnv = process.env.CANISTER_ID_BACKEND;
+  if (fromEnv && fromEnv !== "undefined") return fromEnv;
+
+  try {
+    const base = document.baseURI.endsWith("/")
+      ? document.baseURI
+      : `${document.baseURI}/`;
+    const res = await fetch(`${base}env.json`, { cache: "no-store" });
+    if (!res.ok) return null;
+    const cfg = await res.json();
+    const id = cfg?.backend_canister_id;
+    return id && id !== "undefined" ? id : null;
+  } catch {
+    return null;
+  }
+}
+
+function getActor(): Promise<any | null> {
   if (actorPromise) return actorPromise;
 
-  const id =
-    (import.meta as any).env?.CANISTER_BACKEND_CANISTER_ID ??
-    (import.meta as any).env?.VITE_BACKEND_CANISTER_ID ??
-    null;
-  if (!id || id === "undefined") return null;
+  actorPromise = (async () => {
+    const id = await resolveCanisterId();
+    if (!id) return null;
+    const agent = await HttpAgent.create({ host: "https://icp-api.io" });
+    return Actor.createActor(idlFactory, { agent, canisterId: id });
+  })().then((actor) => {
+    if (!actor) actorPromise = null; // failed to resolve — allow retry next call
+    return actor;
+  });
 
-  actorPromise = HttpAgent.create({ host: "https://icp-api.io" }).then(
-    (agent) => Actor.createActor(idlFactory, { agent, canisterId: id }),
-  );
   return actorPromise;
 }
 
@@ -68,9 +91,8 @@ function getActor(): Promise<any> | null {
 
 export async function hasSnapshot(date: string): Promise<boolean> {
   try {
-    const p = getActor();
-    if (!p) return false;
-    const a = await p;
+    const a = await getActor();
+    if (!a) return false;
     return (await a.hasSnapshot(date)) as boolean;
   } catch {
     return false;
@@ -81,9 +103,8 @@ export async function saveSnapshot(
   data: Omit<TreasurySnapshot, "date" | "timestamp">,
 ): Promise<boolean> {
   try {
-    const p = getActor();
-    if (!p) return false;
-    const a = await p;
+    const a = await getActor();
+    if (!a) return false;
     const snapshot: TreasurySnapshot = {
       ...data,
       date: new Date().toISOString().slice(0, 10),
@@ -97,9 +118,8 @@ export async function saveSnapshot(
 
 export async function getHistory(): Promise<TreasurySnapshot[]> {
   try {
-    const p = getActor();
-    if (!p) return [];
-    const a = await p;
+    const a = await getActor();
+    if (!a) return [];
     return (await a.getTreasuryHistory()) as TreasurySnapshot[];
   } catch {
     return [];
