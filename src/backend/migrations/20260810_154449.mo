@@ -20,7 +20,7 @@ module {
     accessControlState : AccessControlState;
   };
 
-  public func migration(old : OldActor) : NewActor {
+  public func migration(_old : OldActor) : NewActor {
     {
       accessControlState = {
         var adminAssigned = false;
