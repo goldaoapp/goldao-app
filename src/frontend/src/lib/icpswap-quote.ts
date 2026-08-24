@@ -9,7 +9,6 @@ import type { IDL as IDLType } from "@dfinity/candid";
 
 /* ── IDL factory (only the `quote` method) ──────────────────────────────── */
 
-// biome-ignore lint/suspicious/noExplicitAny: IDL factory signature from @dfinity/candid
 const swapPoolIdlFactory = (({ IDL }: { IDL: typeof IDLType }) => {
   const SwapError = IDL.Variant({
     CommonError: IDL.Null,
