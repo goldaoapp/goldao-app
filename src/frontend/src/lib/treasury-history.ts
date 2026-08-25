@@ -125,3 +125,8 @@ export async function getHistory(): Promise<TreasurySnapshot[]> {
     return [];
   }
 }
+
+/** Diagnostic only: the backend canister id currently resolved, or null. */
+export async function getCanisterId(): Promise<string | null> {
+  return resolveCanisterId();
+}
