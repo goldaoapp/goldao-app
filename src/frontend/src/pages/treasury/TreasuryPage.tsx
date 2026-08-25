@@ -519,7 +519,7 @@ function SnapshotDebug() {
         onClick={toggle}
         className="text-[11px] font-mono text-muted-foreground/60 hover:text-muted-foreground transition-smooth"
       >
-        {open ? "ocultar datos guardados" : "ver datos guardados"}
+        {open ? "hide saved data" : "view saved data"}
       </button>
 
       {open && (
@@ -527,9 +527,9 @@ function SnapshotDebug() {
           <div className="mb-2 flex items-center justify-between">
             <span className="text-muted-foreground">
               {loading
-                ? "cargando\u2026"
+                ? "loading\u2026"
                 : err
-                  ? "error al leer"
+                  ? "read error"
                   : `${snaps?.length ?? 0} snapshot(s)`}
             </span>
             <button
@@ -538,7 +538,7 @@ function SnapshotDebug() {
               disabled={loading}
               className="text-muted-foreground/70 hover:text-foreground disabled:opacity-40"
             >
-              refrescar
+              refresh
             </button>
           </div>
 
@@ -549,13 +549,13 @@ function SnapshotDebug() {
                 style={canisterId ? undefined : { color: "oklch(0.65 0.2 25)" }}
                 className={canisterId ? "text-foreground" : undefined}
               >
-                {canisterId ?? "no resuelto"}
+                {canisterId ?? "not resolved"}
               </span>
             </div>
             <div>
-              snapshot de hoy ({todayStr()}):{" "}
+              today's snapshot ({todayStr()}):{" "}
               <span className="text-foreground">
-                {todaySaved === null ? "\u2014" : todaySaved ? "s\u00ed" : "no"}
+                {todaySaved === null ? "\u2014" : todaySaved ? "yes" : "no"}
               </span>
             </div>
           </div>
@@ -565,7 +565,7 @@ function SnapshotDebug() {
               <table className="w-full text-left tabular-nums">
                 <thead className="text-muted-foreground/70">
                   <tr>
-                    <th className="pr-3 font-normal">fecha</th>
+                    <th className="pr-3 font-normal">date</th>
                     <th className="pr-3 font-normal text-right">total</th>
                     <th className="pr-3 font-normal text-right">ICP</th>
                     <th className="pr-3 font-normal text-right">WTN</th>
@@ -597,7 +597,7 @@ function SnapshotDebug() {
 
           {snaps && snaps.length === 0 && !loading && (
             <p className="mt-2 text-muted-foreground/70">
-              sin snapshots guardados todavía
+              no snapshots saved yet
             </p>
           )}
         </div>
