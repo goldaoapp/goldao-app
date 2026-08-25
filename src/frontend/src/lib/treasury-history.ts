@@ -49,34 +49,28 @@ const idlFactory = (({ IDL }: { IDL: typeof IDLType }) => {
 
 let actorPromise: Promise<any | null> | null = null;
 
-// Mainnet backend canister id. Last-resort fallback for when neither the
-// build-time env (vite-plugin-environment, prefix CANISTER_) nor the runtime
-// env.json provides one — same approach as the hardcoded ICPSwap pool ids.
-// In this deployment caffeine leaves both as "undefined", so this is what
-// actually wires the treasury actor in production.
-const FALLBACK_BACKEND_CANISTER_ID = "eiluc-3qaaa-aaaad-agwnq-cai";
+// Runtime config served at the site root. caffeine injects the real ids here at
+// deploy time; the repo copy ships every field as "undefined".
+async function readEnvJson(): Promise<Record<string, string> | null> {
+  try {
+    const res = await fetch(`${location.origin}/env.json`, { cache: "no-store" });
+    if (!res.ok) return null;
+    return (await res.json()) as Record<string, string>;
+  } catch {
+    return null;
+  }
+}
 
 // Resolve the backend canister id: build-time env first, then the runtime
-// env.json served next to the SPA, then the known mainnet id.
+// env.json at the site root. NOTE: the id must be the BACKEND (motoko) canister,
+// not the frontend asset canister that serves the page.
 async function resolveCanisterId(): Promise<string | null> {
   const fromEnv = process.env.CANISTER_ID_BACKEND;
   if (fromEnv && fromEnv !== "undefined") return fromEnv;
 
-  try {
-    const base = document.baseURI.endsWith("/")
-      ? document.baseURI
-      : `${document.baseURI}/`;
-    const res = await fetch(`${base}env.json`, { cache: "no-store" });
-    if (res.ok) {
-      const cfg = await res.json();
-      const id = cfg?.backend_canister_id;
-      if (id && id !== "undefined") return id;
-    }
-  } catch {
-    /* fall through to the hardcoded id */
-  }
-
-  return FALLBACK_BACKEND_CANISTER_ID;
+  const cfg = await readEnvJson();
+  const id = cfg?.backend_canister_id;
+  return id && id !== "undefined" ? id : null;
 }
 
 function getActor(): Promise<any | null> {
@@ -137,4 +131,12 @@ export async function getHistory(): Promise<TreasurySnapshot[]> {
 /** Diagnostic only: the backend canister id currently resolved, or null. */
 export async function getCanisterId(): Promise<string | null> {
   return resolveCanisterId();
+}
+
+/** Diagnostic only: raw backend_canister_id from the runtime env.json.
+ *  Returns the literal value (including "undefined") so the UI can show
+ *  exactly what the deployment injected, or null if env.json is unreachable. */
+export async function getEnvJsonCanisterId(): Promise<string | null> {
+  const cfg = await readEnvJson();
+  return cfg?.backend_canister_id ?? null;
 }
