@@ -49,10 +49,15 @@ const idlFactory = (({ IDL }: { IDL: typeof IDLType }) => {
 
 let actorPromise: Promise<any | null> | null = null;
 
-// Resolve the backend canister id the SAME way the rest of the app does:
-// build-time process.env (vite-plugin-environment, prefix CANISTER_), then the
-// runtime env.json served next to the SPA. import.meta.env never carries the
-// CANISTER_ vars, so the previous lookup was always undefined.
+// Mainnet backend canister id. Last-resort fallback for when neither the
+// build-time env (vite-plugin-environment, prefix CANISTER_) nor the runtime
+// env.json provides one — same approach as the hardcoded ICPSwap pool ids.
+// In this deployment caffeine leaves both as "undefined", so this is what
+// actually wires the treasury actor in production.
+const FALLBACK_BACKEND_CANISTER_ID = "eiluc-3qaaa-aaaad-agwnq-cai";
+
+// Resolve the backend canister id: build-time env first, then the runtime
+// env.json served next to the SPA, then the known mainnet id.
 async function resolveCanisterId(): Promise<string | null> {
   const fromEnv = process.env.CANISTER_ID_BACKEND;
   if (fromEnv && fromEnv !== "undefined") return fromEnv;
@@ -62,13 +67,16 @@ async function resolveCanisterId(): Promise<string | null> {
       ? document.baseURI
       : `${document.baseURI}/`;
     const res = await fetch(`${base}env.json`, { cache: "no-store" });
-    if (!res.ok) return null;
-    const cfg = await res.json();
-    const id = cfg?.backend_canister_id;
-    return id && id !== "undefined" ? id : null;
+    if (res.ok) {
+      const cfg = await res.json();
+      const id = cfg?.backend_canister_id;
+      if (id && id !== "undefined") return id;
+    }
   } catch {
-    return null;
+    /* fall through to the hardcoded id */
   }
+
+  return FALLBACK_BACKEND_CANISTER_ID;
 }
 
 function getActor(): Promise<any | null> {
