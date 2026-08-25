@@ -2,6 +2,7 @@ import { PageHeader } from "@/components/common";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DEFAULTS, type FairValueParams } from "@/lib/fairvalue-calc";
 import {
+  getCanisterId,
   getHistory,
   hasSnapshot,
   saveSnapshot,
@@ -476,6 +477,135 @@ function TrendView({ data }: { data: TreasurySnapshot[] }) {
   );
 }
 
+/* ── Debug: saved snapshots (on-demand probe) ───────────────────────────── */
+
+function SnapshotDebug() {
+  const [open, setOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [snaps, setSnaps] = useState<TreasurySnapshot[] | null>(null);
+  const [canisterId, setCanisterId] = useState<string | null>(null);
+  const [todaySaved, setTodaySaved] = useState<boolean | null>(null);
+  const [err, setErr] = useState(false);
+
+  async function load() {
+    setLoading(true);
+    setErr(false);
+    try {
+      const [id, list, today] = await Promise.all([
+        getCanisterId(),
+        getHistory(),
+        hasSnapshot(todayStr()),
+      ]);
+      setCanisterId(id);
+      setSnaps(list);
+      setTodaySaved(today);
+    } catch {
+      setErr(true);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function toggle() {
+    const next = !open;
+    setOpen(next);
+    if (next && snaps === null && !loading) load();
+  }
+
+  return (
+    <div className="mt-4 flex flex-col items-center">
+      <button
+        type="button"
+        onClick={toggle}
+        className="text-[11px] font-mono text-muted-foreground/60 hover:text-muted-foreground transition-smooth"
+      >
+        {open ? "ocultar datos guardados" : "ver datos guardados"}
+      </button>
+
+      {open && (
+        <div className="mt-3 w-full max-w-2xl rounded-lg border border-border bg-muted/20 p-3 text-xs font-mono">
+          <div className="mb-2 flex items-center justify-between">
+            <span className="text-muted-foreground">
+              {loading
+                ? "cargando\u2026"
+                : err
+                  ? "error al leer"
+                  : `${snaps?.length ?? 0} snapshot(s)`}
+            </span>
+            <button
+              type="button"
+              onClick={load}
+              disabled={loading}
+              className="text-muted-foreground/70 hover:text-foreground disabled:opacity-40"
+            >
+              refrescar
+            </button>
+          </div>
+
+          <div className="space-y-0.5 text-muted-foreground">
+            <div>
+              canister:{" "}
+              <span
+                style={canisterId ? undefined : { color: "oklch(0.65 0.2 25)" }}
+                className={canisterId ? "text-foreground" : undefined}
+              >
+                {canisterId ?? "no resuelto"}
+              </span>
+            </div>
+            <div>
+              snapshot de hoy ({todayStr()}):{" "}
+              <span className="text-foreground">
+                {todaySaved === null ? "\u2014" : todaySaved ? "s\u00ed" : "no"}
+              </span>
+            </div>
+          </div>
+
+          {snaps && snaps.length > 0 && (
+            <div className="mt-3 overflow-x-auto">
+              <table className="w-full text-left tabular-nums">
+                <thead className="text-muted-foreground/70">
+                  <tr>
+                    <th className="pr-3 font-normal">fecha</th>
+                    <th className="pr-3 font-normal text-right">total</th>
+                    <th className="pr-3 font-normal text-right">ICP</th>
+                    <th className="pr-3 font-normal text-right">WTN</th>
+                    <th className="pr-3 font-normal text-right">OGY</th>
+                  </tr>
+                </thead>
+                <tbody className="text-foreground/80">
+                  {snaps.map((s) => (
+                    <tr key={s.date} className="border-t border-border/50">
+                      <td className="py-0.5 pr-3">{s.date}</td>
+                      <td className="py-0.5 pr-3 text-right">
+                        {fmtUsd(Number(s.total_usd))}
+                      </td>
+                      <td className="py-0.5 pr-3 text-right">
+                        {fmtUsd(Number(s.icp_usd))}
+                      </td>
+                      <td className="py-0.5 pr-3 text-right">
+                        {fmtUsd(Number(s.wtn_usd))}
+                      </td>
+                      <td className="py-0.5 pr-3 text-right">
+                        {fmtUsd(Number(s.ogy_usd))}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {snaps && snaps.length === 0 && !loading && (
+            <p className="mt-2 text-muted-foreground/70">
+              sin snapshots guardados todavía
+            </p>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* ── Page ────────────────────────────────────────────────────────────────── */
 
 export default function TreasuryPage() {
@@ -750,6 +880,8 @@ export default function TreasuryPage() {
         ICP from NNS neurons · OGY and WTN from SNS API ·
         Prices via Binance + CoinGecko + ICPSwap · History on-chain
       </p>
+
+      <SnapshotDebug />
     </section>
   );
 }
