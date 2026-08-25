@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DEFAULTS, type FairValueParams } from "@/lib/fairvalue-calc";
 import {
   getCanisterId,
+  getEnvJsonCanisterId,
   getHistory,
   hasSnapshot,
   saveSnapshot,
@@ -484,6 +485,7 @@ function SnapshotDebug() {
   const [loading, setLoading] = useState(false);
   const [snaps, setSnaps] = useState<TreasurySnapshot[] | null>(null);
   const [canisterId, setCanisterId] = useState<string | null>(null);
+  const [envJsonId, setEnvJsonId] = useState<string | null>(null);
   const [todaySaved, setTodaySaved] = useState<boolean | null>(null);
   const [err, setErr] = useState(false);
 
@@ -491,12 +493,14 @@ function SnapshotDebug() {
     setLoading(true);
     setErr(false);
     try {
-      const [id, list, today] = await Promise.all([
+      const [id, envId, list, today] = await Promise.all([
         getCanisterId(),
+        getEnvJsonCanisterId(),
         getHistory(),
         hasSnapshot(todayStr()),
       ]);
       setCanisterId(id);
+      setEnvJsonId(envId);
       setSnaps(list);
       setTodaySaved(today);
     } catch {
@@ -544,13 +548,17 @@ function SnapshotDebug() {
 
           <div className="space-y-0.5 text-muted-foreground">
             <div>
-              canister:{" "}
+              resolved canister:{" "}
               <span
                 style={canisterId ? undefined : { color: "oklch(0.65 0.2 25)" }}
                 className={canisterId ? "text-foreground" : undefined}
               >
                 {canisterId ?? "not resolved"}
               </span>
+            </div>
+            <div>
+              env.json backend id:{" "}
+              <span className="text-foreground">{envJsonId ?? "\u2014"}</span>
             </div>
             <div>
               today's snapshot ({todayStr()}):{" "}
