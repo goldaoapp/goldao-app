@@ -1,26 +1,38 @@
-import { Gift } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
-import { EmptyState, PageHeader } from "@/components/common";
-import { Card, CardContent } from "@/components/ui/card";
+import RewardsFlow from "./RewardsFlow";
+import RewardsSimulator from "./RewardsSimulator";
 
 export default function RewardsPage() {
   return (
-    <section className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
-      <PageHeader
-        tag="Staking"
-        title="Rewards Simulator"
-        description="Model your staking position, lock duration, and projected APY to estimate your GOLDAO rewards over time."
-      />
+    <div className="mx-auto flex max-w-6xl flex-col gap-6 p-4 sm:p-6 lg:p-10">
+      <div>
+        <h1 className="font-display text-2xl font-bold tracking-tight sm:text-3xl">
+          <span className="text-gradient-gold">Rewards</span>
+        </h1>
+        <p className="mt-1 font-mono text-xs text-muted-foreground sm:text-sm">
+          Simulate your GOLDAO staking rewards, then trace where the reward flow
+          sits in real time.
+        </p>
+      </div>
 
-      <Card className="border-border/80 shadow-subtle">
-        <CardContent className="py-8">
-          <EmptyState
-            icon={Gift}
-            title="Simulator coming soon"
-            description="Staking simulator and real-time reward flow diagram — coming soon."
-          />
-        </CardContent>
-      </Card>
-    </section>
+      <Tabs defaultValue="simulator" className="gap-6">
+        <TabsList className="w-full sm:w-fit">
+          <TabsTrigger value="simulator" className="flex-1 sm:flex-none">
+            Simulator
+          </TabsTrigger>
+          <TabsTrigger value="flow" className="flex-1 sm:flex-none">
+            Reward Flow
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="simulator">
+          <RewardsSimulator />
+        </TabsContent>
+        <TabsContent value="flow">
+          <RewardsFlow />
+        </TabsContent>
+      </Tabs>
+    </div>
   );
 }
