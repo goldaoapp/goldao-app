@@ -1,0 +1,228 @@
+import { useEffect, useState } from "react";
+
+import {
+  ACCENTS,
+  EDGES,
+  type FlowEdge,
+  type FlowNode,
+  NODES,
+  VIEW_H,
+  VIEW_W,
+  edgePath,
+  nodeById,
+} from "./flow-model";
+
+/**
+ * Live on-chain amounts per node keyed by `flowKey`. Empty in v1 — the flow is
+ * design-only. A future data layer fills this map and the nodes light up with
+ * real ICP values without touching layout.
+ */
+type FlowAmounts = Record<string, string>;
+
+function usePrefersReducedMotion(): boolean {
+  const [reduced, setReduced] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
+    setReduced(mq.matches);
+    const on = () => setReduced(mq.matches);
+    mq.addEventListener("change", on);
+    return () => mq.removeEventListener("change", on);
+  }, []);
+  return reduced;
+}
+
+function Edge({ edge, animate }: { edge: FlowEdge; animate: boolean }) {
+  const color = ACCENTS[edge.accent ?? "muted"];
+  const d = edgePath(edge);
+  const pathId = `path-${edge.id}`;
+  return (
+    <g>
+      <path
+        id={pathId}
+        d={d}
+        fill="none"
+        stroke={color}
+        strokeWidth={1.5}
+        strokeOpacity={0.28}
+      />
+      {animate &&
+        [0, 1].map((i) => (
+          <circle key={i} r={3.4} fill={color} opacity={0.9}>
+            <animateMotion
+              dur="3.4s"
+              begin={`${i * 1.7}s`}
+              repeatCount="indefinite"
+              keyPoints="0;1"
+              keyTimes="0;1"
+              calcMode="linear"
+            >
+              <mpath href={`#${pathId}`} />
+            </animateMotion>
+          </circle>
+        ))}
+    </g>
+  );
+}
+
+function Node({ node, amount }: { node: FlowNode; amount?: string }) {
+  const color = ACCENTS[node.accent];
+  const left = node.cx - node.w / 2;
+  const top = node.cy - node.h / 2;
+  const right = node.cx + node.w / 2;
+  const bottom = node.cy + node.h / 2;
+  const hasSub = Boolean(node.sub);
+  const titleY = hasSub ? top + 30 : node.cy + 5;
+
+  return (
+    <g>
+      <rect
+        x={left}
+        y={top}
+        width={node.w}
+        height={node.h}
+        rx={14}
+        fill="oklch(0.2 0 0)"
+        stroke={color}
+        strokeOpacity={0.55}
+        strokeWidth={1.25}
+        strokeDasharray={node.dashed ? "5 4" : undefined}
+      />
+
+      <text
+        x={left + 18}
+        y={titleY}
+        fill="oklch(0.96 0 0)"
+        fontFamily="var(--font-display)"
+        fontSize={16}
+        fontWeight={600}
+      >
+        {node.title}
+      </text>
+
+      {hasSub && (
+        <text
+          x={left + 18}
+          y={top + 48}
+          fill="oklch(0.62 0 0)"
+          fontFamily="var(--font-mono)"
+          fontSize={11}
+        >
+          {node.sub}
+        </text>
+      )}
+
+      {node.tag && (
+        <>
+          <rect
+            x={right - 16 - node.tag.length * 8.4}
+            y={top + 12}
+            width={node.tag.length * 8.4 + 4}
+            height={20}
+            rx={6}
+            fill={color}
+            fillOpacity={0.16}
+          />
+          <text
+            x={right - 14}
+            y={top + 26}
+            textAnchor="end"
+            fill={color}
+            fontFamily="var(--font-mono)"
+            fontSize={12}
+            fontWeight={600}
+          >
+            {node.tag}
+          </text>
+        </>
+      )}
+
+      {node.flowKey && (
+        <text
+          x={left + 18}
+          y={bottom - 14}
+          fill={amount ? color : "oklch(0.5 0 0)"}
+          fontFamily="var(--font-mono)"
+          fontSize={13}
+          fontWeight={amount ? 600 : 400}
+        >
+          {amount ?? "\u2014 ICP"}
+        </text>
+      )}
+    </g>
+  );
+}
+
+export default function RewardsFlow() {
+  const reduced = usePrefersReducedMotion();
+  // v1: no live data yet — every node shows its placeholder slot.
+  const amounts: FlowAmounts = {};
+
+  return (
+    <div className="flex flex-col gap-6">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <p className="max-w-2xl text-sm text-muted-foreground">
+          How ICP maturity from the DAO's NNS neurons moves through the split,
+          buyback cascade, and GLDT job on its way to stakers. Structural values
+          are fixed by governance; per-step ICP amounts go live once wired to
+          the chain.
+        </p>
+        <span className="inline-flex w-fit shrink-0 items-center gap-2 rounded-full border border-border bg-card/60 px-3 py-1.5 text-xs font-mono text-muted-foreground">
+          <span className="inline-block size-1.5 animate-pulse rounded-full bg-primary" />
+          Live amounts — coming soon
+        </span>
+      </div>
+
+      <div className="overflow-x-auto rounded-xl border border-border bg-[oklch(0.16_0_0)] p-2 shadow-subtle">
+        <svg
+          viewBox={`0 0 ${VIEW_W} ${VIEW_H}`}
+          className="h-auto w-full"
+          style={{ minWidth: 720 }}
+          role="img"
+          aria-label="GOLDAO reward flow diagram"
+        >
+          <title>GOLDAO reward flow</title>
+          {EDGES.map((e) => (
+            <Edge key={e.id} edge={e} animate={!reduced} />
+          ))}
+          {NODES.map((n) => (
+            <Node key={n.id} node={n} amount={amounts[n.flowKey ?? ""]} />
+          ))}
+        </svg>
+      </div>
+
+      <FlowLegend />
+    </div>
+  );
+}
+
+function LegendDot({
+  accent,
+  label,
+}: { accent: keyof typeof ACCENTS; label: string }) {
+  return (
+    <span className="inline-flex items-center gap-2 text-xs font-mono text-muted-foreground">
+      <span
+        className="inline-block size-2.5 rounded-full"
+        style={{ background: ACCENTS[accent] }}
+      />
+      {label}
+    </span>
+  );
+}
+
+function FlowLegend() {
+  const anchor = nodeById("distribute");
+  return (
+    <div className="flex flex-col gap-3 rounded-lg border border-border bg-card/50 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
+        <LegendDot accent="green" label="Ratio-conditioned" />
+        <LegendDot accent="red" label="Unconditional (GLDT)" />
+        <LegendDot accent="amber" label="Pre-split diversion" />
+        <LegendDot accent="teal" label="To stakers" />
+      </div>
+      <p className="text-[11px] font-mono text-muted-foreground">
+        Your simulated rewards land at &ldquo;{anchor.title}&rdquo;.
+      </p>
+    </div>
+  );
+}
