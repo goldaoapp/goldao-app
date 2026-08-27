@@ -7,6 +7,7 @@ import {
   RotateCw,
   Trash2,
   Type,
+  Upload,
 } from "lucide-react";
 import {
   forwardRef,
@@ -103,6 +104,8 @@ export const ImageEditor = forwardRef<ImageEditorHandle>((_props, ref) => {
   const [wrapW, setWrapW] = useState(0);
   const scale = wrapW / EXPORT_W;
 
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   const dragRef = useRef<{
     id: string;
     startX: number;
@@ -171,6 +174,37 @@ export const ImageEditor = forwardRef<ImageEditorHandle>((_props, ref) => {
     };
     setLayers((ls) => [...ls, img]);
     setSelectedId(img.id);
+  }, []);
+
+  // Attach a local image just for this session (data URL, never uploaded
+  // anywhere). It exports cleanly since same-origin data URLs don't taint canvas.
+  const onUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = ""; // allow re-selecting the same file
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const src = reader.result as string;
+      const probe = new Image();
+      probe.onload = () => {
+        const ratio = probe.naturalWidth / probe.naturalHeight || 1;
+        const img: ImageLayer = {
+          id: uid(),
+          kind: "image",
+          src,
+          x: 0.5,
+          y: 0.5,
+          opacity: 1,
+          rotation: 0,
+          width: 0.35,
+          ratio,
+        };
+        setLayers((ls) => [...ls, img]);
+        setSelectedId(img.id);
+      };
+      probe.src = src;
+    };
+    reader.readAsDataURL(file);
   }, []);
 
   const removeLayer = useCallback((id: string) => {
@@ -378,6 +412,20 @@ export const ImageEditor = forwardRef<ImageEditorHandle>((_props, ref) => {
           >
             <Type className="size-4" /> Text
           </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => fileInputRef.current?.click()}
+          >
+            <Upload className="size-4" /> Upload
+          </Button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={onUpload}
+          />
           {DECOR_ELEMENTS.map((el) => (
             <Button
               key={el.id}
