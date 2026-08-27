@@ -5,6 +5,7 @@ import {
 } from "@tanstack/react-router";
 
 import Layout from "@/components/Layout";
+import AdminPage from "@/pages/admin/AdminPage";
 import DocumentationPage from "@/pages/documentation/DocumentationPage";
 import FairValuePage from "@/pages/fair-value/FairValuePage";
 import HomePage from "@/pages/home/HomePage";
@@ -59,6 +60,12 @@ const newsRoute = createRoute({
   component: NewsPage,
 });
 
+const adminRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/admin",
+  component: AdminPage,
+});
+
 const routeTree = rootRoute.addChildren([
   homeRoute,
   treasuryRoute,
@@ -67,6 +74,7 @@ const routeTree = rootRoute.addChildren([
   fairValueRoute,
   documentationRoute,
   newsRoute,
+  adminRoute,
 ]);
 
 export const router = createRouter({
