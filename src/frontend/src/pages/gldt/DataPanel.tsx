@@ -34,16 +34,16 @@ export function DataPanel({
       label: "Price (ICP)",
       value: d?.priceIcp != null ? `${fmtNum(d.priceIcp, 4)} ICP` : "—",
     },
+    { label: "24h change", value: fmtPct(d?.priceChange24h ?? null, 2) },
     {
       label: "Market cap",
       value: fmtUsdCompact(d?.marketCapUsd ?? null),
       insert: fmtUsd(d?.marketCapUsd ?? null, 0),
     },
+    { label: "FDV", value: fmtUsdCompact(d?.fdvUsd ?? null) },
     { label: "Volume 24h", value: fmtUsd(d?.volume24hUsd ?? null, 2) },
-    { label: "Volume 7d", value: fmtUsd(d?.volume7dUsd ?? null, 2) },
-    { label: "Volume total", value: fmtUsdCompact(d?.totalVolumeUsd ?? null) },
-    { label: "Fees (USD)", value: fmtUsd(d?.feesUsd ?? null, 2) },
-    { label: "Trades", value: fmtNum(d?.txCount ?? null, 0) },
+    { label: "Liquidity (TVL)", value: fmtUsdCompact(d?.tvlUsd ?? null) },
+    { label: "Trades 24h", value: fmtNum(d?.trades24h ?? null, 0) },
     { label: "Pair", value: d?.pair ?? "—" },
   ];
 
@@ -117,7 +117,11 @@ export function DataPanel({
         </p>
       ) : (
         <div className="flex flex-col gap-4">
-          <Group title="Market · ICPSwap" rows={market} onInsert={onInsert} />
+          <Group
+            title="Market · GeckoTerminal"
+            rows={market}
+            onInsert={onInsert}
+          />
           <Group
             title="Supply & backing · on-chain"
             rows={supply}
@@ -128,8 +132,9 @@ export function DataPanel({
       )}
 
       <p className="mt-4 border-t border-border pt-3 text-[11px] leading-relaxed text-muted-foreground">
-        Sources: GLDT ledger ({GLDT_LEDGER_ID.slice(0, 5)}…) and ICPSwap pool (
-        {GLDT_POOL_ID.slice(0, 5)}…) on-chain; ICP via Coinbase; gold spot via
+        Sources: GLDT ledger ({GLDT_LEDGER_ID.slice(0, 5)}…) on-chain; market
+        via GeckoTerminal for the ICPSwap pool ({GLDT_POOL_ID.slice(0, 5)}…),
+        with an on-chain quote fallback; ICP via Coinbase; gold spot via
         gold-api.com. 1 GLDT = 0.01 g gold.
       </p>
     </div>
