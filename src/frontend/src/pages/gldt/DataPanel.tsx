@@ -1,5 +1,9 @@
 import { Button } from "@/components/ui/button";
-import { GLDT_LEDGER_ID, GLDT_POOL_ID, type GldtData } from "@/lib/gldt-data";
+import {
+  GLDT_LEDGER_ID,
+  GLDT_USDT_POOL_ID,
+  type GldtData,
+} from "@/lib/gldt-data";
 import { Check, Copy, Plus, RefreshCw } from "lucide-react";
 import { useState } from "react";
 import { fmtNum, fmtPct, fmtUsd, fmtUsdCompact } from "./types";
@@ -29,22 +33,33 @@ export function DataPanel({
   const d = data;
 
   const market: Row[] = [
-    { label: "Price (USD)", value: fmtUsd(d?.priceUsd ?? null, 4) },
+    {
+      label: "Price · aggregate",
+      value: fmtUsd(d?.priceUsdGecko ?? null, 4),
+    },
+    {
+      label: "Price · ckUSDT pool",
+      value: fmtUsd(d?.priceUsdOnchain ?? null, 4),
+    },
     {
       label: "Price (ICP)",
       value: d?.priceIcp != null ? `${fmtNum(d.priceIcp, 4)} ICP` : "—",
     },
-    { label: "24h change", value: fmtPct(d?.priceChange24h ?? null, 2) },
     {
       label: "Market cap",
       value: fmtUsdCompact(d?.marketCapUsd ?? null),
       insert: fmtUsd(d?.marketCapUsd ?? null, 0),
     },
     { label: "FDV", value: fmtUsdCompact(d?.fdvUsd ?? null) },
-    { label: "Volume 24h", value: fmtUsd(d?.volume24hUsd ?? null, 2) },
-    { label: "Liquidity (TVL)", value: fmtUsdCompact(d?.tvlUsd ?? null) },
-    { label: "Trades 24h", value: fmtNum(d?.trades24h ?? null, 0) },
-    { label: "Pair", value: d?.pair ?? "—" },
+    {
+      label: "TVL · all pools",
+      value: fmtUsdCompact(d?.tvlTotalUsd ?? null),
+      insert: fmtUsd(d?.tvlTotalUsd ?? null, 0),
+    },
+    {
+      label: "Volume 24h · all pools",
+      value: fmtUsd(d?.volume24hUsd ?? null, 2),
+    },
   ];
 
   const supply: Row[] = [
@@ -132,10 +147,11 @@ export function DataPanel({
       )}
 
       <p className="mt-4 border-t border-border pt-3 text-[11px] leading-relaxed text-muted-foreground">
-        Sources: GLDT ledger ({GLDT_LEDGER_ID.slice(0, 5)}…) on-chain; market
-        via GeckoTerminal for the ICPSwap pool ({GLDT_POOL_ID.slice(0, 5)}…),
-        with an on-chain quote fallback; ICP via Coinbase; gold spot via
-        gold-api.com. 1 GLDT = 0.01 g gold.
+        Sources: GLDT ledger ({GLDT_LEDGER_ID.slice(0, 5)}…) on-chain. Price /
+        TVL / volume aggregated across all pools via GeckoTerminal; second price
+        from the on-chain ICPSwap quote on the deepest pool (
+        {GLDT_USDT_POOL_ID.slice(0, 5)}…, GLDT/ckUSDT). ICP via Coinbase; gold
+        spot via gold-api.com. 1 GLDT = 0.01 g gold.
       </p>
     </div>
   );
