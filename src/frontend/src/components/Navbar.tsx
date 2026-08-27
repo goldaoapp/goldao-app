@@ -8,13 +8,16 @@ import {
   Gift,
   Home,
   Lock,
+  LogOut,
   type LucideIcon,
   Scale,
+  Shield,
   Wallet,
 } from "lucide-react";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/context/AuthContext";
 import { cn } from "@/lib/utils";
 
 type NavItem = {
@@ -159,20 +162,81 @@ export function Sidebar() {
           )}
         </button>
 
-        {/* Connect wallet */}
-        <Button
-          data-ocid="nav.connect_wallet"
-          size="sm"
-          className={cn(
-            "rounded-full gradient-primary text-primary-foreground font-medium shadow-subtle hover:opacity-90 transition-opacity",
-            collapsed && "rounded-lg px-0 w-full",
-          )}
-        >
-          <Wallet className="size-4 flex-shrink-0" />
-          {!collapsed && "Connect Wallet"}
-        </Button>
+        {/* Auth / Connect wallet */}
+        <AuthControls collapsed={collapsed} />
       </div>
     </aside>
+  );
+}
+
+/* ─── Auth controls (sidebar bottom) ─── */
+function AuthControls({ collapsed }: { collapsed: boolean }) {
+  const { isAuthenticated, isLoading, isAdmin, principalId, login, logout } =
+    useAuth();
+
+  if (!isAuthenticated) {
+    return (
+      <Button
+        data-ocid="nav.connect_wallet"
+        size="sm"
+        onClick={() => login()}
+        disabled={isLoading}
+        title={collapsed ? "Connect Wallet" : undefined}
+        className={cn(
+          "rounded-full gradient-primary text-primary-foreground font-medium shadow-subtle hover:opacity-90 transition-opacity",
+          collapsed && "rounded-lg px-0 w-full",
+        )}
+      >
+        <Wallet className="size-4 flex-shrink-0" />
+        {!collapsed && (isLoading ? "…" : "Connect Wallet")}
+      </Button>
+    );
+  }
+
+  const short = principalId
+    ? `${principalId.slice(0, 5)}…${principalId.slice(-3)}`
+    : "";
+
+  return (
+    <div className="flex flex-col gap-1.5">
+      {!collapsed && principalId && (
+        <span
+          className="px-1 font-mono text-[11px] text-muted-foreground truncate"
+          title={principalId}
+        >
+          {short}
+        </span>
+      )}
+
+      {isAdmin && (
+        <Link
+          to="/admin"
+          data-ocid="nav.admin"
+          title={collapsed ? "Panel Admin" : undefined}
+          className={cn(
+            "flex items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] font-medium text-primary hover:bg-primary/12 transition-smooth outline-none focus-visible:ring-2 focus-visible:ring-ring",
+            collapsed && "justify-center px-0",
+          )}
+        >
+          <Shield className="size-[18px] flex-shrink-0" aria-hidden="true" />
+          {!collapsed && "Panel Admin"}
+        </Link>
+      )}
+
+      <button
+        type="button"
+        onClick={logout}
+        data-ocid="nav.logout"
+        title={collapsed ? "Salir" : undefined}
+        className={cn(
+          "flex items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] font-medium text-muted-foreground hover:text-foreground hover:bg-secondary transition-smooth outline-none focus-visible:ring-2 focus-visible:ring-ring",
+          collapsed && "justify-center px-0",
+        )}
+      >
+        <LogOut className="size-[18px] flex-shrink-0" aria-hidden="true" />
+        {!collapsed && "Salir"}
+      </button>
+    </div>
   );
 }
 
@@ -219,6 +283,7 @@ const MORE_ITEMS: NavItem[] = [
 
 function MoreMenu({ pathname }: { pathname: string }) {
   const [open, setOpen] = useState(false);
+  const { isAuthenticated, isLoading, isAdmin, login, logout } = useAuth();
   const moreActive = MORE_ITEMS.some((item) => isActive(pathname, item.to));
 
   return (
@@ -274,6 +339,47 @@ function MoreMenu({ pathname }: { pathname: string }) {
                 </Link>
               );
             })}
+
+            <div className="my-1 border-t border-border" />
+
+            {!isAuthenticated ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setOpen(false);
+                  login();
+                }}
+                disabled={isLoading}
+                className="flex w-full items-center gap-2.5 px-4 py-2.5 text-[13px] font-medium text-primary transition-colors"
+              >
+                <Wallet className="size-4" aria-hidden="true" />
+                Connect Wallet
+              </button>
+            ) : (
+              <>
+                {isAdmin && (
+                  <Link
+                    to="/admin"
+                    onClick={() => setOpen(false)}
+                    className="flex items-center gap-2.5 px-4 py-2.5 text-[13px] font-medium text-primary transition-colors"
+                  >
+                    <Shield className="size-4" aria-hidden="true" />
+                    Panel Admin
+                  </Link>
+                )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOpen(false);
+                    logout();
+                  }}
+                  className="flex w-full items-center gap-2.5 px-4 py-2.5 text-[13px] font-medium text-muted-foreground transition-colors"
+                >
+                  <LogOut className="size-4" aria-hidden="true" />
+                  Salir
+                </button>
+              </>
+            )}
           </div>
         </>
       )}
