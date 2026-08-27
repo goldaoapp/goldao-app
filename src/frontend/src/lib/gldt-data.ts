@@ -1,21 +1,23 @@
 /**
- * GLDT token live data.
+ * GLDT token live data — two independent sources for the key figures.
  *
- * Pulls, in parallel and independently (a failing source never breaks the rest):
- *  - GLDT ledger (ICRC-1, on-chain)  -> total supply, decimals, fee, symbol
- *  - GeckoTerminal (CORS, no key)    -> USD price, 24h volume, TVL, 24h change,
- *                                       trades, FDV for the GLDT/ICP pool
- *  - Coinbase spot                   -> ICP/USD (for the GLDT/ICP figure)
- *  - gold-api.com (CORS, no key)     -> gold spot USD/oz
+ *  - GLDT ledger (ICRC-1, on-chain)   -> total supply, decimals, fee, symbol
+ *  - GeckoTerminal token endpoint     -> AGGREGATED price, TVL and 24h volume
+ *                                        across ALL GLDT pools, plus FDV.
+ *                                        (Same data ICPSwap's token page shows.)
+ *  - ICPSwap on-chain quote           -> a second, independent price, taken from
+ *                                        the deepest pool GLDT/ckUSDT (stable
+ *                                        pair, so it reads directly in USD).
+ *  - Coinbase spot                    -> ICP/USD (for the GLDT/ICP figure)
+ *  - gold-api.com                     -> gold spot USD/oz
  *
- * Price falls back to an on-chain ICPSwap pool quote if GeckoTerminal is down.
- * Then derives gold-backing and premium/discount metrics.
+ * The canonical price used for derived metrics is the GeckoTerminal aggregate
+ * (representative across pools), falling back to the on-chain quote.
  *
  * GLDT peg: 1 GLDT = 0.01 g of gold  (100 GLDT = 1 g).
- * Pool 4omhz-…-cai is GLDT/ICP (both 8 decimals).
  */
 
-import { getPoolRatio } from "@/lib/icpswap-quote";
+import { getPoolQuote } from "@/lib/icpswap-quote";
 import { Actor, HttpAgent } from "@dfinity/agent";
 import type { IDL as IDLType } from "@dfinity/candid";
 import { useQuery } from "@tanstack/react-query";
@@ -23,9 +25,10 @@ import { useQuery } from "@tanstack/react-query";
 /* ── Constants ───────────────────────────────────────────────────────────── */
 
 export const GLDT_LEDGER_ID = "6c7su-kiaaa-aaaar-qaira-cai";
-export const GLDT_POOL_ID = "4omhz-yiaaa-aaaag-qnalq-cai";
+// Deepest GLDT pool on ICPSwap (GLDT/ckUSDT). Used for the on-chain price.
+export const GLDT_USDT_POOL_ID = "4jnbn-vqaaa-aaaag-qnala-cai";
 const IC_HOST = "https://icp-api.io";
-const GECKO_POOL_URL = `https://api.geckoterminal.com/api/v2/networks/icp/pools/${GLDT_POOL_ID}`;
+const GECKO_TOKEN_URL = `https://api.geckoterminal.com/api/v2/networks/icp/tokens/${GLDT_LEDGER_ID}`;
 
 const GLDT_PER_GRAM = 100; // 1 g gold = 100 GLDT
 const TROY_OZ_G = 31.1034768;
@@ -37,8 +40,6 @@ function getAgent(): Promise<HttpAgent> {
   if (!agentPromise) agentPromise = HttpAgent.create({ host: IC_HOST });
   return agentPromise;
 }
-
-/* ── Helpers ─────────────────────────────────────────────────────────────── */
 
 function num(v: number | null | undefined): number | null {
   return v !== null && v !== undefined && Number.isFinite(v) ? v : null;
@@ -59,6 +60,11 @@ const ledgerIdl = (({ IDL }: { IDL: typeof IDLType }) =>
     icrc1_fee: IDL.Func([], [IDL.Nat], ["query"]),
     icrc1_symbol: IDL.Func([], [IDL.Text], ["query"]),
     icrc1_name: IDL.Func([], [IDL.Text], ["query"]),
+  })) as unknown as Parameters<typeof Actor.createActor>[0];
+
+const decimalsIdl = (({ IDL }: { IDL: typeof IDLType }) =>
+  IDL.Service({
+    icrc1_decimals: IDL.Func([], [IDL.Nat8], ["query"]),
   })) as unknown as Parameters<typeof Actor.createActor>[0];
 
 interface LedgerInfo {
@@ -93,20 +99,23 @@ async function fetchLedger(): Promise<LedgerInfo> {
   };
 }
 
-/* ── GeckoTerminal (market data for the GLDT/ICP pool) ───────────────────── */
-
-interface GeckoStats {
-  priceUsd: number | null;
-  volume24hUsd: number | null;
-  tvlUsd: number | null;
-  priceChange24h: number | null;
-  fdvUsd: number | null;
-  trades24h: number | null;
-  pair: string | null;
+async function fetchTokenDecimals(canisterId: string): Promise<number> {
+  const agent = await getAgent();
+  const actor = Actor.createActor(decimalsIdl, { agent, canisterId });
+  return Number((await actor.icrc1_decimals()) as number);
 }
 
-async function fetchGecko(): Promise<GeckoStats> {
-  const res = await fetch(GECKO_POOL_URL, {
+/* ── GeckoTerminal token endpoint (aggregated across all GLDT pools) ─────── */
+
+interface GeckoToken {
+  priceUsd: number | null;
+  tvlTotalUsd: number | null; // reserve summed across all pools
+  volume24hUsd: number | null; // volume summed across all pools
+  fdvUsd: number | null;
+}
+
+async function fetchGeckoToken(): Promise<GeckoToken> {
+  const res = await fetch(GECKO_TOKEN_URL, {
     headers: { accept: "application/json" },
   });
   if (!res.ok) throw new Error(`GeckoTerminal ${res.status}`);
@@ -114,34 +123,16 @@ async function fetchGecko(): Promise<GeckoStats> {
     data?: { attributes?: Record<string, unknown> };
   };
   const a = json.data?.attributes ?? {};
-
-  const name = typeof a.name === "string" ? a.name : null;
-  // For the GLDT/ICP pool GLDT is the base token. Guard in case the order flips.
-  const baseIsGldt = !name || name.trim().toUpperCase().startsWith("GLDT");
-  const priceUsd = parseNum(
-    baseIsGldt ? a.base_token_price_usd : a.quote_token_price_usd,
-  );
-
   const vol = a.volume_usd as Record<string, unknown> | undefined;
-  const chg = a.price_change_percentage as Record<string, unknown> | undefined;
-  const tx = a.transactions as
-    | { h24?: { buys?: number; sells?: number } }
-    | undefined;
-  const trades =
-    tx?.h24 != null ? (num(tx.h24.buys) ?? 0) + (num(tx.h24.sells) ?? 0) : null;
-
   return {
-    priceUsd,
+    priceUsd: parseNum(a.price_usd),
+    tvlTotalUsd: parseNum(a.total_reserve_in_usd),
     volume24hUsd: parseNum(vol?.h24),
-    tvlUsd: parseNum(a.reserve_in_usd),
-    priceChange24h: parseNum(chg?.h24),
     fdvUsd: parseNum(a.fdv_usd),
-    trades24h: trades,
-    pair: name,
   };
 }
 
-/* ── On-chain price fallback (ICPSwap pool quote) ────────────────────────── */
+/* ── ICPSwap on-chain price (deepest pool, GLDT/ckUSDT ≈ USD) ─────────────── */
 
 const poolMetaIdl = (({ IDL }: { IDL: typeof IDLType }) => {
   const Token = IDL.Record({ address: IDL.Text, standard: IDL.Text });
@@ -159,26 +150,32 @@ const poolMetaIdl = (({ IDL }: { IDL: typeof IDLType }) => {
   });
 }) as unknown as Parameters<typeof Actor.createActor>[0];
 
-/** Returns GLDT price in USD from the pool quote, or null. */
-async function fetchOnchainPrice(
-  icpUsd: number | null,
-): Promise<number | null> {
-  if (!icpUsd) return null;
+async function fetchOnchainPriceUsd(): Promise<number | null> {
   try {
     const agent = await getAgent();
-    const actor = Actor.createActor(poolMetaIdl, {
+    const pool = Actor.createActor(poolMetaIdl, {
       agent,
-      canisterId: GLDT_POOL_ID,
+      canisterId: GLDT_USDT_POOL_ID,
     });
-    const meta = (await actor.metadata()) as
+    const meta = (await pool.metadata()) as
       | { ok: { token0: { address: string }; token1: { address: string } } }
       | { err: string };
     if (!("ok" in meta)) return null;
 
-    // Quote GLDT -> ICP. zeroForOne = token0->token1.
     const gldtIsToken0 = meta.ok.token0.address === GLDT_LEDGER_ID;
-    const icpPerGldt = await getPoolRatio(GLDT_POOL_ID, gldtIsToken0);
-    return icpPerGldt != null ? icpPerGldt * icpUsd : null;
+    const quoteTokenId = gldtIsToken0
+      ? meta.ok.token1.address
+      : meta.ok.token0.address;
+    const quoteDecimals = await fetchTokenDecimals(quoteTokenId);
+
+    // Quote 1 GLDT (1e8 units) -> ckUSDT. zeroForOne = token0 -> token1.
+    const out = await getPoolQuote(
+      GLDT_USDT_POOL_ID,
+      "100000000",
+      gldtIsToken0,
+    );
+    if (out === null) return null;
+    return Number(out) / 10 ** quoteDecimals; // ckUSDT ≈ USD
   } catch {
     return null;
   }
@@ -212,17 +209,16 @@ export interface GldtData {
   decimals: number | null;
   transferFee: number | null;
   totalSupply: number | null;
-  // market
-  priceUsd: number | null;
+  // market — two price sources + aggregated figures
+  priceUsd: number | null; // canonical (gecko aggregate, else on-chain)
+  priceUsdGecko: number | null;
+  priceUsdOnchain: number | null;
   priceIcp: number | null;
   icpUsd: number | null;
-  priceChange24h: number | null;
-  volume24hUsd: number | null;
-  tvlUsd: number | null;
-  trades24h: number | null;
-  fdvUsd: number | null;
-  pair: string | null;
   marketCapUsd: number | null;
+  fdvUsd: number | null;
+  tvlTotalUsd: number | null;
+  volume24hUsd: number | null;
   // gold
   goldSpotOzUsd: number | null;
   goldGramsBacked: number | null;
@@ -236,24 +232,26 @@ export interface GldtData {
 }
 
 async function fetchGldtData(): Promise<GldtData> {
-  const [ledgerR, geckoR, icpR, goldR] = await Promise.allSettled([
+  const [ledgerR, geckoR, onchainR, icpR, goldR] = await Promise.allSettled([
     fetchLedger(),
-    fetchGecko(),
+    fetchGeckoToken(),
+    fetchOnchainPriceUsd(),
     fetchIcpUsd(),
     fetchGoldOzUsd(),
   ]);
 
   const ledger = ledgerR.status === "fulfilled" ? ledgerR.value : null;
   const gecko = geckoR.status === "fulfilled" ? geckoR.value : null;
+  const onchainPrice = onchainR.status === "fulfilled" ? onchainR.value : null;
   const icpUsd = icpR.status === "fulfilled" ? icpR.value : null;
   const goldOz = goldR.status === "fulfilled" ? goldR.value : null;
 
   const totalSupply = num(ledger?.totalSupply);
   const goldSpotOzUsd = num(goldOz);
 
-  // Price: GeckoTerminal first, on-chain quote as a fallback.
-  let priceUsd = num(gecko?.priceUsd);
-  if (priceUsd === null) priceUsd = await fetchOnchainPrice(icpUsd);
+  const priceUsdGecko = num(gecko?.priceUsd);
+  const priceUsdOnchain = num(onchainPrice);
+  const priceUsd = priceUsdGecko ?? priceUsdOnchain;
 
   const marketCapUsd =
     totalSupply !== null && priceUsd !== null ? totalSupply * priceUsd : null;
@@ -283,15 +281,14 @@ async function fetchGldtData(): Promise<GldtData> {
     transferFee: num(ledger?.fee),
     totalSupply,
     priceUsd,
+    priceUsdGecko,
+    priceUsdOnchain,
     priceIcp,
     icpUsd: num(icpUsd),
-    priceChange24h: num(gecko?.priceChange24h),
-    volume24hUsd: num(gecko?.volume24hUsd),
-    tvlUsd: num(gecko?.tvlUsd),
-    trades24h: num(gecko?.trades24h),
-    fdvUsd: num(gecko?.fdvUsd),
-    pair: gecko?.pair ?? null,
     marketCapUsd,
+    fdvUsd: num(gecko?.fdvUsd),
+    tvlTotalUsd: num(gecko?.tvlTotalUsd),
+    volume24hUsd: num(gecko?.volume24hUsd),
     goldSpotOzUsd,
     goldGramsBacked,
     goldOzBacked,
