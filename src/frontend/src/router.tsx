@@ -8,6 +8,7 @@ import Layout from "@/components/Layout";
 import AdminPage from "@/pages/admin/AdminPage";
 import DocumentationPage from "@/pages/documentation/DocumentationPage";
 import FairValuePage from "@/pages/fair-value/FairValuePage";
+import GldtPage from "@/pages/gldt/GldtPage";
 import HomePage from "@/pages/home/HomePage";
 import NewsPage from "@/pages/news/NewsPage";
 import ProposalsPage from "@/pages/proposals/ProposalsPage";
@@ -66,6 +67,13 @@ const adminRoute = createRoute({
   component: AdminPage,
 });
 
+// Not added to the nav on purpose — reachable only by typing /gldt.
+const gldtRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/gldt",
+  component: GldtPage,
+});
+
 const routeTree = rootRoute.addChildren([
   homeRoute,
   treasuryRoute,
@@ -75,6 +83,7 @@ const routeTree = rootRoute.addChildren([
   documentationRoute,
   newsRoute,
   adminRoute,
+  gldtRoute,
 ]);
 
 export const router = createRouter({
