@@ -63,13 +63,25 @@ function isConsistent(a: Reading, b: Reading): boolean {
   );
 }
 
-/** All prices populated */
+/** All three components (amount × price) must be populated — a 0 in any of
+ *  ICP, OGY or WTN means that leg failed to load, so the snapshot is skipped
+ *  until every value is real. */
 function isComplete(r: Reading): boolean {
-  return r.icp_usd > 0 && r.total_usd > 0;
+  return (
+    r.icp_usd > 0 && r.ogy_usd > 0 && r.wtn_usd > 0 && r.total_usd > 0
+  );
 }
 
 function todayStr(): string {
   return new Date().toISOString().slice(0, 10);
+}
+
+/** A snapshot is chart-worthy only if all three legs loaded — snapshots with a
+ *  $0 in ICP, OGY or WTN are dropped from the chart (not deleted on-chain). */
+function isChartable(s: TreasurySnapshot): boolean {
+  return (
+    Number(s.icp_usd) > 0 && Number(s.ogy_usd) > 0 && Number(s.wtn_usd) > 0
+  );
 }
 
 /* ── Helpers ─────────────────────────────────────────────────────────────── */
@@ -799,14 +811,20 @@ export default function TreasuryPage() {
     });
   }, [reading]);
 
+  // Only snapshots with all three legs present feed the chart and day-over-day.
+  const validHistory = useMemo(
+    () => history.filter(isChartable),
+    [history],
+  );
+
   // ── Day-over-day ──
   const dayChange = useMemo(() => {
-    if (history.length < 2) return null;
-    const prev = Number(history[history.length - 2].total_usd);
-    const curr = Number(history[history.length - 1].total_usd);
+    if (validHistory.length < 2) return null;
+    const prev = Number(validHistory[validHistory.length - 2].total_usd);
+    const curr = Number(validHistory[validHistory.length - 1].total_usd);
     const diff = curr - prev;
     return { diff, pct: prev > 0 ? (diff / prev) * 100 : 0 };
-  }, [history]);
+  }, [validHistory]);
 
   const isLoading = totalUsd === 0;
 
@@ -828,8 +846,8 @@ export default function TreasuryPage() {
   const rangeDays =
     chartRange === "30" ? 30 : chartRange === "90" ? 90 : Infinity;
   const chartData = Number.isFinite(rangeDays)
-    ? history.slice(-rangeDays)
-    : history;
+    ? validHistory.slice(-rangeDays)
+    : validHistory;
   const chartViews = [
     { key: "trend" as const, label: "Trend", icon: TrendingUp },
     { key: "composition" as const, label: "Composition", icon: Layers },
@@ -945,13 +963,13 @@ export default function TreasuryPage() {
                   {chartMeta.title}
                 </CardTitle>
                 <p className="text-xs text-muted-foreground mt-0.5">
-                  {history.length > 0
+                  {validHistory.length > 0
                     ? `${chartData.length} day${chartData.length !== 1 ? "s" : ""} · ${chartMeta.subtitle}`
                     : "Daily USD value recorded on-chain"}
                 </p>
               </div>
             </div>
-            {history.length >= 2 && (
+            {validHistory.length >= 2 && (
               <div className="flex items-center gap-2 flex-wrap">
                 <div className="flex gap-1 p-1 rounded-lg border border-border bg-muted/40">
                   {chartRanges.map((r) => {
@@ -997,7 +1015,7 @@ export default function TreasuryPage() {
           </div>
         </CardHeader>
         <CardContent>
-          {history.length >= 2 ? (
+          {validHistory.length >= 2 ? (
             chartView === "trend" ? (
               <TrendView data={chartData} />
             ) : chartView === "composition" ? (
@@ -1011,7 +1029,7 @@ export default function TreasuryPage() {
                 <Wallet className="h-6 w-6" />
               </div>
               <p className="text-sm font-medium text-muted-foreground">
-                {history.length === 1
+                {validHistory.length === 1
                   ? "First snapshot recorded — chart appears tomorrow"
                   : "Chart builds as daily snapshots accumulate"}
               </p>
