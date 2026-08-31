@@ -1,6 +1,7 @@
 import { DEFAULTS, type FairValueParams, calcular } from "@/lib/fairvalue-calc";
 import { useLiveData } from "@/lib/use-live-data";
-import { useMemo } from "react";
+import { Info } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 /* ── Page ──────────────────────────────────────────────────────────────── */
 
@@ -66,11 +67,13 @@ export default function HomePage() {
           <StatCard
             value={stats.marketRatio !== null ? String(stats.marketRatio) : "—"}
             label="ICP / GOLDAO Ratio"
+            info="Current market rate: how many GOLDAO one ICP buys right now on ICPSwap. A higher number means GOLDAO is cheaper relative to ICP."
             accent
           />
           <StatCard
             value={stats.equilibrium !== null ? String(stats.equilibrium) : "—"}
             label="ICP / GOLDAO Equilibrium"
+            info="Break-even ratio: the GOLDAO-per-ICP price at which holding GOLDAO yields the same annual return as staking ICP in the NNS. When the market ratio is above it, GOLDAO is comparatively cheap; below it, staking ICP wins."
             accent
           />
           <StatCard
@@ -80,6 +83,7 @@ export default function HomePage() {
                 : "—"
             }
             label="Total Burn"
+            info="Cumulative GOLDAO permanently removed from circulation by the buyback-and-burn canister since launch."
           />
           <StatCard
             value={
@@ -88,6 +92,7 @@ export default function HomePage() {
                 : "—"
             }
             label="Supply"
+            info="Total GOLDAO tokens currently in existence, net of everything already burned."
           />
         </div>
       </section>
@@ -98,9 +103,22 @@ export default function HomePage() {
           Treasury Overview
         </h2>
         <div className="grid grid-cols-3 gap-3">
-          <StatCard value="580 K" label="ICP" accent />
-          <StatCard value={fmtOgy} label="OGY" />
-          <StatCard value={fmtWtn} label="WTN" />
+          <StatCard
+            value="580 K"
+            label="ICP"
+            info="ICP held by the DAO across its NNS neurons — the treasury's core reserve and the source of all reward flows."
+            accent
+          />
+          <StatCard
+            value={fmtOgy}
+            label="OGY"
+            info="An OGY neuron owned by Gold DAO, staked in ORIGYN's SNS."
+          />
+          <StatCard
+            value={fmtWtn}
+            label="WTN"
+            info="The combined balance of all WTN (Water Neuron) neurons owned by Gold DAO."
+          />
         </div>
       </section>
 
@@ -114,6 +132,7 @@ export default function HomePage() {
                 : "—"
             }
             label="Active / Total Proposals"
+            info="Currently open SNS governance proposals versus the total ever submitted to the GOLDAO DAO."
           />
           <StatCard
             value={
@@ -122,10 +141,12 @@ export default function HomePage() {
                 : "—"
             }
             label="Members"
+            info="Number of GOLDAO governance participants — distinct neuron holders in the SNS."
           />
           <StatCard
             value={stats.apyEfectivo !== null ? `${stats.apyEfectivo}%` : "—"}
             label="Effective APY (ICP)"
+            info="Estimated annual return for an eligible GOLDAO staker, expressed as ICP-equivalent yield at the current market ratio."
             accent
           />
         </div>
@@ -137,20 +158,23 @@ export default function HomePage() {
 function StatCard({
   value,
   label,
+  info,
   accent = false,
 }: {
   value: string;
   label: string;
+  info?: string;
   accent?: boolean;
 }) {
   return (
     <div
-      className={
+      className={`relative rounded-lg p-4 sm:p-5 text-center ${
         accent
-          ? "rounded-lg border border-primary/15 bg-gradient-to-br from-primary/8 to-primary/2 p-4 sm:p-5 text-center"
-          : "rounded-lg border border-border bg-card/50 p-4 sm:p-5 text-center"
-      }
+          ? "border border-primary/15 bg-gradient-to-br from-primary/8 to-primary/2"
+          : "border border-border bg-card/50"
+      }`}
     >
+      {info && <InfoTip text={info} />}
       <div
         className={`font-mono text-lg sm:text-xl lg:text-2xl font-bold ${accent ? "text-primary" : "text-foreground"}`}
       >
@@ -159,6 +183,54 @@ function StatCard({
       <div className="text-[10px] sm:text-xs text-muted-foreground mt-1 leading-snug">
         {label}
       </div>
+    </div>
+  );
+}
+
+/* Small info affordance: opens on hover (desktop) and on tap (mobile). */
+function InfoTip({ text }: { text: string }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    function onDown(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") setOpen(false);
+    }
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
+  return (
+    <div
+      ref={ref}
+      className="absolute right-1.5 top-1.5 z-10"
+      onMouseEnter={() => setOpen(true)}
+      onMouseLeave={() => setOpen(false)}
+    >
+      <button
+        type="button"
+        aria-label="What does this mean?"
+        onClick={() => setOpen((o) => !o)}
+        className="flex h-5 w-5 items-center justify-center rounded-full text-muted-foreground/40 hover:text-primary transition-smooth"
+      >
+        <Info className="h-3.5 w-3.5" />
+      </button>
+      {open && (
+        <div
+          role="tooltip"
+          className="absolute right-0 top-6 z-20 w-40 max-w-[calc(100vw-2rem)] rounded-lg border border-border bg-popover px-3 py-2 text-left text-[11px] font-normal normal-case leading-snug text-popover-foreground shadow-elevated"
+        >
+          {text}
+        </div>
+      )}
     </div>
   );
 }
