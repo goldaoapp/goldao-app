@@ -82,9 +82,18 @@ function tokenReward(
   return base;
 }
 
-export function simulate(pools: RewardPools, userGoldao: number): RewardResult {
+export function simulate(
+  pools: RewardPools,
+  userGoldao: number,
+  shareOverride?: number,
+): RewardResult {
   const eligible = pools.goldao_eligible > 0 ? pools.goldao_eligible : 0;
-  const share = eligible > 0 ? userGoldao / eligible : 0;
+  const share =
+    shareOverride !== undefined
+      ? shareOverride
+      : eligible > 0
+        ? userGoldao / eligible
+        : 0;
 
   const icp = tokenReward(
     "ICP",
