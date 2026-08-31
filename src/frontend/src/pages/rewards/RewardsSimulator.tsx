@@ -404,6 +404,18 @@ export default function RewardsSimulator() {
                       label="Stake"
                       value={`${fmtInt(neuron.goldao)} GOLDAO`}
                     />
+                    {neuron.votingPower !== null && (
+                      <ResolvedRow
+                        label="Voting power"
+                        value={
+                          neuron.goldao > 0
+                            ? `${fmtInt(neuron.votingPower)} VP · ${(
+                                neuron.votingPower / neuron.goldao
+                              ).toFixed(2)}×`
+                            : `${fmtInt(neuron.votingPower)} VP`
+                        }
+                      />
+                    )}
                     <ResolvedRow
                       label="Dissolve delay"
                       value={fmtDelay(neuron.dissolveDelaySeconds)}
