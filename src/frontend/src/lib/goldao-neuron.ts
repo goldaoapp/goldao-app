@@ -1,7 +1,7 @@
 /**
  * Look up a single GOLDAO SNS neuron by id via the public SNS API.
- * Returns its GOLDAO stake, dissolve state, and reward eligibility so the
- * simulator can resolve "by neuron" input to an eligible GOLDAO amount.
+ * Returns its GOLDAO stake, dissolve state, voting power, and reward
+ * eligibility so the simulator can resolve "by neuron" input.
  */
 
 const GOLDAO_SNS = "tw2vt-hqaaa-aaaaq-aab6a-cai";
@@ -15,6 +15,8 @@ export interface NeuronLookup {
   /** dissolve delay in seconds, if the API exposes it */
   dissolveDelaySeconds: number | null;
   dissolving: boolean;
+  /** total voting power (bonuses baked in), whole tokens; null if absent */
+  votingPower: number | null;
   /** ≥ 2 years and not dissolving; null when it can't be determined */
   eligible: boolean | null;
 }
@@ -22,18 +24,23 @@ export interface NeuronLookup {
 /** The SNS API field names vary across snapshots; read defensively. */
 interface RawNeuron {
   stake_e8s?: number | string;
+  cached_neuron_stake_e8s?: number | string;
   staked_maturity_e8s_equivalent?: number | string;
-  total_maturity_e8s_equivalent?: number | string;
-  maturity_e8s_equivalent?: number | string;
-  dissolve_delay_seconds?: number | string;
-  dissolve_delay?: number | string;
-  dissolve_state?: string;
+  voting_power?: number | string;
+  /** "NotDissolving" | "Dissolving" | "Dissolved" */
   state?: string;
+  /** flat delay in seconds (present on the neuron-detail endpoint) */
+  current_dissolve_delay_seconds?: number | string;
+  /** variant object: { DissolveDelaySeconds } | { WhenDissolvedTimestampSeconds } */
+  dissolve_state?:
+    | { DissolveDelaySeconds?: number | string }
+    | { WhenDissolvedTimestampSeconds?: number | string }
+    | string;
   [k: string]: unknown;
 }
 
-function num(v: number | string | undefined): number {
-  if (v === undefined) return 0;
+function num(v: number | string | undefined | null): number {
+  if (v === undefined || v === null) return 0;
   const n = typeof v === "string" ? Number(v) : v;
   return Number.isFinite(n) ? n : 0;
 }
@@ -41,6 +48,35 @@ function num(v: number | string | undefined): number {
 /** Trim, drop 0x, lowercase — accept the hex id as shown in wallets. */
 function normalizeId(raw: string): string {
   return raw.trim().replace(/^0x/i, "").replace(/\s+/g, "").toLowerCase();
+}
+
+/** Read the dissolve delay from whichever field the snapshot provides. */
+function readDelaySeconds(raw: RawNeuron): number | null {
+  if (raw.current_dissolve_delay_seconds !== undefined)
+    return num(raw.current_dissolve_delay_seconds);
+
+  const ds = raw.dissolve_state;
+  if (ds && typeof ds === "object" && "DissolveDelaySeconds" in ds)
+    return num(ds.DissolveDelaySeconds);
+
+  // Dissolving neuron: remaining delay = when_dissolved - now.
+  if (ds && typeof ds === "object" && "WhenDissolvedTimestampSeconds" in ds) {
+    const when = num(ds.WhenDissolvedTimestampSeconds);
+    const now = Math.floor(Date.now() / 1000);
+    return Math.max(when - now, 0);
+  }
+  return null;
+}
+
+/** True if the neuron is dissolving or already dissolved. */
+function readDissolving(raw: RawNeuron): boolean {
+  if (typeof raw.state === "string")
+    return raw.state.toLowerCase() !== "notdissolving";
+
+  const ds = raw.dissolve_state;
+  if (ds && typeof ds === "object")
+    return "WhenDissolvedTimestampSeconds" in ds;
+  return false;
 }
 
 export async function lookupNeuron(rawId: string): Promise<NeuronLookup> {
@@ -54,20 +90,19 @@ export async function lookupNeuron(rawId: string): Promise<NeuronLookup> {
 
   const raw = (await res.json()) as RawNeuron;
 
-  const stake = num(raw.stake_e8s);
+  const stake = num(raw.stake_e8s ?? raw.cached_neuron_stake_e8s);
   const stakedMaturity = num(raw.staked_maturity_e8s_equivalent);
   const goldao = (stake + stakedMaturity) / 1e8;
 
-  const delayRaw = raw.dissolve_delay_seconds ?? raw.dissolve_delay;
-  const dissolveDelaySeconds = delayRaw !== undefined ? num(delayRaw) : null;
+  const vp = raw.voting_power !== undefined ? num(raw.voting_power) / 1e8 : null;
 
-  const stateStr = `${raw.dissolve_state ?? raw.state ?? ""}`.toLowerCase();
-  const dissolving = stateStr.includes("dissolv") && !stateStr.includes("not");
+  const dissolveDelaySeconds = readDelaySeconds(raw);
+  const dissolving = readDissolving(raw);
 
-  let eligible: boolean | null = null;
-  if (dissolveDelaySeconds !== null) {
-    eligible = dissolveDelaySeconds >= TWO_YEARS_SECONDS && !dissolving;
-  }
+  const eligible =
+    dissolveDelaySeconds !== null
+      ? dissolveDelaySeconds >= TWO_YEARS_SECONDS && !dissolving
+      : null;
 
-  return { id, goldao, dissolveDelaySeconds, dissolving, eligible };
+  return { id, goldao, dissolveDelaySeconds, dissolving, votingPower: vp, eligible };
 }
