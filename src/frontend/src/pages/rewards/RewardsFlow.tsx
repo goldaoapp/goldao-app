@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 
+import { fetchFlowBalances } from "@/lib/flow-data";
 import {
   ACCENTS,
   EDGES,
@@ -13,9 +14,8 @@ import {
 } from "./flow-model";
 
 /**
- * Live on-chain amounts per node keyed by `flowKey`. Empty in v1 — the flow is
- * design-only. A future data layer fills this map and the nodes light up with
- * real ICP values without touching layout.
+ * Live on-chain amounts per node keyed by `flowKey`. Fetched once on mount
+ * from the ICP Ledger API — no polling.
  */
 type FlowAmounts = Record<string, string>;
 
@@ -154,8 +154,19 @@ function Node({ node, amount }: { node: FlowNode; amount?: string }) {
 
 export default function RewardsFlow() {
   const reduced = usePrefersReducedMotion();
-  // v1: no live data yet — every node shows its placeholder slot.
-  const amounts: FlowAmounts = {};
+  const [amounts, setAmounts] = useState<FlowAmounts>({});
+  const [live, setLive] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchFlowBalances().then((data) => {
+      if (!cancelled) {
+        setAmounts(data);
+        setLive(Object.keys(data).length > 0);
+      }
+    });
+    return () => { cancelled = true; };
+  }, []);
 
   return (
     <div className="flex flex-col gap-6">
@@ -163,12 +174,16 @@ export default function RewardsFlow() {
         <p className="max-w-2xl text-sm text-muted-foreground">
           How ICP maturity from the DAO's NNS neurons moves through the split,
           buyback cascade, and GLDT job on its way to stakers. Structural values
-          are fixed by governance; per-step ICP amounts go live once wired to
-          the chain.
+          are fixed by governance; ICP balances are fetched from the ICP ledger
+          on load.
         </p>
         <span className="inline-flex w-fit shrink-0 items-center gap-2 rounded-full border border-border bg-card/60 px-3 py-1.5 text-xs font-mono text-muted-foreground">
-          <span className="inline-block size-1.5 animate-pulse rounded-full bg-primary" />
-          Live amounts — coming soon
+          <span
+            className={`inline-block size-1.5 rounded-full ${
+              live ? "bg-[oklch(0.72_0.17_162)]" : "bg-primary animate-pulse"
+            }`}
+          />
+          {live ? "Balances loaded" : "Loading balances…"}
         </span>
       </div>
 
