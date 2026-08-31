@@ -182,16 +182,22 @@ function TreasuryBar({ assets }: { assets: TreasuryAsset[] }) {
 
 function TreasuryPie({ assets }: { assets: TreasuryAsset[] }) {
   const [hover, setHover] = useState<string | null>(null);
+  const [drawn, setDrawn] = useState(false);
+  useEffect(() => {
+    const id = requestAnimationFrame(() => setDrawn(true));
+    return () => cancelAnimationFrame(id);
+  }, []);
   const total = assets.reduce((s, a) => s + a.usd, 0);
   if (total === 0) return null;
 
   const visible = assets.filter((a) => a.usd > 0);
 
-  const size = 176;
+  const size = 240;
   const c = size / 2;
-  const r = 62;
-  const stroke = 26;
+  const r = 86;
+  const stroke = 46;
   const CIRC = 2 * Math.PI * r;
+  const SWEEP = 1.1;
 
   let acc = 0;
   const segs = visible.map((a) => {
@@ -206,7 +212,7 @@ function TreasuryPie({ assets }: { assets: TreasuryAsset[] }) {
   return (
     <div className="space-y-3">
       <div className="flex justify-center">
-        <div className="relative" style={{ width: size, height: size }}>
+        <div className="relative w-full max-w-[340px] aspect-square">
           <svg
             viewBox={`0 0 ${size} ${size}`}
             className="w-full h-full -rotate-90"
@@ -222,14 +228,13 @@ function TreasuryPie({ assets }: { assets: TreasuryAsset[] }) {
                 fill="none"
                 stroke={s.colorBar}
                 strokeWidth={hover === s.id ? stroke + 4 : stroke}
-                strokeDasharray={`${s.frac * CIRC} ${CIRC - s.frac * CIRC}`}
+                strokeDasharray={`${(drawn ? s.frac : 0) * CIRC} ${CIRC}`}
                 strokeDashoffset={-s.offset * CIRC}
                 onMouseEnter={() => setHover(s.id)}
                 onMouseLeave={() => setHover(null)}
                 style={{
                   opacity: hover && hover !== s.id ? 0.35 : 1,
-                  transition:
-                    "opacity 0.2s ease, stroke-width 0.2s ease, stroke-dasharray 0.8s cubic-bezier(0.4,0,0.2,1)",
+                  transition: `stroke-dasharray ${(s.frac * SWEEP).toFixed(2)}s linear ${(s.offset * SWEEP).toFixed(2)}s, opacity 0.2s ease, stroke-width 0.2s ease`,
                   cursor: "pointer",
                 }}
               />
@@ -239,21 +244,21 @@ function TreasuryPie({ assets }: { assets: TreasuryAsset[] }) {
             {active ? (
               <>
                 <span
-                  className="font-mono text-sm font-bold"
+                  className="font-mono text-xs font-bold"
                   style={{ color: active.colorBar }}
                 >
                   {active.label}
                 </span>
-                <span className="font-mono text-xl font-bold text-foreground">
+                <span className="font-mono text-lg font-bold text-foreground">
                   {((active.usd / total) * 100).toFixed(1)}%
                 </span>
               </>
             ) : (
               <>
-                <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">
+                <span className="text-[9px] font-mono uppercase tracking-wider text-muted-foreground">
                   Assets
                 </span>
-                <span className="font-mono text-xl font-bold text-foreground">
+                <span className="font-mono text-lg font-bold text-foreground">
                   {visible.length}
                 </span>
               </>
@@ -828,7 +833,7 @@ export default function TreasuryPage() {
 
   const isLoading = totalUsd === 0;
 
-  const [compView, setCompView] = useState<"bar" | "pie">("bar");
+  const [compView, setCompView] = useState<"bar" | "pie">("pie");
   const compViews = [
     { key: "bar" as const, label: "Bar", icon: BarChart3 },
     { key: "pie" as const, label: "Pie", icon: PieChart },
