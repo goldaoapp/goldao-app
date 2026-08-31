@@ -194,8 +194,8 @@ function TreasuryPie({ assets }: { assets: TreasuryAsset[] }) {
 
   const size = 240;
   const c = size / 2;
-  const r = 86;
-  const stroke = 46;
+  const r = 84;
+  const stroke = 56;
   const CIRC = 2 * Math.PI * r;
   const SWEEP = 1.1;
 
@@ -244,21 +244,21 @@ function TreasuryPie({ assets }: { assets: TreasuryAsset[] }) {
             {active ? (
               <>
                 <span
-                  className="font-mono text-xs font-bold"
+                  className="font-mono text-base font-bold"
                   style={{ color: active.colorBar }}
                 >
                   {active.label}
                 </span>
-                <span className="font-mono text-lg font-bold text-foreground">
+                <span className="font-mono text-3xl font-bold text-foreground">
                   {((active.usd / total) * 100).toFixed(1)}%
                 </span>
               </>
             ) : (
               <>
-                <span className="text-[9px] font-mono uppercase tracking-wider text-muted-foreground">
+                <span className="text-xs font-mono uppercase tracking-widest text-muted-foreground">
                   Assets
                 </span>
-                <span className="font-mono text-lg font-bold text-foreground">
+                <span className="font-mono text-4xl font-bold text-foreground">
                   {visible.length}
                 </span>
               </>
@@ -885,7 +885,7 @@ export default function TreasuryPage() {
       />
 
       {/* Total */}
-      <div className="text-center mb-8 animate-fade-in-up">
+      <div className="text-center mb-3 animate-fade-in-up">
         <span className="text-xs font-mono uppercase tracking-widest text-muted-foreground">
           Total Treasury Value
         </span>
