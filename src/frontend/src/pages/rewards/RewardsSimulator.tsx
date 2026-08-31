@@ -290,9 +290,19 @@ export default function RewardsSimulator() {
     return neuron.eligible === false ? 0 : neuron.goldao;
   }, [mode, amount, neuron]);
 
+  // Average VP multiplier for the eligible cohort (dissolve 2× + avg age bonus).
+  const AVG_VP_MULT = 2.3;
+
+  // In neuron mode with known VP, compute share from VP instead of stake.
+  const vpShare = useMemo<number | undefined>(() => {
+    if (mode !== "neuron" || !neuron?.votingPower || neuronIneligible) return undefined;
+    const totalVp = assumptions.goldao_eligible * AVG_VP_MULT;
+    return totalVp > 0 ? neuron.votingPower / totalVp : undefined;
+  }, [mode, neuron, neuronIneligible, assumptions.goldao_eligible]);
+
   const result = useMemo<RewardResult>(
-    () => simulate(poolsFrom(assumptions), userGoldao),
-    [assumptions, userGoldao],
+    () => simulate(poolsFrom(assumptions), userGoldao, vpShare),
+    [assumptions, userGoldao, vpShare],
   );
 
   const liveLoading = assumptions.goldao_eligible <= 0;
@@ -445,7 +455,9 @@ export default function RewardsSimulator() {
           <div className="rounded-lg border border-border bg-card/50 p-4">
             <div className="flex items-baseline justify-between">
               <span className="font-mono text-xs text-muted-foreground">
-                Your share of eligible GOLDAO
+                {vpShare !== undefined
+                  ? "Your share by voting power"
+                  : "Your share of eligible GOLDAO"}
               </span>
               <span className="font-mono text-lg font-bold text-gradient-gold">
                 {(result.share * 100).toLocaleString("en-US", {
@@ -460,9 +472,24 @@ export default function RewardsSimulator() {
                 style={{ width: `${Math.min(result.share * 100, 100)}%` }}
               />
             </div>
-            <p className="mt-2 font-mono text-[11px] text-muted-foreground">
-              {fmtInt(userGoldao)} of {fmtInt(result.eligible)} eligible GOLDAO
-            </p>
+            {vpShare !== undefined && neuron?.votingPower ? (
+              <div className="mt-2 space-y-0.5">
+                <p className="font-mono text-[11px] text-muted-foreground">
+                  {fmtInt(neuron.votingPower)} VP of ~
+                  {fmtInt(Math.round(assumptions.goldao_eligible * AVG_VP_MULT))}{" "}
+                  estimated total VP
+                </p>
+                <p className="font-mono text-[10px] text-muted-foreground/70">
+                  Total VP estimated from {fmtInt(result.eligible)} eligible
+                  GOLDAO × {AVG_VP_MULT}× avg multiplier. Actual rewards depend
+                  on proposal participation across all neurons.
+                </p>
+              </div>
+            ) : (
+              <p className="mt-2 font-mono text-[11px] text-muted-foreground">
+                {fmtInt(userGoldao)} of {fmtInt(result.eligible)} eligible GOLDAO
+              </p>
+            )}
           </div>
 
           {/* assumptions */}
