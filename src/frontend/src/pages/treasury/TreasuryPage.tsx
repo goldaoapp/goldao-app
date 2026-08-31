@@ -15,6 +15,7 @@ import {
   ArrowUp,
   BarChart3,
   Layers,
+  PieChart,
   TrendingUp,
   Wallet,
 } from "lucide-react";
@@ -144,6 +145,109 @@ function TreasuryBar({ assets }: { assets: TreasuryAsset[] }) {
             </div>
           );
         })}
+      </div>
+      <div className="flex flex-wrap gap-4 justify-center">
+        {visible.map((asset) => (
+          <div key={asset.id} className="flex items-center gap-2">
+            <div
+              className="w-3 h-3 rounded-sm"
+              style={{ backgroundColor: asset.colorBar }}
+            />
+            <span className="text-xs text-muted-foreground font-mono">
+              {asset.label}{" "}
+              <span className="text-foreground font-medium">
+                {((asset.usd / total) * 100).toFixed(1)}%
+              </span>
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ── Pie (donut, same colors as the bar) ────────────────────────────────── */
+
+function TreasuryPie({ assets }: { assets: TreasuryAsset[] }) {
+  const [hover, setHover] = useState<string | null>(null);
+  const total = assets.reduce((s, a) => s + a.usd, 0);
+  if (total === 0) return null;
+
+  const visible = assets.filter((a) => a.usd > 0);
+
+  const size = 176;
+  const c = size / 2;
+  const r = 62;
+  const stroke = 26;
+  const CIRC = 2 * Math.PI * r;
+
+  let acc = 0;
+  const segs = visible.map((a) => {
+    const frac = a.usd / total;
+    const seg = { ...a, frac, offset: acc };
+    acc += frac;
+    return seg;
+  });
+
+  const active = hover ? visible.find((a) => a.id === hover) ?? null : null;
+
+  return (
+    <div className="space-y-3">
+      <div className="flex justify-center">
+        <div className="relative" style={{ width: size, height: size }}>
+          <svg
+            viewBox={`0 0 ${size} ${size}`}
+            className="w-full h-full -rotate-90"
+            aria-label="Treasury composition donut chart"
+            role="img"
+          >
+            {segs.map((s) => (
+              <circle
+                key={s.id}
+                cx={c}
+                cy={c}
+                r={r}
+                fill="none"
+                stroke={s.colorBar}
+                strokeWidth={hover === s.id ? stroke + 4 : stroke}
+                strokeDasharray={`${s.frac * CIRC} ${CIRC - s.frac * CIRC}`}
+                strokeDashoffset={-s.offset * CIRC}
+                onMouseEnter={() => setHover(s.id)}
+                onMouseLeave={() => setHover(null)}
+                style={{
+                  opacity: hover && hover !== s.id ? 0.35 : 1,
+                  transition:
+                    "opacity 0.2s ease, stroke-width 0.2s ease, stroke-dasharray 0.8s cubic-bezier(0.4,0,0.2,1)",
+                  cursor: "pointer",
+                }}
+              />
+            ))}
+          </svg>
+          <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+            {active ? (
+              <>
+                <span
+                  className="font-mono text-sm font-bold"
+                  style={{ color: active.colorBar }}
+                >
+                  {active.label}
+                </span>
+                <span className="font-mono text-xl font-bold text-foreground">
+                  {((active.usd / total) * 100).toFixed(1)}%
+                </span>
+              </>
+            ) : (
+              <>
+                <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">
+                  Assets
+                </span>
+                <span className="font-mono text-xl font-bold text-foreground">
+                  {visible.length}
+                </span>
+              </>
+            )}
+          </div>
+        </div>
       </div>
       <div className="flex flex-wrap gap-4 justify-center">
         {visible.map((asset) => (
@@ -706,6 +810,12 @@ export default function TreasuryPage() {
 
   const isLoading = totalUsd === 0;
 
+  const [compView, setCompView] = useState<"bar" | "pie">("bar");
+  const compViews = [
+    { key: "bar" as const, label: "Bar", icon: BarChart3 },
+    { key: "pie" as const, label: "Pie", icon: PieChart },
+  ];
+
   const [chartView, setChartView] = useState<"trend" | "composition" | "daily">(
     "trend",
   );
@@ -780,10 +890,36 @@ export default function TreasuryPage() {
         )}
       </div>
 
-      {/* Bar */}
+      {/* Composition — bar / pie */}
       {!isLoading && (
         <div className="mb-8 animate-fade-in">
-          <TreasuryBar assets={assets} />
+          <div className="flex justify-end mb-3">
+            <div className="flex gap-1 p-1 rounded-lg border border-border bg-muted/40">
+              {compViews.map((v) => {
+                const active = compView === v.key;
+                return (
+                  <button
+                    key={v.key}
+                    type="button"
+                    onClick={() => setCompView(v.key)}
+                    className={`flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-mono transition-smooth ${
+                      active
+                        ? "bg-primary text-primary-foreground"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    <v.icon className="h-3.5 w-3.5" />
+                    <span className="hidden sm:inline">{v.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+          {compView === "bar" ? (
+            <TreasuryBar assets={assets} />
+          ) : (
+            <TreasuryPie assets={assets} />
+          )}
         </div>
       )}
 
