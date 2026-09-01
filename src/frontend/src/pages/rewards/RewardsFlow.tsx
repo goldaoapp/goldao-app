@@ -156,6 +156,9 @@ export default function RewardsFlow() {
   const reduced = usePrefersReducedMotion();
   const [amounts, setAmounts] = useState<FlowAmounts>({});
   const [live, setLive] = useState(false);
+  /* Force re-mount of SVG animation when the tab becomes visible — some
+     desktop browsers pause animateMotion while the element is off-screen. */
+  const [animKey, setAnimKey] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -167,6 +170,23 @@ export default function RewardsFlow() {
     });
     return () => { cancelled = true; };
   }, []);
+
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState === "visible") setAnimKey((k) => k + 1);
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    /* Also kick after first paint in case the SVG rendered while hidden */
+    const id = requestAnimationFrame(() => setAnimKey((k) => k + 1));
+    return () => {
+      document.removeEventListener("visibilitychange", onVisible);
+      cancelAnimationFrame(id);
+    };
+  }, []);
+
+  const rewardPoolIcp = amounts.rewards ?? null;
+  const rewardPoolOgy = amounts.pool_ogy ?? null;
+  const rewardPoolGldt = amounts.pool_gldt ?? null;
 
   return (
     <div className="flex flex-col gap-6">
@@ -187,25 +207,76 @@ export default function RewardsFlow() {
         </span>
       </div>
 
-      <div className="overflow-x-auto rounded-xl border border-border bg-[oklch(0.16_0_0)] p-2 shadow-subtle">
-        <svg
-          viewBox={`0 0 ${VIEW_W} ${VIEW_H}`}
-          className="h-auto w-full"
-          style={{ minWidth: 720 }}
-          role="img"
-          aria-label="GOLDAO reward flow diagram"
-        >
-          <title>GOLDAO reward flow</title>
-          {EDGES.map((e) => (
-            <Edge key={e.id} edge={e} animate={!reduced} />
-          ))}
-          {NODES.map((n) => (
-            <Node key={n.id} node={n} amount={amounts[n.flowKey ?? ""]} />
-          ))}
-        </svg>
+      <div className="flex flex-col lg:flex-row gap-4">
+        {/* Flow diagram */}
+        <div className="flex-1 overflow-x-auto rounded-xl border border-border bg-[oklch(0.16_0_0)] p-2 shadow-subtle">
+          <svg
+            key={animKey}
+            viewBox={`0 0 ${VIEW_W} ${VIEW_H}`}
+            className="h-auto w-full"
+            style={{ minWidth: 720 }}
+            role="img"
+            aria-label="GOLDAO reward flow diagram"
+          >
+            <title>GOLDAO reward flow</title>
+            {EDGES.map((e) => (
+              <Edge key={e.id} edge={e} animate={!reduced} />
+            ))}
+            {NODES.map((n) => (
+              <Node key={n.id} node={n} amount={amounts[n.flowKey ?? ""]} />
+            ))}
+          </svg>
+        </div>
+
+        {/* Reward pool panel */}
+        <div className="w-full lg:w-64 shrink-0 flex flex-col gap-3">
+          <div className="rounded-xl border border-border bg-card/50 p-4">
+            <h3 className="font-mono text-xs uppercase tracking-wider text-muted-foreground mb-1">
+              Reward Pool
+            </h3>
+            <p className="font-mono text-[10px] text-muted-foreground/60 mb-3">
+              iyehc-lqaaa-aaaap-ab25a-cai
+            </p>
+            <p className="text-[11px] text-muted-foreground mb-3">
+              Tokens waiting to be distributed next Wednesday 14h UTC.
+            </p>
+            <div className="space-y-2">
+              <PoolRow token="ICP" value={rewardPoolIcp} />
+              <PoolRow token="OGY" value={rewardPoolOgy} />
+              <PoolRow token="GLDT" value={rewardPoolGldt} />
+            </div>
+          </div>
+          {(!rewardPoolOgy || !rewardPoolGldt) && (
+            <p className="text-[10px] font-mono text-muted-foreground/50 px-1">
+              Some token balances may be unavailable if the ICRC API is slow to respond.
+            </p>
+          )}
+        </div>
       </div>
 
       <FlowLegend />
+    </div>
+  );
+}
+
+function PoolRow({ token, value }: { token: string; value: string | null }) {
+  const colors: Record<string, string> = {
+    ICP: "oklch(0.75 0.10 290)",
+    OGY: "oklch(0.70 0.17 162)",
+    GLDT: "oklch(0.82 0.14 85)",
+  };
+  return (
+    <div className="flex items-center justify-between rounded-md border border-border/50 bg-secondary/30 px-3 py-2">
+      <span className="flex items-center gap-2">
+        <span
+          className="inline-block size-2 rounded-full"
+          style={{ background: colors[token] ?? "var(--muted)" }}
+        />
+        <span className="font-mono text-xs text-muted-foreground">{token}</span>
+      </span>
+      <span className="font-mono text-sm font-medium" style={{ color: value ? colors[token] : undefined }}>
+        {value ?? "—"}
+      </span>
     </div>
   );
 }
