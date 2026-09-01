@@ -21,14 +21,18 @@ const ACCOUNTS: Record<string, string> = {
   // Cycle management — direct account identifier from governance config
   cycle: "a51ceabd4d86c16c94936db0422d9b814b4f20e58fa013aeace0053af2305e8c",
 
-  // sns_rewards canister (iyehc-lqaaa-aaaap-ab25a-cai) default account
-  // Subaccount for staker rewards: 6dc2515bbb9b...
-  // We query the default account to see total ICP held by the canister
-  rewards: "6dc2515bbb9b2a46cca51089319c52c549e52f5e53fe5e00fcfde72cd2e2f7b1",
+  // sns_rewards canister (iyehc-lqaaa-aaaap-ab25a-cai)
+  // Reward pool subaccount — where the 33% ICP (and OGY/GLDT) arrives
+  rewards: "6dc2515bbb9b0a97b8d977ebac3eba643a1fb4b6da8b33455e0dba957f0ce7da",
 
-  // buyback_burn canister (atslz-hiaaa-aaaam-acq6q-cai) default account
-  // This canister handles both GOLDAO buyback and GLDT purchases
+  // buyback_burn canister (atslz-hiaaa-aaaam-acq6q-cai)
+  // Subaccount destination for the 33% buyback share
+  // This canister also executes GLDT swaps (ICP→GLDT and ICP→OGY)
   buyback: "31836130dcff35502d04752ea5b82a24e44d41955f2a30bb8c2d284f4a318d82",
+
+  // GLDT purchases wallet (5aybl-...rae)
+  // Receives the 33% GLDT share; ICP then flows to atslz for swaps
+  gldt: "7cfd793d618d7000b8d845104396a714045438b67b8f213811f0c1ac37086eac",
 };
 
 export interface FlowBalances {
