@@ -238,7 +238,8 @@ export default function RewardsFlow() {
               iyehc-lqaaa-aaaap-ab25a-cai
             </p>
             <p className="text-[11px] text-muted-foreground mb-3">
-              Tokens waiting to be distributed next Wednesday 14h UTC.
+              ICP & OGY distribute every Wednesday 14h UTC.
+              GLDT distributes the 1st Wednesday of each month at 12h UTC.
             </p>
             <div className="space-y-2">
               <PoolRow token="ICP" value={rewardPoolIcp} />
