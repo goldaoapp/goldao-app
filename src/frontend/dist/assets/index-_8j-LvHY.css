@@ -2901,6 +2901,84 @@ body{
   --cell-size: var(--spacing(8));
 }
 
+@keyframes dotTravel {
+  0% {
+    top: 0;
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  90% {
+    opacity: 1;
+  }
+  100% {
+    top: 100%;
+    opacity: 0;
+  }
+}
+
+@keyframes glowPulse {
+  0%,
+  100% {
+    box-shadow: 0 0 8px 2px rgba(191, 155, 48, 0.15);
+  }
+  50% {
+    box-shadow: 0 0 18px 5px rgba(191, 155, 48, 0.35);
+  }
+}
+
+@keyframes burnGlow {
+  0%,
+  100% {
+    box-shadow: 0 0 12px 3px rgba(255, 120, 30, 0.15);
+  }
+  50% {
+    box-shadow: 0 0 24px 6px rgba(255, 120, 30, 0.35);
+  }
+}
+
+@keyframes fireFlicker {
+  0%,
+  100% {
+    transform: scaleY(1) scaleX(1);
+    opacity: 0.9;
+  }
+  25% {
+    transform: scaleY(1.15) scaleX(0.92);
+    opacity: 1;
+  }
+  50% {
+    transform: scaleY(0.95) scaleX(1.05);
+    opacity: 0.85;
+  }
+  75% {
+    transform: scaleY(1.08) scaleX(0.96);
+    opacity: 1;
+  }
+}
+
+@keyframes stakeOrbit {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes compoundPulse {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.7;
+  }
+  50% {
+    transform: scale(1.08);
+    opacity: 1;
+  }
+}
+
 .selection\:bg-primary *::-moz-selection{
   --tw-bg-opacity: 1;
   background-color: oklch(var(--primary) / var(--tw-bg-opacity, 1));
