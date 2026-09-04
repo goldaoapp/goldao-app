@@ -46940,6 +46940,7 @@ const ACCOUNTS = {
   buyback: "31836130dcff35502d04752ea5b82a24e44d41955f2a30bb8c2d284f4a318d82",
   gldt: "7cfd793d618d7000b8d845104396a714045438b67b8f213811f0c1ac37086eac"
 };
+const ICP_NEURON_HARDCODED = 0;
 async function fetchIcpBalance(accountId) {
   var _a3;
   try {
@@ -46967,6 +46968,16 @@ async function fetchIcrcBalance(ledgerCanisterId, principal, decimals) {
     return null;
   }
 }
+async function fetchOgyStaked() {
+  try {
+    const res = await fetch(API.OGY_NEURON);
+    if (!res.ok) return null;
+    const data = await res.json();
+    return (data.stake_e8s + data.total_maturity_e8s_equivalent) / 1e8;
+  } catch {
+    return null;
+  }
+}
 function fmtIcp(v2) {
   if (v2 >= 1e3) return `${(v2 / 1e3).toFixed(1)}K ICP`;
   return `${v2.toFixed(2)} ICP`;
@@ -46978,12 +46989,15 @@ function fmtToken$1(v2, symbol) {
 }
 async function fetchFlowBalances() {
   const icpEntries = Object.entries(ACCOUNTS);
-  const [icpResults, ogyBal, gldtBal] = await Promise.all([
+  const [icpResults, ogyBal, gldtBal, goldaoRatio, ogyRatio, ogyStaked] = await Promise.all([
     Promise.allSettled(
       icpEntries.map(([, accountId]) => fetchIcpBalance(accountId))
     ),
     fetchIcrcBalance(TOKEN_LEDGERS.ogy, SNS_REWARDS, 8),
-    fetchIcrcBalance(TOKEN_LEDGERS.gldt, SNS_REWARDS, 8)
+    fetchIcrcBalance(TOKEN_LEDGERS.gldt, SNS_REWARDS, 8),
+    getPoolRatio(POOLS.GOLDAO_ICP.id, POOLS.GOLDAO_ICP.zeroForOne),
+    getPoolRatio(POOLS.OGY_ICP.id, POOLS.OGY_ICP.zeroForOne),
+    fetchOgyStaked()
   ]);
   const out = {};
   icpEntries.forEach(([key], i) => {
@@ -46993,6 +47007,10 @@ async function fetchFlowBalances() {
   });
   if (ogyBal !== null) out.pool_ogy = fmtToken$1(ogyBal, "OGY");
   if (gldtBal !== null) out.pool_gldt = fmtToken$1(gldtBal, "GLDT");
+  if (goldaoRatio !== null) out.goldao_ratio = String(Math.round(goldaoRatio));
+  if (ogyRatio !== null) out.ogy_ratio = String(Math.round(ogyRatio));
+  if (ogyStaked !== null) out.ogy_staked = fmtToken$1(Math.round(ogyStaked), "OGY");
+  out.icp_neuron = fmtIcp(ICP_NEURON_HARDCODED);
   return out;
 }
 const ACCENTS = {
