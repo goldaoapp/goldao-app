@@ -6,6 +6,9 @@
  * account data by AccountIdentifier (64-char hex hash of principal + subaccount).
  */
 
+import { API, POOLS, type OGYNeuronResponse } from "@/lib/api";
+import { getPoolRatio } from "@/lib/icpswap-quote";
+
 const LEDGER_API = "https://ledger-api.internetcomputer.org/accounts";
 const ICRC_API = "https://icrc-api.internetcomputer.org/api/v1/ledgers";
 
@@ -27,6 +30,9 @@ const ACCOUNTS: Record<string, string> = {
   buyback: "31836130dcff35502d04752ea5b82a24e44d41955f2a30bb8c2d284f4a318d82",
   gldt: "7cfd793d618d7000b8d845104396a714045438b67b8f213811f0c1ac37086eac",
 };
+
+/** Hardcoded ICP balance of the compound neuron — TODO: automate */
+const ICP_NEURON_HARDCODED = 0;
 
 export interface FlowBalances {
   [flowKey: string]: number | null;
@@ -66,6 +72,18 @@ async function fetchIcrcBalance(
   }
 }
 
+/** Fetch OGY neuron total (stake + maturity) in whole OGY. */
+async function fetchOgyStaked(): Promise<number | null> {
+  try {
+    const res = await fetch(API.OGY_NEURON);
+    if (!res.ok) return null;
+    const data: OGYNeuronResponse = await res.json();
+    return (data.stake_e8s + data.total_maturity_e8s_equivalent) / 1e8;
+  } catch {
+    return null;
+  }
+}
+
 function fmtIcp(v: number): string {
   if (v >= 1000) return `${(v / 1000).toFixed(1)}K ICP`;
   return `${v.toFixed(2)} ICP`;
@@ -85,17 +103,25 @@ function fmtToken(v: number, symbol: string): string {
  * - cycle, rewards, buyback, gldt → ICP balances from the ICP Ledger
  * - pool_ogy → OGY balance in the sns_rewards reward pool
  * - pool_gldt → GLDT balance in the sns_rewards reward pool
+ * - goldao_ratio → GOLDAO per ICP (ICPSwap pool, drives Burn cascade)
+ * - ogy_ratio → OGY per ICP (ICPSwap pool, drives Stake OGY cascade)
+ * - ogy_staked → OGY staked in DAO neuron (display string)
+ * - icp_neuron → ICP balance of compound neuron (hardcoded for now)
  */
 export async function fetchFlowBalances(): Promise<Record<string, string>> {
   const icpEntries = Object.entries(ACCOUNTS);
 
-  const [icpResults, ogyBal, gldtBal] = await Promise.all([
-    Promise.allSettled(
-      icpEntries.map(([, accountId]) => fetchIcpBalance(accountId)),
-    ),
-    fetchIcrcBalance(TOKEN_LEDGERS.ogy, SNS_REWARDS, 8),
-    fetchIcrcBalance(TOKEN_LEDGERS.gldt, SNS_REWARDS, 8),
-  ]);
+  const [icpResults, ogyBal, gldtBal, goldaoRatio, ogyRatio, ogyStaked] =
+    await Promise.all([
+      Promise.allSettled(
+        icpEntries.map(([, accountId]) => fetchIcpBalance(accountId)),
+      ),
+      fetchIcrcBalance(TOKEN_LEDGERS.ogy, SNS_REWARDS, 8),
+      fetchIcrcBalance(TOKEN_LEDGERS.gldt, SNS_REWARDS, 8),
+      getPoolRatio(POOLS.GOLDAO_ICP.id, POOLS.GOLDAO_ICP.zeroForOne),
+      getPoolRatio(POOLS.OGY_ICP.id, POOLS.OGY_ICP.zeroForOne),
+      fetchOgyStaked(),
+    ]);
 
   const out: Record<string, string> = {};
 
@@ -107,6 +133,15 @@ export async function fetchFlowBalances(): Promise<Record<string, string>> {
 
   if (ogyBal !== null) out.pool_ogy = fmtToken(ogyBal, "OGY");
   if (gldtBal !== null) out.pool_gldt = fmtToken(gldtBal, "GLDT");
+
+  // Raw numeric strings — RewardsFlow parses with Number() for cascade logic
+  if (goldaoRatio !== null) out.goldao_ratio = String(Math.round(goldaoRatio));
+  if (ogyRatio !== null) out.ogy_ratio = String(Math.round(ogyRatio));
+
+  if (ogyStaked !== null) out.ogy_staked = fmtToken(Math.round(ogyStaked), "OGY");
+
+  // Compound neuron balance — hardcoded until on-chain fetch is wired
+  out.icp_neuron = fmtIcp(ICP_NEURON_HARDCODED);
 
   return out;
 }
