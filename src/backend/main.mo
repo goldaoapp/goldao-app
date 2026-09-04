@@ -48,13 +48,13 @@ actor {
         "date",
       )
         .payload("date",       func s = s.date)
-        .payload("icp_amount", func s = Float.toText(s.icp_amount))
-        .payload("icp_usd",    func s = Float.toText(s.icp_usd))
-        .payload("ogy_amount", func s = Float.toText(s.ogy_amount))
-        .payload("ogy_usd",    func s = Float.toText(s.ogy_usd))
-        .payload("wtn_amount", func s = Float.toText(s.wtn_amount))
-        .payload("wtn_usd",    func s = Float.toText(s.wtn_usd))
-        .payload("total_usd",  func s = Float.toText(s.total_usd))
+        .payload("icp_amount", func s = s.icp_amount.toText())
+        .payload("icp_usd",    func s = s.icp_usd.toText())
+        .payload("ogy_amount", func s = s.ogy_amount.toText())
+        .payload("ogy_usd",    func s = s.ogy_usd.toText())
+        .payload("wtn_amount", func s = s.wtn_amount.toText())
+        .payload("wtn_usd",    func s = s.wtn_usd.toText())
+        .payload("total_usd",  func s = s.total_usd.toText())
         .controllerOnly()
         .build(),
     ];

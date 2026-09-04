@@ -13,6 +13,18 @@ type UserRole =
    guest;
    user;
  };
+type TreasurySnapshot = 
+ record {
+   date: text;
+   icp_amount: float64;
+   icp_usd: float64;
+   ogy_amount: float64;
+   ogy_usd: float64;
+   timestamp: nat64;
+   total_usd: float64;
+   wtn_amount: float64;
+   wtn_usd: float64;
+ };
 type Result__1 = 
  variant {
    err: Error;
@@ -57,6 +69,9 @@ service : {
   assignCallerUserRole: (user: principal, role: UserRole) -> ();
   execute: (qJson: text) -> (Result) query;
   getCallerUserRole: () -> (UserRole) query;
+  getTreasuryHistory: () -> (vec TreasurySnapshot) query;
+  hasSnapshot: (date: text) -> (bool) query;
   isCallerAdmin: () -> (bool) query;
+  saveTreasurySnapshot: (snapshot: TreasurySnapshot) -> (bool);
   schema: () -> (text) query;
 }

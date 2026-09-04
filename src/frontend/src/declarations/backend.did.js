@@ -48,6 +48,17 @@ export const Result = IDL.Record({
   'hasMore' : IDL.Bool,
   'rows' : IDL.Vec(IDL.Vec(Cell)),
 });
+export const TreasurySnapshot = IDL.Record({
+  'ogy_usd' : IDL.Float64,
+  'date' : IDL.Text,
+  'wtn_usd' : IDL.Float64,
+  'icp_usd' : IDL.Float64,
+  'total_usd' : IDL.Float64,
+  'ogy_amount' : IDL.Float64,
+  'timestamp' : IDL.Nat64,
+  'icp_amount' : IDL.Float64,
+  'wtn_amount' : IDL.Float64,
+});
 
 export const idlService = IDL.Service({
   '_initialize_access_control' : IDL.Func([], [], []),
@@ -56,7 +67,10 @@ export const idlService = IDL.Service({
   'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
   'execute' : IDL.Func([IDL.Text], [Result], ['query']),
   'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
+  'getTreasuryHistory' : IDL.Func([], [IDL.Vec(TreasurySnapshot)], ['query']),
+  'hasSnapshot' : IDL.Func([IDL.Text], [IDL.Bool], ['query']),
   'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
+  'saveTreasurySnapshot' : IDL.Func([TreasurySnapshot], [IDL.Bool], []),
   'schema' : IDL.Func([], [IDL.Text], ['query']),
 });
 
@@ -103,6 +117,17 @@ export const idlFactory = ({ IDL }) => {
     'hasMore' : IDL.Bool,
     'rows' : IDL.Vec(IDL.Vec(Cell)),
   });
+  const TreasurySnapshot = IDL.Record({
+    'ogy_usd' : IDL.Float64,
+    'date' : IDL.Text,
+    'wtn_usd' : IDL.Float64,
+    'icp_usd' : IDL.Float64,
+    'total_usd' : IDL.Float64,
+    'ogy_amount' : IDL.Float64,
+    'timestamp' : IDL.Nat64,
+    'icp_amount' : IDL.Float64,
+    'wtn_amount' : IDL.Float64,
+  });
   
   return IDL.Service({
     '_initialize_access_control' : IDL.Func([], [], []),
@@ -111,7 +136,10 @@ export const idlFactory = ({ IDL }) => {
     'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
     'execute' : IDL.Func([IDL.Text], [Result], ['query']),
     'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
+    'getTreasuryHistory' : IDL.Func([], [IDL.Vec(TreasurySnapshot)], ['query']),
+    'hasSnapshot' : IDL.Func([IDL.Text], [IDL.Bool], ['query']),
     'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
+    'saveTreasurySnapshot' : IDL.Func([TreasurySnapshot], [IDL.Bool], []),
     'schema' : IDL.Func([], [IDL.Text], ['query']),
   });
 };

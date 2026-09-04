@@ -2,12 +2,12 @@ import { PageHeader } from "@/components/common";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DEFAULTS, type FairValueParams } from "@/lib/fairvalue-calc";
 import {
+  type TreasurySnapshot,
   getCanisterId,
   getEnvJsonCanisterId,
   getHistory,
   hasSnapshot,
   saveSnapshot,
-  type TreasurySnapshot,
 } from "@/lib/treasury-history";
 import { useLiveData } from "@/lib/use-live-data";
 import {
@@ -67,9 +67,7 @@ function isConsistent(a: Reading, b: Reading): boolean {
  *  ICP, OGY or WTN means that leg failed to load, so the snapshot is skipped
  *  until every value is real. */
 function isComplete(r: Reading): boolean {
-  return (
-    r.icp_usd > 0 && r.ogy_usd > 0 && r.wtn_usd > 0 && r.total_usd > 0
-  );
+  return r.icp_usd > 0 && r.ogy_usd > 0 && r.wtn_usd > 0 && r.total_usd > 0;
 }
 
 function todayStr(): string {
@@ -207,7 +205,7 @@ function TreasuryPie({ assets }: { assets: TreasuryAsset[] }) {
     return seg;
   });
 
-  const active = hover ? visible.find((a) => a.id === hover) ?? null : null;
+  const active = hover ? (visible.find((a) => a.id === hover) ?? null) : null;
 
   return (
     <div className="space-y-3">
@@ -418,17 +416,16 @@ function StackedArea({ data }: { data: TreasurySnapshot[] }) {
 
   const ogyBand = band(() => 0, ogyV);
   const wtnBand = band(ogyV, (d) => ogyV(d) + wtnV(d));
-  const icpBand = band((d) => ogyV(d) + wtnV(d), (d) => Number(d.total_usd));
+  const icpBand = band(
+    (d) => ogyV(d) + wtnV(d),
+    (d) => Number(d.total_usd),
+  );
   const b1 = strokeAt(ogyV);
   const b2 = strokeAt((d) => ogyV(d) + wtnV(d));
   const topLine = strokeAt((d) => Number(d.total_usd));
 
   const dates = data.map((d) => d.date);
-  const labels = [
-    0,
-    Math.floor(dates.length / 2),
-    dates.length - 1,
-  ];
+  const labels = [0, Math.floor(dates.length / 2), dates.length - 1];
   const legend: { label: string; color: string }[] = [
     { label: "ICP", color: COLORS.icp },
     { label: "WTN", color: COLORS.wtn },
@@ -504,11 +501,7 @@ function DailyChange({ data }: { data: TreasurySnapshot[] }) {
   }));
   const maxAbs = Math.max(...deltas.map((d) => Math.abs(d.v))) || 1;
 
-  const labelIdx = [
-    0,
-    Math.floor(deltas.length / 2),
-    deltas.length - 1,
-  ];
+  const labelIdx = [0, Math.floor(deltas.length / 2), deltas.length - 1];
 
   return (
     <div>
@@ -573,8 +566,16 @@ function TrendView({ data }: { data: TreasurySnapshot[] }) {
       value: `${pct >= 0 ? "+" : ""}${pct.toFixed(1)}%`,
       color: pct >= 0 ? "oklch(0.72 0.17 162)" : "var(--destructive)",
     },
-    { label: "High", value: fmtUsd(Math.max(...values)), color: "var(--foreground)" },
-    { label: "Low", value: fmtUsd(Math.min(...values)), color: "var(--foreground)" },
+    {
+      label: "High",
+      value: fmtUsd(Math.max(...values)),
+      color: "var(--foreground)",
+    },
+    {
+      label: "Low",
+      value: fmtUsd(Math.min(...values)),
+      color: "var(--foreground)",
+    },
   ];
 
   return (
@@ -752,9 +753,27 @@ export default function TreasuryPage() {
     const wtnUsd = (extra.wtnIcp || 0) * (p.price_icp_usd || 0);
 
     return [
-      { id: "icp", label: "ICP", amount: icpAmt, usd: icpUsd, colorBar: COLORS.icp },
-      { id: "wtn", label: "WTN", amount: wtnAmt, usd: wtnUsd, colorBar: COLORS.wtn },
-      { id: "ogy", label: "OGY", amount: ogyAmt, usd: ogyUsd, colorBar: COLORS.ogy },
+      {
+        id: "icp",
+        label: "ICP",
+        amount: icpAmt,
+        usd: icpUsd,
+        colorBar: COLORS.icp,
+      },
+      {
+        id: "wtn",
+        label: "WTN",
+        amount: wtnAmt,
+        usd: wtnUsd,
+        colorBar: COLORS.wtn,
+      },
+      {
+        id: "ogy",
+        label: "OGY",
+        amount: ogyAmt,
+        usd: ogyUsd,
+        colorBar: COLORS.ogy,
+      },
     ];
   }, [liveParams, extra]);
 
@@ -763,9 +782,12 @@ export default function TreasuryPage() {
     const ogy = assets.find((a) => a.id === "ogy")!;
     const wtn = assets.find((a) => a.id === "wtn")!;
     return {
-      icp_amount: icp.amount, icp_usd: icp.usd,
-      ogy_amount: ogy.amount, ogy_usd: ogy.usd,
-      wtn_amount: wtn.amount, wtn_usd: wtn.usd,
+      icp_amount: icp.amount,
+      icp_usd: icp.usd,
+      ogy_amount: ogy.amount,
+      ogy_usd: ogy.usd,
+      wtn_amount: wtn.amount,
+      wtn_usd: wtn.usd,
       total_usd: icp.usd + ogy.usd + wtn.usd,
     };
   }, [assets]);
@@ -777,7 +799,9 @@ export default function TreasuryPage() {
   // 1. Check if today exists → load history
   // 2. If not: wait for 2 consistent readings → save
   const prevReading = useRef<Reading | null>(null);
-  const saveState = useRef<"checking" | "exists" | "waiting" | "saved">("checking");
+  const saveState = useRef<"checking" | "exists" | "waiting" | "saved">(
+    "checking",
+  );
 
   useEffect(() => {
     hasSnapshot(todayStr()).then((exists) => {
@@ -817,10 +841,7 @@ export default function TreasuryPage() {
   }, [reading]);
 
   // Only snapshots with all three legs present feed the chart and day-over-day.
-  const validHistory = useMemo(
-    () => history.filter(isChartable),
-    [history],
-  );
+  const validHistory = useMemo(() => history.filter(isChartable), [history]);
 
   // ── Day-over-day ──
   const dayChange = useMemo(() => {
@@ -846,10 +867,14 @@ export default function TreasuryPage() {
   const chartRanges = [
     { key: "30" as const, label: "30D", days: 30 },
     { key: "90" as const, label: "90D", days: 90 },
-    { key: "all" as const, label: "All", days: Infinity },
+    { key: "all" as const, label: "All", days: Number.POSITIVE_INFINITY },
   ];
   const rangeDays =
-    chartRange === "30" ? 30 : chartRange === "90" ? 90 : Infinity;
+    chartRange === "30"
+      ? 30
+      : chartRange === "90"
+        ? 90
+        : Number.POSITIVE_INFINITY;
   const chartData = Number.isFinite(rangeDays)
     ? validHistory.slice(-rangeDays)
     : validHistory;
@@ -1044,8 +1069,8 @@ export default function TreasuryPage() {
       </Card>
 
       <p className="text-center text-xs text-muted-foreground mt-6">
-        ICP from NNS neurons · OGY and WTN from SNS API ·
-        Prices via Binance + CoinGecko + ICPSwap · History on-chain
+        ICP from NNS neurons · OGY and WTN from SNS API · Prices via Binance +
+        CoinGecko + ICPSwap · History on-chain
       </p>
 
       <SnapshotDebug />

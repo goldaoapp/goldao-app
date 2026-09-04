@@ -94,7 +94,8 @@ export async function lookupNeuron(rawId: string): Promise<NeuronLookup> {
   const stakedMaturity = num(raw.staked_maturity_e8s_equivalent);
   const goldao = (stake + stakedMaturity) / 1e8;
 
-  const vp = raw.voting_power !== undefined ? num(raw.voting_power) / 1e8 : null;
+  const vp =
+    raw.voting_power !== undefined ? num(raw.voting_power) / 1e8 : null;
 
   const dissolveDelaySeconds = readDelaySeconds(raw);
   const dissolving = readDissolving(raw);
@@ -104,5 +105,12 @@ export async function lookupNeuron(rawId: string): Promise<NeuronLookup> {
       ? dissolveDelaySeconds >= TWO_YEARS_SECONDS && !dissolving
       : null;
 
-  return { id, goldao, dissolveDelaySeconds, dissolving, votingPower: vp, eligible };
+  return {
+    id,
+    goldao,
+    dissolveDelaySeconds,
+    dissolving,
+    votingPower: vp,
+    eligible,
+  };
 }

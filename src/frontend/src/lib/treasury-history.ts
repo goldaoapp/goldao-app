@@ -53,7 +53,9 @@ let actorPromise: Promise<any | null> | null = null;
 // deploy time; the repo copy ships every field as "undefined".
 async function readEnvJson(): Promise<Record<string, string> | null> {
   try {
-    const res = await fetch(`${location.origin}/env.json`, { cache: "no-store" });
+    const res = await fetch(`${location.origin}/env.json`, {
+      cache: "no-store",
+    });
     if (!res.ok) return null;
     return (await res.json()) as Record<string, string>;
   } catch {

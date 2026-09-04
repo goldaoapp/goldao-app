@@ -127,7 +127,8 @@ export function calcular(p: FairValueParams): FairValueResult {
   const wtn_daily_icp = wtn_icp / 365;
 
   // Step 5 — Direct yield to eligible holders (ICP + GLDT + OGY + WTN)
-  const pool_directo = icp_stakers + icp_gldt + ogy_icp + wtn_icp + p.wtn_annual_icp;
+  const pool_directo =
+    icp_stakers + icp_gldt + ogy_icp + wtn_icp + p.wtn_annual_icp;
   const elig = p.goldao_eligible > 0 ? p.goldao_eligible : 1;
   const yield_directo = pool_directo / elig;
 

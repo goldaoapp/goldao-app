@@ -29,6 +29,17 @@ export type Error = { 'FrontendOriginsNotConfigured' : null } |
 export interface Result { 'hasMore' : boolean, 'rows' : Array<Array<Cell>> }
 export type Result__1 = { 'ok' : null } |
   { 'err' : Error };
+export interface TreasurySnapshot {
+  'ogy_usd' : number,
+  'date' : string,
+  'wtn_usd' : number,
+  'icp_usd' : number,
+  'total_usd' : number,
+  'ogy_amount' : number,
+  'timestamp' : bigint,
+  'icp_amount' : number,
+  'wtn_amount' : number,
+}
 export type UserRole = { 'admin' : null } |
   { 'user' : null } |
   { 'guest' : null };
@@ -45,7 +56,10 @@ export interface _SERVICE {
   'assignCallerUserRole' : ActorMethod<[Principal, UserRole], undefined>,
   'execute' : ActorMethod<[string], Result>,
   'getCallerUserRole' : ActorMethod<[], UserRole>,
+  'getTreasuryHistory' : ActorMethod<[], Array<TreasurySnapshot>>,
+  'hasSnapshot' : ActorMethod<[string], boolean>,
   'isCallerAdmin' : ActorMethod<[], boolean>,
+  'saveTreasurySnapshot' : ActorMethod<[TreasurySnapshot], boolean>,
   'schema' : ActorMethod<[], string>,
 }
 export declare const idlService: IDL.ServiceClass;

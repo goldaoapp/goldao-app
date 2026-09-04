@@ -7,6 +7,25 @@ export interface None {
     __kind__: "None";
 }
 export type Option<T> = Some<T> | None;
+export interface Result {
+    hasMore: boolean;
+    rows: Array<Array<Cell>>;
+}
+export interface Cell {
+    value: Value;
+    name: string;
+}
+export interface TreasurySnapshot {
+    ogy_usd: number;
+    date: string;
+    wtn_usd: number;
+    icp_usd: number;
+    total_usd: number;
+    ogy_amount: number;
+    timestamp: bigint;
+    icp_amount: number;
+    wtn_amount: number;
+}
 export type Result__1 = {
     __kind__: "ok";
     ok: null;
@@ -58,10 +77,6 @@ export type Error_ = {
         expected: Array<string>;
     };
 };
-export interface Result {
-    hasMore: boolean;
-    rows: Array<Array<Cell>>;
-}
 export type Value = {
     __kind__: "int";
     int: bigint;
@@ -81,10 +96,6 @@ export type Value = {
     __kind__: "text";
     text: string;
 };
-export interface Cell {
-    value: Value;
-    name: string;
-}
 export enum UserRole {
     admin = "admin",
     user = "user",
@@ -94,6 +105,9 @@ export interface backendInterface {
     assignCallerUserRole(user: Principal, role: UserRole): Promise<void>;
     execute(qJson: string): Promise<Result>;
     getCallerUserRole(): Promise<UserRole>;
+    getTreasuryHistory(): Promise<Array<TreasurySnapshot>>;
+    hasSnapshot(date: string): Promise<boolean>;
     isCallerAdmin(): Promise<boolean>;
+    saveTreasurySnapshot(snapshot: TreasurySnapshot): Promise<boolean>;
     schema(): Promise<string>;
 }

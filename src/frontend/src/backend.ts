@@ -53,6 +53,25 @@ function record_opt_to_undefined<T>(arg: T | null): T | undefined {
 }
 import { ExternalBlob } from "@caffeineai/object-storage";
 export { ExternalBlob } from "@caffeineai/object-storage";
+export interface Result {
+    hasMore: boolean;
+    rows: Array<Array<Cell>>;
+}
+export interface Cell {
+    value: Value;
+    name: string;
+}
+export interface TreasurySnapshot {
+    ogy_usd: number;
+    date: string;
+    wtn_usd: number;
+    icp_usd: number;
+    total_usd: number;
+    ogy_amount: number;
+    timestamp: bigint;
+    icp_amount: number;
+    wtn_amount: number;
+}
 export type Result__1 = {
     __kind__: "ok";
     ok: null;
@@ -104,10 +123,6 @@ export type Error_ = {
         expected: Array<string>;
     };
 };
-export interface Result {
-    hasMore: boolean;
-    rows: Array<Array<Cell>>;
-}
 export type Value = {
     __kind__: "int";
     int: bigint;
@@ -127,10 +142,6 @@ export type Value = {
     __kind__: "text";
     text: string;
 };
-export interface Cell {
-    value: Value;
-    name: string;
-}
 export enum UserRole {
     admin = "admin",
     user = "user",
@@ -143,7 +154,10 @@ export interface backendInterface {
     assignCallerUserRole(user: Principal, role: UserRole): Promise<void>;
     execute(qJson: string): Promise<Result>;
     getCallerUserRole(): Promise<UserRole>;
+    getTreasuryHistory(): Promise<Array<TreasurySnapshot>>;
+    hasSnapshot(date: string): Promise<boolean>;
     isCallerAdmin(): Promise<boolean>;
+    saveTreasurySnapshot(snapshot: TreasurySnapshot): Promise<boolean>;
     schema(): Promise<string>;
 }
 import type { Cell as _Cell, Error as _Error, Result as _Result, Result__1 as _Result__1, UserRole as _UserRole, Value as _Value } from "./declarations/backend.did.d.ts";
@@ -233,6 +247,34 @@ export class Backend implements backendInterface {
             return from_candid_UserRole_n15(this._uploadFile, this._downloadFile, result);
         }
     }
+    async getTreasuryHistory(): Promise<Array<TreasurySnapshot>> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getTreasuryHistory();
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getTreasuryHistory();
+            return result;
+        }
+    }
+    async hasSnapshot(arg0: string): Promise<boolean> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.hasSnapshot(arg0);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.hasSnapshot(arg0);
+            return result;
+        }
+    }
     async isCallerAdmin(): Promise<boolean> {
         if (this.processError) {
             try {
@@ -244,6 +286,20 @@ export class Backend implements backendInterface {
             }
         } else {
             const result = await this.actor.isCallerAdmin();
+            return result;
+        }
+    }
+    async saveTreasurySnapshot(arg0: TreasurySnapshot): Promise<boolean> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.saveTreasurySnapshot(arg0);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.saveTreasurySnapshot(arg0);
             return result;
         }
     }

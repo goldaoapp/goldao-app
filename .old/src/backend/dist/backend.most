@@ -4,6 +4,11 @@ type AccessControlState__313657439 =
     var adminAssigned : Bool;
     userRoles : Map__386906547<Principal, UserRole__642808710>
   };
+type AccessControlState__731777866 =
+  {
+    var adminAssigned : Bool;
+    userRoles : Map__386906547<Principal, UserRole__981234465>
+  };
 type Data__265875254<K, V> = {var count : Nat__58649523; kvs : [var ?(K, V)]};
 type Internal__161573640<K, V> =
   {children : [var ?Node__430031793<K, V>]; data : Data__265875254<K, V>};
@@ -16,18 +21,56 @@ type Nat__58649523 = Nat__920180692;
 type Nat__920180692 = Nat;
 type NewActor__506023031 =
   {accessControlState : AccessControlState__313657439};
+type NewActor__729643281 =
+  {
+    accessControlState : AccessControlState__731777866;
+    treasurySnapshots : Map__386906547<Text, TreasurySnapshot__649634269>
+  };
 type Node__430031793<K, V> =
   {#internal : Internal__161573640<K, V>; #leaf : Leaf__1045638083<K, V>};
+type OldActor__1018259084 =
+  {accessControlState : AccessControlState__731777866};
 type OldActor__224245412 = {};
+type TreasurySnapshot__522762438 =
+  {
+    date : Text;
+    icp_amount : Float;
+    icp_usd : Float;
+    ogy_amount : Float;
+    ogy_usd : Float;
+    timestamp : Nat64;
+    total_usd : Float;
+    wtn_amount : Float;
+    wtn_usd : Float
+  };
+type TreasurySnapshot__649634269 =
+  {
+    date : Text;
+    icp_amount : Float;
+    icp_usd : Float;
+    ogy_amount : Float;
+    ogy_usd : Float;
+    timestamp : Nat64;
+    total_usd : Float;
+    wtn_amount : Float;
+    wtn_usd : Float
+  };
 type UserRole__642808710 = {#admin; #guest; #user};
 type UserRole__91647283 = {#admin; #guest; #user};
+type UserRole__981234465 = {#admin; #guest; #user};
 {
-  "20260810_154449" : (old : OldActor__224245412) -> NewActor__506023031
+  "20260810_154449" : (_old : OldActor__224245412) -> NewActor__506023031;
+  "20260820_120000" : (_old : OldActor__1018259084) -> NewActor__729643281
 }
 actor  {
   stable accessControlState :
     {
       var adminAssigned : Bool;
       userRoles : Map__386906547<Principal, UserRole__91647283>
+    };
+  stable treasurySnapshots :
+    {
+      var root : Node__430031793<Text, TreasurySnapshot__522762438>;
+      var size : Nat__58649523
     }
 };

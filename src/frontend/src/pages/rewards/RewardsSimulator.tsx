@@ -295,7 +295,8 @@ export default function RewardsSimulator() {
 
   // In neuron mode with known VP, compute share from VP instead of stake.
   const vpShare = useMemo<number | undefined>(() => {
-    if (mode !== "neuron" || !neuron?.votingPower || neuronIneligible) return undefined;
+    if (mode !== "neuron" || !neuron?.votingPower || neuronIneligible)
+      return undefined;
     const totalVp = assumptions.goldao_eligible * AVG_VP_MULT;
     return totalVp > 0 ? neuron.votingPower / totalVp : undefined;
   }, [mode, neuron, neuronIneligible, assumptions.goldao_eligible]);
@@ -476,7 +477,9 @@ export default function RewardsSimulator() {
               <div className="mt-2 space-y-0.5">
                 <p className="font-mono text-[11px] text-muted-foreground">
                   {fmtInt(neuron.votingPower)} VP of ~
-                  {fmtInt(Math.round(assumptions.goldao_eligible * AVG_VP_MULT))}{" "}
+                  {fmtInt(
+                    Math.round(assumptions.goldao_eligible * AVG_VP_MULT),
+                  )}{" "}
                   estimated total VP
                 </p>
                 <p className="font-mono text-[10px] text-muted-foreground/70">
@@ -487,7 +490,8 @@ export default function RewardsSimulator() {
               </div>
             ) : (
               <p className="mt-2 font-mono text-[11px] text-muted-foreground">
-                {fmtInt(userGoldao)} of {fmtInt(result.eligible)} eligible GOLDAO
+                {fmtInt(userGoldao)} of {fmtInt(result.eligible)} eligible
+                GOLDAO
               </p>
             )}
           </div>
