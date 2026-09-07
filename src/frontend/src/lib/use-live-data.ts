@@ -15,6 +15,7 @@ import {
   type SNSProposalsResponse,
 } from "@/lib/api";
 import type { FairValueParams } from "@/lib/fairvalue-calc";
+import { fetchIcpNeuronTotals } from "@/lib/icp-neuron";
 import { getPoolRatio } from "@/lib/icpswap-quote";
 import { useEffect, useRef, useState } from "react";
 
@@ -57,6 +58,10 @@ export interface LiveExtra {
   supply: number | null;
   /** Total GOLDAO burned (1B - supply) */
   totalBurned: number | null;
+  /** Live staked ICP in the DAO's NNS neurons (whole ICP) */
+  icpStaked: number | null;
+  /** Live maturity in the DAO's NNS neurons (whole ICP) */
+  icpMaturity: number | null;
 }
 
 export interface LiveData {
@@ -79,6 +84,8 @@ export function useLiveData(): LiveData {
     wtnIcp: null,
     supply: null,
     totalBurned: null,
+    icpStaked: null,
+    icpMaturity: null,
   });
   const icpswapRef = useRef<{
     ogyPerIcp: number | null;
@@ -191,6 +198,19 @@ export function useLiveData(): LiveData {
       }
     }
 
+    // ── ONE-TIME: NNS neuron stake + maturity via icp_neuron canister ──
+    async function fetchIcpNeurons() {
+      const totals = await fetchIcpNeuronTotals();
+      if (cancelled || totals === null) return;
+      // Feed staked ICP into the calc params so every page uses live data
+      apply("icp_staked", Math.round(totals.staked));
+      setExtra((prev) => ({
+        ...prev,
+        icpStaked: totals.staked,
+        icpMaturity: totals.maturity,
+      }));
+    }
+
     // ── FAST: lightweight APIs (every 30 s) ──
     async function fetchLight() {
       // 1 — Eligible GOLDAO + Members
@@ -280,11 +300,12 @@ export function useLiveData(): LiveData {
       }
     }
 
-    // Initial fetch: all (WTN + supply only once)
+    // Initial fetch: all (WTN + supply + neurons only once)
     fetchPoolQuotes();
     fetchLight();
     fetchWTN();
     fetchSupply();
+    fetchIcpNeurons();
 
     const fastId = setInterval(fetchLight, POLL.FAST);
     const slowId = setInterval(fetchPoolQuotes, POLL.SLOW);
