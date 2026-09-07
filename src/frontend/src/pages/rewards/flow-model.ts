@@ -107,7 +107,7 @@ export const NODES: FlowNode[] = [
     w: 274,
     h: 98,
     accent: "teal",
-    title: "sns_rewards",
+    title: "ICP Rewards",
     sub: "to eligible stakers",
     tag: "33%",
     flowKey: "rewards",
