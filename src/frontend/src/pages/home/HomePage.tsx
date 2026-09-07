@@ -33,6 +33,11 @@ export default function HomePage() {
   const fmtWtn =
     extra.wtnTotal !== null ? `${(extra.wtnTotal / 1e6).toFixed(1)} M` : "—";
 
+  const fmtIcpStaked =
+    extra.icpStaked !== null
+      ? `${(extra.icpStaked / 1000).toFixed(0)} K`
+      : "580 K";
+
   return (
     <div className="flex flex-col gap-8 p-4 sm:p-6 lg:p-10 max-w-5xl mx-auto">
       {/* Alpha Banner */}
@@ -104,7 +109,7 @@ export default function HomePage() {
         </h2>
         <div className="grid grid-cols-3 gap-3">
           <StatCard
-            value="580 K"
+            value={fmtIcpStaked}
             label="ICP"
             info="ICP held by the DAO across its NNS neurons — the treasury's core reserve and the source of all reward flows."
             accent
