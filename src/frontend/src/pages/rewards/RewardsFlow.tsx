@@ -81,12 +81,12 @@ function RewardPoolBanner({ amounts }: { amounts: FlowAmounts }) {
         </div>
         <div>
           <div
-            className="font-mono text-[10px] font-semibold uppercase tracking-wider"
+            className="font-mono text-[11px] font-semibold uppercase tracking-wider"
             style={{ color: ACCENTS.gold }}
           >
             Reward Pool
           </div>
-          <div className="font-mono text-[9px]" style={{ color: "oklch(0.65 0.08 85)" }}>
+          <div className="font-mono text-[10px]" style={{ color: "oklch(0.65 0.08 85)" }}>
             Next distribution: Wednesday 14h UTC
           </div>
         </div>
@@ -177,7 +177,7 @@ function FlowCard({
           {node.title}
         </div>
         {node.sub && (
-          <div className="font-mono text-[10px] mt-0.5" style={{ color: "oklch(0.6 0 0)" }}>
+          <div className="font-mono text-[11px] mt-0.5" style={{ color: "oklch(0.6 0 0)" }}>
             {node.sub}
           </div>
         )}
@@ -192,7 +192,7 @@ function FlowCard({
       </div>
       {node.tag && (
         <div
-          className="font-mono text-[11px] font-bold px-2 py-0.5 rounded-md shrink-0"
+          className="font-mono text-[12px] font-bold px-2 py-0.5 rounded-md shrink-0"
           style={{ color, background: `${color}1A` }}
         >
           {node.tag}
@@ -256,79 +256,75 @@ function BuybackModule({
 
   return (
     <div
-      className="rounded-[10px] px-3 py-2.5 flex items-center gap-2 transition-opacity"
+      className="rounded-[10px] px-3 py-2.5 flex flex-col gap-1.5 transition-opacity"
       style={{ ...styles, opacity: isActive ? 1 : 0.45 }}
     >
-      <div className="relative shrink-0">
-        <img src={logo} alt={title} className="w-5 h-5 rounded" />
-        {isActive && id === "stakeogy" && (
-          <div
-            className="absolute -inset-1 border border-dashed rounded-full"
-            style={{
-              borderColor: "oklch(0.72 0.17 162 / 0.2)",
-              animation: "stakeOrbit 8s linear infinite",
-            }}
-          />
-        )}
-        {isActive && id === "compound" && (
-          <div
-            className="absolute -inset-0.5 border-[1.5px] rounded-full"
-            style={{
-              borderColor: "oklch(0.75 0.10 290 / 0.15)",
-              animation: "compoundPulse 3s ease-in-out infinite",
-            }}
-          />
-        )}
-      </div>
-      <div className="flex-1 min-w-0">
-        <div className="text-[11px] font-bold" style={{ color }}>
+      {/* Header: icon + title + animated icon + badge */}
+      <div className="flex items-center gap-2">
+        <div className="relative shrink-0">
+          <img src={logo} alt={title} className="w-5 h-5 rounded" />
+          {isActive && id === "stakeogy" && (
+            <div
+              className="absolute -inset-1 border border-dashed rounded-full"
+              style={{
+                borderColor: "oklch(0.72 0.17 162 / 0.2)",
+                animation: "stakeOrbit 8s linear infinite",
+              }}
+            />
+          )}
+          {isActive && id === "compound" && (
+            <div
+              className="absolute -inset-0.5 border-[1.5px] rounded-full"
+              style={{
+                borderColor: "oklch(0.75 0.10 290 / 0.15)",
+                animation: "compoundPulse 3s ease-in-out infinite",
+              }}
+            />
+          )}
+        </div>
+        <div className="text-[14px] font-bold flex-1 min-w-0 truncate" style={{ color }}>
           {title}
         </div>
-        <div className="font-mono text-[9px] mt-px" style={{ color: "oklch(0.6 0 0)" }}>
-          {ratioLabel}
-        </div>
-      </div>
-      {/* Fire animation for burn */}
-      {isActive && id === "burn" && animate && (
-        <svg
-          width="14"
-          height="18"
-          viewBox="0 0 14 18"
-          className="shrink-0"
-          role="img"
-          aria-label="Burn fire animation"
-          style={{ animation: "fireFlicker 0.7s ease-in-out infinite" }}
-        >
-          <path
-            d="M7 0C7 0 1.5 5 1.5 9.5c0 3 2.5 5.5 5.5 5.5s5.5-2.5 5.5-5.5C12.5 5 7 0 7 0z"
-            fill="oklch(0.78 0.16 60 / 0.7)"
-          />
-          <path
-            d="M7 5C7 5 4.5 7.5 4.5 10c0 1.4 1.1 2.5 2.5 2.5s2.5-1.1 2.5-2.5C9.5 7.5 7 5 7 5z"
-            fill="oklch(0.85 0.14 85 / 0.8)"
-          />
-        </svg>
-      )}
-      {/* Stake OGY icon — lock */}
-      {isActive && id === "stakeogy" && animate && (
-        <svg width="16" height="18" viewBox="0 0 16 18" className="shrink-0" fill="none" role="img" aria-label="Stake OGY" style={{ animation: "stakeGlow 2.5s ease-in-out infinite" }}>
-          <rect x="3" y="8" width="10" height="8" rx="2" fill="oklch(0.70 0.17 162 / 0.6)" />
-          <path d="M5.5 8V5.5a2.5 2.5 0 015 0V8" stroke="oklch(0.70 0.17 162)" strokeWidth="1.5" strokeLinecap="round" />
-          <circle cx="8" cy="12" r="1.2" fill="oklch(0.85 0.10 162)" />
-        </svg>
-      )}
-      {/* Compound ICP icon — circular arrows */}
-      {isActive && id === "compound" && animate && (
-        <svg width="16" height="16" viewBox="0 0 16 16" className="shrink-0" fill="none" role="img" aria-label="Compound ICP" style={{ animation: "stakeOrbit 6s linear infinite" }}>
-          <path d="M8 2a6 6 0 014.5 2" stroke="oklch(0.75 0.10 290)" strokeWidth="1.5" strokeLinecap="round" />
-          <path d="M14 4l-1.5 0 0-1.5" stroke="oklch(0.75 0.10 290)" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
-          <path d="M8 14a6 6 0 01-4.5-2" stroke="oklch(0.75 0.10 290)" strokeWidth="1.5" strokeLinecap="round" />
-          <path d="M2 12l1.5 0 0 1.5" stroke="oklch(0.75 0.10 290)" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
-      )}
-      <div className="flex flex-col items-end gap-0.5 shrink-0">
+        {/* Fire animation for burn */}
+        {isActive && id === "burn" && animate && (
+          <svg
+            width="14"
+            height="18"
+            viewBox="0 0 14 18"
+            className="shrink-0"
+            role="img"
+            aria-label="Burn fire animation"
+            style={{ animation: "fireFlicker 0.7s ease-in-out infinite" }}
+          >
+            <path
+              d="M7 0C7 0 1.5 5 1.5 9.5c0 3 2.5 5.5 5.5 5.5s5.5-2.5 5.5-5.5C12.5 5 7 0 7 0z"
+              fill="oklch(0.78 0.16 60 / 0.7)"
+            />
+            <path
+              d="M7 5C7 5 4.5 7.5 4.5 10c0 1.4 1.1 2.5 2.5 2.5s2.5-1.1 2.5-2.5C9.5 7.5 7 5 7 5z"
+              fill="oklch(0.85 0.14 85 / 0.8)"
+            />
+          </svg>
+        )}
+        {/* Stake OGY icon — lock */}
+        {isActive && id === "stakeogy" && animate && (
+          <svg width="16" height="18" viewBox="0 0 16 18" className="shrink-0" fill="none" role="img" aria-label="Stake OGY" style={{ animation: "stakeGlow 2.5s ease-in-out infinite" }}>
+            <rect x="3" y="8" width="10" height="8" rx="2" fill="oklch(0.70 0.17 162 / 0.6)" />
+            <path d="M5.5 8V5.5a2.5 2.5 0 015 0V8" stroke="oklch(0.70 0.17 162)" strokeWidth="1.5" strokeLinecap="round" />
+            <circle cx="8" cy="12" r="1.2" fill="oklch(0.85 0.10 162)" />
+          </svg>
+        )}
+        {/* Compound ICP icon — circular arrows */}
+        {isActive && id === "compound" && animate && (
+          <svg width="16" height="16" viewBox="0 0 16 16" className="shrink-0" fill="none" role="img" aria-label="Compound ICP" style={{ animation: "stakeOrbit 6s linear infinite" }}>
+            <path d="M8 2a6 6 0 014.5 2" stroke="oklch(0.75 0.10 290)" strokeWidth="1.5" strokeLinecap="round" />
+            <path d="M14 4l-1.5 0 0-1.5" stroke="oklch(0.75 0.10 290)" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+            <path d="M8 14a6 6 0 01-4.5-2" stroke="oklch(0.75 0.10 290)" strokeWidth="1.5" strokeLinecap="round" />
+            <path d="M2 12l1.5 0 0 1.5" stroke="oklch(0.75 0.10 290)" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        )}
         <span
-          className="font-mono text-[9px] font-bold px-1.5 py-px rounded"
+          className="font-mono text-[11px] font-bold px-1.5 py-px rounded shrink-0"
           style={{
             color: isActive ? color : "oklch(1 0 0 / 0.25)",
             background: isActive ? `${color}1A` : "oklch(1 0 0 / 0.04)",
@@ -336,17 +332,26 @@ function BuybackModule({
         >
           {isActive ? "ACTIVE" : "STANDBY"}
         </span>
+      </div>
+      {/* Ratio row: label left, live value right */}
+      <div className="flex items-center justify-between gap-2 pl-7">
+        <span className="font-mono text-[11px]" style={{ color: "oklch(0.62 0 0)" }}>
+          {ratioLabel}
+        </span>
         {ratioValue && (
-          <span className="font-mono text-[8px]" style={{ color: "oklch(0.6 0 0)" }}>
+          <span className="font-mono text-[11px] font-semibold" style={{ color }}>
             {ratioValue}
           </span>
         )}
-        {dataValue && (
-          <span className="font-mono text-[8px]" style={{ color: "oklch(0.55 0 0)" }}>
+      </div>
+      {/* Data row */}
+      {dataValue && (
+        <div className="pl-7">
+          <span className="font-mono text-[11px]" style={{ color: "oklch(0.6 0 0)" }}>
             {dataLabel}: {dataValue}
           </span>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -486,7 +491,7 @@ export default function RewardsFlow() {
               <path d="M6 4v2l1.5 0.5" />
             </svg>
             <span
-              className="font-mono text-[9px]"
+              className="font-mono text-[10px]"
               style={{ color: "oklch(0.75 0.13 70)" }}
             >
               Cycle pre-check · rare diversion if &lt; 1k ICP
@@ -513,7 +518,7 @@ export default function RewardsFlow() {
           <div className="font-mono text-xl font-bold text-foreground mt-1">
             33 / 33 / 33 / 1
           </div>
-          <div className="font-mono text-[9px] mt-1" style={{ color: "oklch(0.55 0.08 85)" }}>
+          <div className="font-mono text-[10px] mt-1" style={{ color: "oklch(0.55 0.08 85)" }}>
             Proposal #341
           </div>
         </div>
@@ -623,26 +628,26 @@ export default function RewardsFlow() {
             <div className="flex items-center gap-2 mb-1">
               <img src="/logos/icp.png" alt="ICP" className="w-5 h-5" />
               <span
-                className="font-mono text-[11px] font-bold px-2 py-0.5 rounded"
+                className="font-mono text-[12px] font-bold px-2 py-0.5 rounded"
                 style={{ color: ACCENTS.teal, background: `${ACCENTS.teal}1A` }}
               >
                 33%
               </span>
             </div>
             <div
-              className="text-[13px] font-bold"
+              className="text-[14px] font-bold"
               style={{ color: ACCENTS.teal }}
             >
               {rewards.title}
             </div>
-            <div className="font-mono text-[9px]" style={{ color: "oklch(0.65 0.12 185)" }}>
+            <div className="font-mono text-[10px]" style={{ color: "oklch(0.65 0.12 185)" }}>
               {rewards.sub}
             </div>
             <div className="border-t border-[oklch(0.7_0.12_185_/_0.1)] pt-2 mt-1">
-              <div className="text-[11px] font-semibold" style={{ color: "oklch(0.75 0 0)" }}>
+              <div className="text-[12px] font-semibold" style={{ color: "oklch(0.75 0 0)" }}>
                 ↓ Distribute by maturity
               </div>
-              <div className="font-mono text-[9px]" style={{ color: "oklch(0.6 0 0)" }}>
+              <div className="font-mono text-[10px]" style={{ color: "oklch(0.6 0 0)" }}>
                 2yr lock · not dissolving
               </div>
             </div>
@@ -664,13 +669,13 @@ export default function RewardsFlow() {
                 className="w-5 h-5 rounded"
               />
               <span
-                className="text-[13px] font-bold flex-1"
+                className="text-[14px] font-bold flex-1"
                 style={{ color: ACCENTS.purple }}
               >
                 Buyback
               </span>
               <span
-                className="font-mono text-[11px] font-bold px-2 py-0.5 rounded"
+                className="font-mono text-[12px] font-bold px-2 py-0.5 rounded"
                 style={{
                   color: ACCENTS.purple,
                   background: `${ACCENTS.purple}1A`,
@@ -679,7 +684,7 @@ export default function RewardsFlow() {
                 33%
               </span>
             </div>
-            <div className="font-mono text-[8px] uppercase tracking-wide mb-1" style={{ color: "oklch(0.65 0.08 290)" }}>
+            <div className="font-mono text-[10px] uppercase tracking-wide mb-1" style={{ color: "oklch(0.65 0.08 290)" }}>
               Conditional cascade · by ratio
             </div>
             <div className="flex flex-col gap-1.5">
@@ -727,26 +732,26 @@ export default function RewardsFlow() {
             <div className="flex items-center gap-2 mb-1">
               <img src="/logos/gldt.png" alt="GLDT" className="w-5 h-5" />
               <span
-                className="font-mono text-[11px] font-bold px-2 py-0.5 rounded"
+                className="font-mono text-[12px] font-bold px-2 py-0.5 rounded"
                 style={{ color: ACCENTS.red, background: `${ACCENTS.red}1A` }}
               >
                 33%
               </span>
             </div>
             <div
-              className="text-[13px] font-bold"
+              className="text-[14px] font-bold"
               style={{ color: ACCENTS.red }}
             >
               {gldt.title}
             </div>
-            <div className="font-mono text-[9px]" style={{ color: "oklch(0.65 0.12 22)" }}>
+            <div className="font-mono text-[10px]" style={{ color: "oklch(0.65 0.12 22)" }}>
               {gldt.sub}
             </div>
             <div className="border-t border-[oklch(0.65_0.19_22_/_0.1)] pt-2 mt-1">
-              <div className="text-[11px] font-semibold" style={{ color: "oklch(0.75 0 0)" }}>
+              <div className="text-[12px] font-semibold" style={{ color: "oklch(0.75 0 0)" }}>
                 ↓ GLDT Job
               </div>
-              <div className="font-mono text-[9px]" style={{ color: "oklch(0.6 0 0)" }}>
+              <div className="font-mono text-[10px]" style={{ color: "oklch(0.6 0 0)" }}>
                 No price check · rate × balance
               </div>
             </div>
@@ -762,7 +767,7 @@ export default function RewardsFlow() {
           >
             <div className="flex items-center gap-2 mb-1">
               <div
-                className="w-5 h-5 rounded-md flex items-center justify-center text-[10px] font-bold"
+                className="w-5 h-5 rounded-md flex items-center justify-center text-[11px] font-bold"
                 style={{
                   background: "rgba(255,160,180,0.12)",
                   color: "oklch(0.78 0.12 0)",
@@ -771,7 +776,7 @@ export default function RewardsFlow() {
                 G
               </div>
               <span
-                className="font-mono text-[11px] font-bold px-2 py-0.5 rounded"
+                className="font-mono text-[12px] font-bold px-2 py-0.5 rounded"
                 style={{
                   color: "oklch(0.78 0.12 0)",
                   background: "rgba(255,160,180,0.12)",
@@ -781,12 +786,12 @@ export default function RewardsFlow() {
               </span>
             </div>
             <div
-              className="text-[12px] font-bold"
+              className="text-[13px] font-bold"
               style={{ color: "oklch(0.78 0.12 0)" }}
             >
               {gooddao.title}
             </div>
-            <div className="font-mono text-[9px]" style={{ color: "rgba(255,160,180,0.5)" }}>
+            <div className="font-mono text-[10px]" style={{ color: "rgba(255,160,180,0.5)" }}>
               {gooddao.sub}
             </div>
           </div>
@@ -827,7 +832,7 @@ function FlowLegend() {
           Pre-split diversion
         </span>
       </div>
-      <p className="text-[11px] font-mono text-muted-foreground">
+      <p className="text-[12px] font-mono text-muted-foreground">
         Your simulated rewards land at &ldquo;{nodeById("distribute").title}
         &rdquo;.
       </p>
