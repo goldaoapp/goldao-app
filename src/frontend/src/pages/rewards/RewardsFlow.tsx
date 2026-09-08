@@ -17,18 +17,6 @@ const FLOW_KEYFRAMES = `
 
 type FlowAmounts = Record<string, string>;
 
-function usePrefersReducedMotion(): boolean {
-  const [reduced, setReduced] = useState(false);
-  useEffect(() => {
-    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
-    setReduced(mq.matches);
-    const on = () => setReduced(mq.matches);
-    mq.addEventListener("change", on);
-    return () => mq.removeEventListener("change", on);
-  }, []);
-  return reduced;
-}
-
 /* ── Animated vertical connector ── */
 function Connector({
   height = 32,
@@ -116,7 +104,7 @@ function RewardPoolBanner({ amounts }: { amounts: FlowAmounts }) {
           rounded
         />
         <PoolChip
-          logo="/logos/gldt.svg"
+          logo="/logos/gldt.png"
           value={amounts.pool_gldt ?? "—"}
           label="GLDT"
           color="oklch(0.82 0.14 85)"
@@ -346,8 +334,10 @@ function BuybackModule({
 
 /* ── Main Component ── */
 export default function RewardsFlow() {
-  const reduced = usePrefersReducedMotion();
-  const animate = !reduced;
+  // Flow animations play regardless of the OS "reduce motion" setting — this is
+  // a product choice so the diagram animates on every device. To restore
+  // accessibility respect, set: const animate = !usePrefersReducedMotion();
+  const animate = true;
   const [amounts, setAmounts] = useState<FlowAmounts>({});
   const [live, setLive] = useState(false);
 
@@ -708,7 +698,7 @@ export default function RewardsFlow() {
             }}
           >
             <div className="flex items-center gap-2 mb-1">
-              <img src="/logos/gldt.svg" alt="GLDT" className="w-5 h-5" />
+              <img src="/logos/gldt.png" alt="GLDT" className="w-5 h-5" />
               <span
                 className="font-mono text-[11px] font-bold px-2 py-0.5 rounded"
                 style={{ color: ACCENTS.red, background: `${ACCENTS.red}1A` }}
