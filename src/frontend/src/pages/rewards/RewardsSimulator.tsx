@@ -50,12 +50,6 @@ function fmtDefault(v: number): string {
   return String(v);
 }
 
-function fmtDelay(seconds: number | null): string {
-  if (seconds === null) return "unknown";
-  const years = seconds / (365 * 24 * 3600);
-  return `${years.toFixed(2)} yr`;
-}
-
 /* assumption fields for the editable panel */
 
 type AKey = keyof RewardAssumptions;
@@ -344,8 +338,6 @@ export default function RewardsSimulator() {
     };
   }, [neurons]);
 
-  // Back-compat: expose first neuron for the detail card, and aggregated totals
-  const neuron = neurons.length === 1 ? neurons[0] : null;
   const neuronIneligible = mode === "neuron" && neuronAgg.allIneligible;
 
   const userGoldao = useMemo(() => {
@@ -773,23 +765,4 @@ function ModeButton({
   );
 }
 
-function ResolvedRow({
-  label,
-  value,
-  accent,
-}: {
-  label: string;
-  value: string;
-  accent?: string;
-}) {
-  return (
-    <div className="flex items-baseline justify-between gap-4">
-      <span className="font-mono text-xs text-muted-foreground">{label}</span>
-      <span
-        className={`font-mono text-sm font-semibold ${accent ?? "text-foreground"}`}
-      >
-        {value}
-      </span>
-    </div>
-  );
-}
+
