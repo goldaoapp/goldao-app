@@ -13,6 +13,8 @@ const FLOW_KEYFRAMES = `
 @keyframes stakeOrbit{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}
 @keyframes compoundPulse{0%,100%{transform:scale(1);opacity:0.7}50%{transform:scale(1.08);opacity:1}}
 @keyframes breathe{0%,100%{opacity:0.35}50%{opacity:0.7}}
+@keyframes buybackPulse{0%,100%{box-shadow:0 0 12px 3px rgba(168,85,247,0.15)}50%{box-shadow:0 0 24px 8px rgba(168,85,247,0.35)}}
+@keyframes stakeGlow{0%,100%{opacity:0.6;transform:scale(1)}50%{opacity:1;transform:scale(1.1)}}
 `;
 
 type FlowAmounts = Record<string, string>;
@@ -84,7 +86,7 @@ function RewardPoolBanner({ amounts }: { amounts: FlowAmounts }) {
           >
             Reward Pool
           </div>
-          <div className="font-mono text-[9px] text-muted-foreground/50">
+          <div className="font-mono text-[9px]" style={{ color: "oklch(0.65 0.08 85)" }}>
             Next distribution: Wednesday 14h UTC
           </div>
         </div>
@@ -175,7 +177,7 @@ function FlowCard({
           {node.title}
         </div>
         {node.sub && (
-          <div className="font-mono text-[10px] text-muted-foreground/60 mt-0.5">
+          <div className="font-mono text-[10px] mt-0.5" style={{ color: "oklch(0.6 0 0)" }}>
             {node.sub}
           </div>
         )}
@@ -282,7 +284,7 @@ function BuybackModule({
         <div className="text-[11px] font-bold" style={{ color }}>
           {title}
         </div>
-        <div className="font-mono text-[9px] text-muted-foreground/50 mt-px">
+        <div className="font-mono text-[9px] mt-px" style={{ color: "oklch(0.6 0 0)" }}>
           {ratioLabel}
         </div>
       </div>
@@ -307,6 +309,23 @@ function BuybackModule({
           />
         </svg>
       )}
+      {/* Stake OGY icon — lock */}
+      {isActive && id === "stakeogy" && animate && (
+        <svg width="16" height="18" viewBox="0 0 16 18" className="shrink-0" fill="none" role="img" aria-label="Stake OGY" style={{ animation: "stakeGlow 2.5s ease-in-out infinite" }}>
+          <rect x="3" y="8" width="10" height="8" rx="2" fill="oklch(0.70 0.17 162 / 0.6)" />
+          <path d="M5.5 8V5.5a2.5 2.5 0 015 0V8" stroke="oklch(0.70 0.17 162)" strokeWidth="1.5" strokeLinecap="round" />
+          <circle cx="8" cy="12" r="1.2" fill="oklch(0.85 0.10 162)" />
+        </svg>
+      )}
+      {/* Compound ICP icon — circular arrows */}
+      {isActive && id === "compound" && animate && (
+        <svg width="16" height="16" viewBox="0 0 16 16" className="shrink-0" fill="none" role="img" aria-label="Compound ICP" style={{ animation: "stakeOrbit 6s linear infinite" }}>
+          <path d="M8 2a6 6 0 014.5 2" stroke="oklch(0.75 0.10 290)" strokeWidth="1.5" strokeLinecap="round" />
+          <path d="M14 4l-1.5 0 0-1.5" stroke="oklch(0.75 0.10 290)" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+          <path d="M8 14a6 6 0 01-4.5-2" stroke="oklch(0.75 0.10 290)" strokeWidth="1.5" strokeLinecap="round" />
+          <path d="M2 12l1.5 0 0 1.5" stroke="oklch(0.75 0.10 290)" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      )}
       <div className="flex flex-col items-end gap-0.5 shrink-0">
         <span
           className="font-mono text-[9px] font-bold px-1.5 py-px rounded"
@@ -318,12 +337,12 @@ function BuybackModule({
           {isActive ? "ACTIVE" : "STANDBY"}
         </span>
         {ratioValue && (
-          <span className="font-mono text-[8px] text-muted-foreground/40">
+          <span className="font-mono text-[8px]" style={{ color: "oklch(0.6 0 0)" }}>
             {ratioValue}
           </span>
         )}
         {dataValue && (
-          <span className="font-mono text-[8px] text-muted-foreground/30">
+          <span className="font-mono text-[8px]" style={{ color: "oklch(0.55 0 0)" }}>
             {dataLabel}: {dataValue}
           </span>
         )}
@@ -468,7 +487,7 @@ export default function RewardsFlow() {
             </svg>
             <span
               className="font-mono text-[9px]"
-              style={{ color: "oklch(0.83 0.13 70 / 0.6)" }}
+              style={{ color: "oklch(0.75 0.13 70)" }}
             >
               Cycle pre-check · rare diversion if &lt; 1k ICP
             </span>
@@ -494,7 +513,7 @@ export default function RewardsFlow() {
           <div className="font-mono text-xl font-bold text-foreground mt-1">
             33 / 33 / 33 / 1
           </div>
-          <div className="font-mono text-[9px] text-muted-foreground/50 mt-1">
+          <div className="font-mono text-[9px] mt-1" style={{ color: "oklch(0.55 0.08 85)" }}>
             Proposal #341
           </div>
         </div>
@@ -579,9 +598,16 @@ export default function RewardsFlow() {
           </svg>
         </div>
 
-        {/* Mobile: simple connectors before grid */}
-        <div className="sm:hidden">
-          <Connector height={24} animate={animate} delay={0.5} />
+        {/* Mobile: animated flow connectors before grid */}
+        <div className="sm:hidden flex flex-col items-center">
+          <Connector height={16} accent="teal" animate={animate} delay={0.5} />
+          <div className="flex items-center gap-1">
+            <div className="w-2 h-2 rounded-full" style={{ background: ACCENTS.teal, animation: animate ? "breathe 2s ease-in-out infinite" : undefined }} />
+            <div className="w-2 h-2 rounded-full" style={{ background: ACCENTS.purple, animation: animate ? "breathe 2s ease-in-out 0.3s infinite" : undefined }} />
+            <div className="w-2 h-2 rounded-full" style={{ background: ACCENTS.red, animation: animate ? "breathe 2s ease-in-out 0.6s infinite" : undefined }} />
+            <div className="w-2 h-2 rounded-full" style={{ background: "oklch(0.78 0.12 0)", animation: animate ? "breathe 2s ease-in-out 0.9s infinite" : undefined }} />
+          </div>
+          <Connector height={8} accent="purple" animate={animate} delay={0.7} />
         </div>
 
         {/* 4 Branch cards */}
@@ -609,14 +635,14 @@ export default function RewardsFlow() {
             >
               {rewards.title}
             </div>
-            <div className="font-mono text-[9px] text-muted-foreground/50">
+            <div className="font-mono text-[9px]" style={{ color: "oklch(0.65 0.12 185)" }}>
               {rewards.sub}
             </div>
             <div className="border-t border-[oklch(0.7_0.12_185_/_0.1)] pt-2 mt-1">
-              <div className="text-[11px] font-semibold text-muted-foreground/70">
+              <div className="text-[11px] font-semibold" style={{ color: "oklch(0.75 0 0)" }}>
                 ↓ Distribute by maturity
               </div>
-              <div className="font-mono text-[9px] text-muted-foreground/40">
+              <div className="font-mono text-[9px]" style={{ color: "oklch(0.6 0 0)" }}>
                 2yr lock · not dissolving
               </div>
             </div>
@@ -628,6 +654,7 @@ export default function RewardsFlow() {
             style={{
               background: `${ACCENTS.purple}06`,
               borderColor: `${ACCENTS.purple}28`,
+              animation: animate ? "buybackPulse 4s ease-in-out infinite" : undefined,
             }}
           >
             <div className="flex items-center gap-2 mb-1">
@@ -652,7 +679,7 @@ export default function RewardsFlow() {
                 33%
               </span>
             </div>
-            <div className="font-mono text-[8px] text-muted-foreground/40 uppercase tracking-wide mb-1">
+            <div className="font-mono text-[8px] uppercase tracking-wide mb-1" style={{ color: "oklch(0.65 0.08 290)" }}>
               Conditional cascade · by ratio
             </div>
             <div className="flex flex-col gap-1.5">
@@ -712,14 +739,14 @@ export default function RewardsFlow() {
             >
               {gldt.title}
             </div>
-            <div className="font-mono text-[9px] text-muted-foreground/50">
+            <div className="font-mono text-[9px]" style={{ color: "oklch(0.65 0.12 22)" }}>
               {gldt.sub}
             </div>
             <div className="border-t border-[oklch(0.65_0.19_22_/_0.1)] pt-2 mt-1">
-              <div className="text-[11px] font-semibold text-muted-foreground/70">
+              <div className="text-[11px] font-semibold" style={{ color: "oklch(0.75 0 0)" }}>
                 ↓ GLDT Job
               </div>
-              <div className="font-mono text-[9px] text-muted-foreground/40">
+              <div className="font-mono text-[9px]" style={{ color: "oklch(0.6 0 0)" }}>
                 No price check · rate × balance
               </div>
             </div>
