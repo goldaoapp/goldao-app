@@ -1,4 +1,4 @@
-import { Calculator, Hash, Loader2, RotateCcw, Search } from "lucide-react";
+import { Calculator, Hash, Loader2, Plus, RotateCcw, Search, Trash2 } from "lucide-react";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
@@ -247,12 +247,17 @@ export default function RewardsSimulator() {
 
   const [mode, setMode] = useState<"amount" | "neuron">("amount");
   const [amount, setAmount] = useState("100000");
-  const [neuronId, setNeuronId] = useState("");
-  const [neuron, setNeuron] = useState<NeuronLookup | null>(null);
+
+  // Multi-neuron state
+  const [neurons, setNeurons] = useState<NeuronLookup[]>([]);
+  const [bulkText, setBulkText] = useState("");
+  const [showBulkInput, setShowBulkInput] = useState(false);
+  const [singleNeuronId, setSingleNeuronId] = useState("");
   const [lookupState, setLookupState] = useState<"idle" | "loading" | "error">(
     "idle",
   );
   const [lookupError, setLookupError] = useState("");
+  const [lookupProgress, setLookupProgress] = useState("");
 
   const [showAssumptions, setShowAssumptions] = useState(false);
 
@@ -268,38 +273,97 @@ export default function RewardsSimulator() {
     setRaw((prev) => ({ ...prev, [k]: v }));
   }, []);
 
-  const runLookup = useCallback(async () => {
+  // Add a single neuron by ID
+  const addSingleNeuron = useCallback(async () => {
+    const id = singleNeuronId.trim();
+    if (!id) return;
     setLookupState("loading");
     setLookupError("");
-    setNeuron(null);
     try {
-      const n = await lookupNeuron(neuronId);
-      setNeuron(n);
+      const n = await lookupNeuron(id);
+      setNeurons((prev) => {
+        if (prev.some((x) => x.id === n.id)) return prev;
+        return [...prev, n];
+      });
+      setSingleNeuronId("");
       setLookupState("idle");
     } catch (e) {
       setLookupError(e instanceof Error ? e.message : "Lookup failed.");
       setLookupState("error");
     }
-  }, [neuronId]);
+  }, [singleNeuronId]);
 
-  // Effective GOLDAO fed into the model. An ineligible neuron earns nothing.
-  const neuronIneligible = mode === "neuron" && neuron?.eligible === false;
+  // Bulk add from textarea (one ID per line)
+  const addBulkNeurons = useCallback(async () => {
+    const lines = bulkText
+      .split(/\n/)
+      .map((l) => l.trim())
+      .filter((l) => l.length > 0);
+    if (lines.length === 0) return;
+    setLookupState("loading");
+    setLookupError("");
+    const errors: string[] = [];
+    let added = 0;
+    for (let i = 0; i < lines.length; i++) {
+      setLookupProgress(`${i + 1} / ${lines.length}`);
+      try {
+        const n = await lookupNeuron(lines[i]);
+        setNeurons((prev) => {
+          if (prev.some((x) => x.id === n.id)) return prev;
+          return [...prev, n];
+        });
+        added++;
+      } catch {
+        errors.push(lines[i].slice(0, 16));
+      }
+    }
+    setLookupProgress("");
+    if (errors.length > 0) {
+      setLookupError(`${added} added. Failed: ${errors.join(", ")}`);
+      setLookupState("error");
+    } else {
+      setLookupState("idle");
+    }
+    setBulkText("");
+    setShowBulkInput(false);
+  }, [bulkText]);
+
+  const removeNeuron = useCallback((id: string) => {
+    setNeurons((prev) => prev.filter((n) => n.id !== id));
+  }, []);
+
+  // Aggregated neuron data for the model
+  const neuronAgg = useMemo(() => {
+    const eligible = neurons.filter((n) => n.eligible !== false);
+    return {
+      totalGoldao: eligible.reduce((s, n) => s + n.goldao, 0),
+      totalVP: eligible.reduce((s, n) => s + (n.votingPower ?? 0), 0),
+      hasVP: eligible.some((n) => n.votingPower !== null),
+      allIneligible: neurons.length > 0 && eligible.length === 0,
+      eligibleCount: eligible.length,
+    };
+  }, [neurons]);
+
+  // Back-compat: expose first neuron for the detail card, and aggregated totals
+  const neuron = neurons.length === 1 ? neurons[0] : null;
+  const neuronIneligible = mode === "neuron" && neuronAgg.allIneligible;
+
   const userGoldao = useMemo(() => {
     if (mode === "amount") return Math.max(parseInput(amount, 0), 0);
-    if (!neuron) return 0;
-    return neuron.eligible === false ? 0 : neuron.goldao;
-  }, [mode, amount, neuron]);
+    if (neurons.length === 0) return 0;
+    return neuronAgg.totalGoldao;
+  }, [mode, amount, neurons, neuronAgg]);
 
   // Average VP multiplier for the eligible cohort (dissolve 2× + avg age bonus).
   const AVG_VP_MULT = 2.3;
 
   // In neuron mode with known VP, compute share from VP instead of stake.
   const vpShare = useMemo<number | undefined>(() => {
-    if (mode !== "neuron" || !neuron?.votingPower || neuronIneligible)
+    if (mode !== "neuron" || !neuronAgg.hasVP || neuronIneligible)
       return undefined;
     const totalVp = assumptions.goldao_eligible * AVG_VP_MULT;
-    return totalVp > 0 ? neuron.votingPower / totalVp : undefined;
-  }, [mode, neuron, neuronIneligible, assumptions.goldao_eligible]);
+    return totalVp > 0 ? neuronAgg.totalVP / totalVp : undefined;
+  }, [mode, neuronAgg, neuronIneligible, assumptions.goldao_eligible]);
 
   const result = useMemo<RewardResult>(
     () => simulate(poolsFrom(assumptions), userGoldao, vpShare),
@@ -315,8 +379,10 @@ export default function RewardsSimulator() {
     }
     setRaw(init);
     setAmount("100000");
-    setNeuronId("");
-    setNeuron(null);
+    setSingleNeuronId("");
+    setNeurons([]);
+    setBulkText("");
+    setShowBulkInput(false);
     setLookupState("idle");
     setLookupError("");
   }, []);
@@ -372,6 +438,7 @@ export default function RewardsSimulator() {
               </div>
             ) : (
               <div className="space-y-3">
+                {/* Single neuron input */}
                 <label className="block">
                   <span className="mb-1 block font-mono text-xs text-muted-foreground">
                     GOLDAO neuron id (hex)
@@ -379,29 +446,70 @@ export default function RewardsSimulator() {
                   <div className="flex gap-2">
                     <input
                       type="text"
-                      value={neuronId}
-                      onChange={(e) => setNeuronId(e.target.value)}
+                      value={singleNeuronId}
+                      onChange={(e) => setSingleNeuronId(e.target.value)}
                       onKeyDown={(e) => {
-                        if (e.key === "Enter") runLookup();
+                        if (e.key === "Enter") addSingleNeuron();
                       }}
                       placeholder="a1b2c3..."
                       className="min-w-0 flex-1 rounded-lg border border-border bg-secondary/60 px-3 py-2.5 font-mono text-sm text-foreground outline-none focus:ring-1 focus:ring-primary/50"
                     />
                     <button
                       type="button"
-                      onClick={runLookup}
-                      disabled={lookupState === "loading" || !neuronId.trim()}
+                      onClick={addSingleNeuron}
+                      disabled={lookupState === "loading" || !singleNeuronId.trim()}
                       className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-2.5 font-mono text-sm font-semibold text-primary-foreground transition-smooth hover:opacity-90 disabled:opacity-50"
                     >
-                      {lookupState === "loading" ? (
+                      {lookupState === "loading" && !showBulkInput ? (
                         <Loader2 className="size-4 animate-spin" />
                       ) : (
-                        <Search className="size-4" />
+                        <Plus className="size-4" />
                       )}
-                      Look up
+                      Add
                     </button>
                   </div>
                 </label>
+
+                {/* Bulk add toggle */}
+                <button
+                  type="button"
+                  onClick={() => setShowBulkInput((v) => !v)}
+                  className="inline-flex items-center gap-1.5 font-mono text-xs text-primary hover:underline"
+                >
+                  <Plus className="size-3" />
+                  {showBulkInput ? "Hide bulk input" : "Add multiple neurons"}
+                </button>
+
+                {/* Bulk textarea */}
+                {showBulkInput && (
+                  <div className="space-y-2">
+                    <textarea
+                      value={bulkText}
+                      onChange={(e) => setBulkText(e.target.value)}
+                      placeholder={"Paste one neuron id per line:\na1b2c3...\nd4e5f6...\n7a8b9c..."}
+                      rows={5}
+                      className="w-full rounded-lg border border-border bg-secondary/60 px-3 py-2.5 font-mono text-sm text-foreground outline-none focus:ring-1 focus:ring-primary/50 resize-y"
+                    />
+                    <button
+                      type="button"
+                      onClick={addBulkNeurons}
+                      disabled={lookupState === "loading" || !bulkText.trim()}
+                      className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-2 font-mono text-xs font-semibold text-primary-foreground transition-smooth hover:opacity-90 disabled:opacity-50"
+                    >
+                      {lookupState === "loading" && showBulkInput ? (
+                        <>
+                          <Loader2 className="size-3.5 animate-spin" />
+                          Looking up {lookupProgress}
+                        </>
+                      ) : (
+                        <>
+                          <Search className="size-3.5" />
+                          Look up all
+                        </>
+                      )}
+                    </button>
+                  </div>
+                )}
 
                 {lookupState === "error" && (
                   <p className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 font-mono text-xs text-destructive">
@@ -409,43 +517,64 @@ export default function RewardsSimulator() {
                   </p>
                 )}
 
-                {neuron && (
-                  <div className="space-y-1 rounded-md border border-border bg-secondary/40 px-3 py-2.5">
-                    <ResolvedRow
-                      label="Stake"
-                      value={`${fmtInt(neuron.goldao)} GOLDAO`}
-                    />
-                    {neuron.votingPower !== null && (
-                      <ResolvedRow
-                        label="Voting power"
-                        value={
-                          neuron.goldao > 0
-                            ? `${fmtInt(neuron.votingPower)} VP · ${(
-                                neuron.votingPower / neuron.goldao
-                              ).toFixed(2)}×`
-                            : `${fmtInt(neuron.votingPower)} VP`
-                        }
-                      />
-                    )}
-                    <ResolvedRow
-                      label="Dissolve delay"
-                      value={fmtDelay(neuron.dissolveDelaySeconds)}
-                    />
-                    <ResolvedRow
-                      label="Eligibility"
-                      value={
-                        neuron.eligible === false
-                          ? "Not eligible"
-                          : neuron.eligible === true
-                            ? "Eligible"
-                            : "Assumed eligible"
-                      }
-                      accent={
-                        neuron.eligible === false
-                          ? "text-destructive"
-                          : "text-[oklch(0.72_0.17_162)]"
-                      }
-                    />
+                {/* Neuron list */}
+                {neurons.length > 0 && (
+                  <div className="space-y-2">
+                    <div className="flex items-baseline justify-between">
+                      <span className="font-mono text-[10px] uppercase tracking-widest text-primary">
+                        Neurons ({neurons.length})
+                      </span>
+                      {neurons.length > 1 && (
+                        <span className="font-mono text-xs font-semibold text-foreground">
+                          Total: {fmtInt(neuronAgg.totalGoldao)} GOLDAO
+                        </span>
+                      )}
+                    </div>
+                    <div className="max-h-64 space-y-1.5 overflow-y-auto pr-1">
+                      {neurons.map((n) => (
+                        <div
+                          key={n.id}
+                          className="group flex items-start gap-2 rounded-md border border-border bg-secondary/40 px-3 py-2"
+                        >
+                          <div className="min-w-0 flex-1 space-y-0.5">
+                            <p className="truncate font-mono text-[11px] text-muted-foreground">
+                              {n.id}
+                            </p>
+                            <div className="flex flex-wrap items-baseline gap-x-4 gap-y-0.5">
+                              <span className="font-mono text-sm font-semibold text-foreground">
+                                {fmtInt(n.goldao)} GOLDAO
+                              </span>
+                              {n.votingPower !== null && (
+                                <span className="font-mono text-xs text-muted-foreground">
+                                  {fmtInt(n.votingPower)} VP
+                                </span>
+                              )}
+                              <span
+                                className={`font-mono text-[11px] ${
+                                  n.eligible === false
+                                    ? "text-destructive"
+                                    : "text-[oklch(0.72_0.17_162)]"
+                                }`}
+                              >
+                                {n.eligible === false
+                                  ? "Not eligible"
+                                  : n.eligible === true
+                                    ? "Eligible"
+                                    : "Assumed eligible"}
+                              </span>
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => removeNeuron(n.id)}
+                            className="mt-1 shrink-0 rounded p-1 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 hover:text-destructive"
+                            title="Remove neuron"
+                          >
+                            <Trash2 className="size-3.5" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 )}
               </div>
@@ -459,6 +588,8 @@ export default function RewardsSimulator() {
                 {vpShare !== undefined
                   ? "Your share by voting power"
                   : "Your share of eligible GOLDAO"}
+                {mode === "neuron" && neurons.length > 1 &&
+                  ` (${neurons.length} neurons)`}
               </span>
               <span className="font-mono text-lg font-bold text-gradient-gold">
                 {(result.share * 100).toLocaleString("en-US", {
@@ -473,10 +604,10 @@ export default function RewardsSimulator() {
                 style={{ width: `${Math.min(result.share * 100, 100)}%` }}
               />
             </div>
-            {vpShare !== undefined && neuron?.votingPower ? (
+            {vpShare !== undefined && neuronAgg.totalVP > 0 ? (
               <div className="mt-2 space-y-0.5">
                 <p className="font-mono text-[11px] text-muted-foreground">
-                  {fmtInt(neuron.votingPower)} VP of ~
+                  {fmtInt(neuronAgg.totalVP)} VP of ~
                   {fmtInt(
                     Math.round(assumptions.goldao_eligible * AVG_VP_MULT),
                   )}{" "}
@@ -561,8 +692,9 @@ export default function RewardsSimulator() {
           )}
           {neuronIneligible && (
             <p className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 font-mono text-xs text-destructive">
-              This neuron is dissolving or under the 2-year lock — it does not
-              accrue rewards.
+              {neurons.length === 1
+                ? "This neuron is dissolving or under the 2-year lock — it does not accrue rewards."
+                : "All selected neurons are dissolving or under the 2-year lock — none accrue rewards."}
             </p>
           )}
 
