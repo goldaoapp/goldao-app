@@ -56,6 +56,51 @@ function Connector({
 }
 
 /* ── Reward Pool Banner (top, standalone) ── */
+/** Next Wednesday 14:00 UTC (ICP/OGY distribution), formatted as a date so the
+ *  "14h" time can't be misread as a day. Falls back to today if today is
+ *  Wednesday before 14:00 UTC. */
+function nextDistribution(): string {
+  const now = new Date();
+  const d = new Date(
+    Date.UTC(
+      now.getUTCFullYear(),
+      now.getUTCMonth(),
+      now.getUTCDate(),
+      14,
+      0,
+      0,
+    ),
+  );
+  let add = (3 - d.getUTCDay() + 7) % 7; // 3 = Wednesday
+  if (add === 0 && now.getUTCHours() >= 14) add = 7;
+  d.setUTCDate(d.getUTCDate() + add);
+  const day = d.getUTCDate();
+  const month = d.toLocaleString("en-US", { month: "short", timeZone: "UTC" });
+  return `Wed ${day} ${month}, 14:00 UTC`;
+}
+
+/** Next GLDT distribution: 1st Wednesday of the month at 12:00 UTC. Rolls to
+ *  next month once this month's 1st Wednesday has passed. */
+function nextGldtDistribution(): string {
+  const now = new Date();
+  const firstWedOf = (year: number, month: number) => {
+    const first = new Date(Date.UTC(year, month, 1, 12, 0, 0));
+    const add = (3 - first.getUTCDay() + 7) % 7; // days until Wednesday
+    first.setUTCDate(1 + add);
+    return first;
+  };
+  let target = firstWedOf(now.getUTCFullYear(), now.getUTCMonth());
+  if (now.getTime() >= target.getTime()) {
+    target = firstWedOf(now.getUTCFullYear(), now.getUTCMonth() + 1);
+  }
+  const day = target.getUTCDate();
+  const month = target.toLocaleString("en-US", {
+    month: "short",
+    timeZone: "UTC",
+  });
+  return `Wed ${day} ${month}, 12:00 UTC`;
+}
+
 function RewardPoolBanner({ amounts }: { amounts: FlowAmounts }) {
   return (
     <div
@@ -86,8 +131,11 @@ function RewardPoolBanner({ amounts }: { amounts: FlowAmounts }) {
           >
             Reward Pool
           </div>
-          <div className="font-mono text-[10px]" style={{ color: "oklch(0.65 0.08 85)" }}>
-            Next distribution: Wednesday 14h UTC
+          <div className="font-mono text-[10px]" style={{ color: "oklch(0.8 0.09 85)" }}>
+            Next ICP/OGY: {nextDistribution()}
+          </div>
+          <div className="font-mono text-[10px]" style={{ color: "oklch(0.8 0.09 85)" }}>
+            Next GLDT: {nextGldtDistribution()}
           </div>
         </div>
       </div>
