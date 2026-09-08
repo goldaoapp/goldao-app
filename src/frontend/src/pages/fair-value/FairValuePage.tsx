@@ -316,16 +316,98 @@ function Note({ children }: { children: React.ReactNode }) {
   );
 }
 
+/* ── Zone helpers ────────────────────────────────────────────────────────── */
+
+type ZoneId = "expensive" | "slightly_expensive" | "fair" | "slightly_cheap" | "cheap";
+
+interface ZoneInfo {
+  id: ZoneId;
+  label: string;
+  color: string;     // oklch for bar segments
+  textClass: string;  // tailwind text color
+  bgClass: string;    // tailwind bg for badge
+  borderClass: string;
+}
+
+const ZONES: ZoneInfo[] = [
+  {
+    id: "expensive",
+    label: "EXPENSIVE",
+    color: "oklch(0.65 0.19 22)",
+    textClass: "text-destructive",
+    bgClass: "bg-destructive/10",
+    borderClass: "border-destructive",
+  },
+  {
+    id: "slightly_expensive",
+    label: "SLIGHTLY EXPENSIVE",
+    color: "oklch(0.75 0.14 55)",
+    textClass: "text-[oklch(0.75_0.14_55)]",
+    bgClass: "bg-[oklch(0.75_0.14_55)]/10",
+    borderClass: "border-[oklch(0.75_0.14_55)]",
+  },
+  {
+    id: "fair",
+    label: "FAIR VALUE",
+    color: "oklch(0.83 0.13 70)",
+    textClass: "text-[oklch(0.83_0.13_70)]",
+    bgClass: "bg-[oklch(0.83_0.13_70)]/10",
+    borderClass: "border-[oklch(0.83_0.13_70)]",
+  },
+  {
+    id: "slightly_cheap",
+    label: "SLIGHTLY CHEAP",
+    color: "oklch(0.72 0.13 140)",
+    textClass: "text-[oklch(0.72_0.13_140)]",
+    bgClass: "bg-[oklch(0.72_0.13_140)]/10",
+    borderClass: "border-[oklch(0.72_0.13_140)]",
+  },
+  {
+    id: "cheap",
+    label: "CHEAP",
+    color: "oklch(0.72 0.17 162)",
+    textClass: "text-[oklch(0.72_0.17_162)]",
+    bgClass: "bg-[oklch(0.72_0.17_162)]/10",
+    borderClass: "border-[oklch(0.72_0.17_162)]",
+  },
+];
+
+function getZone(difPct: number): ZoneInfo {
+  // difPct > 0 = cheap (market ratio above equilibrium)
+  if (difPct > 20) return ZONES[4];       // cheap
+  if (difPct > 10) return ZONES[3];       // slightly cheap
+  if (difPct >= -10) return ZONES[2];     // fair value
+  if (difPct >= -20) return ZONES[1];     // slightly expensive
+  return ZONES[0];                         // expensive
+}
+
 /* ── Spectrum bar ────────────────────────────────────────────────────────── */
 
 function SpectrumBarTop({ r }: { r: FairValueResult }) {
   const eq = r.ratio_eq;
   const mkt = r.market_ratio;
   if (eq <= 0 || mkt <= 0) return null;
-  const maxVal = Math.max(eq, mkt) * 1.5;
-  const pct = (v: number) => Math.min((v / maxVal) * 100, 98);
-  const isCheap = mkt > eq;
-  const dif = Math.abs(r.diferencia_pct);
+
+  const dif = r.diferencia_pct;
+  const zone = getZone(dif);
+
+  // Bar range: eq ± 35% so all 5 bands fit with room for the dot
+  const barMin = eq * 0.65;
+  const barMax = eq * 1.35;
+  const barRange = barMax - barMin;
+  const toPct = (v: number) =>
+    Math.max(0, Math.min(100, ((v - barMin) / barRange) * 100));
+
+  // Dynamic band edges based on equilibrium
+  const bands = [
+    { zone: ZONES[0], from: barMin, to: eq * 0.8 },
+    { zone: ZONES[1], from: eq * 0.8, to: eq * 0.9 },
+    { zone: ZONES[2], from: eq * 0.9, to: eq * 1.1 },
+    { zone: ZONES[3], from: eq * 1.1, to: eq * 1.2 },
+    { zone: ZONES[4], from: eq * 1.2, to: barMax },
+  ];
+
+  const dotPct = toPct(mkt);
 
   return (
     <div className="rounded-lg border border-border bg-card/50 p-4">
@@ -355,46 +437,66 @@ function SpectrumBarTop({ r }: { r: FairValueResult }) {
           </div>
         </div>
         <span
-          className={`text-xs font-mono font-semibold px-2 py-1 rounded ${
-            isCheap
-              ? "text-[oklch(0.72_0.17_162)] bg-[oklch(0.72_0.17_162)]/10"
-              : "text-destructive bg-destructive/10"
-          }`}
+          className={`text-xs font-mono font-semibold px-2 py-1 rounded ${zone.textClass} ${zone.bgClass}`}
         >
-          ● {isCheap ? "CHEAP" : "EXPENSIVE"} {isCheap ? "+" : "-"}
+          ● {zone.label}{" "}
+          {dif >= 0 ? "+" : ""}
           {fmtNum(dif, 1)}%
         </span>
       </div>
-      <div className="relative h-3 rounded-full bg-secondary/60 overflow-hidden">
-        <div
-          className="absolute inset-0"
-          style={{
-            background:
-              "linear-gradient(to right, oklch(0.65 0.19 22), oklch(0.72 0.17 162))",
-            opacity: 0.35,
-          }}
-        />
+
+      {/* Banded bar */}
+      <div className="relative h-3 rounded-full overflow-hidden bg-secondary/60">
+        {bands.map((b) => {
+          const left = toPct(b.from);
+          const right = toPct(b.to);
+          const width = right - left;
+          if (width <= 0) return null;
+          return (
+            <div
+              key={b.zone.id}
+              className="absolute top-0 bottom-0"
+              style={{
+                left: `${left}%`,
+                width: `${width}%`,
+                background: b.zone.color,
+                opacity: 0.3,
+              }}
+            />
+          );
+        })}
+
+        {/* Equilibrium tick */}
         <div
           className="absolute top-0 bottom-0 w-0.5"
-          style={{ left: `${pct(eq)}%`, background: "oklch(0.83 0.13 70)" }}
+          style={{ left: `${toPct(eq)}%`, background: "oklch(0.83 0.13 70)" }}
         />
+
+        {/* Market dot */}
         <div
-          className="absolute top-1/2 -translate-y-1/2 size-3 rounded-full border-2"
+          className="absolute top-1/2 size-3 rounded-full border-2"
           style={{
-            left: `${pct(mkt)}%`,
+            left: `${dotPct}%`,
             transform: "translate(-50%, -50%)",
-            background: isCheap
-              ? "oklch(0.72 0.17 162)"
-              : "oklch(0.65 0.19 22)",
-            borderColor: isCheap
-              ? "oklch(0.72 0.17 162)"
-              : "oklch(0.65 0.19 22)",
+            background: zone.color,
+            borderColor: zone.color,
           }}
         />
       </div>
-      <div className="flex justify-between mt-1">
+
+      {/* Zone labels */}
+      <div className="flex justify-between mt-1 px-0.5">
         <span className="text-[9px] font-mono text-muted-foreground">
           EXPENSIVE
+        </span>
+        <span className="text-[9px] font-mono text-muted-foreground/50">
+          -10%
+        </span>
+        <span className="text-[9px] font-mono text-[oklch(0.83_0.13_70)]">
+          FAIR
+        </span>
+        <span className="text-[9px] font-mono text-muted-foreground/50">
+          +10%
         </span>
         <span className="text-[9px] font-mono text-muted-foreground">
           CHEAP
@@ -535,50 +637,59 @@ function Results({
         />
       </StepCard>
 
-      <StepCard
-        step={8}
-        title="Market vs Equilibrium"
-        accent={r.esta_barato ? "green" : "destructive"}
-      >
-        <div className="space-y-0.5">
-          <Row
-            label="Equilibrium"
-            value={`1 ICP = ${fmtNum(r.ratio_eq, 0)} GOLDAO`}
-            accent="amber"
-          />
-          <Row
-            label="Market"
-            value={`1 ICP = ${fmtNum(r.market_ratio, 0)} GOLDAO`}
-          />
-        </div>
-        {(() => {
-          const dif = Math.abs(r.diferencia_pct);
-          if (r.esta_barato) {
-            return (
-              <div className="rounded-md border-l-4 border-[oklch(0.72_0.17_162)] bg-[oklch(0.72_0.17_162)]/10 px-3 py-2 mt-2">
-                <p className="text-sm font-mono font-semibold text-[oklch(0.72_0.17_162)]">
-                  GOLDAO is CHEAP ({fmtNum(dif)}% above equilibrium)
-                </p>
-                <p className="text-[10px] text-muted-foreground font-mono mt-0.5">
-                  Buying GOLDAO yields more than staking ICP directly on the
-                  NNS.
-                </p>
-              </div>
-            );
-          }
-          return (
-            <div className="rounded-md border-l-4 border-destructive bg-destructive/10 px-3 py-2 mt-2">
-              <p className="text-sm font-mono font-semibold text-destructive">
-                GOLDAO is EXPENSIVE ({fmtNum(dif)}% below equilibrium)
+      {(() => {
+        const zone = getZone(r.diferencia_pct);
+        const dif = Math.abs(r.diferencia_pct);
+        const accentMap: Record<ZoneId, string> = {
+          expensive: "destructive",
+          slightly_expensive: "amber",
+          fair: "amber",
+          slightly_cheap: "green",
+          cheap: "green",
+        };
+        const descriptions: Record<ZoneId, string> = {
+          expensive:
+            "Staking ICP directly on the NNS yields significantly more than buying GOLDAO today.",
+          slightly_expensive:
+            "GOLDAO yield is slightly below NNS direct staking. Close to equilibrium.",
+          fair:
+            "GOLDAO yield is roughly in line with NNS direct staking — fair value zone.",
+          slightly_cheap:
+            "GOLDAO yield slightly exceeds NNS direct staking. Mildly favorable entry.",
+          cheap:
+            "Buying GOLDAO yields significantly more than staking ICP directly on the NNS.",
+        };
+        return (
+          <StepCard
+            step={8}
+            title="Market vs Equilibrium"
+            accent={accentMap[zone.id]}
+          >
+            <div className="space-y-0.5">
+              <Row
+                label="Equilibrium"
+                value={`1 ICP = ${fmtNum(r.ratio_eq, 0)} GOLDAO`}
+                accent="amber"
+              />
+              <Row
+                label="Market"
+                value={`1 ICP = ${fmtNum(r.market_ratio, 0)} GOLDAO`}
+              />
+            </div>
+            <div
+              className={`rounded-md border-l-4 ${zone.borderClass} ${zone.bgClass} px-3 py-2 mt-2`}
+            >
+              <p className={`text-sm font-mono font-semibold ${zone.textClass}`}>
+                GOLDAO is {zone.label} ({fmtNum(dif)}%{" "}
+                {r.diferencia_pct >= 0 ? "above" : "below"} equilibrium)
               </p>
               <p className="text-[10px] text-muted-foreground font-mono mt-0.5">
-                Staking ICP directly on the NNS yields more than buying GOLDAO
-                today.
+                {descriptions[zone.id]}
               </p>
             </div>
-          );
-        })()}
-      </StepCard>
+          </StepCard>
+        );
+      })()}
     </div>
   );
 }
