@@ -219,6 +219,10 @@ export interface GldtData {
   fdvUsd: number | null;
   tvlTotalUsd: number | null;
   volume24hUsd: number | null;
+  // volume — extended (manual / external; null until wired)
+  volume7dUsd: number | null;
+  volume7dPctStored: number | null; // 7d vol as % of backingValueUsd
+  totalVolumeUsd: number | null; // all-time cumulative volume
   // gold
   goldSpotOzUsd: number | null;
   goldGramsBacked: number | null;
@@ -289,6 +293,10 @@ async function fetchGldtData(): Promise<GldtData> {
     fdvUsd: num(gecko?.fdvUsd),
     tvlTotalUsd: num(gecko?.tvlTotalUsd),
     volume24hUsd: num(gecko?.volume24hUsd),
+    // TODO: wire from external source or OHLCV aggregation
+    volume7dUsd: null,
+    volume7dPctStored: null,
+    totalVolumeUsd: null,
     goldSpotOzUsd,
     goldGramsBacked,
     goldOzBacked,
