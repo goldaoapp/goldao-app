@@ -60,6 +60,23 @@ export function DataPanel({
       label: "Volume 24h · all pools",
       value: fmtUsd(d?.volume24hUsd ?? null, 2),
     },
+    {
+      label: "Volume 7d · all pools",
+      value: fmtUsdCompact(d?.volume7dUsd ?? null),
+      insert: fmtUsd(d?.volume7dUsd ?? null, 0),
+    },
+    {
+      label: "Vol 7d / backing %",
+      value:
+        d?.volume7dPctStored != null
+          ? `${d.volume7dPctStored.toFixed(2)}%`
+          : "—",
+    },
+    {
+      label: "Total volume · all time",
+      value: fmtUsdCompact(d?.totalVolumeUsd ?? null),
+      insert: fmtUsd(d?.totalVolumeUsd ?? null, 0),
+    },
   ];
 
   const supply: Row[] = [
