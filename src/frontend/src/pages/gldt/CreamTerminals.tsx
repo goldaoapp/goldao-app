@@ -38,7 +38,10 @@ function fmtTerminalDate(d: Date): string {
 }
 
 function daysSince(from: Date): number {
-  return Math.floor((Date.now() - from.getTime()) / 86_400_000);
+  const now = new Date();
+  const utcNow = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
+  const utcFrom = Date.UTC(from.getFullYear(), from.getMonth(), from.getDate());
+  return Math.floor((utcNow - utcFrom) / 86_400_000);
 }
 
 /** Load html2canvas from CDN (not bundled). */
@@ -149,7 +152,7 @@ const GoldDataTerminal = forwardRef<HTMLDivElement, TerminalProps>(
       goldSpotOz != null && impliedOz != null ? goldSpotOz - impliedOz : null;
     const spreadPct = d?.premiumPct != null ? Math.abs(d.premiumPct) : null;
     const isDiscount = d?.premiumPct != null && d.premiumPct < 0;
-    const vol7d = d?.volume7dUsd ?? null;
+    const spreadColor = isDiscount ? green : ink;
 
     return (
       <div
@@ -328,47 +331,17 @@ const GoldDataTerminal = forwardRef<HTMLDivElement, TerminalProps>(
               }}
             >
               <div style={{ fontWeight: 600, fontSize: 22, color: inkLight }}>SPREAD</div>
-              <div style={{ fontWeight: 700, fontSize: 34, color: green, textAlign: "right" }}>
+              <div style={{ fontWeight: 700, fontSize: 34, color: spreadColor, textAlign: "right" }}>
                 {spreadOz != null ? fmtUsd(spreadOz) : "—"}
               </div>
-              <div style={{ fontWeight: 700, fontSize: 28, color: green, textAlign: "right" }}>
+              <div style={{ fontWeight: 700, fontSize: 28, color: spreadColor, textAlign: "right" }}>
                 {spreadPct != null ? `${spreadPct.toFixed(2)}%` : "—"}
               </div>
             </div>
           </div>
 
-          {/* ── Volume row ───────────────────────────────────────── */}
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "1.2fr 1fr 1fr",
-              padding: "24px 28px",
-              marginTop: 16,
-              background: "rgba(255,255,255,0.2)",
-              borderRadius: 6,
-              border: "1px solid rgba(58,53,47,0.08)",
-            }}
-          >
-            <div style={{ fontWeight: 600, fontSize: 22, color: inkLight }}>
-              7D VOLUME
-            </div>
-            <div style={{ fontWeight: 700, fontSize: 34, color: ink, textAlign: "right" }}>
-              {vol7d != null ? fmtUsdCompact(vol7d) : "—"}
-            </div>
-            <div
-              style={{
-                fontWeight: 600,
-                fontSize: 16,
-                color: "rgba(42,37,32,0.4)",
-                textAlign: "right",
-                alignSelf: "center",
-              }}
-            >
-              GLDT/USD
-            </div>
-          </div>
-
-          {/* ── Spread callout ───────────────────────────────────── */}
+          {/* ── Discount callout (only when GLDT < Gold Spot) ──── */}
+          {isDiscount && (
           <div
             style={{
               marginTop: 24,
@@ -405,7 +378,7 @@ const GoldDataTerminal = forwardRef<HTMLDivElement, TerminalProps>(
                     marginLeft: 8,
                   }}
                 >
-                  {isDiscount ? "discount" : "premium"}
+                  discount
                 </span>
               </div>
             </div>
@@ -423,6 +396,7 @@ const GoldDataTerminal = forwardRef<HTMLDivElement, TerminalProps>(
               per troy ounce
             </div>
           </div>
+          )}
 
           {/* ── Footer ───────────────────────────────────────────── */}
           <div
