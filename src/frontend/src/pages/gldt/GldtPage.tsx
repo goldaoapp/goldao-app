@@ -20,8 +20,7 @@ export default function GldtPage() {
       <PageHeader
         tag="GLDT"
         tagIcon={Coins}
-        title="GLDT image studio"
-        description="Build gold-style visuals with live GLDT data, then export as PNG."
+        title="GLDT TERMINAL"
       />
 
       {/* Cream Terminals */}
