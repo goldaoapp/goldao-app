@@ -2,13 +2,14 @@ import { PageHeader } from "@/components/common";
 import { useGldtData } from "@/lib/gldt-data";
 import { Coins } from "lucide-react";
 import { useRef } from "react";
+import { CreamTerminals } from "./CreamTerminals";
 import { DataPanel } from "./DataPanel";
 import { ImageEditor, type ImageEditorHandle } from "./ImageEditor";
 
 /**
  * GLDT module — /gldt (not linked in the nav; URL-only for now).
- * Left: live token data (copy / insert into the image).
- * Right: image editor in the GLDT ad style, with PNG export.
+ * Top: Cream Terminal views (Gold Data Post + GLDT Status) with PNG export.
+ * Below: live token data panel + image editor.
  */
 export default function GldtPage() {
   const { data, isLoading, isFetching, refetch } = useGldtData();
@@ -22,6 +23,11 @@ export default function GldtPage() {
         title="GLDT image studio"
         description="Build gold-style visuals with live GLDT data, then export as PNG."
       />
+
+      {/* Cream Terminals */}
+      <div className="mb-8">
+        <CreamTerminals data={data} />
+      </div>
 
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-[20rem_1fr]">
         <div className="xl:order-1">
