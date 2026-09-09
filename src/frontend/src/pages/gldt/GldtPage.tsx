@@ -21,6 +21,7 @@ export default function GldtPage() {
         tag="GLDT"
         tagIcon={Coins}
         title="GLDT TERMINAL"
+        description=""
       />
 
       {/* Cream Terminals */}
