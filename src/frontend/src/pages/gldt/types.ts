@@ -1,5 +1,13 @@
 /** Shared types, catalog and helpers for the GLDT image editor. */
 
+import type { GldtData } from "@/lib/gldt-data";
+
+/** Keys the user can override manually via the DataPanel inputs. */
+export type ManualFields = Pick<
+  GldtData,
+  "volume7dUsd" | "volume7dPctStored" | "totalVolumeUsd"
+>;
+
 export const EXPORT_W = 1536;
 export const EXPORT_H = 1024;
 export const BG_SRC = "/assets/gldt/bg.png";
