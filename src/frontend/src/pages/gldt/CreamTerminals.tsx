@@ -41,15 +41,9 @@ function daysSince(from: Date): number {
   return Math.floor((Date.now() - from.getTime()) / 86_400_000);
 }
 
-/** Load html2canvas — tries npm import first, then CDN fallback. */
+/** Load html2canvas from CDN (not bundled). */
 async function getHtml2Canvas(): Promise<any> {
   if ((window as any).html2canvas) return (window as any).html2canvas;
-  try {
-    const mod = await import(/* webpackIgnore: true */ "html2canvas");
-    return (mod as any).default ?? mod;
-  } catch {
-    /* fall through to CDN */
-  }
   return new Promise<any>((resolve, reject) => {
     const s = document.createElement("script");
     s.src =
