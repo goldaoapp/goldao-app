@@ -6,6 +6,7 @@ import {
 } from "@/lib/gldt-data";
 import { Check, Copy, Plus, RefreshCw } from "lucide-react";
 import { useState } from "react";
+import type { ManualFields } from "./types";
 import { fmtNum, fmtPct, fmtUsd, fmtUsdCompact } from "./types";
 
 interface Props {
@@ -14,13 +15,16 @@ interface Props {
   isFetching: boolean;
   onRefresh: () => void;
   onInsert: (text: string) => void;
+  manual: ManualFields;
+  onManual: <K extends keyof ManualFields>(key: K, value: ManualFields[K]) => void;
 }
 
 interface Row {
   label: string;
   value: string;
-  /** text used for copy / insert; defaults to value */
   insert?: string;
+  /** If set, renders an editable input for this manual field key. */
+  editKey?: keyof ManualFields;
 }
 
 export function DataPanel({
@@ -29,6 +33,8 @@ export function DataPanel({
   isFetching,
   onRefresh,
   onInsert,
+  manual,
+  onManual,
 }: Props) {
   const d = data;
 
@@ -57,13 +63,14 @@ export function DataPanel({
       insert: fmtUsd(d?.tvlTotalUsd ?? null, 0),
     },
     {
-      label: "Volume 24h · all pools",
+      label: "Volume 24h",
       value: fmtUsd(d?.volume24hUsd ?? null, 2),
     },
     {
-      label: "Volume 7d · all pools",
+      label: "Volume 7d",
       value: fmtUsdCompact(d?.volume7dUsd ?? null),
       insert: fmtUsd(d?.volume7dUsd ?? null, 0),
+      editKey: "volume7dUsd",
     },
     {
       label: "Vol 7d / backing %",
@@ -71,11 +78,13 @@ export function DataPanel({
         d?.volume7dPctStored != null
           ? `${d.volume7dPctStored.toFixed(2)}%`
           : "—",
+      editKey: "volume7dPctStored",
     },
     {
-      label: "Total volume · all time",
+      label: "Total volume",
       value: fmtUsdCompact(d?.totalVolumeUsd ?? null),
       insert: fmtUsd(d?.totalVolumeUsd ?? null, 0),
+      editKey: "totalVolumeUsd",
     },
   ];
 
@@ -119,6 +128,7 @@ export function DataPanel({
 
   return (
     <div className="rounded-xl border border-border bg-card p-4 shadow-subtle">
+      {/* Header */}
       <div className="mb-3 flex items-center justify-between">
         <div className="flex flex-col">
           <span className="text-sm font-medium uppercase tracking-wider text-muted-foreground">
@@ -148,18 +158,28 @@ export function DataPanel({
           Loading token data…
         </p>
       ) : (
-        <div className="flex flex-col gap-4">
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
           <Group
             title="Market · GeckoTerminal"
             rows={market}
             onInsert={onInsert}
+            manual={manual}
+            onManual={onManual}
           />
           <Group
             title="Supply & backing · on-chain"
             rows={supply}
             onInsert={onInsert}
+            manual={manual}
+            onManual={onManual}
           />
-          <Group title="Gold" rows={gold} onInsert={onInsert} />
+          <Group
+            title="Gold"
+            rows={gold}
+            onInsert={onInsert}
+            manual={manual}
+            onManual={onManual}
+          />
         </div>
       )}
 
@@ -178,10 +198,14 @@ function Group({
   title,
   rows,
   onInsert,
+  manual,
+  onManual,
 }: {
   title: string;
   rows: Row[];
   onInsert: (text: string) => void;
+  manual: ManualFields;
+  onManual: <K extends keyof ManualFields>(key: K, value: ManualFields[K]) => void;
 }) {
   return (
     <div>
@@ -190,7 +214,13 @@ function Group({
       </div>
       <div className="flex flex-col divide-y divide-border/60">
         {rows.map((r) => (
-          <StatRow key={r.label} row={r} onInsert={onInsert} />
+          <StatRow
+            key={r.label}
+            row={r}
+            onInsert={onInsert}
+            manual={manual}
+            onManual={onManual}
+          />
         ))}
       </div>
     </div>
@@ -200,13 +230,17 @@ function Group({
 function StatRow({
   row,
   onInsert,
+  manual,
+  onManual,
 }: {
   row: Row;
   onInsert: (text: string) => void;
+  manual: ManualFields;
+  onManual: <K extends keyof ManualFields>(key: K, value: ManualFields[K]) => void;
 }) {
   const [copied, setCopied] = useState(false);
   const text = row.insert ?? row.value;
-  const disabled = row.value === "—";
+  const disabled = row.value === "—" && !row.editKey;
 
   const copy = () => {
     void navigator.clipboard.writeText(text).then(() => {
@@ -219,7 +253,22 @@ function StatRow({
     <div className="group flex items-center justify-between gap-2 py-1.5">
       <span className="text-xs text-muted-foreground">{row.label}</span>
       <div className="flex items-center gap-1">
-        <span className="font-mono text-sm">{row.value}</span>
+        {row.editKey ? (
+          <input
+            type="number"
+            step="any"
+            placeholder="—"
+            value={manual[row.editKey] ?? ""}
+            onChange={(e) => {
+              const v = e.target.value;
+              const key = row.editKey!;
+              onManual(key, v === "" ? null : Number(v));
+            }}
+            className="w-24 rounded border border-border bg-transparent px-1.5 py-0.5 text-right font-mono text-sm text-foreground outline-none focus:border-primary"
+          />
+        ) : (
+          <span className="font-mono text-sm">{row.value}</span>
+        )}
         <button
           type="button"
           onClick={copy}
