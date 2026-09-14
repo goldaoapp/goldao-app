@@ -361,12 +361,7 @@ const GoldDataTerminal = forwardRef<HTMLDivElement, TerminalProps>(
               <div style={{ fontWeight: 700, fontSize: 28, color: spreadColor, textAlign: "right" }}>{spreadPct != null ? `${spreadPct.toFixed(2)}%` : "—"}</div>
             </div>
           </div>
-          {/* Volume row */}
-          <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr 1fr", padding: "24px 28px", marginTop: 16, background: t.tableBg, borderRadius: 6, border: `1px solid ${t.borderFaintest}` }}>
-            <div style={{ fontWeight: 600, fontSize: 22, color: t.inkLight }}>7D VOLUME</div>
-            <div style={{ fontWeight: 700, fontSize: 34, color: t.ink, textAlign: "right" }}>{vol7d != null ? fmtUsdCompact(vol7d) : "—"}</div>
-            <div style={{ fontWeight: 600, fontSize: 16, color: t.volumeLabel, textAlign: "right", alignSelf: "center" }}>GLDT/USD</div>
-          </div>
+
           {/* Discount callout */}
           {isDiscount && (
             <div style={{ marginTop: 24, background: t.greenBg, border: `1.5px solid ${t.greenBorder}`, borderRadius: 6, padding: "28px 32px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
