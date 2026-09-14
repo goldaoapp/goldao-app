@@ -148,7 +148,7 @@ function purgeOklch(root: HTMLElement) {
     for (let i = 0; i < cs.length; i++) {
       const prop = cs[i];
       const val = cs.getPropertyValue(prop);
-      if (val && val.includes("oklch")) {
+      if (val?.includes("oklch")) {
         el.style.setProperty(prop, "transparent");
       }
     }
@@ -297,7 +297,6 @@ const GoldDataTerminal = forwardRef<HTMLDivElement, TerminalProps>(
     const spreadPct = d?.premiumPct != null ? Math.abs(d.premiumPct) : null;
     const isDiscount = d?.premiumPct != null && d.premiumPct < 0;
     const spreadColor = isDiscount ? t.green : t.ink;
-    const vol7d = d?.volume7dUsd ?? null;
 
     return (
       <div
