@@ -595,6 +595,7 @@ const PerformanceTerminal = forwardRef<HTMLDivElement, TerminalProps>(
           {/* Chart */}
           <div style={{ marginTop: 16, flex: 1, background: chartBg, border: `1.5px solid ${chartBorder}`, borderRadius: 6, padding: "16px 12px 8px 0", position: "relative" }}>
             <svg aria-label="Terminals Graph" viewBox="0 0 960 510" style={{ width: "100%", height: "100%", overflow: "visible" }}> 
+              <title>Terminals Graph</title>
               {/* Grid lines */}
               {[428.9, 377.8, 326.7, 224.4, 173.3, 122.2, 71.1, 20.0].map((y) => (
                 <line key={y} x1="70" y1={y} x2="900" y2={y} stroke={gridLine} strokeWidth="1" />
