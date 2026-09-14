@@ -544,7 +544,7 @@ const PerformanceTerminal = forwardRef<HTMLDivElement, TerminalProps>(
     const gldtPath = "M70.0,275.6 L107.7,262.3 L145.5,256.5 L183.2,285.4 L220.9,247.8 L258.6,227.6 L296.4,218.9 L334.1,213.1 L371.8,198.7 L409.5,192.9 L447.3,184.2 L485.0,190.0 L522.7,169.7 L560.5,149.5 L598.2,120.6 L635.9,83.0 L673.6,54.1 L711.4,111.9 L749.1,207.3 L786.8,227.6 L824.5,213.1 L862.3,103.3 L900.0,129.3";
     const btcPath = "M70.0,275.6 L107.7,178.1 L145.5,181.8 L183.2,185.4 L220.9,60.4 L258.6,108.2 L296.4,137.6 L334.1,163.4 L371.8,174.4 L409.5,207.5 L447.3,189.1 L485.0,181.8 L522.7,167.1 L560.5,181.8 L598.2,192.8 L635.9,218.5 L673.6,236.9 L711.4,262.7 L749.1,303.1 L786.8,281.1 L824.5,288.4 L862.3,236.9 L900.0,247.2";
     const icpPath = "M70.0,275.6 L107.7,129.3 L145.5,225.7 L183.2,273.9 L220.9,257.9 L258.6,290.0 L296.4,306.1 L334.1,322.2 L371.8,338.2 L409.5,354.3 L447.3,354.3 L485.0,370.4 L522.7,418.6 L560.5,434.7 L598.2,434.7 L635.9,434.7 L673.6,428.2 L711.4,418.6 L749.1,434.7 L786.8,428.2 L824.5,418.6 L862.3,434.7 L900.0,441.7";
-    const gldtArea = gldtPath + " L900,480 L70,480 Z";
+    const gldtArea = `${gldtPath} L900,480 L70,480 Z`;
 
     return (
       <div
@@ -594,7 +594,7 @@ const PerformanceTerminal = forwardRef<HTMLDivElement, TerminalProps>(
           </div>
           {/* Chart */}
           <div style={{ marginTop: 16, flex: 1, background: chartBg, border: `1.5px solid ${chartBorder}`, borderRadius: 6, padding: "16px 12px 8px 0", position: "relative" }}>
-            <svg viewBox="0 0 960 510" style={{ width: "100%", height: "100%", overflow: "visible" }}>
+            <svg aria-label="Terminals Graph" viewBox="0 0 960 510" style={{ width: "100%", height: "100%", overflow: "visible" }}> 
               {/* Grid lines */}
               {[428.9, 377.8, 326.7, 224.4, 173.3, 122.2, 71.1, 20.0].map((y) => (
                 <line key={y} x1="70" y1={y} x2="900" y2={y} stroke={gridLine} strokeWidth="1" />
