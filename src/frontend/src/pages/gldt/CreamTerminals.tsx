@@ -141,6 +141,26 @@ function daysSince(from: Date): number {
   return Math.floor((utcNow - utcFrom) / 86_400_000);
 }
 
+/** Strip oklch() colors html2canvas can't parse. */
+function purgeOklch(root: HTMLElement) {
+  const walk = (el: HTMLElement) => {
+    const cs = getComputedStyle(el);
+    for (const prop of ["color", "backgroundColor", "borderColor"] as const) {
+      const v = cs[prop];
+      if (typeof v === "string" && v.includes("oklch")) {
+        el.style.setProperty(
+          prop.replace(/[A-Z]/g, (m) => `-${m.toLowerCase()}`),
+          "transparent",
+        );
+      }
+    }
+    for (const child of el.children) {
+      if (child instanceof HTMLElement) walk(child);
+    }
+  };
+  walk(root);
+}
+
 /**
  * Export a terminal element as 1080×1080 PNG.
  * Clones the node to an offscreen container to avoid CSS transform issues.
@@ -157,6 +177,7 @@ async function exportTerminalPng(el: HTMLElement, name: string) {
     zIndex: "-1",
   });
   document.body.appendChild(clone);
+  purgeOklch(clone);
   try {
     const canvas = await html2canvas(clone, {
       width: 1080,
