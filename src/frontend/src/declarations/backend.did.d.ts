@@ -56,9 +56,18 @@ export interface _SERVICE {
   'assignCallerUserRole' : ActorMethod<[Principal, UserRole], undefined>,
   'execute' : ActorMethod<[string], Result>,
   'getCallerUserRole' : ActorMethod<[], UserRole>,
+  /**
+   * / Full history sorted by date ascending.
+   */
   'getTreasuryHistory' : ActorMethod<[], Array<TreasurySnapshot>>,
+  /**
+   * / Check if a snapshot for the given date exists (cheap query).
+   */
   'hasSnapshot' : ActorMethod<[string], boolean>,
   'isCallerAdmin' : ActorMethod<[], boolean>,
+  /**
+   * / Save a daily snapshot. Write-once per day — rejects if date exists.
+   */
   'saveTreasurySnapshot' : ActorMethod<[TreasurySnapshot], boolean>,
   'schema' : ActorMethod<[], string>,
 }

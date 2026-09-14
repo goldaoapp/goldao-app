@@ -154,9 +154,18 @@ export interface backendInterface {
     assignCallerUserRole(user: Principal, role: UserRole): Promise<void>;
     execute(qJson: string): Promise<Result>;
     getCallerUserRole(): Promise<UserRole>;
+    /**
+     * / Full history sorted by date ascending.
+     */
     getTreasuryHistory(): Promise<Array<TreasurySnapshot>>;
+    /**
+     * / Check if a snapshot for the given date exists (cheap query).
+     */
     hasSnapshot(date: string): Promise<boolean>;
     isCallerAdmin(): Promise<boolean>;
+    /**
+     * / Save a daily snapshot. Write-once per day — rejects if date exists.
+     */
     saveTreasurySnapshot(snapshot: TreasurySnapshot): Promise<boolean>;
     schema(): Promise<string>;
 }

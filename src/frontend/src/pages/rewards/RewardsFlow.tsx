@@ -131,10 +131,16 @@ function RewardPoolBanner({ amounts }: { amounts: FlowAmounts }) {
           >
             Reward Pool
           </div>
-          <div className="font-mono text-[10px]" style={{ color: "oklch(0.8 0.09 85)" }}>
+          <div
+            className="font-mono text-[10px]"
+            style={{ color: "oklch(0.8 0.09 85)" }}
+          >
             Next ICP/OGY: {nextDistribution()}
           </div>
-          <div className="font-mono text-[10px]" style={{ color: "oklch(0.8 0.09 85)" }}>
+          <div
+            className="font-mono text-[10px]"
+            style={{ color: "oklch(0.8 0.09 85)" }}
+          >
             Next GLDT: {nextGldtDistribution()}
           </div>
         </div>
@@ -225,7 +231,10 @@ function FlowCard({
           {node.title}
         </div>
         {node.sub && (
-          <div className="font-mono text-[11px] mt-0.5" style={{ color: "oklch(0.6 0 0)" }}>
+          <div
+            className="font-mono text-[11px] mt-0.5"
+            style={{ color: "oklch(0.6 0 0)" }}
+          >
             {node.sub}
           </div>
         )}
@@ -330,7 +339,10 @@ function BuybackModule({
             />
           )}
         </div>
-        <div className="text-[14px] font-bold flex-1 min-w-0 truncate" style={{ color }}>
+        <div
+          className="text-[14px] font-bold flex-1 min-w-0 truncate"
+          style={{ color }}
+        >
           {title}
         </div>
         {/* Fire animation for burn */}
@@ -356,19 +368,71 @@ function BuybackModule({
         )}
         {/* Stake OGY icon — lock */}
         {isActive && id === "stakeogy" && animate && (
-          <svg width="16" height="18" viewBox="0 0 16 18" className="shrink-0" fill="none" role="img" aria-label="Stake OGY" style={{ animation: "stakeGlow 2.5s ease-in-out infinite" }}>
-            <rect x="3" y="8" width="10" height="8" rx="2" fill="oklch(0.70 0.17 162 / 0.6)" />
-            <path d="M5.5 8V5.5a2.5 2.5 0 015 0V8" stroke="oklch(0.70 0.17 162)" strokeWidth="1.5" strokeLinecap="round" />
+          <svg
+            width="16"
+            height="18"
+            viewBox="0 0 16 18"
+            className="shrink-0"
+            fill="none"
+            role="img"
+            aria-label="Stake OGY"
+            style={{ animation: "stakeGlow 2.5s ease-in-out infinite" }}
+          >
+            <rect
+              x="3"
+              y="8"
+              width="10"
+              height="8"
+              rx="2"
+              fill="oklch(0.70 0.17 162 / 0.6)"
+            />
+            <path
+              d="M5.5 8V5.5a2.5 2.5 0 015 0V8"
+              stroke="oklch(0.70 0.17 162)"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+            />
             <circle cx="8" cy="12" r="1.2" fill="oklch(0.85 0.10 162)" />
           </svg>
         )}
         {/* Compound ICP icon — circular arrows */}
         {isActive && id === "compound" && animate && (
-          <svg width="16" height="16" viewBox="0 0 16 16" className="shrink-0" fill="none" role="img" aria-label="Compound ICP" style={{ animation: "stakeOrbit 6s linear infinite" }}>
-            <path d="M8 2a6 6 0 014.5 2" stroke="oklch(0.75 0.10 290)" strokeWidth="1.5" strokeLinecap="round" />
-            <path d="M14 4l-1.5 0 0-1.5" stroke="oklch(0.75 0.10 290)" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
-            <path d="M8 14a6 6 0 01-4.5-2" stroke="oklch(0.75 0.10 290)" strokeWidth="1.5" strokeLinecap="round" />
-            <path d="M2 12l1.5 0 0 1.5" stroke="oklch(0.75 0.10 290)" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 16 16"
+            className="shrink-0"
+            fill="none"
+            role="img"
+            aria-label="Compound ICP"
+            style={{ animation: "stakeOrbit 6s linear infinite" }}
+          >
+            <path
+              d="M8 2a6 6 0 014.5 2"
+              stroke="oklch(0.75 0.10 290)"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+            />
+            <path
+              d="M14 4l-1.5 0 0-1.5"
+              stroke="oklch(0.75 0.10 290)"
+              strokeWidth="1.2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+            <path
+              d="M8 14a6 6 0 01-4.5-2"
+              stroke="oklch(0.75 0.10 290)"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+            />
+            <path
+              d="M2 12l1.5 0 0 1.5"
+              stroke="oklch(0.75 0.10 290)"
+              strokeWidth="1.2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
           </svg>
         )}
         <span
@@ -383,11 +447,17 @@ function BuybackModule({
       </div>
       {/* Ratio row: label left, live value right */}
       <div className="flex items-center justify-between gap-2 pl-7">
-        <span className="font-mono text-[11px]" style={{ color: "oklch(0.62 0 0)" }}>
+        <span
+          className="font-mono text-[11px]"
+          style={{ color: "oklch(0.62 0 0)" }}
+        >
           {ratioLabel}
         </span>
         {ratioValue && (
-          <span className="font-mono text-[11px] font-semibold" style={{ color }}>
+          <span
+            className="font-mono text-[11px] font-semibold"
+            style={{ color }}
+          >
             {ratioValue}
           </span>
         )}
@@ -395,7 +465,10 @@ function BuybackModule({
       {/* Data row */}
       {dataValue && (
         <div className="pl-7">
-          <span className="font-mono text-[11px]" style={{ color: "oklch(0.6 0 0)" }}>
+          <span
+            className="font-mono text-[11px]"
+            style={{ color: "oklch(0.6 0 0)" }}
+          >
             {dataLabel}: {dataValue}
           </span>
         </div>
@@ -566,7 +639,10 @@ export default function RewardsFlow() {
           <div className="font-mono text-xl font-bold text-foreground mt-1">
             33 / 33 / 33 / 1
           </div>
-          <div className="font-mono text-[10px] mt-1" style={{ color: "oklch(0.55 0.08 85)" }}>
+          <div
+            className="font-mono text-[10px] mt-1"
+            style={{ color: "oklch(0.55 0.08 85)" }}
+          >
             Proposal #341
           </div>
         </div>
@@ -655,10 +731,42 @@ export default function RewardsFlow() {
         <div className="sm:hidden flex flex-col items-center">
           <Connector height={16} accent="teal" animate={animate} delay={0.5} />
           <div className="flex items-center gap-1">
-            <div className="w-2 h-2 rounded-full" style={{ background: ACCENTS.teal, animation: animate ? "breathe 2s ease-in-out infinite" : undefined }} />
-            <div className="w-2 h-2 rounded-full" style={{ background: ACCENTS.purple, animation: animate ? "breathe 2s ease-in-out 0.3s infinite" : undefined }} />
-            <div className="w-2 h-2 rounded-full" style={{ background: ACCENTS.red, animation: animate ? "breathe 2s ease-in-out 0.6s infinite" : undefined }} />
-            <div className="w-2 h-2 rounded-full" style={{ background: "oklch(0.78 0.12 0)", animation: animate ? "breathe 2s ease-in-out 0.9s infinite" : undefined }} />
+            <div
+              className="w-2 h-2 rounded-full"
+              style={{
+                background: ACCENTS.teal,
+                animation: animate
+                  ? "breathe 2s ease-in-out infinite"
+                  : undefined,
+              }}
+            />
+            <div
+              className="w-2 h-2 rounded-full"
+              style={{
+                background: ACCENTS.purple,
+                animation: animate
+                  ? "breathe 2s ease-in-out 0.3s infinite"
+                  : undefined,
+              }}
+            />
+            <div
+              className="w-2 h-2 rounded-full"
+              style={{
+                background: ACCENTS.red,
+                animation: animate
+                  ? "breathe 2s ease-in-out 0.6s infinite"
+                  : undefined,
+              }}
+            />
+            <div
+              className="w-2 h-2 rounded-full"
+              style={{
+                background: "oklch(0.78 0.12 0)",
+                animation: animate
+                  ? "breathe 2s ease-in-out 0.9s infinite"
+                  : undefined,
+              }}
+            />
           </div>
           <Connector height={8} accent="purple" animate={animate} delay={0.7} />
         </div>
@@ -688,14 +796,23 @@ export default function RewardsFlow() {
             >
               {rewards.title}
             </div>
-            <div className="font-mono text-[10px]" style={{ color: "oklch(0.65 0.12 185)" }}>
+            <div
+              className="font-mono text-[10px]"
+              style={{ color: "oklch(0.65 0.12 185)" }}
+            >
               {rewards.sub}
             </div>
             <div className="border-t border-[oklch(0.7_0.12_185_/_0.1)] pt-2 mt-1">
-              <div className="text-[12px] font-semibold" style={{ color: "oklch(0.75 0 0)" }}>
+              <div
+                className="text-[12px] font-semibold"
+                style={{ color: "oklch(0.75 0 0)" }}
+              >
                 ↓ Distribute by maturity
               </div>
-              <div className="font-mono text-[10px]" style={{ color: "oklch(0.6 0 0)" }}>
+              <div
+                className="font-mono text-[10px]"
+                style={{ color: "oklch(0.6 0 0)" }}
+              >
                 2yr lock · not dissolving
               </div>
             </div>
@@ -707,7 +824,9 @@ export default function RewardsFlow() {
             style={{
               background: `${ACCENTS.purple}06`,
               borderColor: `${ACCENTS.purple}28`,
-              animation: animate ? "buybackPulse 4s ease-in-out infinite" : undefined,
+              animation: animate
+                ? "buybackPulse 4s ease-in-out infinite"
+                : undefined,
             }}
           >
             <div className="flex items-center gap-2 mb-1">
@@ -732,7 +851,10 @@ export default function RewardsFlow() {
                 33%
               </span>
             </div>
-            <div className="font-mono text-[10px] uppercase tracking-wide mb-1" style={{ color: "oklch(0.65 0.08 290)" }}>
+            <div
+              className="font-mono text-[10px] uppercase tracking-wide mb-1"
+              style={{ color: "oklch(0.65 0.08 290)" }}
+            >
               Conditional cascade · by ratio
             </div>
             <div className="flex flex-col gap-1.5">
@@ -792,14 +914,23 @@ export default function RewardsFlow() {
             >
               {gldt.title}
             </div>
-            <div className="font-mono text-[10px]" style={{ color: "oklch(0.65 0.12 22)" }}>
+            <div
+              className="font-mono text-[10px]"
+              style={{ color: "oklch(0.65 0.12 22)" }}
+            >
               {gldt.sub}
             </div>
             <div className="border-t border-[oklch(0.65_0.19_22_/_0.1)] pt-2 mt-1">
-              <div className="text-[12px] font-semibold" style={{ color: "oklch(0.75 0 0)" }}>
+              <div
+                className="text-[12px] font-semibold"
+                style={{ color: "oklch(0.75 0 0)" }}
+              >
                 ↓ GLDT Job
               </div>
-              <div className="font-mono text-[10px]" style={{ color: "oklch(0.6 0 0)" }}>
+              <div
+                className="font-mono text-[10px]"
+                style={{ color: "oklch(0.6 0 0)" }}
+              >
                 No price check · rate × balance
               </div>
             </div>
@@ -839,7 +970,10 @@ export default function RewardsFlow() {
             >
               {gooddao.title}
             </div>
-            <div className="font-mono text-[10px]" style={{ color: "rgba(255,160,180,0.5)" }}>
+            <div
+              className="font-mono text-[10px]"
+              style={{ color: "rgba(255,160,180,0.5)" }}
+            >
               {gooddao.sub}
             </div>
           </div>

@@ -16,7 +16,10 @@ interface Props {
   onRefresh: () => void;
   onInsert: (text: string) => void;
   manual: ManualFields;
-  onManual: <K extends keyof ManualFields>(key: K, value: ManualFields[K]) => void;
+  onManual: <K extends keyof ManualFields>(
+    key: K,
+    value: ManualFields[K],
+  ) => void;
 }
 
 interface Row {
@@ -205,7 +208,10 @@ function Group({
   rows: Row[];
   onInsert: (text: string) => void;
   manual: ManualFields;
-  onManual: <K extends keyof ManualFields>(key: K, value: ManualFields[K]) => void;
+  onManual: <K extends keyof ManualFields>(
+    key: K,
+    value: ManualFields[K],
+  ) => void;
 }) {
   return (
     <div>
@@ -236,7 +242,10 @@ function StatRow({
   row: Row;
   onInsert: (text: string) => void;
   manual: ManualFields;
-  onManual: <K extends keyof ManualFields>(key: K, value: ManualFields[K]) => void;
+  onManual: <K extends keyof ManualFields>(
+    key: K,
+    value: ManualFields[K],
+  ) => void;
 }) {
   const [copied, setCopied] = useState(false);
   const text = row.insert ?? row.value;

@@ -37,7 +37,7 @@
     "vitest": "3.1.4"
   },
   "dependencies": {
-    "@caffeineai/core-infrastructure": "^1.3.0",
+    "@caffeineai/core-infrastructure": "^1.4.0",
     "@caffeineai/object-storage": "^1.1.1",
     "@dfinity/agent": "3.3.1",
     "@dfinity/candid": "3.3.1",
@@ -79,6 +79,7 @@
     "cmdk": "^1.0.0",
     "date-fns": "^3.6.0",
     "embla-carousel-react": "^8.2.1",
+    "html2canvas": "^1.4.1",
     "input-otp": "^1.4.1",
     "lucide-react": "0.511.0",
     "motion": "^12.34.3",

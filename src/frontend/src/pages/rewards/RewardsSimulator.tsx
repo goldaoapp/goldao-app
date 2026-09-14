@@ -1,4 +1,12 @@
-import { Calculator, Hash, Loader2, Plus, RotateCcw, Search, Trash2 } from "lucide-react";
+import {
+  Calculator,
+  Hash,
+  Loader2,
+  Plus,
+  RotateCcw,
+  Search,
+  Trash2,
+} from "lucide-react";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
@@ -449,7 +457,9 @@ export default function RewardsSimulator() {
                     <button
                       type="button"
                       onClick={addSingleNeuron}
-                      disabled={lookupState === "loading" || !singleNeuronId.trim()}
+                      disabled={
+                        lookupState === "loading" || !singleNeuronId.trim()
+                      }
                       className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-2.5 font-mono text-sm font-semibold text-primary-foreground transition-smooth hover:opacity-90 disabled:opacity-50"
                     >
                       {lookupState === "loading" && !showBulkInput ? (
@@ -478,7 +488,9 @@ export default function RewardsSimulator() {
                     <textarea
                       value={bulkText}
                       onChange={(e) => setBulkText(e.target.value)}
-                      placeholder={"Paste one neuron id per line:\na1b2c3...\nd4e5f6...\n7a8b9c..."}
+                      placeholder={
+                        "Paste one neuron id per line:\na1b2c3...\nd4e5f6...\n7a8b9c..."
+                      }
                       rows={5}
                       className="w-full rounded-lg border border-border bg-secondary/60 px-3 py-2.5 font-mono text-sm text-foreground outline-none focus:ring-1 focus:ring-primary/50 resize-y"
                     />
@@ -580,7 +592,8 @@ export default function RewardsSimulator() {
                 {vpShare !== undefined
                   ? "Your share by voting power"
                   : "Your share of eligible GOLDAO"}
-                {mode === "neuron" && neurons.length > 1 &&
+                {mode === "neuron" &&
+                  neurons.length > 1 &&
                   ` (${neurons.length} neurons)`}
               </span>
               <span className="font-mono text-lg font-bold text-gradient-gold">
@@ -764,5 +777,3 @@ function ModeButton({
     </button>
   );
 }
-
-

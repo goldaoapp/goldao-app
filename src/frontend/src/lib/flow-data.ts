@@ -6,7 +6,7 @@
  * account data by AccountIdentifier (64-char hex hash of principal + subaccount).
  */
 
-import { API, POOLS, type OGYNeuronResponse } from "@/lib/api";
+import { API, type OGYNeuronResponse, POOLS } from "@/lib/api";
 import { getPoolRatio } from "@/lib/icpswap-quote";
 
 const LEDGER_API = "https://ledger-api.internetcomputer.org/accounts";
@@ -138,7 +138,8 @@ export async function fetchFlowBalances(): Promise<Record<string, string>> {
   if (goldaoRatio !== null) out.goldao_ratio = String(Math.round(goldaoRatio));
   if (ogyRatio !== null) out.ogy_ratio = String(Math.round(ogyRatio));
 
-  if (ogyStaked !== null) out.ogy_staked = fmtToken(Math.round(ogyStaked), "OGY");
+  if (ogyStaked !== null)
+    out.ogy_staked = fmtToken(Math.round(ogyStaked), "OGY");
 
   // Compound neuron balance — hardcoded until on-chain fetch is wired
   out.icp_neuron = fmtIcp(ICP_NEURON_HARDCODED);

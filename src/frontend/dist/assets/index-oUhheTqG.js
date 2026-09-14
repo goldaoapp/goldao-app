@@ -43835,6 +43835,71 @@ function _createActorMethod(actor, methodName, func, blsVerify2) {
   handler.withOptions = (options) => (...args) => caller(options, ...args);
   return handler;
 }
+const ICP_NEURON_CANISTER = "j4jiq-sqaaa-aaaap-ab23a-cai";
+const icpNeuronIdlFactory = ({ IDL: IDL2 }) => {
+  const Account = IDL2.Record({
+    owner: IDL2.Opt(IDL2.Principal),
+    subaccount: IDL2.Opt(IDL2.Vec(IDL2.Nat8))
+  });
+  const DepositAccount = IDL2.Record({
+    legacy_account_id: IDL2.Text,
+    icrc_account: Account
+  });
+  const NeuronWithMetric = IDL2.Record({
+    id: IDL2.Nat64,
+    dissolve_delay: IDL2.Nat64,
+    voting_power_refreshed_timestamp_seconds: IDL2.Opt(IDL2.Nat64),
+    maturity: IDL2.Nat64,
+    staked_amount: IDL2.Nat64,
+    deposit_account: IDL2.Opt(DepositAccount),
+    dissolving: IDL2.Bool
+  });
+  const NeuronList = IDL2.Record({
+    active: IDL2.Vec(NeuronWithMetric),
+    disbursed: IDL2.Vec(IDL2.Nat64),
+    spawning: IDL2.Vec(IDL2.Nat64)
+  });
+  const ListNeuronsResponse = IDL2.Record({ neurons: NeuronList });
+  return IDL2.Service({
+    list_neurons: IDL2.Func([], [ListNeuronsResponse], ["query"])
+  });
+};
+let agentPromise$2 = null;
+function getAgent$2() {
+  if (!agentPromise$2) {
+    agentPromise$2 = HttpAgent.create({ host: "https://icp-api.io" });
+  }
+  return agentPromise$2;
+}
+async function fetchIcpNeuronTotals() {
+  var _a3;
+  try {
+    const agent = await getAgent$2();
+    const actor = Actor2.createActor(icpNeuronIdlFactory, {
+      agent,
+      canisterId: ICP_NEURON_CANISTER
+    });
+    const res = await actor.list_neurons();
+    const active = ((_a3 = res == null ? void 0 : res.neurons) == null ? void 0 : _a3.active) ?? [];
+    if (active.length === 0) return null;
+    let stakedE8s = 0n;
+    let maturityE8s = 0n;
+    for (const n of active) {
+      stakedE8s += n.staked_amount;
+      maturityE8s += n.maturity;
+    }
+    const staked = Number(stakedE8s) / 1e8;
+    const maturity = Number(maturityE8s) / 1e8;
+    return {
+      staked,
+      maturity,
+      total: staked + maturity,
+      count: active.length
+    };
+  } catch {
+    return null;
+  }
+}
 const swapPoolIdlFactory = ({ IDL: IDL2 }) => {
   const SwapError = IDL2.Variant({
     CommonError: IDL2.Null,
@@ -43915,7 +43980,9 @@ function useLiveData() {
     wtnTotal: null,
     wtnIcp: null,
     supply: null,
-    totalBurned: null
+    totalBurned: null,
+    icpStaked: null,
+    icpMaturity: null
   });
   const icpswapRef = reactExports.useRef({ ogyPerIcp: null, wtnPerIcp: null, wtnTotal: null, icpUsd: null });
   reactExports.useEffect(() => {
@@ -44002,6 +44069,16 @@ function useLiveData() {
       } catch (_2) {
       }
     }
+    async function fetchIcpNeurons() {
+      const totals = await fetchIcpNeuronTotals();
+      if (cancelled || totals === null) return;
+      apply("icp_staked", Math.round(totals.staked));
+      setExtra((prev) => ({
+        ...prev,
+        icpStaked: totals.staked,
+        icpMaturity: totals.maturity
+      }));
+    }
     async function fetchLight() {
       try {
         const res = await fetch(API.DISSOLVE);
@@ -44073,6 +44150,7 @@ function useLiveData() {
     fetchLight();
     fetchWTN();
     fetchSupply();
+    fetchIcpNeurons();
     const fastId = setInterval(fetchLight, POLL.FAST);
     const slowId = setInterval(fetchPoolQuotes, POLL.SLOW);
     return () => {
@@ -44326,14 +44404,73 @@ function Row({
 function Note({ children }) {
   return /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-[10px] text-muted-foreground font-mono leading-relaxed", children });
 }
+const ZONES = [
+  {
+    id: "expensive",
+    label: "EXPENSIVE",
+    color: "oklch(0.65 0.19 22)",
+    textClass: "text-destructive",
+    bgClass: "bg-destructive/10",
+    borderClass: "border-destructive"
+  },
+  {
+    id: "slightly_expensive",
+    label: "SLIGHTLY EXPENSIVE",
+    color: "oklch(0.75 0.14 55)",
+    textClass: "text-[oklch(0.75_0.14_55)]",
+    bgClass: "bg-[oklch(0.75_0.14_55)]/10",
+    borderClass: "border-[oklch(0.75_0.14_55)]"
+  },
+  {
+    id: "fair",
+    label: "FAIR VALUE",
+    color: "oklch(0.83 0.13 70)",
+    textClass: "text-[oklch(0.83_0.13_70)]",
+    bgClass: "bg-[oklch(0.83_0.13_70)]/10",
+    borderClass: "border-[oklch(0.83_0.13_70)]"
+  },
+  {
+    id: "slightly_cheap",
+    label: "SLIGHTLY CHEAP",
+    color: "oklch(0.72 0.13 140)",
+    textClass: "text-[oklch(0.72_0.13_140)]",
+    bgClass: "bg-[oklch(0.72_0.13_140)]/10",
+    borderClass: "border-[oklch(0.72_0.13_140)]"
+  },
+  {
+    id: "cheap",
+    label: "CHEAP",
+    color: "oklch(0.72 0.17 162)",
+    textClass: "text-[oklch(0.72_0.17_162)]",
+    bgClass: "bg-[oklch(0.72_0.17_162)]/10",
+    borderClass: "border-[oklch(0.72_0.17_162)]"
+  }
+];
+function getZone(difPct) {
+  if (difPct > 20) return ZONES[4];
+  if (difPct > 10) return ZONES[3];
+  if (difPct >= -10) return ZONES[2];
+  if (difPct >= -20) return ZONES[1];
+  return ZONES[0];
+}
 function SpectrumBarTop({ r: r2 }) {
   const eq = r2.ratio_eq;
   const mkt = r2.market_ratio;
   if (eq <= 0 || mkt <= 0) return null;
-  const maxVal = Math.max(eq, mkt) * 1.5;
-  const pct = (v2) => Math.min(v2 / maxVal * 100, 98);
-  const isCheap = mkt > eq;
-  const dif = Math.abs(r2.diferencia_pct);
+  const dif = r2.diferencia_pct;
+  const zone = getZone(dif);
+  const barMin = eq * 0.65;
+  const barMax = eq * 1.35;
+  const barRange = barMax - barMin;
+  const toPct = (v2) => Math.max(0, Math.min(100, (v2 - barMin) / barRange * 100));
+  const bands = [
+    { zone: ZONES[0], from: barMin, to: eq * 0.8 },
+    { zone: ZONES[1], from: eq * 0.8, to: eq * 0.9 },
+    { zone: ZONES[2], from: eq * 0.9, to: eq * 1.1 },
+    { zone: ZONES[3], from: eq * 1.1, to: eq * 1.2 },
+    { zone: ZONES[4], from: eq * 1.2, to: barMax }
+  ];
+  const dotPct = toPct(mkt);
   return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "rounded-lg border border-border bg-card/50 p-4", children: [
     /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-3", children: [
       /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-baseline gap-6", children: [
@@ -44355,51 +44492,63 @@ function SpectrumBarTop({ r: r2 }) {
       /* @__PURE__ */ jsxRuntimeExports.jsxs(
         "span",
         {
-          className: `text-xs font-mono font-semibold px-2 py-1 rounded ${isCheap ? "text-[oklch(0.72_0.17_162)] bg-[oklch(0.72_0.17_162)]/10" : "text-destructive bg-destructive/10"}`,
+          className: `text-xs font-mono font-semibold px-2 py-1 rounded ${zone.textClass} ${zone.bgClass}`,
           children: [
             "● ",
-            isCheap ? "CHEAP" : "EXPENSIVE",
+            zone.label,
             " ",
-            isCheap ? "+" : "-",
+            dif >= 0 ? "+" : "",
             fmtNum$1(dif, 1),
             "%"
           ]
         }
       )
     ] }),
-    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "relative h-3 rounded-full bg-secondary/60 overflow-hidden", children: [
-      /* @__PURE__ */ jsxRuntimeExports.jsx(
-        "div",
-        {
-          className: "absolute inset-0",
-          style: {
-            background: "linear-gradient(to right, oklch(0.65 0.19 22), oklch(0.72 0.17 162))",
-            opacity: 0.35
-          }
-        }
-      ),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "relative h-3 rounded-full overflow-hidden bg-secondary/60", children: [
+      bands.map((b2) => {
+        const left = toPct(b2.from);
+        const right = toPct(b2.to);
+        const width = right - left;
+        if (width <= 0) return null;
+        return /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "div",
+          {
+            className: "absolute top-0 bottom-0",
+            style: {
+              left: `${left}%`,
+              width: `${width}%`,
+              background: b2.zone.color,
+              opacity: 0.3
+            }
+          },
+          b2.zone.id
+        );
+      }),
       /* @__PURE__ */ jsxRuntimeExports.jsx(
         "div",
         {
           className: "absolute top-0 bottom-0 w-0.5",
-          style: { left: `${pct(eq)}%`, background: "oklch(0.83 0.13 70)" }
+          style: { left: `${toPct(eq)}%`, background: "oklch(0.83 0.13 70)" }
         }
       ),
       /* @__PURE__ */ jsxRuntimeExports.jsx(
         "div",
         {
-          className: "absolute top-1/2 -translate-y-1/2 size-3 rounded-full border-2",
+          className: "absolute top-1/2 size-3 rounded-full border-2",
           style: {
-            left: `${pct(mkt)}%`,
+            left: `${dotPct}%`,
             transform: "translate(-50%, -50%)",
-            background: isCheap ? "oklch(0.72 0.17 162)" : "oklch(0.65 0.19 22)",
-            borderColor: isCheap ? "oklch(0.72 0.17 162)" : "oklch(0.65 0.19 22)"
+            background: zone.color,
+            borderColor: zone.color
           }
         }
       )
     ] }),
-    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex justify-between mt-1", children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex justify-between mt-1 px-0.5", children: [
       /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-[9px] font-mono text-muted-foreground", children: "EXPENSIVE" }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-[9px] font-mono text-muted-foreground/50", children: "-10%" }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-[9px] font-mono text-[oklch(0.83_0.13_70)]", children: "FAIR" }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-[9px] font-mono text-muted-foreground/50", children: "+10%" }),
       /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-[9px] font-mono text-muted-foreground", children: "CHEAP" })
     ] })
   ] });
@@ -44554,54 +44703,76 @@ function Results({
         }
       )
     ] }),
-    /* @__PURE__ */ jsxRuntimeExports.jsxs(
-      StepCard,
-      {
-        step: 8,
-        title: "Market vs Equilibrium",
-        accent: r2.esta_barato ? "green" : "destructive",
-        children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-0.5", children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx(
-              Row,
+    (() => {
+      const zone = getZone(r2.diferencia_pct);
+      const dif = Math.abs(r2.diferencia_pct);
+      const accentMap = {
+        expensive: "destructive",
+        slightly_expensive: "amber",
+        fair: "amber",
+        slightly_cheap: "green",
+        cheap: "green"
+      };
+      const descriptions = {
+        expensive: "Staking ICP directly on the NNS yields significantly more than buying GOLDAO today.",
+        slightly_expensive: "GOLDAO yield is slightly below NNS direct staking. Close to equilibrium.",
+        fair: "GOLDAO yield is roughly in line with NNS direct staking — fair value zone.",
+        slightly_cheap: "GOLDAO yield slightly exceeds NNS direct staking. Mildly favorable entry.",
+        cheap: "Buying GOLDAO yields significantly more than staking ICP directly on the NNS."
+      };
+      return /* @__PURE__ */ jsxRuntimeExports.jsxs(
+        StepCard,
+        {
+          step: 8,
+          title: "Market vs Equilibrium",
+          accent: accentMap[zone.id],
+          children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-0.5", children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx(
+                Row,
+                {
+                  label: "Equilibrium",
+                  value: `1 ICP = ${fmtNum$1(r2.ratio_eq, 0)} GOLDAO`,
+                  accent: "amber"
+                }
+              ),
+              /* @__PURE__ */ jsxRuntimeExports.jsx(
+                Row,
+                {
+                  label: "Market",
+                  value: `1 ICP = ${fmtNum$1(r2.market_ratio, 0)} GOLDAO`
+                }
+              )
+            ] }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs(
+              "div",
               {
-                label: "Equilibrium",
-                value: `1 ICP = ${fmtNum$1(r2.ratio_eq, 0)} GOLDAO`,
-                accent: "amber"
-              }
-            ),
-            /* @__PURE__ */ jsxRuntimeExports.jsx(
-              Row,
-              {
-                label: "Market",
-                value: `1 ICP = ${fmtNum$1(r2.market_ratio, 0)} GOLDAO`
+                className: `rounded-md border-l-4 ${zone.borderClass} ${zone.bgClass} px-3 py-2 mt-2`,
+                children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsxs(
+                    "p",
+                    {
+                      className: `text-sm font-mono font-semibold ${zone.textClass}`,
+                      children: [
+                        "GOLDAO is ",
+                        zone.label,
+                        " (",
+                        fmtNum$1(dif),
+                        "%",
+                        " ",
+                        r2.diferencia_pct >= 0 ? "above" : "below",
+                        " equilibrium)"
+                      ]
+                    }
+                  ),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-[10px] text-muted-foreground font-mono mt-0.5", children: descriptions[zone.id] })
+                ]
               }
             )
-          ] }),
-          (() => {
-            const dif = Math.abs(r2.diferencia_pct);
-            if (r2.esta_barato) {
-              return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "rounded-md border-l-4 border-[oklch(0.72_0.17_162)] bg-[oklch(0.72_0.17_162)]/10 px-3 py-2 mt-2", children: [
-                /* @__PURE__ */ jsxRuntimeExports.jsxs("p", { className: "text-sm font-mono font-semibold text-[oklch(0.72_0.17_162)]", children: [
-                  "GOLDAO is CHEAP (",
-                  fmtNum$1(dif),
-                  "% above equilibrium)"
-                ] }),
-                /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-[10px] text-muted-foreground font-mono mt-0.5", children: "Buying GOLDAO yields more than staking ICP directly on the NNS." })
-              ] });
-            }
-            return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "rounded-md border-l-4 border-destructive bg-destructive/10 px-3 py-2 mt-2", children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsxs("p", { className: "text-sm font-mono font-semibold text-destructive", children: [
-                "GOLDAO is EXPENSIVE (",
-                fmtNum$1(dif),
-                "% below equilibrium)"
-              ] }),
-              /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-[10px] text-muted-foreground font-mono mt-0.5", children: "Staking ICP directly on the NNS yields more than buying GOLDAO today." })
-            ] });
-          })()
-        ]
-      }
-    )
+          ]
+        }
+      );
+    })()
   ] });
 }
 function FairValuePage() {
@@ -44852,6 +45023,10 @@ async function fetchGldtData() {
     fdvUsd: num$1(gecko == null ? void 0 : gecko.fdvUsd),
     tvlTotalUsd: num$1(gecko == null ? void 0 : gecko.tvlTotalUsd),
     volume24hUsd: num$1(gecko == null ? void 0 : gecko.volume24hUsd),
+    // TODO: wire from external source or OHLCV aggregation
+    volume7dUsd: null,
+    volume7dPctStored: null,
+    totalVolumeUsd: null,
     goldSpotOzUsd,
     goldGramsBacked,
     goldOzBacked,
@@ -44984,12 +45159,1898 @@ function fmtPct(v2, digits = 2) {
   const s = v2 >= 0 ? "+" : "";
   return `${s}${v2.toFixed(digits)}%`;
 }
+const GLDT_LOGO_SRC = "/assets/gldt/gldt-emblem.svg";
+const TROY_OZ_GRAMS = 31.1035;
+const FIRST_TRADE = /* @__PURE__ */ new Date("2024-10-30");
+const THEMES = {
+  cream: {
+    bg: "#e8cfc0",
+    ink: "#2a2520",
+    inkMid: "rgba(42,37,32,0.55)",
+    inkLight: "rgba(42,37,32,0.5)",
+    inkFaint: "rgba(42,37,32,0.45)",
+    inkFaintest: "rgba(42,37,32,0.35)",
+    gold: "#c79a3b",
+    goldDark: "#b08830",
+    green: "#2d8a5e",
+    borderColor: "rgba(58,53,47,0.18)",
+    borderLight: "rgba(58,53,47,0.15)",
+    borderFaint: "rgba(58,53,47,0.12)",
+    borderFaintest: "rgba(58,53,47,0.08)",
+    tableBg: "rgba(255,255,255,0.3)",
+    tableHeaderBg: "rgba(58,53,47,0.07)",
+    tableAltBg: "rgba(58,53,47,0.04)",
+    cardBg: "rgba(255,255,255,0.3)",
+    greenBg: "rgba(45,138,94,0.08)",
+    greenBorder: "rgba(45,138,94,0.2)",
+    footerText: "#2a2520",
+    rowBorder: "rgba(58,53,47,0.1)",
+    goldFaded: "rgba(176,136,48,0.7)",
+    inkFaded: "rgba(42,37,32,0.7)",
+    volumeLabel: "rgba(42,37,32,0.4)",
+    headerLabel: "rgba(42,37,32,0.55)",
+    useBgImage: true
+  },
+  dark: {
+    bg: "#1c1e22",
+    ink: "#f0e6d6",
+    inkMid: "rgba(255,255,255,0.35)",
+    inkLight: "rgba(255,255,255,0.35)",
+    inkFaint: "rgba(255,255,255,0.3)",
+    inkFaintest: "rgba(255,255,255,0.25)",
+    gold: "#c79a3b",
+    goldDark: "#c79a3b",
+    green: "#3dba78",
+    borderColor: "rgba(199,154,59,0.15)",
+    borderLight: "rgba(199,154,59,0.12)",
+    borderFaint: "rgba(199,154,59,0.1)",
+    borderFaintest: "rgba(199,154,59,0.08)",
+    tableBg: "rgba(255,255,255,0.03)",
+    tableHeaderBg: "rgba(199,154,59,0.06)",
+    tableAltBg: "rgba(199,154,59,0.03)",
+    cardBg: "rgba(255,255,255,0.04)",
+    greenBg: "rgba(61,186,120,0.08)",
+    greenBorder: "rgba(61,186,120,0.18)",
+    footerText: "rgba(255,255,255,0.5)",
+    rowBorder: "rgba(199,154,59,0.08)",
+    goldFaded: "rgba(199,154,59,0.6)",
+    inkFaded: "rgba(240,230,214,0.6)",
+    volumeLabel: "rgba(255,255,255,0.3)",
+    headerLabel: "rgba(255,255,255,0.4)",
+    useBgImage: false
+  }
+};
+const mono = "'JetBrains Mono', monospace";
+const grotesk = "'Space Grotesk', sans-serif";
+const sans = "'DM Sans', sans-serif";
+function injectTerminalFonts() {
+  const id = "gldt-terminal-fonts";
+  if (document.getElementById(id)) return;
+  const link = document.createElement("link");
+  link.id = id;
+  link.rel = "stylesheet";
+  link.href = "https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=Space+Grotesk:wght@300;400;500;600;700&family=DM+Sans:wght@300;400;500;600;700&display=swap";
+  document.head.appendChild(link);
+}
+function fmtTerminalDate(d2) {
+  return d2.toLocaleDateString("en-US", { month: "short", day: "2-digit" }).toUpperCase();
+}
+function daysSince(from) {
+  const now2 = /* @__PURE__ */ new Date();
+  const utcNow = Date.UTC(now2.getFullYear(), now2.getMonth(), now2.getDate());
+  const utcFrom = Date.UTC(from.getFullYear(), from.getMonth(), from.getDate());
+  return Math.floor((utcNow - utcFrom) / 864e5);
+}
+async function getHtml2Canvas() {
+  if (window.html2canvas) return window.html2canvas;
+  return new Promise((resolve, reject) => {
+    const s = document.createElement("script");
+    s.src = "https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js";
+    s.onload = () => resolve(window.html2canvas);
+    s.onerror = () => reject(new Error("Failed to load html2canvas"));
+    document.head.appendChild(s);
+  });
+}
+async function exportTerminalPng(el, name) {
+  const h2c = await getHtml2Canvas();
+  const clone = el.cloneNode(true);
+  Object.assign(clone.style, {
+    position: "fixed",
+    left: "-9999px",
+    top: "0",
+    transform: "none",
+    width: "1080px",
+    height: "1080px",
+    zIndex: "-1"
+  });
+  document.body.appendChild(clone);
+  try {
+    const canvas = await h2c(clone, {
+      width: 1080,
+      height: 1080,
+      scale: 1,
+      useCORS: true,
+      backgroundColor: null,
+      logging: false
+    });
+    await new Promise((resolve) => {
+      canvas.toBlob((blob) => {
+        if (blob) {
+          const url = URL.createObjectURL(blob);
+          const a2 = document.createElement("a");
+          a2.href = url;
+          a2.download = `${name}-${Date.now()}.png`;
+          document.body.appendChild(a2);
+          a2.click();
+          a2.remove();
+          URL.revokeObjectURL(url);
+        }
+        resolve();
+      }, "image/png");
+    });
+  } finally {
+    document.body.removeChild(clone);
+  }
+}
+function CreamBg() {
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsx(
+      "img",
+      {
+        src: BG_SRC,
+        alt: "",
+        draggable: false,
+        style: {
+          position: "absolute",
+          inset: 0,
+          width: "100%",
+          height: "100%",
+          objectFit: "cover",
+          opacity: 0.5
+        }
+      }
+    ),
+    /* @__PURE__ */ jsxRuntimeExports.jsx(
+      "div",
+      {
+        style: {
+          position: "absolute",
+          inset: 0,
+          background: "radial-gradient(ellipse 70% 70% at 50% 45%, rgba(248,222,209,0.9) 0%, rgba(196,167,151,0.4) 60%, rgba(140,105,75,0.35) 100%)"
+        }
+      }
+    ),
+    /* @__PURE__ */ jsxRuntimeExports.jsx(
+      "div",
+      {
+        style: {
+          position: "absolute",
+          inset: 0,
+          background: "repeating-linear-gradient(90deg, transparent, transparent 107px, rgba(58,53,47,0.03) 107px, rgba(58,53,47,0.03) 108px), repeating-linear-gradient(0deg, transparent, transparent 107px, rgba(58,53,47,0.03) 107px, rgba(58,53,47,0.03) 108px)",
+          pointerEvents: "none",
+          zIndex: 1
+        }
+      }
+    )
+  ] });
+}
+function DarkBg() {
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsx(
+      "div",
+      {
+        style: {
+          position: "absolute",
+          inset: 0,
+          background: "radial-gradient(ellipse 80% 80% at 50% 40%, rgba(199,154,59,0.04) 0%, transparent 70%)"
+        }
+      }
+    ),
+    /* @__PURE__ */ jsxRuntimeExports.jsx(
+      "div",
+      {
+        style: {
+          position: "absolute",
+          inset: 0,
+          background: "repeating-linear-gradient(90deg, transparent, transparent 107px, rgba(199,154,59,0.02) 107px, rgba(199,154,59,0.02) 108px), repeating-linear-gradient(0deg, transparent, transparent 107px, rgba(199,154,59,0.02) 107px, rgba(199,154,59,0.02) 108px)",
+          pointerEvents: "none",
+          zIndex: 1
+        }
+      }
+    )
+  ] });
+}
+function TerminalBg({ theme }) {
+  return theme === "cream" ? /* @__PURE__ */ jsxRuntimeExports.jsx(CreamBg, {}) : /* @__PURE__ */ jsxRuntimeExports.jsx(DarkBg, {});
+}
+const GoldDataTerminal = reactExports.forwardRef(
+  ({ data: d2, theme = "cream" }, ref) => {
+    const t = THEMES[theme];
+    const now2 = (d2 == null ? void 0 : d2.fetchedAt) ? new Date(d2.fetchedAt) : /* @__PURE__ */ new Date();
+    const gldtPrice = (d2 == null ? void 0 : d2.priceUsdGecko) ?? (d2 == null ? void 0 : d2.priceUsdOnchain) ?? null;
+    const goldSpotOz = (d2 == null ? void 0 : d2.goldSpotOzUsd) ?? null;
+    const goldSpotGram = goldSpotOz != null ? goldSpotOz / TROY_OZ_GRAMS : null;
+    const impliedOz = (d2 == null ? void 0 : d2.impliedGoldOzUsd) ?? null;
+    const impliedGram = impliedOz != null ? impliedOz / TROY_OZ_GRAMS : null;
+    const spreadOz = goldSpotOz != null && impliedOz != null ? goldSpotOz - impliedOz : null;
+    const spreadPct = (d2 == null ? void 0 : d2.premiumPct) != null ? Math.abs(d2.premiumPct) : null;
+    const isDiscount = (d2 == null ? void 0 : d2.premiumPct) != null && d2.premiumPct < 0;
+    const spreadColor = isDiscount ? t.green : t.ink;
+    const vol7d = (d2 == null ? void 0 : d2.volume7dUsd) ?? null;
+    return /* @__PURE__ */ jsxRuntimeExports.jsxs(
+      "div",
+      {
+        ref,
+        style: {
+          width: 1080,
+          height: 1080,
+          background: t.bg,
+          position: "relative",
+          overflow: "hidden",
+          padding: 52,
+          boxSizing: "border-box",
+          display: "flex",
+          flexDirection: "column",
+          fontFamily: mono
+        },
+        children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(TerminalBg, { theme }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs(
+            "div",
+            {
+              style: {
+                position: "relative",
+                zIndex: 2,
+                display: "flex",
+                flexDirection: "column",
+                flex: 1
+              },
+              children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsxs(
+                  "div",
+                  {
+                    style: {
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      paddingBottom: 18,
+                      borderBottom: `1.5px solid ${t.borderColor}`
+                    },
+                    children: [
+                      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", alignItems: "center", gap: 14 }, children: [
+                        /* @__PURE__ */ jsxRuntimeExports.jsx(
+                          "img",
+                          {
+                            src: GLDT_LOGO_SRC,
+                            alt: "",
+                            style: { width: 40, height: 40 }
+                          }
+                        ),
+                        /* @__PURE__ */ jsxRuntimeExports.jsx(
+                          "span",
+                          {
+                            style: {
+                              fontWeight: 700,
+                              fontSize: 26,
+                              color: theme === "dark" ? t.gold : t.ink,
+                              letterSpacing: 2
+                            },
+                            children: "GLDT TERMINAL"
+                          }
+                        )
+                      ] }),
+                      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", gap: 12, alignItems: "center" }, children: [
+                        /* @__PURE__ */ jsxRuntimeExports.jsx(
+                          "span",
+                          {
+                            style: {
+                              width: 9,
+                              height: 9,
+                              borderRadius: "50%",
+                              background: t.gold,
+                              display: "inline-block"
+                            }
+                          }
+                        ),
+                        /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { style: { fontSize: 18, color: t.inkMid, fontWeight: 500 }, children: [
+                          "LIVE · ",
+                          fmtTerminalDate(now2)
+                        ] })
+                      ] })
+                    ]
+                  }
+                ),
+                /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { marginTop: 28, textAlign: "center" }, children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx(
+                    "div",
+                    {
+                      style: {
+                        fontSize: 17,
+                        color: t.inkMid,
+                        letterSpacing: 3,
+                        fontWeight: 500
+                      },
+                      children: "0.01g GOLD IN GLDT"
+                    }
+                  ),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx(
+                    "div",
+                    {
+                      style: {
+                        fontWeight: 700,
+                        fontSize: 64,
+                        color: t.gold,
+                        marginTop: 6
+                      },
+                      children: gldtPrice != null ? fmtUsd$2(gldtPrice) : "—"
+                    }
+                  )
+                ] }),
+                /* @__PURE__ */ jsxRuntimeExports.jsxs(
+                  "div",
+                  {
+                    style: {
+                      marginTop: 24,
+                      border: `1.5px solid ${t.borderLight}`,
+                      borderRadius: 6,
+                      overflow: "hidden",
+                      background: t.tableBg
+                    },
+                    children: [
+                      /* @__PURE__ */ jsxRuntimeExports.jsxs(
+                        "div",
+                        {
+                          style: {
+                            display: "grid",
+                            gridTemplateColumns: "1.2fr 1fr 1fr",
+                            background: t.tableHeaderBg,
+                            padding: "18px 28px"
+                          },
+                          children: [
+                            /* @__PURE__ */ jsxRuntimeExports.jsx(
+                              "div",
+                              {
+                                style: {
+                                  fontSize: 15,
+                                  color: t.headerLabel,
+                                  letterSpacing: 2,
+                                  fontWeight: 600
+                                },
+                                children: "ASSET"
+                              }
+                            ),
+                            /* @__PURE__ */ jsxRuntimeExports.jsx(
+                              "div",
+                              {
+                                style: {
+                                  fontSize: 15,
+                                  color: t.headerLabel,
+                                  letterSpacing: 2,
+                                  fontWeight: 600,
+                                  textAlign: "right"
+                                },
+                                children: "PER OUNCE"
+                              }
+                            ),
+                            /* @__PURE__ */ jsxRuntimeExports.jsx(
+                              "div",
+                              {
+                                style: {
+                                  fontSize: 15,
+                                  color: t.headerLabel,
+                                  letterSpacing: 2,
+                                  fontWeight: 600,
+                                  textAlign: "right"
+                                },
+                                children: "PER GRAM"
+                              }
+                            )
+                          ]
+                        }
+                      ),
+                      /* @__PURE__ */ jsxRuntimeExports.jsxs(
+                        "div",
+                        {
+                          style: {
+                            display: "grid",
+                            gridTemplateColumns: "1.2fr 1fr 1fr",
+                            padding: "24px 28px",
+                            borderBottom: `1px solid ${t.rowBorder}`
+                          },
+                          children: [
+                            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontWeight: 700, fontSize: 24, color: t.ink }, children: "GOLD SPOT" }),
+                            /* @__PURE__ */ jsxRuntimeExports.jsx(
+                              "div",
+                              {
+                                style: {
+                                  fontWeight: 700,
+                                  fontSize: 34,
+                                  color: t.ink,
+                                  textAlign: "right"
+                                },
+                                children: goldSpotOz != null ? fmtUsd$2(goldSpotOz) : "—"
+                              }
+                            ),
+                            /* @__PURE__ */ jsxRuntimeExports.jsx(
+                              "div",
+                              {
+                                style: {
+                                  fontWeight: 700,
+                                  fontSize: 28,
+                                  color: t.inkFaded,
+                                  textAlign: "right"
+                                },
+                                children: goldSpotGram != null ? fmtUsd$2(goldSpotGram) : "—"
+                              }
+                            )
+                          ]
+                        }
+                      ),
+                      /* @__PURE__ */ jsxRuntimeExports.jsxs(
+                        "div",
+                        {
+                          style: {
+                            display: "grid",
+                            gridTemplateColumns: "1.2fr 1fr 1fr",
+                            padding: "24px 28px",
+                            borderBottom: `1px solid ${t.rowBorder}`
+                          },
+                          children: [
+                            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontWeight: 700, fontSize: 24, color: t.goldDark }, children: "GLDT (IMPLIED)" }),
+                            /* @__PURE__ */ jsxRuntimeExports.jsx(
+                              "div",
+                              {
+                                style: {
+                                  fontWeight: 700,
+                                  fontSize: 34,
+                                  color: t.goldDark,
+                                  textAlign: "right"
+                                },
+                                children: impliedOz != null ? fmtUsd$2(impliedOz) : "—"
+                              }
+                            ),
+                            /* @__PURE__ */ jsxRuntimeExports.jsx(
+                              "div",
+                              {
+                                style: {
+                                  fontWeight: 700,
+                                  fontSize: 28,
+                                  color: t.goldFaded,
+                                  textAlign: "right"
+                                },
+                                children: impliedGram != null ? fmtUsd$2(impliedGram) : "—"
+                              }
+                            )
+                          ]
+                        }
+                      ),
+                      /* @__PURE__ */ jsxRuntimeExports.jsxs(
+                        "div",
+                        {
+                          style: {
+                            display: "grid",
+                            gridTemplateColumns: "1.2fr 1fr 1fr",
+                            padding: "24px 28px",
+                            background: t.tableAltBg
+                          },
+                          children: [
+                            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontWeight: 600, fontSize: 22, color: t.inkLight }, children: "SPREAD" }),
+                            /* @__PURE__ */ jsxRuntimeExports.jsx(
+                              "div",
+                              {
+                                style: {
+                                  fontWeight: 700,
+                                  fontSize: 34,
+                                  color: spreadColor,
+                                  textAlign: "right"
+                                },
+                                children: spreadOz != null ? fmtUsd$2(spreadOz) : "—"
+                              }
+                            ),
+                            /* @__PURE__ */ jsxRuntimeExports.jsx(
+                              "div",
+                              {
+                                style: {
+                                  fontWeight: 700,
+                                  fontSize: 28,
+                                  color: spreadColor,
+                                  textAlign: "right"
+                                },
+                                children: spreadPct != null ? `${spreadPct.toFixed(2)}%` : "—"
+                              }
+                            )
+                          ]
+                        }
+                      )
+                    ]
+                  }
+                ),
+                /* @__PURE__ */ jsxRuntimeExports.jsxs(
+                  "div",
+                  {
+                    style: {
+                      display: "grid",
+                      gridTemplateColumns: "1.2fr 1fr 1fr",
+                      padding: "24px 28px",
+                      marginTop: 16,
+                      background: t.tableBg,
+                      borderRadius: 6,
+                      border: `1px solid ${t.borderFaintest}`
+                    },
+                    children: [
+                      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontWeight: 600, fontSize: 22, color: t.inkLight }, children: "7D VOLUME" }),
+                      /* @__PURE__ */ jsxRuntimeExports.jsx(
+                        "div",
+                        {
+                          style: {
+                            fontWeight: 700,
+                            fontSize: 34,
+                            color: t.ink,
+                            textAlign: "right"
+                          },
+                          children: vol7d != null ? fmtUsdCompact(vol7d) : "—"
+                        }
+                      ),
+                      /* @__PURE__ */ jsxRuntimeExports.jsx(
+                        "div",
+                        {
+                          style: {
+                            fontWeight: 600,
+                            fontSize: 16,
+                            color: t.volumeLabel,
+                            textAlign: "right",
+                            alignSelf: "center"
+                          },
+                          children: "GLDT/USD"
+                        }
+                      )
+                    ]
+                  }
+                ),
+                isDiscount && /* @__PURE__ */ jsxRuntimeExports.jsxs(
+                  "div",
+                  {
+                    style: {
+                      marginTop: 24,
+                      background: t.greenBg,
+                      border: `1.5px solid ${t.greenBorder}`,
+                      borderRadius: 6,
+                      padding: "28px 32px",
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center"
+                    },
+                    children: [
+                      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+                        /* @__PURE__ */ jsxRuntimeExports.jsx(
+                          "div",
+                          {
+                            style: {
+                              fontSize: 15,
+                              color: t.inkLight,
+                              letterSpacing: 2,
+                              fontWeight: 500
+                            },
+                            children: "GLDT IS TRADING AT A"
+                          }
+                        ),
+                        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { marginTop: 6, lineHeight: 1 }, children: [
+                          /* @__PURE__ */ jsxRuntimeExports.jsx(
+                            "span",
+                            {
+                              style: {
+                                fontFamily: grotesk,
+                                fontWeight: 700,
+                                fontSize: 58,
+                                color: t.green
+                              },
+                              children: spreadPct != null ? `${spreadPct.toFixed(2)}%` : "—"
+                            }
+                          ),
+                          /* @__PURE__ */ jsxRuntimeExports.jsx(
+                            "span",
+                            {
+                              style: {
+                                fontFamily: sans,
+                                fontWeight: 600,
+                                fontSize: 42,
+                                color: t.ink,
+                                marginLeft: 8
+                              },
+                              children: "discount"
+                            }
+                          )
+                        ] })
+                      ] }),
+                      /* @__PURE__ */ jsxRuntimeExports.jsxs(
+                        "div",
+                        {
+                          style: {
+                            fontSize: 16,
+                            color: t.inkFaint,
+                            textAlign: "right",
+                            lineHeight: 1.6,
+                            fontWeight: 500
+                          },
+                          children: [
+                            "vs Gold Spot",
+                            /* @__PURE__ */ jsxRuntimeExports.jsx("br", {}),
+                            "per troy ounce"
+                          ]
+                        }
+                      )
+                    ]
+                  }
+                ),
+                /* @__PURE__ */ jsxRuntimeExports.jsx(
+                  "div",
+                  {
+                    style: {
+                      marginTop: "auto",
+                      display: "flex",
+                      justifyContent: "center",
+                      alignItems: "center",
+                      paddingTop: 18,
+                      borderTop: `1.5px solid ${t.borderFaint}`
+                    },
+                    children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 14, color: t.footerText, fontWeight: 600 }, children: "100 GLDT = 1g · Metalor 999.9 · Swiss Vaults · KPMG Audited" })
+                  }
+                )
+              ]
+            }
+          )
+        ]
+      }
+    );
+  }
+);
+GoldDataTerminal.displayName = "GoldDataTerminal";
+const GldtStatusTerminal = reactExports.forwardRef(
+  ({ data: d2, theme = "cream" }, ref) => {
+    const t = THEMES[theme];
+    const now2 = (d2 == null ? void 0 : d2.fetchedAt) ? new Date(d2.fetchedAt) : /* @__PURE__ */ new Date();
+    const goldGrams = (d2 == null ? void 0 : d2.goldGramsBacked) ?? null;
+    const goldOz = (d2 == null ? void 0 : d2.goldOzBacked) ?? null;
+    const marketCap = (d2 == null ? void 0 : d2.marketCapUsd) ?? null;
+    const uptime = daysSince(FIRST_TRADE);
+    const vol7d = (d2 == null ? void 0 : d2.volume7dUsd) ?? null;
+    const vol7dPct = (d2 == null ? void 0 : d2.volume7dPctStored) ?? null;
+    const totalVol = (d2 == null ? void 0 : d2.totalVolumeUsd) ?? null;
+    return /* @__PURE__ */ jsxRuntimeExports.jsxs(
+      "div",
+      {
+        ref,
+        style: {
+          width: 1080,
+          height: 1080,
+          background: t.bg,
+          position: "relative",
+          overflow: "hidden",
+          padding: 34,
+          boxSizing: "border-box",
+          display: "flex",
+          flexDirection: "column",
+          fontFamily: mono
+        },
+        children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(TerminalBg, { theme }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs(
+            "div",
+            {
+              style: {
+                position: "relative",
+                zIndex: 2,
+                display: "flex",
+                flexDirection: "column",
+                flex: 1
+              },
+              children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsxs(
+                  "div",
+                  {
+                    style: {
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      paddingBottom: 18,
+                      borderBottom: `1.5px solid ${t.borderColor}`
+                    },
+                    children: [
+                      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", alignItems: "center", gap: 14 }, children: [
+                        /* @__PURE__ */ jsxRuntimeExports.jsx(
+                          "img",
+                          {
+                            src: GLDT_LOGO_SRC,
+                            alt: "",
+                            style: { width: 40, height: 40 }
+                          }
+                        ),
+                        /* @__PURE__ */ jsxRuntimeExports.jsx(
+                          "span",
+                          {
+                            style: {
+                              fontWeight: 700,
+                              fontSize: 28,
+                              color: theme === "dark" ? t.gold : t.ink,
+                              letterSpacing: 2
+                            },
+                            children: "GLDT STATUS"
+                          }
+                        )
+                      ] }),
+                      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", gap: 12, alignItems: "center" }, children: [
+                        /* @__PURE__ */ jsxRuntimeExports.jsx(
+                          "span",
+                          {
+                            style: {
+                              width: 9,
+                              height: 9,
+                              borderRadius: "50%",
+                              background: t.gold,
+                              display: "inline-block"
+                            }
+                          }
+                        ),
+                        /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { style: { fontSize: 18, color: t.inkMid, fontWeight: 500 }, children: [
+                          "LIVE · ",
+                          fmtTerminalDate(now2)
+                        ] })
+                      ] })
+                    ]
+                  }
+                ),
+                /* @__PURE__ */ jsxRuntimeExports.jsxs(
+                  "div",
+                  {
+                    style: {
+                      marginTop: 32,
+                      display: "grid",
+                      gridTemplateColumns: "1fr 1fr 1fr",
+                      gap: 20
+                    },
+                    children: [
+                      /* @__PURE__ */ jsxRuntimeExports.jsxs(
+                        "div",
+                        {
+                          style: {
+                            background: t.cardBg,
+                            border: `1.5px solid ${t.borderFaint}`,
+                            borderRadius: 6,
+                            padding: "32px 28px"
+                          },
+                          children: [
+                            /* @__PURE__ */ jsxRuntimeExports.jsx(
+                              "div",
+                              {
+                                style: {
+                                  fontSize: 15,
+                                  color: t.inkLight,
+                                  letterSpacing: 2,
+                                  fontWeight: 500
+                                },
+                                children: "GOLD IN VAULT"
+                              }
+                            ),
+                            /* @__PURE__ */ jsxRuntimeExports.jsx(
+                              "div",
+                              {
+                                style: {
+                                  fontFamily: grotesk,
+                                  fontWeight: 700,
+                                  fontSize: 52,
+                                  color: t.ink,
+                                  marginTop: 10,
+                                  lineHeight: 1
+                                },
+                                children: goldGrams != null ? `${fmtNum(goldGrams, 2)}g` : "—"
+                              }
+                            ),
+                            /* @__PURE__ */ jsxRuntimeExports.jsx(
+                              "div",
+                              {
+                                style: {
+                                  fontSize: 20,
+                                  color: t.inkFaint,
+                                  marginTop: 6,
+                                  fontWeight: 500
+                                },
+                                children: goldOz != null ? `~${fmtNum(goldOz, 0)} oz` : "—"
+                              }
+                            )
+                          ]
+                        }
+                      ),
+                      /* @__PURE__ */ jsxRuntimeExports.jsxs(
+                        "div",
+                        {
+                          style: {
+                            background: t.cardBg,
+                            border: `1.5px solid ${t.borderFaint}`,
+                            borderRadius: 6,
+                            padding: "32px 28px"
+                          },
+                          children: [
+                            /* @__PURE__ */ jsxRuntimeExports.jsx(
+                              "div",
+                              {
+                                style: {
+                                  fontSize: 15,
+                                  color: t.inkLight,
+                                  letterSpacing: 2,
+                                  fontWeight: 500
+                                },
+                                children: "MARKET CAP"
+                              }
+                            ),
+                            /* @__PURE__ */ jsxRuntimeExports.jsx(
+                              "div",
+                              {
+                                style: {
+                                  fontFamily: grotesk,
+                                  fontWeight: 700,
+                                  fontSize: 52,
+                                  color: t.gold,
+                                  marginTop: 10,
+                                  lineHeight: 1
+                                },
+                                children: marketCap != null ? fmtUsdCompact(marketCap) : "—"
+                              }
+                            ),
+                            /* @__PURE__ */ jsxRuntimeExports.jsx(
+                              "div",
+                              {
+                                style: {
+                                  fontSize: 20,
+                                  color: t.inkFaint,
+                                  marginTop: 6,
+                                  fontWeight: 500
+                                },
+                                children: "USD"
+                              }
+                            )
+                          ]
+                        }
+                      ),
+                      /* @__PURE__ */ jsxRuntimeExports.jsxs(
+                        "div",
+                        {
+                          style: {
+                            background: t.cardBg,
+                            border: `1.5px solid ${t.borderFaint}`,
+                            borderRadius: 6,
+                            padding: "32px 28px"
+                          },
+                          children: [
+                            /* @__PURE__ */ jsxRuntimeExports.jsx(
+                              "div",
+                              {
+                                style: {
+                                  fontSize: 15,
+                                  color: t.inkLight,
+                                  letterSpacing: 2,
+                                  fontWeight: 500
+                                },
+                                children: "DEX"
+                              }
+                            ),
+                            /* @__PURE__ */ jsxRuntimeExports.jsx(
+                              "div",
+                              {
+                                style: {
+                                  fontFamily: grotesk,
+                                  fontWeight: 700,
+                                  fontSize: 52,
+                                  color: t.ink,
+                                  marginTop: 10,
+                                  lineHeight: 1
+                                },
+                                children: "ICPSWAP"
+                              }
+                            ),
+                            /* @__PURE__ */ jsxRuntimeExports.jsx(
+                              "div",
+                              {
+                                style: {
+                                  fontSize: 20,
+                                  color: t.inkFaint,
+                                  marginTop: 6,
+                                  fontWeight: 500
+                                },
+                                children: "exchange"
+                              }
+                            )
+                          ]
+                        }
+                      )
+                    ]
+                  }
+                ),
+                /* @__PURE__ */ jsxRuntimeExports.jsxs(
+                  "div",
+                  {
+                    style: {
+                      marginTop: 24,
+                      border: `1.5px solid ${t.borderLight}`,
+                      borderRadius: 6,
+                      overflow: "hidden",
+                      background: t.tableBg
+                    },
+                    children: [
+                      /* @__PURE__ */ jsxRuntimeExports.jsxs(
+                        "div",
+                        {
+                          style: {
+                            display: "grid",
+                            gridTemplateColumns: "1.2fr 1fr 1fr",
+                            background: t.tableHeaderBg,
+                            padding: "18px 28px"
+                          },
+                          children: [
+                            /* @__PURE__ */ jsxRuntimeExports.jsx(
+                              "div",
+                              {
+                                style: {
+                                  fontSize: 15,
+                                  color: t.headerLabel,
+                                  letterSpacing: 2,
+                                  fontWeight: 600
+                                },
+                                children: "METRIC"
+                              }
+                            ),
+                            /* @__PURE__ */ jsxRuntimeExports.jsx(
+                              "div",
+                              {
+                                style: {
+                                  fontSize: 15,
+                                  color: t.headerLabel,
+                                  letterSpacing: 2,
+                                  fontWeight: 600,
+                                  textAlign: "right"
+                                },
+                                children: "VALUE"
+                              }
+                            ),
+                            /* @__PURE__ */ jsxRuntimeExports.jsx(
+                              "div",
+                              {
+                                style: {
+                                  fontSize: 15,
+                                  color: t.headerLabel,
+                                  letterSpacing: 2,
+                                  fontWeight: 600,
+                                  textAlign: "right"
+                                },
+                                children: "% OF STORED"
+                              }
+                            )
+                          ]
+                        }
+                      ),
+                      /* @__PURE__ */ jsxRuntimeExports.jsxs(
+                        "div",
+                        {
+                          style: {
+                            display: "grid",
+                            gridTemplateColumns: "1.2fr 1fr 1fr",
+                            padding: "26px 28px",
+                            borderBottom: `1px solid ${t.rowBorder}`
+                          },
+                          children: [
+                            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontWeight: 700, fontSize: 28, color: t.ink }, children: "VOLUME 7D" }),
+                            /* @__PURE__ */ jsxRuntimeExports.jsx(
+                              "div",
+                              {
+                                style: {
+                                  fontWeight: 700,
+                                  fontSize: 42,
+                                  color: t.ink,
+                                  textAlign: "right"
+                                },
+                                children: vol7d != null ? fmtUsdCompact(vol7d) : "—"
+                              }
+                            ),
+                            /* @__PURE__ */ jsxRuntimeExports.jsx(
+                              "div",
+                              {
+                                style: {
+                                  fontWeight: 700,
+                                  fontSize: 36,
+                                  color: t.inkFaded,
+                                  textAlign: "right"
+                                },
+                                children: vol7dPct != null ? `${vol7dPct.toFixed(2)}%` : "—"
+                              }
+                            )
+                          ]
+                        }
+                      ),
+                      /* @__PURE__ */ jsxRuntimeExports.jsxs(
+                        "div",
+                        {
+                          style: {
+                            display: "grid",
+                            gridTemplateColumns: "1.2fr 1fr 1fr",
+                            padding: "26px 28px",
+                            background: t.tableAltBg
+                          },
+                          children: [
+                            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontWeight: 700, fontSize: 28, color: t.ink }, children: "TOTAL VOLUME" }),
+                            /* @__PURE__ */ jsxRuntimeExports.jsx(
+                              "div",
+                              {
+                                style: {
+                                  fontWeight: 700,
+                                  fontSize: 42,
+                                  color: t.gold,
+                                  textAlign: "right"
+                                },
+                                children: totalVol != null ? fmtUsdCompact(totalVol) : "—"
+                              }
+                            ),
+                            /* @__PURE__ */ jsxRuntimeExports.jsx(
+                              "div",
+                              {
+                                style: {
+                                  fontWeight: 600,
+                                  fontSize: 16,
+                                  color: t.inkFaintest,
+                                  textAlign: "right",
+                                  alignSelf: "center"
+                                },
+                                children: "ALL TIME"
+                              }
+                            )
+                          ]
+                        }
+                      )
+                    ]
+                  }
+                ),
+                /* @__PURE__ */ jsxRuntimeExports.jsxs(
+                  "div",
+                  {
+                    style: {
+                      marginTop: 24,
+                      background: t.greenBg,
+                      border: `1.5px solid ${t.greenBorder}`,
+                      borderRadius: 6,
+                      padding: "32px 36px",
+                      display: "grid",
+                      gridTemplateColumns: "1fr 1fr 1fr",
+                      gap: 20,
+                      alignItems: "center"
+                    },
+                    children: [
+                      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+                        /* @__PURE__ */ jsxRuntimeExports.jsx(
+                          "div",
+                          {
+                            style: {
+                              fontSize: 15,
+                              color: t.inkLight,
+                              letterSpacing: 2,
+                              fontWeight: 500
+                            },
+                            children: "UPTIME"
+                          }
+                        ),
+                        /* @__PURE__ */ jsxRuntimeExports.jsxs(
+                          "div",
+                          {
+                            style: {
+                              fontFamily: grotesk,
+                              fontWeight: 700,
+                              fontSize: 64,
+                              color: t.green,
+                              lineHeight: 1,
+                              marginTop: 8
+                            },
+                            children: [
+                              uptime,
+                              "+"
+                            ]
+                          }
+                        ),
+                        /* @__PURE__ */ jsxRuntimeExports.jsx(
+                          "div",
+                          {
+                            style: {
+                              fontSize: 18,
+                              color: t.inkLight,
+                              fontWeight: 500,
+                              marginTop: 4
+                            },
+                            children: "days"
+                          }
+                        )
+                      ] }),
+                      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { textAlign: "center" }, children: [
+                        /* @__PURE__ */ jsxRuntimeExports.jsx(
+                          "div",
+                          {
+                            style: {
+                              fontSize: 15,
+                              color: t.inkLight,
+                              letterSpacing: 2,
+                              fontWeight: 500
+                            },
+                            children: "SINCE FIRST TRADE"
+                          }
+                        ),
+                        /* @__PURE__ */ jsxRuntimeExports.jsx(
+                          "div",
+                          {
+                            style: {
+                              fontFamily: grotesk,
+                              fontWeight: 700,
+                              fontSize: 34,
+                              color: t.ink,
+                              marginTop: 10,
+                              lineHeight: 1.2
+                            },
+                            children: "Oct 30, 2024"
+                          }
+                        )
+                      ] }),
+                      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { textAlign: "right" }, children: [
+                        /* @__PURE__ */ jsxRuntimeExports.jsx(
+                          "div",
+                          {
+                            style: {
+                              fontSize: 15,
+                              color: t.inkLight,
+                              letterSpacing: 2,
+                              fontWeight: 500
+                            },
+                            children: "DOWNTIME"
+                          }
+                        ),
+                        /* @__PURE__ */ jsxRuntimeExports.jsx(
+                          "div",
+                          {
+                            style: {
+                              fontFamily: grotesk,
+                              fontWeight: 700,
+                              fontSize: 64,
+                              color: t.green,
+                              lineHeight: 1,
+                              marginTop: 8
+                            },
+                            children: "ZERO"
+                          }
+                        )
+                      ] })
+                    ]
+                  }
+                ),
+                /* @__PURE__ */ jsxRuntimeExports.jsx(
+                  "div",
+                  {
+                    style: {
+                      marginTop: "auto",
+                      display: "flex",
+                      justifyContent: "center",
+                      alignItems: "center",
+                      paddingTop: 18,
+                      borderTop: `1.5px solid ${t.borderFaint}`
+                    },
+                    children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 14, color: t.footerText, fontWeight: 600 }, children: "100 GLDT = 1g · Metalor 999.9 · Swiss Vaults · KPMG Audited" })
+                  }
+                )
+              ]
+            }
+          )
+        ]
+      }
+    );
+  }
+);
+GldtStatusTerminal.displayName = "GldtStatusTerminal";
+const PerformanceTerminal = reactExports.forwardRef(
+  ({ data: d2, theme = "cream" }, ref) => {
+    const t = THEMES[theme];
+    const now2 = (d2 == null ? void 0 : d2.fetchedAt) ? new Date(d2.fetchedAt) : /* @__PURE__ */ new Date();
+    const gldtPrice = (d2 == null ? void 0 : d2.priceUsdGecko) ?? (d2 == null ? void 0 : d2.priceUsdOnchain) ?? null;
+    const gldtBase = 0.884;
+    const btcBase = 69495;
+    const icpBase = 7.95;
+    const gldtNow = gldtPrice ?? 1.39;
+    const btcNow = (d2 == null ? void 0 : d2.btcPriceUsd) ?? 77210;
+    const icpNow = (d2 == null ? void 0 : d2.icpPriceUsd) ?? 2.78;
+    const gldtPct = (gldtNow - gldtBase) / gldtBase * 100;
+    const btcPct = (btcNow - btcBase) / btcBase * 100;
+    const icpPct = (icpNow - icpBase) / icpBase * 100;
+    const fmtPct2 = (v2) => `${v2 >= 0 ? "+" : ""}${v2.toFixed(1)}%`;
+    const fmtPrice = (v2) => v2 >= 1e3 ? `$${v2.toLocaleString("en-US", { maximumFractionDigits: 0 })}` : `$${v2.toFixed(v2 < 10 ? 3 : 2)}`;
+    const gldtColor = t.green;
+    const btcColor = "#F7931A";
+    const icpColor = "#8B6CC1";
+    const gridLine = theme === "dark" ? "rgba(255,255,255,0.04)" : "rgba(58,53,47,0.06)";
+    const zeroLine = theme === "dark" ? "rgba(199,154,59,0.12)" : "rgba(199,154,59,0.2)";
+    const axisLabel = theme === "dark" ? "rgba(255,255,255,0.25)" : "rgba(42,37,32,0.35)";
+    const chartBg = theme === "dark" ? "rgba(255,255,255,0.03)" : "rgba(255,255,255,0.25)";
+    const chartBorder = theme === "dark" ? "rgba(199,154,59,0.1)" : "rgba(58,53,47,0.1)";
+    const labelColor = theme === "dark" ? "#f0e6d6" : t.ink;
+    const subLabel = theme === "dark" ? "rgba(255,255,255,0.45)" : "rgba(42,37,32,0.5)";
+    const gradId = theme === "dark" ? "gldtFillDark" : "gldtFillCream";
+    const btcCardBg = theme === "dark" ? "rgba(247,147,26,0.06)" : "rgba(247,147,26,0.08)";
+    const btcCardBorder = theme === "dark" ? "rgba(247,147,26,0.15)" : "rgba(247,147,26,0.2)";
+    const gldtCardBg = t.greenBg;
+    const gldtCardBorder = t.greenBorder;
+    const icpCardBg = theme === "dark" ? "rgba(139,108,193,0.06)" : "rgba(139,108,193,0.08)";
+    const icpCardBorder = theme === "dark" ? "rgba(139,108,193,0.15)" : "rgba(139,108,193,0.2)";
+    const gldtPath = "M70.0,275.6 L107.7,262.3 L145.5,256.5 L183.2,285.4 L220.9,247.8 L258.6,227.6 L296.4,218.9 L334.1,213.1 L371.8,198.7 L409.5,192.9 L447.3,184.2 L485.0,190.0 L522.7,169.7 L560.5,149.5 L598.2,120.6 L635.9,83.0 L673.6,54.1 L711.4,111.9 L749.1,207.3 L786.8,227.6 L824.5,213.1 L862.3,103.3 L900.0,129.3";
+    const btcPath = "M70.0,275.6 L107.7,178.1 L145.5,181.8 L183.2,185.4 L220.9,60.4 L258.6,108.2 L296.4,137.6 L334.1,163.4 L371.8,174.4 L409.5,207.5 L447.3,189.1 L485.0,181.8 L522.7,167.1 L560.5,181.8 L598.2,192.8 L635.9,218.5 L673.6,236.9 L711.4,262.7 L749.1,303.1 L786.8,281.1 L824.5,288.4 L862.3,236.9 L900.0,247.2";
+    const icpPath = "M70.0,275.6 L107.7,129.3 L145.5,225.7 L183.2,273.9 L220.9,257.9 L258.6,290.0 L296.4,306.1 L334.1,322.2 L371.8,338.2 L409.5,354.3 L447.3,354.3 L485.0,370.4 L522.7,418.6 L560.5,434.7 L598.2,434.7 L635.9,434.7 L673.6,428.2 L711.4,418.6 L749.1,434.7 L786.8,428.2 L824.5,418.6 L862.3,434.7 L900.0,441.7";
+    const gldtArea = `${gldtPath} L900,480 L70,480 Z`;
+    return /* @__PURE__ */ jsxRuntimeExports.jsxs(
+      "div",
+      {
+        ref,
+        style: {
+          width: 1080,
+          height: 1080,
+          background: t.bg,
+          position: "relative",
+          overflow: "hidden",
+          padding: 34,
+          boxSizing: "border-box",
+          display: "flex",
+          flexDirection: "column",
+          fontFamily: mono
+        },
+        children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(TerminalBg, { theme }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs(
+            "div",
+            {
+              style: {
+                position: "relative",
+                zIndex: 2,
+                display: "flex",
+                flexDirection: "column",
+                flex: 1
+              },
+              children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsxs(
+                  "div",
+                  {
+                    style: {
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      paddingBottom: 18,
+                      borderBottom: `1.5px solid ${t.borderColor}`
+                    },
+                    children: [
+                      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", alignItems: "center", gap: 14 }, children: [
+                        /* @__PURE__ */ jsxRuntimeExports.jsx(
+                          "img",
+                          {
+                            src: GLDT_LOGO_SRC,
+                            alt: "",
+                            style: { width: 40, height: 40 }
+                          }
+                        ),
+                        /* @__PURE__ */ jsxRuntimeExports.jsx(
+                          "span",
+                          {
+                            style: {
+                              fontWeight: 700,
+                              fontSize: 26,
+                              color: theme === "dark" ? t.gold : t.ink,
+                              letterSpacing: 2
+                            },
+                            children: "GLDT TERMINAL"
+                          }
+                        )
+                      ] }),
+                      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", gap: 12, alignItems: "center" }, children: [
+                        /* @__PURE__ */ jsxRuntimeExports.jsx(
+                          "span",
+                          {
+                            style: {
+                              width: 9,
+                              height: 9,
+                              borderRadius: "50%",
+                              background: t.gold,
+                              display: "inline-block"
+                            }
+                          }
+                        ),
+                        /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { style: { fontSize: 18, color: t.inkMid, fontWeight: 500 }, children: [
+                          "LIVE · ",
+                          fmtTerminalDate(now2)
+                        ] })
+                      ] })
+                    ]
+                  }
+                ),
+                /* @__PURE__ */ jsxRuntimeExports.jsxs(
+                  "div",
+                  {
+                    style: {
+                      marginTop: 24,
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "flex-end"
+                    },
+                    children: [
+                      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+                        /* @__PURE__ */ jsxRuntimeExports.jsx(
+                          "div",
+                          {
+                            style: {
+                              fontSize: 15,
+                              color: t.inkLight,
+                              letterSpacing: 2,
+                              fontWeight: 500
+                            },
+                            children: "PERFORMANCE COMPARISON"
+                          }
+                        ),
+                        /* @__PURE__ */ jsxRuntimeExports.jsx(
+                          "div",
+                          {
+                            style: {
+                              fontFamily: grotesk,
+                              fontWeight: 700,
+                              fontSize: 38,
+                              color: t.ink,
+                              marginTop: 4,
+                              lineHeight: 1
+                            },
+                            children: "GLDT vs BTC vs ICP"
+                          }
+                        )
+                      ] }),
+                      /* @__PURE__ */ jsxRuntimeExports.jsxs(
+                        "div",
+                        {
+                          style: {
+                            fontSize: 14,
+                            color: t.inkFaint,
+                            fontWeight: 500,
+                            textAlign: "right"
+                          },
+                          children: [
+                            "% change since",
+                            /* @__PURE__ */ jsxRuntimeExports.jsx("br", {}),
+                            "Nov 1, 2024"
+                          ]
+                        }
+                      )
+                    ]
+                  }
+                ),
+                /* @__PURE__ */ jsxRuntimeExports.jsx(
+                  "div",
+                  {
+                    style: {
+                      marginTop: 18,
+                      display: "flex",
+                      gap: 32,
+                      alignItems: "center"
+                    },
+                    children: [
+                      { color: gldtColor, label: "GLDT" },
+                      { color: btcColor, label: "BTC" },
+                      { color: icpColor, label: "ICP" }
+                    ].map((item) => /* @__PURE__ */ jsxRuntimeExports.jsxs(
+                      "div",
+                      {
+                        style: { display: "flex", alignItems: "center", gap: 8 },
+                        children: [
+                          /* @__PURE__ */ jsxRuntimeExports.jsx(
+                            "div",
+                            {
+                              style: {
+                                width: 28,
+                                height: 4,
+                                background: item.color,
+                                borderRadius: 2
+                              }
+                            }
+                          ),
+                          /* @__PURE__ */ jsxRuntimeExports.jsx(
+                            "span",
+                            {
+                              style: { fontSize: 15, color: labelColor, fontWeight: 600 },
+                              children: item.label
+                            }
+                          )
+                        ]
+                      },
+                      item.label
+                    ))
+                  }
+                ),
+                /* @__PURE__ */ jsxRuntimeExports.jsx(
+                  "div",
+                  {
+                    style: {
+                      marginTop: 16,
+                      flex: 1,
+                      background: chartBg,
+                      border: `1.5px solid ${chartBorder}`,
+                      borderRadius: 6,
+                      padding: "16px 12px 8px 0",
+                      position: "relative"
+                    },
+                    children: /* @__PURE__ */ jsxRuntimeExports.jsxs(
+                      "svg",
+                      {
+                        "aria-label": "Terminals Graph",
+                        viewBox: "0 0 960 510",
+                        style: { width: "100%", height: "100%", overflow: "visible" },
+                        children: [
+                          /* @__PURE__ */ jsxRuntimeExports.jsx("title", { children: "Terminals Graph" }),
+                          [428.9, 377.8, 326.7, 224.4, 173.3, 122.2, 71.1, 20].map(
+                            (y2) => /* @__PURE__ */ jsxRuntimeExports.jsx(
+                              "line",
+                              {
+                                x1: "70",
+                                y1: y2,
+                                x2: "900",
+                                y2,
+                                stroke: gridLine,
+                                strokeWidth: "1"
+                              },
+                              y2
+                            )
+                          ),
+                          /* @__PURE__ */ jsxRuntimeExports.jsx(
+                            "line",
+                            {
+                              x1: "70",
+                              y1: "275.6",
+                              x2: "900",
+                              y2: "275.6",
+                              stroke: zeroLine,
+                              strokeWidth: "1",
+                              strokeDasharray: "4,4"
+                            }
+                          ),
+                          [
+                            { y: 432, label: "−60%" },
+                            { y: 381, label: "−40%" },
+                            { y: 330, label: "−20%" },
+                            { y: 228, label: "+20%" },
+                            { y: 177, label: "+40%" },
+                            { y: 126, label: "+60%" },
+                            { y: 75, label: "+80%" },
+                            { y: 24, label: "+100%" }
+                          ].map(({ y: y2, label }) => /* @__PURE__ */ jsxRuntimeExports.jsx(
+                            "text",
+                            {
+                              x: "64",
+                              y: y2,
+                              textAnchor: "end",
+                              fontFamily: "JetBrains Mono, monospace",
+                              fontSize: "11",
+                              fill: axisLabel,
+                              children: label
+                            },
+                            y2
+                          )),
+                          /* @__PURE__ */ jsxRuntimeExports.jsx(
+                            "text",
+                            {
+                              x: "64",
+                              y: "279",
+                              textAnchor: "end",
+                              fontFamily: "JetBrains Mono, monospace",
+                              fontSize: "11",
+                              fill: theme === "dark" ? "rgba(199,154,59,0.5)" : "rgba(199,154,59,0.7)",
+                              fontWeight: "600",
+                              children: "0%"
+                            }
+                          ),
+                          [
+                            { x: 70, label: "Nov 24" },
+                            { x: 183.2, label: "Feb 25" },
+                            { x: 296.4, label: "May" },
+                            { x: 409.5, label: "Aug" },
+                            { x: 522.7, label: "Nov" },
+                            { x: 635.9, label: "Feb 26" },
+                            { x: 749.1, label: "May" },
+                            { x: 862.3, label: "Aug" },
+                            { x: 920, label: "Sep" }
+                          ].map(({ x: x2, label }) => /* @__PURE__ */ jsxRuntimeExports.jsx(
+                            "text",
+                            {
+                              x: x2,
+                              y: "500",
+                              textAnchor: "middle",
+                              fontFamily: "JetBrains Mono, monospace",
+                              fontSize: "11",
+                              fill: axisLabel,
+                              children: label
+                            },
+                            x2
+                          )),
+                          /* @__PURE__ */ jsxRuntimeExports.jsx("defs", { children: /* @__PURE__ */ jsxRuntimeExports.jsxs("linearGradient", { id: gradId, x1: "0", y1: "0", x2: "0", y2: "1", children: [
+                            /* @__PURE__ */ jsxRuntimeExports.jsx("stop", { offset: "0%", stopColor: gldtColor, stopOpacity: 0.12 }),
+                            /* @__PURE__ */ jsxRuntimeExports.jsx(
+                              "stop",
+                              {
+                                offset: "100%",
+                                stopColor: gldtColor,
+                                stopOpacity: 0.01
+                              }
+                            )
+                          ] }) }),
+                          /* @__PURE__ */ jsxRuntimeExports.jsx("path", { d: gldtArea, fill: `url(#${gradId})` }),
+                          /* @__PURE__ */ jsxRuntimeExports.jsx(
+                            "path",
+                            {
+                              d: icpPath,
+                              fill: "none",
+                              stroke: icpColor,
+                              strokeWidth: "2.5",
+                              strokeLinecap: "round",
+                              strokeLinejoin: "round"
+                            }
+                          ),
+                          /* @__PURE__ */ jsxRuntimeExports.jsx(
+                            "path",
+                            {
+                              d: btcPath,
+                              fill: "none",
+                              stroke: btcColor,
+                              strokeWidth: "2.5",
+                              strokeLinecap: "round",
+                              strokeLinejoin: "round"
+                            }
+                          ),
+                          /* @__PURE__ */ jsxRuntimeExports.jsx(
+                            "path",
+                            {
+                              d: gldtPath,
+                              fill: "none",
+                              stroke: gldtColor,
+                              strokeWidth: "3",
+                              strokeLinecap: "round",
+                              strokeLinejoin: "round"
+                            }
+                          ),
+                          /* @__PURE__ */ jsxRuntimeExports.jsx("circle", { cx: "900", cy: "129.3", r: "5", fill: gldtColor }),
+                          /* @__PURE__ */ jsxRuntimeExports.jsx("circle", { cx: "900", cy: "247.2", r: "4", fill: btcColor }),
+                          /* @__PURE__ */ jsxRuntimeExports.jsx("circle", { cx: "900", cy: "441.7", r: "4", fill: icpColor }),
+                          /* @__PURE__ */ jsxRuntimeExports.jsx(
+                            "text",
+                            {
+                              x: "912",
+                              y: "125",
+                              fontFamily: "JetBrains Mono, monospace",
+                              fontSize: "13",
+                              fill: gldtColor,
+                              fontWeight: "700",
+                              children: fmtPct2(gldtPct)
+                            }
+                          ),
+                          /* @__PURE__ */ jsxRuntimeExports.jsx(
+                            "text",
+                            {
+                              x: "912",
+                              y: "243",
+                              fontFamily: "JetBrains Mono, monospace",
+                              fontSize: "13",
+                              fill: btcColor,
+                              fontWeight: "700",
+                              children: fmtPct2(btcPct)
+                            }
+                          ),
+                          /* @__PURE__ */ jsxRuntimeExports.jsx(
+                            "text",
+                            {
+                              x: "912",
+                              y: "451",
+                              fontFamily: "JetBrains Mono, monospace",
+                              fontSize: "13",
+                              fill: icpColor,
+                              fontWeight: "700",
+                              children: fmtPct2(icpPct)
+                            }
+                          )
+                        ]
+                      }
+                    )
+                  }
+                ),
+                /* @__PURE__ */ jsxRuntimeExports.jsxs(
+                  "div",
+                  {
+                    style: {
+                      marginTop: 16,
+                      display: "grid",
+                      gridTemplateColumns: "1fr 1.15fr 1fr",
+                      gap: 14
+                    },
+                    children: [
+                      /* @__PURE__ */ jsxRuntimeExports.jsxs(
+                        "div",
+                        {
+                          style: {
+                            background: btcCardBg,
+                            border: `1.5px solid ${btcCardBorder}`,
+                            borderRadius: 6,
+                            padding: "20px 22px",
+                            textAlign: "center"
+                          },
+                          children: [
+                            /* @__PURE__ */ jsxRuntimeExports.jsx(
+                              "div",
+                              {
+                                style: {
+                                  fontSize: 13,
+                                  color: labelColor,
+                                  letterSpacing: 2,
+                                  fontWeight: 600
+                                },
+                                children: "BTC"
+                              }
+                            ),
+                            /* @__PURE__ */ jsxRuntimeExports.jsx(
+                              "div",
+                              {
+                                style: {
+                                  fontFamily: grotesk,
+                                  fontWeight: 700,
+                                  fontSize: 42,
+                                  color: btcColor,
+                                  lineHeight: 1,
+                                  marginTop: 6
+                                },
+                                children: fmtPct2(btcPct)
+                              }
+                            ),
+                            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { fontSize: 14, color: subLabel, marginTop: 4 }, children: [
+                              fmtPrice(btcBase),
+                              " → ",
+                              fmtPrice(btcNow)
+                            ] })
+                          ]
+                        }
+                      ),
+                      /* @__PURE__ */ jsxRuntimeExports.jsxs(
+                        "div",
+                        {
+                          style: {
+                            background: gldtCardBg,
+                            border: `1.5px solid ${gldtCardBorder}`,
+                            borderRadius: 6,
+                            padding: "20px 22px",
+                            textAlign: "center"
+                          },
+                          children: [
+                            /* @__PURE__ */ jsxRuntimeExports.jsx(
+                              "div",
+                              {
+                                style: {
+                                  fontSize: 13,
+                                  color: labelColor,
+                                  letterSpacing: 2,
+                                  fontWeight: 600
+                                },
+                                children: "GLDT"
+                              }
+                            ),
+                            /* @__PURE__ */ jsxRuntimeExports.jsx(
+                              "div",
+                              {
+                                style: {
+                                  fontFamily: grotesk,
+                                  fontWeight: 700,
+                                  fontSize: 48,
+                                  color: gldtColor,
+                                  lineHeight: 1,
+                                  marginTop: 6
+                                },
+                                children: fmtPct2(gldtPct)
+                              }
+                            ),
+                            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { fontSize: 14, color: subLabel, marginTop: 4 }, children: [
+                              fmtPrice(gldtBase),
+                              " → ",
+                              fmtPrice(gldtNow)
+                            ] })
+                          ]
+                        }
+                      ),
+                      /* @__PURE__ */ jsxRuntimeExports.jsxs(
+                        "div",
+                        {
+                          style: {
+                            background: icpCardBg,
+                            border: `1.5px solid ${icpCardBorder}`,
+                            borderRadius: 6,
+                            padding: "20px 22px",
+                            textAlign: "center"
+                          },
+                          children: [
+                            /* @__PURE__ */ jsxRuntimeExports.jsx(
+                              "div",
+                              {
+                                style: {
+                                  fontSize: 13,
+                                  color: labelColor,
+                                  letterSpacing: 2,
+                                  fontWeight: 600
+                                },
+                                children: "ICP"
+                              }
+                            ),
+                            /* @__PURE__ */ jsxRuntimeExports.jsx(
+                              "div",
+                              {
+                                style: {
+                                  fontFamily: grotesk,
+                                  fontWeight: 700,
+                                  fontSize: 42,
+                                  color: icpColor,
+                                  lineHeight: 1,
+                                  marginTop: 6
+                                },
+                                children: fmtPct2(icpPct)
+                              }
+                            ),
+                            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { fontSize: 14, color: subLabel, marginTop: 4 }, children: [
+                              fmtPrice(icpBase),
+                              " → ",
+                              fmtPrice(icpNow)
+                            ] })
+                          ]
+                        }
+                      )
+                    ]
+                  }
+                ),
+                /* @__PURE__ */ jsxRuntimeExports.jsx(
+                  "div",
+                  {
+                    style: {
+                      marginTop: "auto",
+                      display: "flex",
+                      justifyContent: "center",
+                      alignItems: "center",
+                      paddingTop: 14,
+                      borderTop: `1.5px solid ${t.borderFaint}`
+                    },
+                    children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 14, color: t.footerText, fontWeight: 600 }, children: "100 GLDT = 1g · Metalor 999.9 · Swiss Vaults · KPMG Audited" })
+                  }
+                )
+              ]
+            }
+          )
+        ]
+      }
+    );
+  }
+);
+PerformanceTerminal.displayName = "PerformanceTerminal";
+function CreamTerminals({ data }) {
+  const [theme, setTheme] = reactExports.useState("cream");
+  const [tab, setTab] = reactExports.useState("gold-data");
+  const [exporting, setExporting] = reactExports.useState(false);
+  const termRef = reactExports.useRef(null);
+  const containerRef = reactExports.useRef(null);
+  const [cw, setCw] = reactExports.useState(540);
+  reactExports.useEffect(injectTerminalFonts, []);
+  reactExports.useLayoutEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(
+      (entries) => setCw(entries[0].contentRect.width)
+    );
+    ro.observe(el);
+    setCw(el.getBoundingClientRect().width);
+    return () => ro.disconnect();
+  }, []);
+  const handleExport = reactExports.useCallback(async () => {
+    const el = termRef.current;
+    if (!el) return;
+    setExporting(true);
+    try {
+      await exportTerminalPng(el, `gldt-${tab}-${theme}`);
+    } finally {
+      setExporting(false);
+    }
+  }, [tab, theme]);
+  const scale = cw / 1080;
+  const tabs = [
+    { id: "gold-data", label: "Gold Data Post" },
+    { id: "status", label: "GLDT Status" },
+    { id: "performance", label: "Performance" }
+  ];
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "rounded-xl border border-border bg-card shadow-subtle overflow-hidden", children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-wrap items-center gap-1 border-b border-border px-4 py-2", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center rounded-md border border-border mr-3", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "button",
+          {
+            type: "button",
+            onClick: () => setTheme("cream"),
+            className: cn(
+              "rounded-l-md px-3 py-1.5 text-xs font-medium transition-colors",
+              theme === "cream" ? "bg-[#e8cfc0] text-[#2a2520]" : "text-muted-foreground hover:text-foreground"
+            ),
+            children: "Cream"
+          }
+        ),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "button",
+          {
+            type: "button",
+            onClick: () => setTheme("dark"),
+            className: cn(
+              "rounded-r-md px-3 py-1.5 text-xs font-medium transition-colors",
+              theme === "dark" ? "bg-[#1c1e22] text-[#f0e6d6]" : "text-muted-foreground hover:text-foreground"
+            ),
+            children: "Dark"
+          }
+        )
+      ] }),
+      tabs.map((t) => /* @__PURE__ */ jsxRuntimeExports.jsx(
+        "button",
+        {
+          type: "button",
+          onClick: () => setTab(t.id),
+          className: cn(
+            "rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
+            tab === t.id ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground"
+          ),
+          children: t.label
+        },
+        t.id
+      )),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "ml-auto", children: /* @__PURE__ */ jsxRuntimeExports.jsxs(Button, { size: "sm", onClick: handleExport, disabled: exporting, children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx(Download, { className: "size-4" }),
+        exporting ? "Exporting…" : "Export PNG"
+      ] }) })
+    ] }),
+    /* @__PURE__ */ jsxRuntimeExports.jsx(
+      "div",
+      {
+        ref: containerRef,
+        style: {
+          width: "100%",
+          aspectRatio: "1 / 1",
+          overflow: "hidden",
+          position: "relative"
+        },
+        children: /* @__PURE__ */ jsxRuntimeExports.jsxs(
+          "div",
+          {
+            style: {
+              width: 1080,
+              height: 1080,
+              transform: `scale(${scale})`,
+              transformOrigin: "top left",
+              position: "absolute",
+              top: 0,
+              left: 0
+            },
+            children: [
+              tab === "gold-data" && /* @__PURE__ */ jsxRuntimeExports.jsx(GoldDataTerminal, { ref: termRef, data, theme }),
+              tab === "status" && /* @__PURE__ */ jsxRuntimeExports.jsx(GldtStatusTerminal, { ref: termRef, data, theme }),
+              tab === "performance" && /* @__PURE__ */ jsxRuntimeExports.jsx(PerformanceTerminal, { ref: termRef, data, theme })
+            ]
+          }
+        )
+      }
+    )
+  ] });
+}
 function DataPanel({
   data,
   isLoading,
   isFetching,
   onRefresh,
-  onInsert
+  onInsert,
+  manual,
+  onManual
 }) {
   const d2 = data;
   const market = [
@@ -45017,8 +47078,25 @@ function DataPanel({
       insert: fmtUsd$2((d2 == null ? void 0 : d2.tvlTotalUsd) ?? null, 0)
     },
     {
-      label: "Volume 24h · all pools",
+      label: "Volume 24h",
       value: fmtUsd$2((d2 == null ? void 0 : d2.volume24hUsd) ?? null, 2)
+    },
+    {
+      label: "Volume 7d",
+      value: fmtUsdCompact((d2 == null ? void 0 : d2.volume7dUsd) ?? null),
+      insert: fmtUsd$2((d2 == null ? void 0 : d2.volume7dUsd) ?? null, 0),
+      editKey: "volume7dUsd"
+    },
+    {
+      label: "Vol 7d / backing %",
+      value: (d2 == null ? void 0 : d2.volume7dPctStored) != null ? `${d2.volume7dPctStored.toFixed(2)}%` : "—",
+      editKey: "volume7dPctStored"
+    },
+    {
+      label: "Total volume",
+      value: fmtUsdCompact((d2 == null ? void 0 : d2.totalVolumeUsd) ?? null),
+      insert: fmtUsd$2((d2 == null ? void 0 : d2.totalVolumeUsd) ?? null, 0),
+      editKey: "totalVolumeUsd"
     }
   ];
   const supply = [
@@ -45082,13 +47160,15 @@ function DataPanel({
         }
       )
     ] }),
-    isLoading && !d2 ? /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "py-8 text-center text-sm text-muted-foreground", children: "Loading token data…" }) : /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-col gap-4", children: [
+    isLoading && !d2 ? /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "py-8 text-center text-sm text-muted-foreground", children: "Loading token data…" }) : /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "grid grid-cols-1 gap-6 md:grid-cols-3", children: [
       /* @__PURE__ */ jsxRuntimeExports.jsx(
         Group,
         {
           title: "Market · GeckoTerminal",
           rows: market,
-          onInsert
+          onInsert,
+          manual,
+          onManual
         }
       ),
       /* @__PURE__ */ jsxRuntimeExports.jsx(
@@ -45096,10 +47176,21 @@ function DataPanel({
         {
           title: "Supply & backing · on-chain",
           rows: supply,
-          onInsert
+          onInsert,
+          manual,
+          onManual
         }
       ),
-      /* @__PURE__ */ jsxRuntimeExports.jsx(Group, { title: "Gold", rows: gold, onInsert })
+      /* @__PURE__ */ jsxRuntimeExports.jsx(
+        Group,
+        {
+          title: "Gold",
+          rows: gold,
+          onInsert,
+          manual,
+          onManual
+        }
+      )
     ] }),
     /* @__PURE__ */ jsxRuntimeExports.jsxs("p", { className: "mt-4 border-t border-border pt-3 text-[11px] leading-relaxed text-muted-foreground", children: [
       "Sources: GLDT ledger (",
@@ -45113,20 +47204,33 @@ function DataPanel({
 function Group({
   title,
   rows,
-  onInsert
+  onInsert,
+  manual,
+  onManual
 }) {
   return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
     /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-primary/80", children: title }),
-    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex flex-col divide-y divide-border/60", children: rows.map((r2) => /* @__PURE__ */ jsxRuntimeExports.jsx(StatRow, { row: r2, onInsert }, r2.label)) })
+    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex flex-col divide-y divide-border/60", children: rows.map((r2) => /* @__PURE__ */ jsxRuntimeExports.jsx(
+      StatRow,
+      {
+        row: r2,
+        onInsert,
+        manual,
+        onManual
+      },
+      r2.label
+    )) })
   ] });
 }
 function StatRow({
   row,
-  onInsert
+  onInsert,
+  manual,
+  onManual
 }) {
   const [copied, setCopied] = reactExports.useState(false);
   const text = row.insert ?? row.value;
-  const disabled = row.value === "—";
+  const disabled = row.value === "—" && !row.editKey;
   const copy = () => {
     void navigator.clipboard.writeText(text).then(() => {
       setCopied(true);
@@ -45136,7 +47240,21 @@ function StatRow({
   return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "group flex items-center justify-between gap-2 py-1.5", children: [
     /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-xs text-muted-foreground", children: row.label }),
     /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-1", children: [
-      /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "font-mono text-sm", children: row.value }),
+      row.editKey ? /* @__PURE__ */ jsxRuntimeExports.jsx(
+        "input",
+        {
+          type: "number",
+          step: "any",
+          placeholder: "—",
+          value: manual[row.editKey] ?? "",
+          onChange: (e) => {
+            const v2 = e.target.value;
+            const key = row.editKey;
+            onManual(key, v2 === "" ? null : Number(v2));
+          },
+          className: "w-24 rounded border border-border bg-transparent px-1.5 py-0.5 text-right font-mono text-sm text-foreground outline-none focus:border-primary"
+        }
+      ) : /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "font-mono text-sm", children: row.value }),
       /* @__PURE__ */ jsxRuntimeExports.jsx(
         "button",
         {
@@ -45757,32 +47875,51 @@ function Slider({
 function GldtPage() {
   const { data, isLoading, isFetching, refetch } = useGldtData();
   const editorRef = reactExports.useRef(null);
+  const [manual, setManual] = reactExports.useState({
+    volume7dUsd: null,
+    volume7dPctStored: null,
+    totalVolumeUsd: null
+  });
+  const handleManual = reactExports.useCallback(
+    (key, value) => setManual((prev) => ({ ...prev, [key]: value })),
+    []
+  );
+  const merged = reactExports.useMemo(() => {
+    if (!data) return void 0;
+    return {
+      ...data,
+      volume7dUsd: manual.volume7dUsd ?? data.volume7dUsd,
+      volume7dPctStored: manual.volume7dPctStored ?? data.volume7dPctStored,
+      totalVolumeUsd: manual.totalVolumeUsd ?? data.totalVolumeUsd
+    };
+  }, [data, manual]);
   return /* @__PURE__ */ jsxRuntimeExports.jsxs("section", { className: "mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8", children: [
     /* @__PURE__ */ jsxRuntimeExports.jsx(
       PageHeader,
       {
         tag: "GLDT",
         tagIcon: Coins,
-        title: "GLDT image studio",
-        description: "Build gold-style visuals with live GLDT data, then export as PNG."
+        title: "GLDT TERMINAL",
+        description: ""
       }
     ),
-    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "grid grid-cols-1 gap-6 xl:grid-cols-[20rem_1fr]", children: [
-      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "xl:order-1", children: /* @__PURE__ */ jsxRuntimeExports.jsx(
-        DataPanel,
-        {
-          data,
-          isLoading,
-          isFetching,
-          onRefresh: () => void refetch(),
-          onInsert: (text) => {
-            var _a3;
-            return (_a3 = editorRef.current) == null ? void 0 : _a3.addText(text);
-          }
-        }
-      ) }),
-      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "xl:order-2", children: /* @__PURE__ */ jsxRuntimeExports.jsx(ImageEditor, { ref: editorRef }) })
-    ] })
+    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "mb-8", children: /* @__PURE__ */ jsxRuntimeExports.jsx(CreamTerminals, { data: merged }) }),
+    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "mb-8", children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+      DataPanel,
+      {
+        data: merged,
+        isLoading,
+        isFetching,
+        onRefresh: () => void refetch(),
+        onInsert: (text) => {
+          var _a3;
+          return (_a3 = editorRef.current) == null ? void 0 : _a3.addText(text);
+        },
+        manual,
+        onManual: handleManual
+      }
+    ) }),
+    /* @__PURE__ */ jsxRuntimeExports.jsx(ImageEditor, { ref: editorRef })
   ] });
 }
 function HomePage() {
@@ -45807,6 +47944,7 @@ function HomePage() {
   }, [liveParams]);
   const fmtOgy = stats.ogyStaked !== null ? `${(stats.ogyStaked / 1e6).toFixed(1)} M` : "—";
   const fmtWtn = extra.wtnTotal !== null ? `${(extra.wtnTotal / 1e6).toFixed(1)} M` : "—";
+  const fmtIcpStaked = extra.icpStaked !== null ? `${(extra.icpStaked / 1e3).toFixed(0)} K` : "580 K";
   return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-col gap-8 p-4 sm:p-6 lg:p-10 max-w-5xl mx-auto", children: [
     /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "rounded-lg bg-primary/10 border border-primary/20 px-4 py-3 text-center text-sm text-primary font-medium", children: "BETA VERSION — Data is under active development and may be out of date or inaccurate." }),
     /* @__PURE__ */ jsxRuntimeExports.jsxs("section", { className: "flex flex-col items-center text-center gap-4 py-8 sm:py-12 animate-fade-in-up", children: [
@@ -45860,7 +47998,7 @@ function HomePage() {
         /* @__PURE__ */ jsxRuntimeExports.jsx(
           StatCard,
           {
-            value: "580 K",
+            value: fmtIcpStaked,
             label: "ICP",
             info: "ICP held by the DAO across its NNS neurons — the treasury's core reserve and the source of all reward flows.",
             accent: true
@@ -46271,7 +48409,7 @@ var NODES$1 = [
 ];
 var Primitive = NODES$1.reduce((primitive, node) => {
   const Slot2 = /* @__PURE__ */ createSlot(`Primitive.${node}`);
-  const Node2 = reactExports.forwardRef((props, forwardedRef) => {
+  const Node = reactExports.forwardRef((props, forwardedRef) => {
     const { asChild, ...primitiveProps } = props;
     const Comp = asChild ? Slot2 : node;
     if (typeof window !== "undefined") {
@@ -46279,8 +48417,8 @@ var Primitive = NODES$1.reduce((primitive, node) => {
     }
     return /* @__PURE__ */ jsxRuntimeExports.jsx(Comp, { ...primitiveProps, ref: forwardedRef });
   });
-  Node2.displayName = `Primitive.${node}`;
-  return { ...primitive, [node]: Node2 };
+  Node.displayName = `Primitive.${node}`;
+  return { ...primitive, [node]: Node };
 }, {});
 function useCallbackRef(callback) {
   const callbackRef = reactExports.useRef(callback);
@@ -47009,7 +49147,8 @@ async function fetchFlowBalances() {
   if (gldtBal !== null) out.pool_gldt = fmtToken$1(gldtBal, "GLDT");
   if (goldaoRatio !== null) out.goldao_ratio = String(Math.round(goldaoRatio));
   if (ogyRatio !== null) out.ogy_ratio = String(Math.round(ogyRatio));
-  if (ogyStaked !== null) out.ogy_staked = fmtToken$1(Math.round(ogyStaked), "OGY");
+  if (ogyStaked !== null)
+    out.ogy_staked = fmtToken$1(Math.round(ogyStaked), "OGY");
   out.icp_neuron = fmtIcp(ICP_NEURON_HARDCODED);
   return out;
 }
@@ -47022,8 +49161,6 @@ const ACCENTS = {
   red: "oklch(0.65 0.19 22)",
   muted: "oklch(0.6 0 0)"
 };
-const VIEW_W = 1100;
-const VIEW_H = 1180;
 const NODES = [
   {
     id: "nns",
@@ -47077,7 +49214,7 @@ const NODES = [
     w: 274,
     h: 98,
     accent: "teal",
-    title: "sns_rewards",
+    title: "ICP Rewards",
     sub: "to eligible stakers",
     tag: "33%",
     flowKey: "rewards"
@@ -47185,36 +49322,6 @@ const NODES = [
     flowKey: "compound"
   }
 ];
-const EDGES = [
-  { id: "e-nns-spawn", from: "nns", to: "spawn", accent: "gold" },
-  { id: "e-spawn-cycle", from: "spawn", to: "cycle", accent: "gold" },
-  { id: "e-cycle-split", from: "cycle", to: "split", accent: "gold" },
-  { id: "e-split-rewards", from: "split", to: "rewards", accent: "teal" },
-  { id: "e-split-buyback", from: "split", to: "buyback", accent: "purple" },
-  { id: "e-split-gldt", from: "split", to: "gldt", accent: "purple" },
-  { id: "e-split-gooddao", from: "split", to: "gooddao", accent: "muted" },
-  {
-    id: "e-rewards-distribute",
-    from: "rewards",
-    to: "distribute",
-    accent: "teal"
-  },
-  { id: "e-buyback-cascade", from: "buyback", to: "cascade", accent: "purple" },
-  { id: "e-cascade-burn", from: "cascade", to: "burn", accent: "green" },
-  {
-    id: "e-cascade-stakeogy",
-    from: "cascade",
-    to: "stakeogy",
-    accent: "green"
-  },
-  {
-    id: "e-cascade-compound",
-    from: "cascade",
-    to: "compound",
-    accent: "green"
-  },
-  { id: "e-gldt-gldtjob", from: "gldt", to: "gldtjob", accent: "red" }
-];
 const NODE_BY_ID = Object.fromEntries(
   NODES.map((n) => [n.id, n])
 );
@@ -47223,155 +49330,516 @@ function nodeById(id) {
   if (!n) throw new Error(`Unknown flow node: ${id}`);
   return n;
 }
-function edgePath(edge) {
-  const from = nodeById(edge.from);
-  const to = nodeById(edge.to);
-  const x1 = from.cx;
-  const y1 = from.cy + from.h / 2;
-  const x2 = to.cx;
-  const y2 = to.cy - to.h / 2;
-  const dy = Math.max((y2 - y1) * 0.45, 24);
-  return `M ${x1} ${y1} C ${x1} ${y1 + dy} ${x2} ${y2 - dy} ${x2} ${y2}`;
-}
-function usePrefersReducedMotion() {
-  const [reduced, setReduced] = reactExports.useState(false);
-  reactExports.useEffect(() => {
-    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
-    setReduced(mq.matches);
-    const on = () => setReduced(mq.matches);
-    mq.addEventListener("change", on);
-    return () => mq.removeEventListener("change", on);
-  }, []);
-  return reduced;
-}
-function Edge({ edge, animate }) {
-  const color = ACCENTS[edge.accent ?? "muted"];
-  const d2 = edgePath(edge);
-  const pathId = `path-${edge.id}`;
-  return /* @__PURE__ */ jsxRuntimeExports.jsxs("g", { children: [
-    /* @__PURE__ */ jsxRuntimeExports.jsx(
-      "path",
-      {
-        id: pathId,
-        d: d2,
-        fill: "none",
-        stroke: color,
-        strokeWidth: 1.5,
-        strokeOpacity: 0.28
-      }
-    ),
-    animate && [0, 1].map((i) => /* @__PURE__ */ jsxRuntimeExports.jsx("circle", { r: 3.4, fill: color, opacity: 0.9, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
-      "animateMotion",
-      {
-        dur: "3.4s",
-        begin: `${i * 1.7}s`,
-        repeatCount: "indefinite",
-        keyPoints: "0;1",
-        keyTimes: "0;1",
-        calcMode: "linear",
-        children: /* @__PURE__ */ jsxRuntimeExports.jsx("mpath", { href: `#${pathId}` })
-      }
-    ) }, i))
-  ] });
-}
-function Node({ node, amount }) {
-  const color = ACCENTS[node.accent];
-  const left = node.cx - node.w / 2;
-  const top = node.cy - node.h / 2;
-  const right = node.cx + node.w / 2;
-  const bottom = node.cy + node.h / 2;
-  const hasSub = Boolean(node.sub);
-  const titleY = hasSub ? top + 30 : node.cy + 5;
-  return /* @__PURE__ */ jsxRuntimeExports.jsxs("g", { children: [
-    /* @__PURE__ */ jsxRuntimeExports.jsx(
-      "rect",
-      {
-        x: left,
-        y: top,
-        width: node.w,
-        height: node.h,
-        rx: 14,
-        fill: "oklch(0.2 0 0)",
-        stroke: color,
-        strokeOpacity: 0.55,
-        strokeWidth: 1.25,
-        strokeDasharray: node.dashed ? "5 4" : void 0
-      }
-    ),
-    /* @__PURE__ */ jsxRuntimeExports.jsx(
-      "text",
-      {
-        x: left + 18,
-        y: titleY,
-        fill: "oklch(0.96 0 0)",
-        fontFamily: "var(--font-display)",
-        fontSize: 16,
-        fontWeight: 600,
-        children: node.title
-      }
-    ),
-    hasSub && /* @__PURE__ */ jsxRuntimeExports.jsx(
-      "text",
-      {
-        x: left + 18,
-        y: top + 48,
-        fill: "oklch(0.62 0 0)",
-        fontFamily: "var(--font-mono)",
-        fontSize: 11,
-        children: node.sub
-      }
-    ),
-    node.tag && /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
-      /* @__PURE__ */ jsxRuntimeExports.jsx(
-        "rect",
+const FLOW_KEYFRAMES = `
+@keyframes dotTravel{0%{top:0;opacity:0}8%{opacity:1}92%{opacity:1}100%{top:100%;opacity:0}}
+@keyframes glowPulse{0%,100%{box-shadow:0 0 10px 3px rgba(191,155,48,0.2)}50%{box-shadow:0 0 22px 7px rgba(191,155,48,0.45)}}
+@keyframes fireFlicker{0%,100%{transform:scaleY(1) scaleX(1);opacity:0.9}25%{transform:scaleY(1.2) scaleX(0.9);opacity:1}50%{transform:scaleY(0.92) scaleX(1.08);opacity:0.85}75%{transform:scaleY(1.12) scaleX(0.94);opacity:1}}
+@keyframes burnGlow{0%,100%{box-shadow:0 0 14px 4px rgba(255,120,30,0.2)}50%{box-shadow:0 0 28px 8px rgba(255,120,30,0.45)}}
+@keyframes stakeOrbit{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}
+@keyframes compoundPulse{0%,100%{transform:scale(1);opacity:0.7}50%{transform:scale(1.08);opacity:1}}
+@keyframes breathe{0%,100%{opacity:0.35}50%{opacity:0.7}}
+@keyframes buybackPulse{0%,100%{box-shadow:0 0 12px 3px rgba(168,85,247,0.15)}50%{box-shadow:0 0 24px 8px rgba(168,85,247,0.35)}}
+@keyframes stakeGlow{0%,100%{opacity:0.6;transform:scale(1)}50%{opacity:1;transform:scale(1.1)}}
+`;
+function Connector({
+  height = 32,
+  accent = "gold",
+  animate = true,
+  delay = 0
+}) {
+  const color = ACCENTS[accent] ?? ACCENTS.gold;
+  return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex justify-center", children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+    "div",
+    {
+      className: "relative overflow-hidden",
+      style: { width: 2, height, background: `${color}20` },
+      children: animate && /* @__PURE__ */ jsxRuntimeExports.jsx(
+        "div",
         {
-          x: right - 16 - node.tag.length * 8.4,
-          y: top + 12,
-          width: node.tag.length * 8.4 + 4,
-          height: 20,
-          rx: 6,
-          fill: color,
-          fillOpacity: 0.16
-        }
-      ),
-      /* @__PURE__ */ jsxRuntimeExports.jsx(
-        "text",
-        {
-          x: right - 14,
-          y: top + 26,
-          textAnchor: "end",
-          fill: color,
-          fontFamily: "var(--font-mono)",
-          fontSize: 12,
-          fontWeight: 600,
-          children: node.tag
+          className: "absolute rounded-full",
+          style: {
+            width: 4,
+            height: 10,
+            left: -1,
+            background: color,
+            animation: `dotTravel 1.6s linear ${delay}s infinite`
+          }
         }
       )
-    ] }),
-    node.flowKey && /* @__PURE__ */ jsxRuntimeExports.jsx(
-      "text",
-      {
-        x: left + 18,
-        y: bottom - 14,
-        fill: amount ? color : "oklch(0.5 0 0)",
-        fontFamily: "var(--font-mono)",
-        fontSize: 13,
-        fontWeight: amount ? 600 : 400,
-        children: amount ?? "— ICP"
-      }
+    }
+  ) });
+}
+function nextDistribution() {
+  const now2 = /* @__PURE__ */ new Date();
+  const d2 = new Date(
+    Date.UTC(
+      now2.getUTCFullYear(),
+      now2.getUTCMonth(),
+      now2.getUTCDate(),
+      14,
+      0,
+      0
     )
-  ] });
+  );
+  let add2 = (3 - d2.getUTCDay() + 7) % 7;
+  if (add2 === 0 && now2.getUTCHours() >= 14) add2 = 7;
+  d2.setUTCDate(d2.getUTCDate() + add2);
+  const day = d2.getUTCDate();
+  const month = d2.toLocaleString("en-US", { month: "short", timeZone: "UTC" });
+  return `Wed ${day} ${month}, 14:00 UTC`;
+}
+function nextGldtDistribution() {
+  const now2 = /* @__PURE__ */ new Date();
+  const firstWedOf = (year, month2) => {
+    const first = new Date(Date.UTC(year, month2, 1, 12, 0, 0));
+    const add2 = (3 - first.getUTCDay() + 7) % 7;
+    first.setUTCDate(1 + add2);
+    return first;
+  };
+  let target = firstWedOf(now2.getUTCFullYear(), now2.getUTCMonth());
+  if (now2.getTime() >= target.getTime()) {
+    target = firstWedOf(now2.getUTCFullYear(), now2.getUTCMonth() + 1);
+  }
+  const day = target.getUTCDate();
+  const month = target.toLocaleString("en-US", {
+    month: "short",
+    timeZone: "UTC"
+  });
+  return `Wed ${day} ${month}, 12:00 UTC`;
+}
+function RewardPoolBanner({ amounts }) {
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs(
+    "div",
+    {
+      className: "rounded-xl border border-[oklch(0.82_0.15_85_/_0.15)] p-3.5 px-5 flex items-center justify-between flex-wrap gap-3",
+      style: {
+        background: "linear-gradient(135deg, oklch(0.82 0.15 85 / 0.06), oklch(0.82 0.15 85 / 0.02))"
+      },
+      children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-3", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "div",
+            {
+              className: "w-9 h-9 rounded-[10px] flex items-center justify-center",
+              style: {
+                background: "oklch(0.82 0.15 85 / 0.12)",
+                animation: "glowPulse 3s ease-in-out infinite"
+              },
+              children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+                "img",
+                {
+                  src: "/logos/goldao.png",
+                  alt: "GoldDAO",
+                  className: "w-6 h-6 rounded"
+                }
+              )
+            }
+          ),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx(
+              "div",
+              {
+                className: "font-mono text-[11px] font-semibold uppercase tracking-wider",
+                style: { color: ACCENTS.gold },
+                children: "Reward Pool"
+              }
+            ),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs(
+              "div",
+              {
+                className: "font-mono text-[10px]",
+                style: { color: "oklch(0.8 0.09 85)" },
+                children: [
+                  "Next ICP/OGY: ",
+                  nextDistribution()
+                ]
+              }
+            ),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs(
+              "div",
+              {
+                className: "font-mono text-[10px]",
+                style: { color: "oklch(0.8 0.09 85)" },
+                children: [
+                  "Next GLDT: ",
+                  nextGldtDistribution()
+                ]
+              }
+            )
+          ] })
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-2.5", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(
+            PoolChip,
+            {
+              logo: "/logos/icp.png",
+              value: amounts.rewards ?? "—",
+              label: "ICP",
+              color: "oklch(0.75 0.10 290)"
+            }
+          ),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(
+            PoolChip,
+            {
+              logo: "/logos/ogy.png",
+              value: amounts.pool_ogy ?? "—",
+              label: "OGY",
+              color: "oklch(0.70 0.17 162)",
+              rounded: true
+            }
+          ),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(
+            PoolChip,
+            {
+              logo: "/logos/gldt.png",
+              value: amounts.pool_gldt ?? "—",
+              label: "GLDT",
+              color: "oklch(0.82 0.14 85)"
+            }
+          )
+        ] })
+      ]
+    }
+  );
+}
+function PoolChip({
+  logo,
+  value,
+  label,
+  color,
+  rounded
+}) {
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs(
+    "div",
+    {
+      className: "flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border/40",
+      style: { background: "oklch(1 0 0 / 0.03)" },
+      children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "img",
+          {
+            src: logo,
+            alt: label,
+            className: `w-4 h-4 ${rounded ? "rounded" : ""}`
+          }
+        ),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "font-mono text-xs font-semibold", style: { color }, children: [
+          value,
+          " ",
+          label
+        ] })
+      ]
+    }
+  );
+}
+function FlowCard({
+  node,
+  amount,
+  className = "",
+  children
+}) {
+  const color = ACCENTS[node.accent];
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs(
+    "div",
+    {
+      className: `rounded-xl border px-5 py-4 flex items-center gap-3.5 ${className}`,
+      style: {
+        background: `${color}0A`,
+        borderColor: `${color}28`,
+        borderStyle: node.dashed ? "dashed" : "solid"
+      },
+      children: [
+        children,
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex-1 min-w-0", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "div",
+            {
+              className: "text-sm font-bold",
+              style: { color: node.accent === "muted" ? "oklch(0.7 0 0)" : color },
+              children: node.title
+            }
+          ),
+          node.sub && /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "div",
+            {
+              className: "font-mono text-[11px] mt-0.5",
+              style: { color: "oklch(0.6 0 0)" },
+              children: node.sub
+            }
+          ),
+          node.flowKey && amount && /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "div",
+            {
+              className: "font-mono text-xs font-semibold mt-1",
+              style: { color },
+              children: amount
+            }
+          )
+        ] }),
+        node.tag && /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "div",
+          {
+            className: "font-mono text-[12px] font-bold px-2 py-0.5 rounded-md shrink-0",
+            style: { color, background: `${color}1A` },
+            children: node.tag
+          }
+        )
+      ]
+    }
+  );
+}
+function BuybackModule({
+  id,
+  logo,
+  title,
+  ratioLabel,
+  ratioValue,
+  isActive: isActive2,
+  dataLabel,
+  dataValue,
+  animate
+}) {
+  const activeStyles = id === "burn" ? {
+    border: "1px solid oklch(0.78 0.16 60 / 0.35)",
+    background: "oklch(0.78 0.16 60 / 0.06)",
+    animation: animate ? "burnGlow 3s ease-in-out infinite" : void 0
+  } : id === "stakeogy" ? {
+    border: "1px solid oklch(0.70 0.17 162 / 0.35)",
+    background: "oklch(0.70 0.17 162 / 0.06)"
+  } : {
+    border: "1px solid oklch(0.75 0.10 290 / 0.35)",
+    background: "oklch(0.75 0.10 290 / 0.06)"
+  };
+  const inactiveStyles = {
+    border: "1px solid oklch(1 0 0 / 0.06)",
+    background: "oklch(1 0 0 / 0.02)"
+  };
+  const styles = isActive2 ? activeStyles : inactiveStyles;
+  const colors = {
+    burn: "oklch(0.78 0.16 60)",
+    stakeogy: "oklch(0.70 0.17 162)",
+    compound: "oklch(0.75 0.10 290)"
+  };
+  const color = colors[id] ?? "oklch(0.6 0 0)";
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs(
+    "div",
+    {
+      className: "rounded-[10px] px-3 py-2.5 flex flex-col gap-1.5 transition-opacity",
+      style: { ...styles, opacity: isActive2 ? 1 : 0.45 },
+      children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-2", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "relative shrink-0", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("img", { src: logo, alt: title, className: "w-5 h-5 rounded" }),
+            isActive2 && id === "stakeogy" && /* @__PURE__ */ jsxRuntimeExports.jsx(
+              "div",
+              {
+                className: "absolute -inset-1 border border-dashed rounded-full",
+                style: {
+                  borderColor: "oklch(0.72 0.17 162 / 0.2)",
+                  animation: "stakeOrbit 8s linear infinite"
+                }
+              }
+            ),
+            isActive2 && id === "compound" && /* @__PURE__ */ jsxRuntimeExports.jsx(
+              "div",
+              {
+                className: "absolute -inset-0.5 border-[1.5px] rounded-full",
+                style: {
+                  borderColor: "oklch(0.75 0.10 290 / 0.15)",
+                  animation: "compoundPulse 3s ease-in-out infinite"
+                }
+              }
+            )
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "div",
+            {
+              className: "text-[14px] font-bold flex-1 min-w-0 truncate",
+              style: { color },
+              children: title
+            }
+          ),
+          isActive2 && id === "burn" && animate && /* @__PURE__ */ jsxRuntimeExports.jsxs(
+            "svg",
+            {
+              width: "14",
+              height: "18",
+              viewBox: "0 0 14 18",
+              className: "shrink-0",
+              role: "img",
+              "aria-label": "Burn fire animation",
+              style: { animation: "fireFlicker 0.7s ease-in-out infinite" },
+              children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx(
+                  "path",
+                  {
+                    d: "M7 0C7 0 1.5 5 1.5 9.5c0 3 2.5 5.5 5.5 5.5s5.5-2.5 5.5-5.5C12.5 5 7 0 7 0z",
+                    fill: "oklch(0.78 0.16 60 / 0.7)"
+                  }
+                ),
+                /* @__PURE__ */ jsxRuntimeExports.jsx(
+                  "path",
+                  {
+                    d: "M7 5C7 5 4.5 7.5 4.5 10c0 1.4 1.1 2.5 2.5 2.5s2.5-1.1 2.5-2.5C9.5 7.5 7 5 7 5z",
+                    fill: "oklch(0.85 0.14 85 / 0.8)"
+                  }
+                )
+              ]
+            }
+          ),
+          isActive2 && id === "stakeogy" && animate && /* @__PURE__ */ jsxRuntimeExports.jsxs(
+            "svg",
+            {
+              width: "16",
+              height: "18",
+              viewBox: "0 0 16 18",
+              className: "shrink-0",
+              fill: "none",
+              role: "img",
+              "aria-label": "Stake OGY",
+              style: { animation: "stakeGlow 2.5s ease-in-out infinite" },
+              children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx(
+                  "rect",
+                  {
+                    x: "3",
+                    y: "8",
+                    width: "10",
+                    height: "8",
+                    rx: "2",
+                    fill: "oklch(0.70 0.17 162 / 0.6)"
+                  }
+                ),
+                /* @__PURE__ */ jsxRuntimeExports.jsx(
+                  "path",
+                  {
+                    d: "M5.5 8V5.5a2.5 2.5 0 015 0V8",
+                    stroke: "oklch(0.70 0.17 162)",
+                    strokeWidth: "1.5",
+                    strokeLinecap: "round"
+                  }
+                ),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("circle", { cx: "8", cy: "12", r: "1.2", fill: "oklch(0.85 0.10 162)" })
+              ]
+            }
+          ),
+          isActive2 && id === "compound" && animate && /* @__PURE__ */ jsxRuntimeExports.jsxs(
+            "svg",
+            {
+              width: "16",
+              height: "16",
+              viewBox: "0 0 16 16",
+              className: "shrink-0",
+              fill: "none",
+              role: "img",
+              "aria-label": "Compound ICP",
+              style: { animation: "stakeOrbit 6s linear infinite" },
+              children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx(
+                  "path",
+                  {
+                    d: "M8 2a6 6 0 014.5 2",
+                    stroke: "oklch(0.75 0.10 290)",
+                    strokeWidth: "1.5",
+                    strokeLinecap: "round"
+                  }
+                ),
+                /* @__PURE__ */ jsxRuntimeExports.jsx(
+                  "path",
+                  {
+                    d: "M14 4l-1.5 0 0-1.5",
+                    stroke: "oklch(0.75 0.10 290)",
+                    strokeWidth: "1.2",
+                    strokeLinecap: "round",
+                    strokeLinejoin: "round"
+                  }
+                ),
+                /* @__PURE__ */ jsxRuntimeExports.jsx(
+                  "path",
+                  {
+                    d: "M8 14a6 6 0 01-4.5-2",
+                    stroke: "oklch(0.75 0.10 290)",
+                    strokeWidth: "1.5",
+                    strokeLinecap: "round"
+                  }
+                ),
+                /* @__PURE__ */ jsxRuntimeExports.jsx(
+                  "path",
+                  {
+                    d: "M2 12l1.5 0 0 1.5",
+                    stroke: "oklch(0.75 0.10 290)",
+                    strokeWidth: "1.2",
+                    strokeLinecap: "round",
+                    strokeLinejoin: "round"
+                  }
+                )
+              ]
+            }
+          ),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "span",
+            {
+              className: "font-mono text-[11px] font-bold px-1.5 py-px rounded shrink-0",
+              style: {
+                color: isActive2 ? color : "oklch(1 0 0 / 0.25)",
+                background: isActive2 ? `${color}1A` : "oklch(1 0 0 / 0.04)"
+              },
+              children: isActive2 ? "ACTIVE" : "STANDBY"
+            }
+          )
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center justify-between gap-2 pl-7", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "span",
+            {
+              className: "font-mono text-[11px]",
+              style: { color: "oklch(0.62 0 0)" },
+              children: ratioLabel
+            }
+          ),
+          ratioValue && /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "span",
+            {
+              className: "font-mono text-[11px] font-semibold",
+              style: { color },
+              children: ratioValue
+            }
+          )
+        ] }),
+        dataValue && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "pl-7", children: /* @__PURE__ */ jsxRuntimeExports.jsxs(
+          "span",
+          {
+            className: "font-mono text-[11px]",
+            style: { color: "oklch(0.6 0 0)" },
+            children: [
+              dataLabel,
+              ": ",
+              dataValue
+            ]
+          }
+        ) })
+      ]
+    }
+  );
 }
 function RewardsFlow() {
-  const reduced = usePrefersReducedMotion();
+  const animate = true;
   const [amounts, setAmounts] = reactExports.useState({});
   const [live, setLive] = reactExports.useState(false);
-  const [animKey, setAnimKey] = reactExports.useState(0);
+  reactExports.useEffect(() => {
+    const id = "rewards-flow-keyframes";
+    if (!document.getElementById(id)) {
+      const style2 = document.createElement("style");
+      style2.id = id;
+      style2.textContent = FLOW_KEYFRAMES;
+      document.head.appendChild(style2);
+    }
+  }, []);
   reactExports.useEffect(() => {
     let cancelled = false;
     fetchFlowBalances().then((data) => {
       if (!cancelled) {
-        setAmounts(data);
+        setAmounts((prev) => ({ ...prev, ...data }));
         setLive(Object.keys(data).length > 0);
       }
     });
@@ -47379,21 +49847,24 @@ function RewardsFlow() {
       cancelled = true;
     };
   }, []);
+  const { extra } = useLiveData();
   reactExports.useEffect(() => {
-    const onVisible = () => {
-      if (document.visibilityState === "visible") setAnimKey((k2) => k2 + 1);
-    };
-    document.addEventListener("visibilitychange", onVisible);
-    const id = requestAnimationFrame(() => setAnimKey((k2) => k2 + 1));
-    return () => {
-      document.removeEventListener("visibilitychange", onVisible);
-      cancelAnimationFrame(id);
-    };
-  }, []);
-  const rewardPoolIcp = amounts.rewards ?? null;
-  const rewardPoolOgy = amounts.pool_ogy ?? null;
-  const rewardPoolGldt = amounts.pool_gldt ?? null;
-  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-col gap-6", children: [
+    if (extra.icpStaked == null) return;
+    const v2 = extra.icpStaked;
+    const label = v2 >= 1e3 ? `${(v2 / 1e3).toFixed(1)}K ICP` : `${v2.toFixed(0)} ICP`;
+    setAmounts((prev) => ({ ...prev, nns: label }));
+  }, [extra.icpStaked]);
+  const goldaoRatio = amounts.goldao_ratio ? Number(amounts.goldao_ratio) : 420;
+  const ogyRatio = amounts.ogy_ratio ? Number(amounts.ogy_ratio) : 1200;
+  const burnActive = goldaoRatio >= 500;
+  const stakeActive = !burnActive && ogyRatio >= 1e3;
+  const compoundActive = !burnActive && !stakeActive;
+  const nns = nodeById("nns");
+  const spawn = nodeById("spawn");
+  const rewards = nodeById("rewards");
+  const gldt = nodeById("gldt");
+  const gooddao = nodeById("gooddao");
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-col gap-5", children: [
     /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between", children: [
       /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "max-w-2xl text-sm text-muted-foreground", children: "How ICP maturity from the DAO's NNS neurons moves through the split, buyback cascade, and GLDT job on its way to stakers. Structural values are fixed by governance; ICP balances are fetched from the ICP ledger on load." }),
       /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "inline-flex w-fit shrink-0 items-center gap-2 rounded-full border border-border bg-card/60 px-3 py-1.5 text-xs font-mono text-muted-foreground", children: [
@@ -47406,94 +49877,546 @@ function RewardsFlow() {
         live ? "Balances loaded" : "Loading balances…"
       ] })
     ] }),
-    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-col lg:flex-row gap-4", children: [
-      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex-1 overflow-x-auto rounded-xl border border-border bg-[oklch(0.16_0_0)] p-2 shadow-subtle", children: /* @__PURE__ */ jsxRuntimeExports.jsxs(
-        "svg",
-        {
-          viewBox: `0 0 ${VIEW_W} ${VIEW_H}`,
-          className: "h-auto w-full",
-          style: { minWidth: 720 },
-          role: "img",
-          "aria-label": "GOLDAO reward flow diagram",
-          children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx("title", { children: "GOLDAO reward flow" }),
-            EDGES.map((e) => /* @__PURE__ */ jsxRuntimeExports.jsx(Edge, { edge: e, animate: !reduced }, e.id)),
-            NODES.map((n) => /* @__PURE__ */ jsxRuntimeExports.jsx(Node, { node: n, amount: amounts[n.flowKey ?? ""] }, n.id))
-          ]
-        },
-        animKey
-      ) }),
-      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "w-full lg:w-64 shrink-0 flex flex-col gap-3", children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "rounded-xl border border-border bg-card/50 p-4", children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx("h3", { className: "font-mono text-xs uppercase tracking-wider text-muted-foreground mb-1", children: "Reward Pool" }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "font-mono text-[10px] text-muted-foreground/60 mb-3", children: "iyehc-lqaaa-aaaap-ab25a-cai" }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-[11px] text-muted-foreground mb-3", children: "Tokens waiting to be distributed next Wednesday 14h UTC." }),
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-2", children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx(PoolRow, { token: "ICP", value: rewardPoolIcp }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx(PoolRow, { token: "OGY", value: rewardPoolOgy }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx(PoolRow, { token: "GLDT", value: rewardPoolGldt })
+    /* @__PURE__ */ jsxRuntimeExports.jsx(RewardPoolBanner, { amounts }),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs(
+      "div",
+      {
+        className: "rounded-xl border border-border p-4 sm:p-6 flex flex-col items-center",
+        style: { background: "oklch(0.12 0 0)" },
+        children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "w-full max-w-sm", children: /* @__PURE__ */ jsxRuntimeExports.jsx(FlowCard, { node: nns, amount: amounts[nns.flowKey ?? ""], children: /* @__PURE__ */ jsxRuntimeExports.jsx("img", { src: "/logos/icp.png", alt: "ICP", className: "w-8 h-8 shrink-0" }) }) }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(Connector, { height: 32, animate, delay: 0 }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "w-full max-w-sm", children: /* @__PURE__ */ jsxRuntimeExports.jsx(FlowCard, { node: spawn, amount: amounts[spawn.flowKey ?? ""], children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "div",
+            {
+              className: "w-8 h-8 rounded-lg flex items-center justify-center shrink-0",
+              style: { background: "oklch(0.82 0.15 85 / 0.1)" },
+              children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+                "svg",
+                {
+                  width: "18",
+                  height: "18",
+                  fill: "none",
+                  stroke: ACCENTS.gold,
+                  strokeWidth: "1.5",
+                  role: "img",
+                  "aria-label": "Spawn and disburse",
+                  children: /* @__PURE__ */ jsxRuntimeExports.jsx("path", { d: "M9 3v12M5 11l4 4 4-4" })
+                }
+              )
+            }
+          ) }) }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-col items-center", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx(Connector, { height: 12, animate, delay: 0.3 }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs(
+              "div",
+              {
+                className: "flex items-center gap-2 px-3 py-1 rounded-lg border border-dashed",
+                style: {
+                  borderColor: "oklch(0.83 0.13 70 / 0.2)",
+                  background: "oklch(1 0 0 / 0.02)"
+                },
+                children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsxs(
+                    "svg",
+                    {
+                      width: "12",
+                      height: "12",
+                      fill: "none",
+                      stroke: ACCENTS.amber,
+                      strokeWidth: "1.5",
+                      role: "img",
+                      "aria-label": "Cycle pre-check",
+                      children: [
+                        /* @__PURE__ */ jsxRuntimeExports.jsx("circle", { cx: "6", cy: "6", r: "4" }),
+                        /* @__PURE__ */ jsxRuntimeExports.jsx("path", { d: "M6 4v2l1.5 0.5" })
+                      ]
+                    }
+                  ),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx(
+                    "span",
+                    {
+                      className: "font-mono text-[10px]",
+                      style: { color: "oklch(0.75 0.13 70)" },
+                      children: "Cycle pre-check · rare diversion if < 1k ICP"
+                    }
+                  )
+                ]
+              }
+            ),
+            /* @__PURE__ */ jsxRuntimeExports.jsx(Connector, { height: 12, animate, delay: 0.4 })
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs(
+            "div",
+            {
+              className: "w-full max-w-xs text-center rounded-xl border px-5 py-4",
+              style: {
+                background: "linear-gradient(135deg, oklch(0.82 0.15 85 / 0.08), oklch(0.82 0.15 85 / 0.03))",
+                borderColor: "oklch(0.82 0.15 85 / 0.2)"
+              },
+              children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx(
+                  "div",
+                  {
+                    className: "text-sm font-extrabold",
+                    style: { color: ACCENTS.gold },
+                    children: "SPLIT"
+                  }
+                ),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "font-mono text-xl font-bold text-foreground mt-1", children: "33 / 33 / 33 / 1" }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx(
+                  "div",
+                  {
+                    className: "font-mono text-[10px] mt-1",
+                    style: { color: "oklch(0.55 0.08 85)" },
+                    children: "Proposal #341"
+                  }
+                )
+              ]
+            }
+          ),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "div",
+            {
+              className: "w-full max-w-[860px] hidden sm:block",
+              style: { height: 50 },
+              children: /* @__PURE__ */ jsxRuntimeExports.jsxs(
+                "svg",
+                {
+                  width: "100%",
+                  height: "50",
+                  viewBox: "0 0 860 50",
+                  preserveAspectRatio: "none",
+                  style: { overflow: "visible" },
+                  role: "img",
+                  "aria-label": "Flow branches to rewards, buyback, GLDT and Good DAO",
+                  children: [
+                    /* @__PURE__ */ jsxRuntimeExports.jsx(
+                      "path",
+                      {
+                        d: "M430 0 L120 50",
+                        stroke: ACCENTS.teal,
+                        strokeWidth: "1.5",
+                        strokeOpacity: "0.25",
+                        fill: "none"
+                      }
+                    ),
+                    /* @__PURE__ */ jsxRuntimeExports.jsx(
+                      "path",
+                      {
+                        d: "M430 0 L370 50",
+                        stroke: ACCENTS.purple,
+                        strokeWidth: "1.5",
+                        strokeOpacity: "0.25",
+                        fill: "none"
+                      }
+                    ),
+                    /* @__PURE__ */ jsxRuntimeExports.jsx(
+                      "path",
+                      {
+                        d: "M430 0 L580 50",
+                        stroke: ACCENTS.red,
+                        strokeWidth: "1.5",
+                        strokeOpacity: "0.25",
+                        fill: "none"
+                      }
+                    ),
+                    /* @__PURE__ */ jsxRuntimeExports.jsx(
+                      "path",
+                      {
+                        d: "M430 0 L760 50",
+                        stroke: "oklch(0.6 0 0)",
+                        strokeWidth: "1.5",
+                        strokeOpacity: "0.15",
+                        fill: "none"
+                      }
+                    ),
+                    /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+                      /* @__PURE__ */ jsxRuntimeExports.jsx("circle", { r: "3", fill: ACCENTS.teal, opacity: "0.9", children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+                        "animateMotion",
+                        {
+                          dur: "2s",
+                          repeatCount: "indefinite",
+                          path: "M430,0 L120,50"
+                        }
+                      ) }),
+                      /* @__PURE__ */ jsxRuntimeExports.jsx("circle", { r: "3", fill: ACCENTS.purple, opacity: "0.9", children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+                        "animateMotion",
+                        {
+                          dur: "2s",
+                          begin: "0.3s",
+                          repeatCount: "indefinite",
+                          path: "M430,0 L370,50"
+                        }
+                      ) }),
+                      /* @__PURE__ */ jsxRuntimeExports.jsx("circle", { r: "3", fill: ACCENTS.red, opacity: "0.9", children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+                        "animateMotion",
+                        {
+                          dur: "2s",
+                          begin: "0.6s",
+                          repeatCount: "indefinite",
+                          path: "M430,0 L580,50"
+                        }
+                      ) }),
+                      /* @__PURE__ */ jsxRuntimeExports.jsx("circle", { r: "3", fill: "oklch(0.6 0 0 / 0.5)", children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+                        "animateMotion",
+                        {
+                          dur: "2s",
+                          begin: "0.9s",
+                          repeatCount: "indefinite",
+                          path: "M430,0 L760,50"
+                        }
+                      ) })
+                    ] })
+                  ]
+                }
+              )
+            }
+          ),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "sm:hidden flex flex-col items-center", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx(Connector, { height: 16, accent: "teal", animate, delay: 0.5 }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-1", children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx(
+                "div",
+                {
+                  className: "w-2 h-2 rounded-full",
+                  style: {
+                    background: ACCENTS.teal,
+                    animation: "breathe 2s ease-in-out infinite"
+                  }
+                }
+              ),
+              /* @__PURE__ */ jsxRuntimeExports.jsx(
+                "div",
+                {
+                  className: "w-2 h-2 rounded-full",
+                  style: {
+                    background: ACCENTS.purple,
+                    animation: "breathe 2s ease-in-out 0.3s infinite"
+                  }
+                }
+              ),
+              /* @__PURE__ */ jsxRuntimeExports.jsx(
+                "div",
+                {
+                  className: "w-2 h-2 rounded-full",
+                  style: {
+                    background: ACCENTS.red,
+                    animation: "breathe 2s ease-in-out 0.6s infinite"
+                  }
+                }
+              ),
+              /* @__PURE__ */ jsxRuntimeExports.jsx(
+                "div",
+                {
+                  className: "w-2 h-2 rounded-full",
+                  style: {
+                    background: "oklch(0.78 0.12 0)",
+                    animation: "breathe 2s ease-in-out 0.9s infinite"
+                  }
+                }
+              )
+            ] }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx(Connector, { height: 8, accent: "purple", animate, delay: 0.7 })
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 w-full max-w-[860px]", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsxs(
+              "div",
+              {
+                className: "rounded-xl border px-4 py-4 flex flex-col gap-2",
+                style: {
+                  background: `${ACCENTS.teal}0A`,
+                  borderColor: `${ACCENTS.teal}30`
+                },
+                children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-2 mb-1", children: [
+                    /* @__PURE__ */ jsxRuntimeExports.jsx("img", { src: "/logos/icp.png", alt: "ICP", className: "w-5 h-5" }),
+                    /* @__PURE__ */ jsxRuntimeExports.jsx(
+                      "span",
+                      {
+                        className: "font-mono text-[12px] font-bold px-2 py-0.5 rounded",
+                        style: { color: ACCENTS.teal, background: `${ACCENTS.teal}1A` },
+                        children: "33%"
+                      }
+                    )
+                  ] }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx(
+                    "div",
+                    {
+                      className: "text-[14px] font-bold",
+                      style: { color: ACCENTS.teal },
+                      children: rewards.title
+                    }
+                  ),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx(
+                    "div",
+                    {
+                      className: "font-mono text-[10px]",
+                      style: { color: "oklch(0.65 0.12 185)" },
+                      children: rewards.sub
+                    }
+                  ),
+                  /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "border-t border-[oklch(0.7_0.12_185_/_0.1)] pt-2 mt-1", children: [
+                    /* @__PURE__ */ jsxRuntimeExports.jsx(
+                      "div",
+                      {
+                        className: "text-[12px] font-semibold",
+                        style: { color: "oklch(0.75 0 0)" },
+                        children: "↓ Distribute by maturity"
+                      }
+                    ),
+                    /* @__PURE__ */ jsxRuntimeExports.jsx(
+                      "div",
+                      {
+                        className: "font-mono text-[10px]",
+                        style: { color: "oklch(0.6 0 0)" },
+                        children: "2yr lock · not dissolving"
+                      }
+                    )
+                  ] })
+                ]
+              }
+            ),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs(
+              "div",
+              {
+                className: "sm:col-span-1 lg:col-span-1 rounded-xl border px-4 py-4 flex flex-col gap-2",
+                style: {
+                  background: `${ACCENTS.purple}06`,
+                  borderColor: `${ACCENTS.purple}28`,
+                  animation: "buybackPulse 4s ease-in-out infinite"
+                },
+                children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-2 mb-1", children: [
+                    /* @__PURE__ */ jsxRuntimeExports.jsx(
+                      "img",
+                      {
+                        src: "/logos/goldao.png",
+                        alt: "GoldDAO",
+                        className: "w-5 h-5 rounded"
+                      }
+                    ),
+                    /* @__PURE__ */ jsxRuntimeExports.jsx(
+                      "span",
+                      {
+                        className: "text-[14px] font-bold flex-1",
+                        style: { color: ACCENTS.purple },
+                        children: "Buyback"
+                      }
+                    ),
+                    /* @__PURE__ */ jsxRuntimeExports.jsx(
+                      "span",
+                      {
+                        className: "font-mono text-[12px] font-bold px-2 py-0.5 rounded",
+                        style: {
+                          color: ACCENTS.purple,
+                          background: `${ACCENTS.purple}1A`
+                        },
+                        children: "33%"
+                      }
+                    )
+                  ] }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx(
+                    "div",
+                    {
+                      className: "font-mono text-[10px] uppercase tracking-wide mb-1",
+                      style: { color: "oklch(0.65 0.08 290)" },
+                      children: "Conditional cascade · by ratio"
+                    }
+                  ),
+                  /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-col gap-1.5", children: [
+                    /* @__PURE__ */ jsxRuntimeExports.jsx(
+                      BuybackModule,
+                      {
+                        id: "burn",
+                        logo: "/logos/goldao.png",
+                        title: "Burn GOLDAO",
+                        ratioLabel: "Ratio ≥ 1:500",
+                        ratioValue: `1:${goldaoRatio}`,
+                        isActive: burnActive,
+                        animate
+                      }
+                    ),
+                    /* @__PURE__ */ jsxRuntimeExports.jsx(
+                      BuybackModule,
+                      {
+                        id: "stakeogy",
+                        logo: "/logos/ogy.png",
+                        title: "Stake OGY",
+                        ratioLabel: "Ratio ≥ 1:1000",
+                        ratioValue: `1:${ogyRatio}`,
+                        isActive: stakeActive,
+                        animate,
+                        dataLabel: "Staked",
+                        dataValue: amounts.ogy_staked ?? "—"
+                      }
+                    ),
+                    /* @__PURE__ */ jsxRuntimeExports.jsx(
+                      BuybackModule,
+                      {
+                        id: "compound",
+                        logo: "/logos/icp.png",
+                        title: "Compound ICP",
+                        ratioLabel: "Fallback",
+                        isActive: compoundActive,
+                        animate,
+                        dataLabel: "Neuron",
+                        dataValue: amounts.icp_neuron ?? "—"
+                      }
+                    )
+                  ] })
+                ]
+              }
+            ),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs(
+              "div",
+              {
+                className: "rounded-xl border px-4 py-4 flex flex-col gap-2",
+                style: {
+                  background: `${ACCENTS.red}0A`,
+                  borderColor: `${ACCENTS.red}30`
+                },
+                children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-2 mb-1", children: [
+                    /* @__PURE__ */ jsxRuntimeExports.jsx("img", { src: "/logos/gldt.png", alt: "GLDT", className: "w-5 h-5" }),
+                    /* @__PURE__ */ jsxRuntimeExports.jsx(
+                      "span",
+                      {
+                        className: "font-mono text-[12px] font-bold px-2 py-0.5 rounded",
+                        style: { color: ACCENTS.red, background: `${ACCENTS.red}1A` },
+                        children: "33%"
+                      }
+                    )
+                  ] }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx(
+                    "div",
+                    {
+                      className: "text-[14px] font-bold",
+                      style: { color: ACCENTS.red },
+                      children: gldt.title
+                    }
+                  ),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx(
+                    "div",
+                    {
+                      className: "font-mono text-[10px]",
+                      style: { color: "oklch(0.65 0.12 22)" },
+                      children: gldt.sub
+                    }
+                  ),
+                  /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "border-t border-[oklch(0.65_0.19_22_/_0.1)] pt-2 mt-1", children: [
+                    /* @__PURE__ */ jsxRuntimeExports.jsx(
+                      "div",
+                      {
+                        className: "text-[12px] font-semibold",
+                        style: { color: "oklch(0.75 0 0)" },
+                        children: "↓ GLDT Job"
+                      }
+                    ),
+                    /* @__PURE__ */ jsxRuntimeExports.jsx(
+                      "div",
+                      {
+                        className: "font-mono text-[10px]",
+                        style: { color: "oklch(0.6 0 0)" },
+                        children: "No price check · rate × balance"
+                      }
+                    )
+                  ] })
+                ]
+              }
+            ),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs(
+              "div",
+              {
+                className: "rounded-xl border px-4 py-4 flex flex-col gap-2",
+                style: {
+                  background: "rgba(255,160,180,0.06)",
+                  borderColor: "rgba(255,160,180,0.18)"
+                },
+                children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-2 mb-1", children: [
+                    /* @__PURE__ */ jsxRuntimeExports.jsx(
+                      "div",
+                      {
+                        className: "w-5 h-5 rounded-md flex items-center justify-center text-[11px] font-bold",
+                        style: {
+                          background: "rgba(255,160,180,0.12)",
+                          color: "oklch(0.78 0.12 0)"
+                        },
+                        children: "G"
+                      }
+                    ),
+                    /* @__PURE__ */ jsxRuntimeExports.jsx(
+                      "span",
+                      {
+                        className: "font-mono text-[12px] font-bold px-2 py-0.5 rounded",
+                        style: {
+                          color: "oklch(0.78 0.12 0)",
+                          background: "rgba(255,160,180,0.12)"
+                        },
+                        children: "1%"
+                      }
+                    )
+                  ] }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx(
+                    "div",
+                    {
+                      className: "text-[13px] font-bold",
+                      style: { color: "oklch(0.78 0.12 0)" },
+                      children: gooddao.title
+                    }
+                  ),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx(
+                    "div",
+                    {
+                      className: "font-mono text-[10px]",
+                      style: { color: "rgba(255,160,180,0.5)" },
+                      children: gooddao.sub
+                    }
+                  )
+                ]
+              }
+            )
           ] })
-        ] }),
-        (!rewardPoolOgy || !rewardPoolGldt) && /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-[10px] font-mono text-muted-foreground/50 px-1", children: "Some token balances may be unavailable if the ICRC API is slow to respond." })
-      ] })
-    ] }),
+        ]
+      }
+    ),
     /* @__PURE__ */ jsxRuntimeExports.jsx(FlowLegend, {})
   ] });
 }
-function PoolRow({ token, value }) {
-  const colors = {
-    ICP: "oklch(0.75 0.10 290)",
-    OGY: "oklch(0.70 0.17 162)",
-    GLDT: "oklch(0.82 0.14 85)"
-  };
-  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center justify-between rounded-md border border-border/50 bg-secondary/30 px-3 py-2", children: [
-    /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "flex items-center gap-2", children: [
-      /* @__PURE__ */ jsxRuntimeExports.jsx(
-        "span",
-        {
-          className: "inline-block size-2 rounded-full",
-          style: { background: colors[token] ?? "var(--muted)" }
-        }
-      ),
-      /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "font-mono text-xs text-muted-foreground", children: token })
-    ] }),
-    /* @__PURE__ */ jsxRuntimeExports.jsx(
-      "span",
-      {
-        className: "font-mono text-sm font-medium",
-        style: { color: value ? colors[token] : void 0 },
-        children: value ?? "—"
-      }
-    )
-  ] });
-}
-function LegendDot({
-  accent,
-  label
-}) {
+function LegendDot({ color, label }) {
   return /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "inline-flex items-center gap-2 text-xs font-mono text-muted-foreground", children: [
     /* @__PURE__ */ jsxRuntimeExports.jsx(
       "span",
       {
-        className: "inline-block size-2.5 rounded-full",
-        style: { background: ACCENTS[accent] }
+        className: "inline-block size-2 rounded-full",
+        style: { background: color }
       }
     ),
     label
   ] });
 }
 function FlowLegend() {
-  const anchor = nodeById("distribute");
   return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-col gap-3 rounded-lg border border-border bg-card/50 px-4 py-3 sm:flex-row sm:items-center sm:justify-between", children: [
     /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-wrap items-center gap-x-5 gap-y-2", children: [
-      /* @__PURE__ */ jsxRuntimeExports.jsx(LegendDot, { accent: "green", label: "Ratio-conditioned" }),
-      /* @__PURE__ */ jsxRuntimeExports.jsx(LegendDot, { accent: "red", label: "Unconditional (GLDT)" }),
-      /* @__PURE__ */ jsxRuntimeExports.jsx(LegendDot, { accent: "amber", label: "Pre-split diversion" }),
-      /* @__PURE__ */ jsxRuntimeExports.jsx(LegendDot, { accent: "teal", label: "To stakers" })
+      /* @__PURE__ */ jsxRuntimeExports.jsx(LegendDot, { color: "oklch(0.78 0.16 60)", label: "Active condition" }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx(LegendDot, { color: "oklch(0.6 0 0 / 0.3)", label: "Standby" }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx(LegendDot, { color: ACCENTS.teal, label: "To stakers" }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx(LegendDot, { color: ACCENTS.red, label: "Unconditional (GLDT)" }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "inline-flex items-center gap-2 text-xs font-mono text-muted-foreground", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "span",
+          {
+            className: "inline-block w-3 border-t border-dashed",
+            style: { borderColor: "oklch(1 0 0 / 0.3)" }
+          }
+        ),
+        "Pre-split diversion"
+      ] })
     ] }),
-    /* @__PURE__ */ jsxRuntimeExports.jsxs("p", { className: "text-[11px] font-mono text-muted-foreground", children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("p", { className: "text-[12px] font-mono text-muted-foreground", children: [
       "Your simulated rewards land at “",
-      anchor.title,
+      nodeById("distribute").title,
       "”."
     ] })
   ] });
@@ -47665,11 +50588,6 @@ function fmtDefault(v2) {
   if (v2 === Math.floor(v2)) return Math.floor(v2).toLocaleString("en-US");
   return String(v2);
 }
-function fmtDelay(seconds) {
-  if (seconds === null) return "unknown";
-  const years = seconds / (365 * 24 * 3600);
-  return `${years.toFixed(2)} yr`;
-}
 const ASSUMPTION_FIELDS = [
   {
     key: "goldao_eligible",
@@ -47810,12 +50728,15 @@ function RewardsSimulator() {
   }, [flash]);
   const [mode, setMode] = reactExports.useState("amount");
   const [amount, setAmount] = reactExports.useState("100000");
-  const [neuronId, setNeuronId] = reactExports.useState("");
-  const [neuron, setNeuron] = reactExports.useState(null);
+  const [neurons, setNeurons] = reactExports.useState([]);
+  const [bulkText, setBulkText] = reactExports.useState("");
+  const [showBulkInput, setShowBulkInput] = reactExports.useState(false);
+  const [singleNeuronId, setSingleNeuronId] = reactExports.useState("");
   const [lookupState, setLookupState] = reactExports.useState(
     "idle"
   );
   const [lookupError, setLookupError] = reactExports.useState("");
+  const [lookupProgress, setLookupProgress] = reactExports.useState("");
   const [showAssumptions, setShowAssumptions] = reactExports.useState(false);
   const assumptions = reactExports.useMemo(() => {
     const a2 = {};
@@ -47827,32 +50748,80 @@ function RewardsSimulator() {
   const handleAssumptionChange = reactExports.useCallback((k2, v2) => {
     setRaw((prev) => ({ ...prev, [k2]: v2 }));
   }, []);
-  const runLookup = reactExports.useCallback(async () => {
+  const addSingleNeuron = reactExports.useCallback(async () => {
+    const id = singleNeuronId.trim();
+    if (!id) return;
     setLookupState("loading");
     setLookupError("");
-    setNeuron(null);
     try {
-      const n = await lookupNeuron(neuronId);
-      setNeuron(n);
+      const n = await lookupNeuron(id);
+      setNeurons((prev) => {
+        if (prev.some((x2) => x2.id === n.id)) return prev;
+        return [...prev, n];
+      });
+      setSingleNeuronId("");
       setLookupState("idle");
     } catch (e) {
       setLookupError(e instanceof Error ? e.message : "Lookup failed.");
       setLookupState("error");
     }
-  }, [neuronId]);
-  const neuronIneligible = mode === "neuron" && (neuron == null ? void 0 : neuron.eligible) === false;
+  }, [singleNeuronId]);
+  const addBulkNeurons = reactExports.useCallback(async () => {
+    const lines = bulkText.split(/\n/).map((l2) => l2.trim()).filter((l2) => l2.length > 0);
+    if (lines.length === 0) return;
+    setLookupState("loading");
+    setLookupError("");
+    const errors = [];
+    let added = 0;
+    for (let i = 0; i < lines.length; i++) {
+      setLookupProgress(`${i + 1} / ${lines.length}`);
+      try {
+        const n = await lookupNeuron(lines[i]);
+        setNeurons((prev) => {
+          if (prev.some((x2) => x2.id === n.id)) return prev;
+          return [...prev, n];
+        });
+        added++;
+      } catch {
+        errors.push(lines[i].slice(0, 16));
+      }
+    }
+    setLookupProgress("");
+    if (errors.length > 0) {
+      setLookupError(`${added} added. Failed: ${errors.join(", ")}`);
+      setLookupState("error");
+    } else {
+      setLookupState("idle");
+    }
+    setBulkText("");
+    setShowBulkInput(false);
+  }, [bulkText]);
+  const removeNeuron = reactExports.useCallback((id) => {
+    setNeurons((prev) => prev.filter((n) => n.id !== id));
+  }, []);
+  const neuronAgg = reactExports.useMemo(() => {
+    const eligible = neurons.filter((n) => n.eligible !== false);
+    return {
+      totalGoldao: eligible.reduce((s, n) => s + n.goldao, 0),
+      totalVP: eligible.reduce((s, n) => s + (n.votingPower ?? 0), 0),
+      hasVP: eligible.some((n) => n.votingPower !== null),
+      allIneligible: neurons.length > 0 && eligible.length === 0,
+      eligibleCount: eligible.length
+    };
+  }, [neurons]);
+  const neuronIneligible = mode === "neuron" && neuronAgg.allIneligible;
   const userGoldao = reactExports.useMemo(() => {
     if (mode === "amount") return Math.max(parseInput(amount, 0), 0);
-    if (!neuron) return 0;
-    return neuron.eligible === false ? 0 : neuron.goldao;
-  }, [mode, amount, neuron]);
+    if (neurons.length === 0) return 0;
+    return neuronAgg.totalGoldao;
+  }, [mode, amount, neurons, neuronAgg]);
   const AVG_VP_MULT = 2.3;
   const vpShare = reactExports.useMemo(() => {
-    if (mode !== "neuron" || !(neuron == null ? void 0 : neuron.votingPower) || neuronIneligible)
+    if (mode !== "neuron" || !neuronAgg.hasVP || neuronIneligible)
       return void 0;
     const totalVp = assumptions.goldao_eligible * AVG_VP_MULT;
-    return totalVp > 0 ? neuron.votingPower / totalVp : void 0;
-  }, [mode, neuron, neuronIneligible, assumptions.goldao_eligible]);
+    return totalVp > 0 ? neuronAgg.totalVP / totalVp : void 0;
+  }, [mode, neuronAgg, neuronIneligible, assumptions.goldao_eligible]);
   const result = reactExports.useMemo(
     () => simulate(poolsFrom(assumptions), userGoldao, vpShare),
     [assumptions, userGoldao, vpShare]
@@ -47865,8 +50834,10 @@ function RewardsSimulator() {
     }
     setRaw(init);
     setAmount("100000");
-    setNeuronId("");
-    setNeuron(null);
+    setSingleNeuronId("");
+    setNeurons([]);
+    setBulkText("");
+    setShowBulkInput(false);
     setLookupState("idle");
     setLookupError("");
   }, []);
@@ -47926,10 +50897,10 @@ function RewardsSimulator() {
                 "input",
                 {
                   type: "text",
-                  value: neuronId,
-                  onChange: (e) => setNeuronId(e.target.value),
+                  value: singleNeuronId,
+                  onChange: (e) => setSingleNeuronId(e.target.value),
                   onKeyDown: (e) => {
-                    if (e.key === "Enter") runLookup();
+                    if (e.key === "Enter") addSingleNeuron();
                   },
                   placeholder: "a1b2c3...",
                   className: "min-w-0 flex-1 rounded-lg border border-border bg-secondary/60 px-3 py-2.5 font-mono text-sm text-foreground outline-none focus:ring-1 focus:ring-primary/50"
@@ -47939,54 +50910,120 @@ function RewardsSimulator() {
                 "button",
                 {
                   type: "button",
-                  onClick: runLookup,
-                  disabled: lookupState === "loading" || !neuronId.trim(),
+                  onClick: addSingleNeuron,
+                  disabled: lookupState === "loading" || !singleNeuronId.trim(),
                   className: "inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-2.5 font-mono text-sm font-semibold text-primary-foreground transition-smooth hover:opacity-90 disabled:opacity-50",
                   children: [
-                    lookupState === "loading" ? /* @__PURE__ */ jsxRuntimeExports.jsx(LoaderCircle, { className: "size-4 animate-spin" }) : /* @__PURE__ */ jsxRuntimeExports.jsx(Search, { className: "size-4" }),
-                    "Look up"
+                    lookupState === "loading" && !showBulkInput ? /* @__PURE__ */ jsxRuntimeExports.jsx(LoaderCircle, { className: "size-4 animate-spin" }) : /* @__PURE__ */ jsxRuntimeExports.jsx(Plus, { className: "size-4" }),
+                    "Add"
                   ]
                 }
               )
             ] })
           ] }),
-          lookupState === "error" && /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 font-mono text-xs text-destructive", children: lookupError }),
-          neuron && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-1 rounded-md border border-border bg-secondary/40 px-3 py-2.5", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsxs(
+            "button",
+            {
+              type: "button",
+              onClick: () => setShowBulkInput((v2) => !v2),
+              className: "inline-flex items-center gap-1.5 font-mono text-xs text-primary hover:underline",
+              children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx(Plus, { className: "size-3" }),
+                showBulkInput ? "Hide bulk input" : "Add multiple neurons"
+              ]
+            }
+          ),
+          showBulkInput && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-2", children: [
             /* @__PURE__ */ jsxRuntimeExports.jsx(
-              ResolvedRow,
+              "textarea",
               {
-                label: "Stake",
-                value: `${fmtInt(neuron.goldao)} GOLDAO`
+                value: bulkText,
+                onChange: (e) => setBulkText(e.target.value),
+                placeholder: "Paste one neuron id per line:\na1b2c3...\nd4e5f6...\n7a8b9c...",
+                rows: 5,
+                className: "w-full rounded-lg border border-border bg-secondary/60 px-3 py-2.5 font-mono text-sm text-foreground outline-none focus:ring-1 focus:ring-primary/50 resize-y"
               }
             ),
-            neuron.votingPower !== null && /* @__PURE__ */ jsxRuntimeExports.jsx(
-              ResolvedRow,
-              {
-                label: "Voting power",
-                value: neuron.goldao > 0 ? `${fmtInt(neuron.votingPower)} VP · ${(neuron.votingPower / neuron.goldao).toFixed(2)}×` : `${fmtInt(neuron.votingPower)} VP`
-              }
-            ),
             /* @__PURE__ */ jsxRuntimeExports.jsx(
-              ResolvedRow,
+              "button",
               {
-                label: "Dissolve delay",
-                value: fmtDelay(neuron.dissolveDelaySeconds)
-              }
-            ),
-            /* @__PURE__ */ jsxRuntimeExports.jsx(
-              ResolvedRow,
-              {
-                label: "Eligibility",
-                value: neuron.eligible === false ? "Not eligible" : neuron.eligible === true ? "Eligible" : "Assumed eligible",
-                accent: neuron.eligible === false ? "text-destructive" : "text-[oklch(0.72_0.17_162)]"
+                type: "button",
+                onClick: addBulkNeurons,
+                disabled: lookupState === "loading" || !bulkText.trim(),
+                className: "inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-2 font-mono text-xs font-semibold text-primary-foreground transition-smooth hover:opacity-90 disabled:opacity-50",
+                children: lookupState === "loading" && showBulkInput ? /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx(LoaderCircle, { className: "size-3.5 animate-spin" }),
+                  "Looking up ",
+                  lookupProgress
+                ] }) : /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx(Search, { className: "size-3.5" }),
+                  "Look up all"
+                ] })
               }
             )
+          ] }),
+          lookupState === "error" && /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 font-mono text-xs text-destructive", children: lookupError }),
+          neurons.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-2", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-baseline justify-between", children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "font-mono text-[10px] uppercase tracking-widest text-primary", children: [
+                "Neurons (",
+                neurons.length,
+                ")"
+              ] }),
+              neurons.length > 1 && /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "font-mono text-xs font-semibold text-foreground", children: [
+                "Total: ",
+                fmtInt(neuronAgg.totalGoldao),
+                " GOLDAO"
+              ] })
+            ] }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "max-h-64 space-y-1.5 overflow-y-auto pr-1", children: neurons.map((n) => /* @__PURE__ */ jsxRuntimeExports.jsxs(
+              "div",
+              {
+                className: "group flex items-start gap-2 rounded-md border border-border bg-secondary/40 px-3 py-2",
+                children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "min-w-0 flex-1 space-y-0.5", children: [
+                    /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "truncate font-mono text-[11px] text-muted-foreground", children: n.id }),
+                    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-wrap items-baseline gap-x-4 gap-y-0.5", children: [
+                      /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "font-mono text-sm font-semibold text-foreground", children: [
+                        fmtInt(n.goldao),
+                        " GOLDAO"
+                      ] }),
+                      n.votingPower !== null && /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "font-mono text-xs text-muted-foreground", children: [
+                        fmtInt(n.votingPower),
+                        " VP"
+                      ] }),
+                      /* @__PURE__ */ jsxRuntimeExports.jsx(
+                        "span",
+                        {
+                          className: `font-mono text-[11px] ${n.eligible === false ? "text-destructive" : "text-[oklch(0.72_0.17_162)]"}`,
+                          children: n.eligible === false ? "Not eligible" : n.eligible === true ? "Eligible" : "Assumed eligible"
+                        }
+                      )
+                    ] })
+                  ] }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx(
+                    "button",
+                    {
+                      type: "button",
+                      onClick: () => removeNeuron(n.id),
+                      className: "mt-1 shrink-0 rounded p-1 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 hover:text-destructive",
+                      title: "Remove neuron",
+                      children: /* @__PURE__ */ jsxRuntimeExports.jsx(Trash2, { className: "size-3.5" })
+                    }
+                  )
+                ]
+              },
+              n.id
+            )) })
           ] })
         ] })
       ] }),
       /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "rounded-lg border border-border bg-card/50 p-4", children: [
         /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-baseline justify-between", children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "font-mono text-xs text-muted-foreground", children: vpShare !== void 0 ? "Your share by voting power" : "Your share of eligible GOLDAO" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "font-mono text-xs text-muted-foreground", children: [
+            vpShare !== void 0 ? "Your share by voting power" : "Your share of eligible GOLDAO",
+            mode === "neuron" && neurons.length > 1 && ` (${neurons.length} neurons)`
+          ] }),
           /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "font-mono text-lg font-bold text-gradient-gold", children: [
             (result.share * 100).toLocaleString("en-US", {
               maximumFractionDigits: 4
@@ -48001,9 +51038,9 @@ function RewardsSimulator() {
             style: { width: `${Math.min(result.share * 100, 100)}%` }
           }
         ) }),
-        vpShare !== void 0 && (neuron == null ? void 0 : neuron.votingPower) ? /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "mt-2 space-y-0.5", children: [
+        vpShare !== void 0 && neuronAgg.totalVP > 0 ? /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "mt-2 space-y-0.5", children: [
           /* @__PURE__ */ jsxRuntimeExports.jsxs("p", { className: "font-mono text-[11px] text-muted-foreground", children: [
-            fmtInt(neuron.votingPower),
+            fmtInt(neuronAgg.totalVP),
             " VP of ~",
             fmtInt(
               Math.round(assumptions.goldao_eligible * AVG_VP_MULT)
@@ -48087,7 +51124,7 @@ function RewardsSimulator() {
     ] }),
     /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-col gap-4", children: [
       liveLoading && /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "rounded-md border border-primary/30 bg-primary/10 px-3 py-2 font-mono text-xs text-primary", children: "Loading live data (eligible GOLDAO, prices)… estimates fill in once it arrives." }),
-      neuronIneligible && /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 font-mono text-xs text-destructive", children: "This neuron is dissolving or under the 2-year lock — it does not accrue rewards." }),
+      neuronIneligible && /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 font-mono text-xs text-destructive", children: neurons.length === 1 ? "This neuron is dissolving or under the 2-year lock — it does not accrue rewards." : "All selected neurons are dissolving or under the 2-year lock — none accrue rewards." }),
       /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "grid grid-cols-1 gap-4 sm:grid-cols-3", children: [
         /* @__PURE__ */ jsxRuntimeExports.jsx(RewardCard, { kind: "icp", r: result.icp }),
         /* @__PURE__ */ jsxRuntimeExports.jsx(RewardCard, { kind: "ogy", r: result.ogy }),
@@ -48132,22 +51169,6 @@ function ModeButton({
       ]
     }
   );
-}
-function ResolvedRow({
-  label,
-  value,
-  accent
-}) {
-  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-baseline justify-between gap-4", children: [
-    /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "font-mono text-xs text-muted-foreground", children: label }),
-    /* @__PURE__ */ jsxRuntimeExports.jsx(
-      "span",
-      {
-        className: `font-mono text-sm font-semibold ${accent ?? "text-foreground"}`,
-        children: value
-      }
-    )
-  ] });
 }
 function RewardsPage() {
   return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "mx-auto flex max-w-6xl flex-col gap-6 p-4 sm:p-6 lg:p-10", children: [

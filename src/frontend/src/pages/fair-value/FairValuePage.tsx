@@ -318,14 +318,19 @@ function Note({ children }: { children: React.ReactNode }) {
 
 /* ── Zone helpers ────────────────────────────────────────────────────────── */
 
-type ZoneId = "expensive" | "slightly_expensive" | "fair" | "slightly_cheap" | "cheap";
+type ZoneId =
+  | "expensive"
+  | "slightly_expensive"
+  | "fair"
+  | "slightly_cheap"
+  | "cheap";
 
 interface ZoneInfo {
   id: ZoneId;
   label: string;
-  color: string;     // oklch for bar segments
-  textClass: string;  // tailwind text color
-  bgClass: string;    // tailwind bg for badge
+  color: string; // oklch for bar segments
+  textClass: string; // tailwind text color
+  bgClass: string; // tailwind bg for badge
   borderClass: string;
 }
 
@@ -374,11 +379,11 @@ const ZONES: ZoneInfo[] = [
 
 function getZone(difPct: number): ZoneInfo {
   // difPct > 0 = cheap (market ratio above equilibrium)
-  if (difPct > 20) return ZONES[4];       // cheap
-  if (difPct > 10) return ZONES[3];       // slightly cheap
-  if (difPct >= -10) return ZONES[2];     // fair value
-  if (difPct >= -20) return ZONES[1];     // slightly expensive
-  return ZONES[0];                         // expensive
+  if (difPct > 20) return ZONES[4]; // cheap
+  if (difPct > 10) return ZONES[3]; // slightly cheap
+  if (difPct >= -10) return ZONES[2]; // fair value
+  if (difPct >= -20) return ZONES[1]; // slightly expensive
+  return ZONES[0]; // expensive
 }
 
 /* ── Spectrum bar ────────────────────────────────────────────────────────── */
@@ -439,8 +444,7 @@ function SpectrumBarTop({ r }: { r: FairValueResult }) {
         <span
           className={`text-xs font-mono font-semibold px-2 py-1 rounded ${zone.textClass} ${zone.bgClass}`}
         >
-          ● {zone.label}{" "}
-          {dif >= 0 ? "+" : ""}
+          ● {zone.label} {dif >= 0 ? "+" : ""}
           {fmtNum(dif, 1)}%
         </span>
       </div>
@@ -652,8 +656,7 @@ function Results({
             "Staking ICP directly on the NNS yields significantly more than buying GOLDAO today.",
           slightly_expensive:
             "GOLDAO yield is slightly below NNS direct staking. Close to equilibrium.",
-          fair:
-            "GOLDAO yield is roughly in line with NNS direct staking — fair value zone.",
+          fair: "GOLDAO yield is roughly in line with NNS direct staking — fair value zone.",
           slightly_cheap:
             "GOLDAO yield slightly exceeds NNS direct staking. Mildly favorable entry.",
           cheap:
@@ -679,7 +682,9 @@ function Results({
             <div
               className={`rounded-md border-l-4 ${zone.borderClass} ${zone.bgClass} px-3 py-2 mt-2`}
             >
-              <p className={`text-sm font-mono font-semibold ${zone.textClass}`}>
+              <p
+                className={`text-sm font-mono font-semibold ${zone.textClass}`}
+              >
                 GOLDAO is {zone.label} ({fmtNum(dif)}%{" "}
                 {r.diferencia_pct >= 0 ? "above" : "below"} equilibrium)
               </p>
