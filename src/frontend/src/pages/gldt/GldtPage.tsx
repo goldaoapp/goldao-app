@@ -10,8 +10,7 @@ import type { ManualFields } from "./types";
 /**
  * GLDT module — /gldt (not linked in the nav; URL-only for now).
  * Top: Cream Terminal views (Gold Data Post + GLDT Status) with PNG export.
- * Middle: live token data panel (horizontal, with editable manual fields).
- * Bottom: image editor.
+ * Bottom: live token data panel (horizontal, with editable manual fields).
  */
 export default function GldtPage() {
   const { data, isLoading, isFetching, refetch } = useGldtData();
@@ -67,8 +66,10 @@ export default function GldtPage() {
         />
       </div>
 
-      {/* Image editor */}
-      <ImageEditor ref={editorRef} />
+      {/* Image editor (hidden) */}
+      <div className="hidden">
+        <ImageEditor ref={editorRef} />
+      </div>
     </section>
   );
 }
