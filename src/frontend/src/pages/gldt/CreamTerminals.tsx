@@ -141,41 +141,44 @@ function daysSince(from: Date): number {
   return Math.floor((utcNow - utcFrom) / 86_400_000);
 }
 
-/** Strip ALL oklch() values html2canvas can't parse. */
-function purgeOklch(root: HTMLElement) {
-  const walk = (el: HTMLElement) => {
-    const cs = getComputedStyle(el);
-    for (let i = 0; i < cs.length; i++) {
-      const prop = cs[i];
-      const val = cs.getPropertyValue(prop);
-      if (val?.includes("oklch")) {
-        el.style.setProperty(prop, "transparent");
-      }
-    }
-    for (const child of el.children) {
-      if (child instanceof HTMLElement) walk(child);
-    }
-  };
-  walk(root);
-}
-
 /**
  * Export a terminal element as 1080×1080 PNG.
- * Clones the node to an offscreen container to avoid CSS transform issues.
+ * Renders inside an iframe to isolate from Tailwind's oklch() colors
+ * that html2canvas cannot parse.
  */
 async function exportTerminalPng(el: HTMLElement, name: string) {
+  const iframe = document.createElement("iframe");
+  iframe.style.cssText =
+    "position:fixed;left:0;top:0;width:1080px;height:1080px;border:none;opacity:0;pointer-events:none;z-index:-9999;";
+  document.body.appendChild(iframe);
+
+  // Wait for iframe to be ready
+  await new Promise<void>((r) => {
+    iframe.onload = () => r();
+    if (iframe.contentDocument?.readyState === "complete") r();
+  });
+
+  const doc = iframe.contentDocument!;
+
+  // Inject terminal fonts into iframe
+  const fontLink = document.getElementById("gldt-terminal-fonts");
+  if (fontLink) doc.head.appendChild(fontLink.cloneNode(true));
+
+  doc.body.style.cssText = "margin:0;padding:0;overflow:hidden;";
+
+  // Clone terminal into the clean iframe (no Tailwind = no oklch)
   const clone = el.cloneNode(true) as HTMLElement;
   Object.assign(clone.style, {
-    position: "absolute",
-    left: "-9999px",
-    top: "0",
     transform: "none",
+    position: "static",
     width: "1080px",
     height: "1080px",
-    zIndex: "-1",
   });
-  document.body.appendChild(clone);
-  purgeOklch(clone);
+  doc.body.appendChild(clone);
+
+  // Allow fonts & images to load
+  await new Promise((r) => setTimeout(r, 800));
+
   try {
     const canvas = await html2canvas(clone, {
       width: 1080,
@@ -184,6 +187,8 @@ async function exportTerminalPng(el: HTMLElement, name: string) {
       useCORS: true,
       backgroundColor: null,
       logging: false,
+      windowWidth: 1080,
+      windowHeight: 1080,
     });
     await new Promise<void>((resolve) => {
       canvas.toBlob((blob: Blob | null) => {
@@ -201,7 +206,7 @@ async function exportTerminalPng(el: HTMLElement, name: string) {
       }, "image/png");
     });
   } finally {
-    document.body.removeChild(clone);
+    document.body.removeChild(iframe);
   }
 }
 
