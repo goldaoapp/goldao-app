@@ -141,17 +141,15 @@ function daysSince(from: Date): number {
   return Math.floor((utcNow - utcFrom) / 86_400_000);
 }
 
-/** Strip oklch() colors html2canvas can't parse. */
+/** Strip ALL oklch() values html2canvas can't parse. */
 function purgeOklch(root: HTMLElement) {
   const walk = (el: HTMLElement) => {
     const cs = getComputedStyle(el);
-    for (const prop of ["color", "backgroundColor", "borderColor"] as const) {
-      const v = cs[prop];
-      if (typeof v === "string" && v.includes("oklch")) {
-        el.style.setProperty(
-          prop.replace(/[A-Z]/g, (m) => `-${m.toLowerCase()}`),
-          "transparent",
-        );
+    for (let i = 0; i < cs.length; i++) {
+      const prop = cs[i];
+      const val = cs.getPropertyValue(prop);
+      if (val && val.includes("oklch")) {
+        el.style.setProperty(prop, "transparent");
       }
     }
     for (const child of el.children) {
