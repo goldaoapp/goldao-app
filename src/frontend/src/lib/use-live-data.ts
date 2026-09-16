@@ -9,7 +9,7 @@
 import {
   API,
   type DissolveGroup,
-  type OGYNeuronResponse,
+  type SnsNeuronResponse,
   POLL,
   POOLS,
   type SNSProposalsResponse,
@@ -167,7 +167,7 @@ export function useLiveData(): LiveData {
           API.WTN_NEURONS.map(async (url) => {
             const res = await fetch(url);
             if (!res.ok) return { wtn: 0, vp: 0 };
-            const data: OGYNeuronResponse = await res.json();
+            const data: SnsNeuronResponse = await res.json();
             const wtn =
               (data.stake_e8s + data.total_maturity_e8s_equivalent) / 1e8;
             // VP: use voting_power if available, otherwise estimate from
@@ -290,7 +290,7 @@ export function useLiveData(): LiveData {
       try {
         const res = await fetch(API.OGY_NEURON);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const data: OGYNeuronResponse = await res.json();
+        const data: SnsNeuronResponse = await res.json();
         const total =
           (data.stake_e8s + data.total_maturity_e8s_equivalent) / 1e8;
         apply("ogy_staked", Math.round(total));
