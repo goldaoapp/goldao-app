@@ -61,6 +61,9 @@ export interface DissolveGroup {
 export interface OGYNeuronResponse {
   stake_e8s: number;
   total_maturity_e8s_equivalent: number;
+  voting_power?: number;
+  dissolve_delay_seconds?: number;
+  age_seconds?: number;
 }
 
 export interface SNSProposal {
