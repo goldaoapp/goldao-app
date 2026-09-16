@@ -52,6 +52,8 @@ export interface LiveExtra {
   proposalsTotal: number | null;
   /** Total WTN across 3 neurons (stake + maturity) */
   wtnTotal: number | null;
+  /** Sum of VP across Gold DAO's WTN neurons */
+  wtnVp: number | null;
   /** WTN value in ICP (wtnTotal / wtnPerIcp) */
   wtnIcp: number | null;
   /** Current GOLDAO supply */
@@ -81,6 +83,7 @@ export function useLiveData(): LiveData {
     proposalsActive: null,
     proposalsTotal: null,
     wtnTotal: null,
+    wtnVp: null,
     wtnIcp: null,
     supply: null,
     totalBurned: null,
@@ -157,20 +160,40 @@ export function useLiveData(): LiveData {
       }
     }
 
-    // ── ONE-TIME: WTN neurons (3 neurons, no polling) ──
+    // ── ONE-TIME: WTN neurons (4 neurons, no polling) ──
     async function fetchWTN() {
       try {
         const results = await Promise.all(
           API.WTN_NEURONS.map(async (url) => {
             const res = await fetch(url);
-            if (!res.ok) return 0;
+            if (!res.ok) return { wtn: 0, vp: 0 };
             const data: OGYNeuronResponse = await res.json();
-            return (data.stake_e8s + data.total_maturity_e8s_equivalent) / 1e8;
+            const wtn =
+              (data.stake_e8s + data.total_maturity_e8s_equivalent) / 1e8;
+            // VP: use voting_power if available, otherwise estimate from
+            // stake + dissolve delay + age (WTN config: max DD 3y +100%,
+            // max age 3y +100%)
+            let vp = 0;
+            if (data.voting_power) {
+              vp = data.voting_power / 1e8;
+            } else if (data.dissolve_delay_seconds != null) {
+              const WTN_MAX_DD = 3 * 365.25 * 24 * 3600;
+              const WTN_MAX_AGE = 3 * 365.25 * 24 * 3600;
+              const ddB =
+                1 + Math.min((data.dissolve_delay_seconds ?? 0) / WTN_MAX_DD, 1);
+              const ageB =
+                1 + Math.min((data.age_seconds ?? 0) / WTN_MAX_AGE, 1);
+              vp = wtn * ddB * ageB;
+            }
+            return { wtn, vp };
           }),
         );
-        const total = Math.round(results.reduce((a, b) => a + b, 0));
+        const total = Math.round(
+          results.reduce((a, b) => a + b.wtn, 0),
+        );
+        const totalVp = results.reduce((a, b) => a + b.vp, 0);
         icpswapRef.current.wtnTotal = total;
-        setExtra((prev) => ({ ...prev, wtnTotal: total }));
+        setExtra((prev) => ({ ...prev, wtnTotal: total, wtnVp: totalVp }));
         apply("wtn_total", total);
         // Calc ICP value if price already available
         const wtnRate = icpswapRef.current.wtnPerIcp;
