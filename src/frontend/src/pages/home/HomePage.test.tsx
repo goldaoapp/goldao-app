@@ -17,6 +17,7 @@ const emptyLiveData: LiveData = {
     proposalsActive: null,
     proposalsTotal: null,
     wtnTotal: null,
+    wtnVp: null,
     wtnIcp: null,
     supply: null,
     totalBurned: null,
