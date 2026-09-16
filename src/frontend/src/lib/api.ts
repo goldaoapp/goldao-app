@@ -58,7 +58,7 @@ export interface DissolveGroup {
   unique_owners: number;
 }
 
-export interface OGYNeuronResponse {
+export interface SnsNeuronResponse {
   stake_e8s: number;
   total_maturity_e8s_equivalent: number;
   voting_power?: number;
