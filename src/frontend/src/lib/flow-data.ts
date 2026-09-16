@@ -6,7 +6,7 @@
  * account data by AccountIdentifier (64-char hex hash of principal + subaccount).
  */
 
-import { API, type OGYNeuronResponse, POOLS } from "@/lib/api";
+import { API, type SnsNeuronResponse, POOLS } from "@/lib/api";
 import { getPoolRatio } from "@/lib/icpswap-quote";
 
 const LEDGER_API = "https://ledger-api.internetcomputer.org/accounts";
@@ -77,7 +77,7 @@ async function fetchOgyStaked(): Promise<number | null> {
   try {
     const res = await fetch(API.OGY_NEURON);
     if (!res.ok) return null;
-    const data: OGYNeuronResponse = await res.json();
+    const data: SnsNeuronResponse = await res.json();
     return (data.stake_e8s + data.total_maturity_e8s_equivalent) / 1e8;
   } catch {
     return null;
