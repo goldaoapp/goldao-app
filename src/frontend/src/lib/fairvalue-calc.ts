@@ -5,7 +5,7 @@
  *   33% gross NNS ICP → direct ICP to eligible holders
  *   33% gross NNS ICP → GLDT (same ICP value) to eligible holders
  *   OGY neuron rewards → converted to ICP → to eligible holders
- *   WTN neurons → total value in ICP, amortized as annual yield
+ *   WTN rewards → ICP yield from WaterNeuron (10% maturity × VP share)
  *
  * The 33% buyback (burn/OGY/compound) and 1% Good DAO are NOT staker
  * yield — they are treasury actions.
@@ -32,10 +32,8 @@ export interface FairValueParams {
   ogy_apy: number;
   price_ogy_usd: number;
 
-  // WTN (amortized distribution)
-  wtn_total: number;
-  wtn_per_icp: number;
-  wtn_annual_icp: number;
+  // WTN → ICP yield (from waterneuron-data.ts)
+  wtn_icp_annual: number;
 
   // GOLDAO supply
   goldao_eligible: number;
@@ -60,9 +58,9 @@ export interface FairValueResult {
   ogy_usd: number;
   ogy_icp: number;
 
-  // Step 4 — WTN → ICP
-  wtn_icp: number;
-  wtn_daily_icp: number;
+  // Step 4 — WTN → ICP (annual yield from WaterNeuron protocol)
+  wtn_icp_annual: number;
+  wtn_icp_weekly: number;
 
   // Step 5 — Direct yield
   pool_directo: number;
@@ -97,9 +95,7 @@ export const DEFAULTS: FairValueParams = {
   ogy_apy: 6,
   price_ogy_usd: 0,
 
-  wtn_total: 0,
-  wtn_per_icp: 0,
-  wtn_annual_icp: 400,
+  wtn_icp_annual: 0,
 
   goldao_eligible: 0,
 
@@ -122,13 +118,13 @@ export function calcular(p: FairValueParams): FairValueResult {
   const ogy_usd = ogy_rewards * p.price_ogy_usd;
   const ogy_icp = p.price_icp_usd > 0 ? ogy_usd / p.price_icp_usd : 0;
 
-  // Step 4 — WTN → ICP amortized (total value treated as annual yield)
-  const wtn_icp = p.wtn_per_icp > 0 ? p.wtn_total / p.wtn_per_icp : 0;
-  const wtn_daily_icp = wtn_icp / 365;
+  // Step 4 — WTN → ICP (annual yield from WaterNeuron rewards)
+  const wtn_icp_annual = p.wtn_icp_annual;
+  const wtn_icp_weekly = wtn_icp_annual / 52;
 
-  // Step 5 — Direct yield to eligible holders (ICP + GLDT + OGY + WTN)
+  // Step 5 — Direct yield to eligible holders (ICP + GLDT + OGY + WTN ICP)
   const pool_directo =
-    icp_stakers + icp_gldt + ogy_icp + wtn_icp + p.wtn_annual_icp;
+    icp_stakers + icp_gldt + ogy_icp + wtn_icp_annual;
   const elig = p.goldao_eligible > 0 ? p.goldao_eligible : 1;
   const yield_directo = pool_directo / elig;
 
@@ -163,8 +159,8 @@ export function calcular(p: FairValueParams): FairValueResult {
     ogy_rewards,
     ogy_usd,
     ogy_icp,
-    wtn_icp,
-    wtn_daily_icp,
+    wtn_icp_annual,
+    wtn_icp_weekly,
     pool_directo,
     yield_directo,
     price_goldao_icp_mkt,
