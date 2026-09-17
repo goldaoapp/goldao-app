@@ -79,7 +79,7 @@ const ASSUMPTION_FIELDS: {
   { key: "pct_gldt", label: "% to Stakers (GLDT)", unit: "%" },
   { key: "ogy_staked", label: "OGY Staked", unit: "OGY", live: true },
   { key: "ogy_apy", label: "OGY APY", unit: "%" },
-  { key: "wtn_icp_annual", label: "WTN → ICP/year", unit: "ICP" },
+  { key: "wtn_icp_annual", label: "WTN → ICP/year", unit: "ICP", live: true },
   { key: "price_icp_usd", label: "ICP Price", unit: "USD", live: true },
   { key: "price_ogy_usd", label: "OGY Price", unit: "USD", live: true },
 ];
@@ -205,6 +205,7 @@ const LIVE_TO_ASSUMPTION: Partial<Record<string, AKey>> = {
   ogy_staked: "ogy_staked",
   price_icp_usd: "price_icp_usd",
   price_ogy_usd: "price_ogy_usd",
+  wtn_icp_annual: "wtn_icp_annual",
 };
 
 export default function RewardsSimulator() {
@@ -695,7 +696,7 @@ export default function RewardsSimulator() {
             </p>
           )}
 
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
             <RewardCard kind="icp" r={result.icp} />
             <RewardCard kind="gldt" r={result.gldt} />
             <RewardCard kind="ogy" r={result.ogy} />
