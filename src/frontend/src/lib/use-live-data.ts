@@ -163,7 +163,8 @@ export function useLiveData(): LiveData {
     }
 
     // ── ONE-TIME: WTN neurons (4 neurons, no polling) ──
-    async function fetchWTN() {
+    async function fetchWTN(): Promise<number> {
+      let totalVp = 0;
       try {
         const results = await Promise.all(
           API.WTN_NEURONS.map(async (url) => {
@@ -187,13 +188,22 @@ export function useLiveData(): LiveData {
                 1 + Math.min((data.age_seconds ?? 0) / WTN_MAX_AGE, 1);
               vp = wtn * ddB * ageB;
             }
+            // Debug: log what the API returns for VP calculation
+            console.log("[WTN neuron]", {
+              url: url.slice(-12),
+              wtn,
+              voting_power: data.voting_power,
+              dissolve_delay_seconds: data.dissolve_delay_seconds,
+              age_seconds: data.age_seconds,
+              vp,
+            });
             return { wtn, vp };
           }),
         );
         const total = Math.round(
           results.reduce((a, b) => a + b.wtn, 0),
         );
-        const totalVp = results.reduce((a, b) => a + b.vp, 0);
+        totalVp = results.reduce((a, b) => a + b.vp, 0);
         icpswapRef.current.wtnTotal = total;
         setExtra((prev) => ({ ...prev, wtnTotal: total, wtnVp: totalVp }));
         // Calc ICP value if price already available
@@ -204,6 +214,7 @@ export function useLiveData(): LiveData {
       } catch (_) {
         /* default */
       }
+      return totalVp;
     }
 
     // ── ONE-TIME: GOLDAO supply (no polling) ──
@@ -234,29 +245,24 @@ export function useLiveData(): LiveData {
       }));
     }
 
-    // ── ONE-TIME: WTN → ICP rewards (depends on fetchWTN finishing first) ──
-    async function fetchWtnIcpRewards() {
+    // ── ONE-TIME: WTN → ICP rewards (receives Gold DAO VP from fetchWTN) ──
+    async function fetchWtnIcpRewards(goldDaoVp: number) {
       try {
-        // Wait for WTN neurons (Gold DAO VP) — fetchWTN runs in parallel
-        // but should resolve fast. If it hasn't set wtnVp yet, we retry
-        // from extra or use a brief wait.
+        if (goldDaoVp <= 0) return;
         const wnData = await fetchWaterNeuronData();
         if (cancelled) return;
-
-        // Gold DAO's WTN VP is set by fetchWTN() in extra
-        // Read the latest from a small delay to let fetchWTN complete
-        setExtra((prev) => {
-          const gdVp = prev.wtnVp;
-          if (gdVp && gdVp > 0) {
-            const icpAnnual = calcIcpFromWtn(
-              wnData.estimatedAnnualMaturity,
-              gdVp,
-              wnData.totalWtnVp,
-            );
-            apply("wtn_icp_annual", Math.round(icpAnnual));
-          }
-          return prev;
+        const icpAnnual = calcIcpFromWtn(
+          wnData.estimatedAnnualMaturity,
+          goldDaoVp,
+          wnData.totalWtnVp,
+        );
+        console.log("[WTN ICP calc]", {
+          maturity: wnData.estimatedAnnualMaturity,
+          goldDaoVp,
+          totalWtnVp: wnData.totalWtnVp,
+          icpAnnual,
         });
+        apply("wtn_icp_annual", Math.round(icpAnnual));
       } catch {
         /* default — wtn_icp_annual stays at 0 */
       }
@@ -354,7 +360,7 @@ export function useLiveData(): LiveData {
     // Initial fetch: all (WTN + supply + neurons only once)
     fetchPoolQuotes();
     fetchLight();
-    fetchWTN().then(() => fetchWtnIcpRewards());
+    fetchWTN().then((vp) => fetchWtnIcpRewards(vp));
     fetchSupply();
     fetchIcpNeurons();
 
