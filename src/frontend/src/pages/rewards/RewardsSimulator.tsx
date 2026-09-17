@@ -75,11 +75,11 @@ const ASSUMPTION_FIELDS: {
   },
   { key: "icp_staked", label: "ICP Staked (NNS)", unit: "ICP" },
   { key: "nns_apy", label: "NNS APY", unit: "%" },
-  { key: "pct_stakers", label: "% to Stakers", unit: "%" },
+  { key: "pct_stakers", label: "% to Stakers (ICP)", unit: "%" },
+  { key: "pct_gldt", label: "% to Stakers (GLDT)", unit: "%" },
   { key: "ogy_staked", label: "OGY Staked", unit: "OGY", live: true },
   { key: "ogy_apy", label: "OGY APY", unit: "%" },
-  { key: "wtn_total", label: "WTN Total", unit: "WTN", live: true },
-  { key: "wtn_per_icp", label: "WTN / ICP", unit: "ratio", live: true },
+  { key: "wtn_icp_annual", label: "WTN → ICP/year", unit: "ICP" },
   { key: "price_icp_usd", label: "ICP Price", unit: "USD", live: true },
   { key: "price_ogy_usd", label: "OGY Price", unit: "USD", live: true },
 ];
@@ -92,12 +92,17 @@ const ACCENT: Record<string, { text: string; ring: string; soft: string }> = {
     ring: "border-primary/40",
     soft: "bg-primary/10",
   },
+  gldt: {
+    text: "text-[oklch(0.75_0.15_80)]",
+    ring: "border-[oklch(0.75_0.15_80)]/40",
+    soft: "bg-[oklch(0.75_0.15_80)]/10",
+  },
   ogy: {
     text: "text-[oklch(0.65_0.18_304)]",
     ring: "border-[oklch(0.65_0.18_304)]/40",
     soft: "bg-[oklch(0.65_0.18_304)]/10",
   },
-  wtn: {
+  wtn_icp: {
     text: "text-[oklch(0.7_0.12_185)]",
     ring: "border-[oklch(0.7_0.12_185)]/40",
     soft: "bg-[oklch(0.7_0.12_185)]/10",
@@ -108,10 +113,10 @@ function RewardCard({
   kind,
   r,
 }: {
-  kind: "icp" | "ogy" | "wtn";
+  kind: string;
   r: TokenReward;
 }) {
-  const a = ACCENT[kind];
+  const a = ACCENT[kind] ?? ACCENT.icp;
   return (
     <div className={`rounded-lg border ${a.ring} bg-card/50 overflow-hidden`}>
       <div
@@ -121,7 +126,7 @@ function RewardCard({
           {r.token}
         </span>
         <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">
-          {r.recurring ? "weekly stream" : "one-time · amortized"}
+          weekly stream
         </span>
       </div>
       <div className="px-4 py-3 space-y-2">
@@ -149,17 +154,6 @@ function RewardCard({
             </span>
           </span>
         </div>
-        {!r.recurring && r.one_time !== undefined && (
-          <div className="rounded-md border-l-2 border-[oklch(0.7_0.12_185)] bg-[oklch(0.7_0.12_185)]/10 px-3 py-2">
-            <p className="text-[11px] font-mono text-[oklch(0.7_0.12_185)]">
-              ~{fmtToken(r.one_time)} WTN on dissolve
-            </p>
-            <p className="text-[10px] font-mono text-muted-foreground">
-              Future one-time payout (~2027). Weekly/monthly shown amortized
-              over a year.
-            </p>
-          </div>
-        )}
       </div>
     </div>
   );
@@ -211,8 +205,6 @@ const LIVE_TO_ASSUMPTION: Partial<Record<string, AKey>> = {
   ogy_staked: "ogy_staked",
   price_icp_usd: "price_icp_usd",
   price_ogy_usd: "price_ogy_usd",
-  wtn_total: "wtn_total",
-  wtn_per_icp: "wtn_per_icp",
 };
 
 export default function RewardsSimulator() {
@@ -703,15 +695,16 @@ export default function RewardsSimulator() {
             </p>
           )}
 
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <RewardCard kind="icp" r={result.icp} />
+            <RewardCard kind="gldt" r={result.gldt} />
             <RewardCard kind="ogy" r={result.ogy} />
-            <RewardCard kind="wtn" r={result.wtn} />
+            <RewardCard kind="wtn_icp" r={result.wtn_icp} />
           </div>
 
           <div className="rounded-lg border border-primary/30 bg-card/50 p-4">
             <p className="mb-2 font-mono text-[10px] uppercase tracking-widest text-primary">
-              Recurring total (ICP + OGY)
+              Recurring total (ICP + GLDT + OGY + WTN)
             </p>
             <div className="flex items-end justify-between gap-4">
               <div>
@@ -741,8 +734,9 @@ export default function RewardsSimulator() {
             </div>
             <p className="mt-3 font-mono text-[10px] leading-relaxed text-muted-foreground">
               Estimate. Rewards are distributed by maturity delta; share is
-              modeled from stake within the max-delay cohort. WTN is a future
-              one-time payout and is excluded from the recurring total.
+              modeled from stake within the max-delay cohort. GLDT rewards have
+              the same ICP value. WTN ICP comes from WaterNeuron&apos;s 10%
+              maturity fee, proportional to Gold DAO&apos;s VP in WTN governance.
             </p>
           </div>
         </div>
