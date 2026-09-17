@@ -16,6 +16,10 @@ import {
 } from "@/lib/api";
 import type { FairValueParams } from "@/lib/fairvalue-calc";
 import { fetchIcpNeuronTotals } from "@/lib/icp-neuron";
+import {
+  calcIcpFromWtn,
+  fetchWaterNeuronData,
+} from "@/lib/waterneuron-data";
 import { getPoolRatio } from "@/lib/icpswap-quote";
 import { useEffect, useRef, useState } from "react";
 
@@ -36,7 +40,6 @@ const DECIMALS: Partial<Record<keyof FairValueParams, number>> = {
   price_icp_usd: 3,
   price_ogy_usd: 6,
   market_ratio: 1,
-  wtn_per_icp: 2,
 };
 
 function round(key: keyof FairValueParams, val: number): number {
@@ -149,7 +152,6 @@ export function useLiveData(): LiveData {
       );
       if (wtnRatio) {
         icpswapRef.current.wtnPerIcp = wtnRatio;
-        apply("wtn_per_icp", wtnRatio);
       }
 
       // Recalc WTN ICP value if we have both
@@ -194,11 +196,9 @@ export function useLiveData(): LiveData {
         const totalVp = results.reduce((a, b) => a + b.vp, 0);
         icpswapRef.current.wtnTotal = total;
         setExtra((prev) => ({ ...prev, wtnTotal: total, wtnVp: totalVp }));
-        apply("wtn_total", total);
         // Calc ICP value if price already available
         const wtnRate = icpswapRef.current.wtnPerIcp;
         if (wtnRate !== null && wtnRate > 0) {
-          apply("wtn_per_icp", wtnRate);
           setExtra((prev) => ({ ...prev, wtnIcp: total / wtnRate }));
         }
       } catch (_) {
@@ -232,6 +232,34 @@ export function useLiveData(): LiveData {
         icpStaked: totals.staked,
         icpMaturity: totals.maturity,
       }));
+    }
+
+    // ── ONE-TIME: WTN → ICP rewards (depends on fetchWTN finishing first) ──
+    async function fetchWtnIcpRewards() {
+      try {
+        // Wait for WTN neurons (Gold DAO VP) — fetchWTN runs in parallel
+        // but should resolve fast. If it hasn't set wtnVp yet, we retry
+        // from extra or use a brief wait.
+        const wnData = await fetchWaterNeuronData();
+        if (cancelled) return;
+
+        // Gold DAO's WTN VP is set by fetchWTN() in extra
+        // Read the latest from a small delay to let fetchWTN complete
+        setExtra((prev) => {
+          const gdVp = prev.wtnVp;
+          if (gdVp && gdVp > 0) {
+            const icpAnnual = calcIcpFromWtn(
+              wnData.estimatedAnnualMaturity,
+              gdVp,
+              wnData.totalWtnVp,
+            );
+            apply("wtn_icp_annual", Math.round(icpAnnual));
+          }
+          return prev;
+        });
+      } catch {
+        /* default — wtn_icp_annual stays at 0 */
+      }
     }
 
     // ── FAST: lightweight APIs (every 30 s) ──
@@ -326,7 +354,7 @@ export function useLiveData(): LiveData {
     // Initial fetch: all (WTN + supply + neurons only once)
     fetchPoolQuotes();
     fetchLight();
-    fetchWTN();
+    fetchWTN().then(() => fetchWtnIcpRewards());
     fetchSupply();
     fetchIcpNeurons();
 
