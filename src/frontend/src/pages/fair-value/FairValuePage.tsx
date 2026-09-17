@@ -40,8 +40,7 @@ const LIVE_FIELDS: FieldDef[] = [
   { key: "ogy_staked", label: "OGY Staked", unit: "OGY" },
   { key: "price_ogy_usd", label: "OGY Price", unit: "USD" },
   { key: "price_icp_usd", label: "ICP Price", unit: "USD" },
-  { key: "wtn_total", label: "WTN Total", unit: "WTN" },
-  { key: "wtn_per_icp", label: "WTN/ICP Ratio", unit: "ratio" },
+  { key: "wtn_icp_annual", label: "WTN → ICP (annual)", unit: "ICP" },
 ];
 
 const COLLAPSIBLE_SECTIONS: SectionDef[] = [
@@ -574,30 +573,20 @@ function Results({
         />
       </StepCard>
 
-      <StepCard step={4} title="WTN Neurons → ICP (amortized)" accent="teal">
+      <StepCard step={4} title="WTN → ICP Yield" accent="teal">
         <Note>
-          WTN will be distributed to eligible holders upon dissolve. Estimated
-          distribution: 2 neurons ~Mar 2027, 1 neuron ~Sep 2027. Amortized as
-          annual yield for equilibrium comparison.
+          WaterNeuron distributes 10% of its NNS maturity to WTN SNS stakers.
+          Gold DAO's share is proportional to its VP in WTN governance.
+          This ICP is distributed as a recurring weekly stream.
         </Note>
         <Row
-          label="Total WTN"
-          value={`${fmtNum(params.wtn_total, 0)} WTN`}
-          dim
-        />
-        <Row
-          label="WTN/ICP ratio"
-          value={`${fmtNum(params.wtn_per_icp, 1)}`}
-          dim
-        />
-        <Row
-          label="▶ WTN → ICP (annualized)"
-          value={`${fmtNum(r.wtn_icp)} ICP`}
+          label="▶ ICP from WTN (annual)"
+          value={`${fmtNum(r.wtn_icp_annual)} ICP`}
           accent="teal"
         />
         <Row
-          label="= per day"
-          value={`${fmtNum(r.wtn_daily_icp, 1)} ICP`}
+          label="= per week"
+          value={`${fmtNum(r.wtn_icp_weekly, 1)} ICP`}
           dim
         />
       </StepCard>
