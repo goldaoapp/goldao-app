@@ -293,14 +293,20 @@ const GoldDataTerminal = forwardRef<HTMLDivElement, TerminalProps>(
     const t = THEMES[theme];
     const now = d?.fetchedAt ? new Date(d.fetchedAt) : new Date();
     const gldtPrice = d?.priceUsdGecko ?? d?.priceUsdOnchain ?? null;
-    const goldSpotOz = d?.goldSpotOzUsd ?? null;
-    const goldSpotGram = goldSpotOz != null ? goldSpotOz / TROY_OZ_GRAMS : null;
-    const impliedOz = d?.impliedGoldOzUsd ?? null;
-    const impliedGram = impliedOz != null ? impliedOz / TROY_OZ_GRAMS : null;
+    // Round display values to 2 decimals FIRST so the spread row
+    // is always exactly  goldSpotOz − impliedOz  as shown.
+    const r2 = (v: number) => Math.round(v * 100) / 100;
+    const goldSpotOz = d?.goldSpotOzUsd != null ? r2(d.goldSpotOzUsd) : null;
+    const goldSpotGram = goldSpotOz != null ? r2(goldSpotOz / TROY_OZ_GRAMS) : null;
+    const impliedOz = d?.impliedGoldOzUsd != null ? r2(d.impliedGoldOzUsd) : null;
+    const impliedGram = impliedOz != null ? r2(impliedOz / TROY_OZ_GRAMS) : null;
     const spreadOz =
-      goldSpotOz != null && impliedOz != null ? goldSpotOz - impliedOz : null;
-    const spreadPct = d?.premiumPct != null ? Math.abs(d.premiumPct) : null;
-    const isDiscount = d?.premiumPct != null && d.premiumPct < 0;
+      goldSpotOz != null && impliedOz != null ? r2(goldSpotOz - impliedOz) : null;
+    const spreadGram =
+      goldSpotGram != null && impliedGram != null ? r2(goldSpotGram - impliedGram) : null;
+    const spreadPct =
+      goldSpotOz != null && spreadOz != null ? r2((spreadOz / goldSpotOz) * 100) : null;
+    const isDiscount = spreadOz != null && spreadOz > 0; // spot > implied → GLDT trades at discount
     const spreadColor = isDiscount ? t.green : t.ink;
 
     return (
