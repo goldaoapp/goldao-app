@@ -302,8 +302,6 @@ const GoldDataTerminal = forwardRef<HTMLDivElement, TerminalProps>(
     const impliedGram = impliedOz != null ? r2(impliedOz / TROY_OZ_GRAMS) : null;
     const spreadOz =
       goldSpotOz != null && impliedOz != null ? r2(goldSpotOz - impliedOz) : null;
-    const spreadGram =
-      goldSpotGram != null && impliedGram != null ? r2(goldSpotGram - impliedGram) : null;
     const spreadPct =
       goldSpotOz != null && spreadOz != null ? r2((spreadOz / goldSpotOz) * 100) : null;
     const isDiscount = spreadOz != null && spreadOz > 0; // spot > implied → GLDT trades at discount
