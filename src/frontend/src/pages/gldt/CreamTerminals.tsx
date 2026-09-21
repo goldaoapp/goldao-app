@@ -177,7 +177,9 @@ async function exportTerminalPng(el: HTMLElement, name: string) {
   doc.body.appendChild(clone);
 
   // Allow fonts & images to load
-  await new Promise((r) => setTimeout(r, 800));
+  await new Promise((r) => setTimeout(r, 400));
+  try { await doc.fonts.ready; } catch (_) { /* fallback */ }
+  await new Promise((r) => setTimeout(r, 600));
 
   try {
     const canvas = await html2canvas(clone, {
@@ -441,18 +443,18 @@ const GldtStatusTerminal = forwardRef<HTMLDivElement, TerminalProps>(
           <div style={{ marginTop: 32, display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 20 }}>
             <div style={{ background: t.cardBg, border: `1.5px solid ${t.borderFaint}`, borderRadius: 6, padding: "32px 28px" }}>
               <div style={{ fontSize: 15, color: t.inkLight, letterSpacing: 2, fontWeight: 500 }}>GOLD IN VAULT</div>
-              <div style={{ fontFamily: grotesk, fontWeight: 700, fontSize: 52, color: t.ink, marginTop: 10, lineHeight: 1 }}>{goldGrams != null ? `${fmtNum(goldGrams, 2)}g` : "—"}</div>
-              <div style={{ fontSize: 20, color: t.inkFaint, marginTop: 6, fontWeight: 500 }}>{goldOz != null ? `~${fmtNum(goldOz, 0)} oz` : "—"}</div>
+              <div style={{ fontFamily: grotesk, fontWeight: 700, fontSize: 52, color: t.ink, marginTop: 10, lineHeight: "1.1", display: "block" }}>{goldGrams != null ? `${fmtNum(goldGrams, 2)}g` : "—"}</div>
+              <div style={{ fontSize: 20, color: t.inkFaint, marginTop: 6, fontWeight: 500, lineHeight: 1.2, display: "block" }}>{goldOz != null ? `~${fmtNum(goldOz, 0)} oz` : "—"}</div>
             </div>
             <div style={{ background: t.cardBg, border: `1.5px solid ${t.borderFaint}`, borderRadius: 6, padding: "32px 28px" }}>
               <div style={{ fontSize: 15, color: t.inkLight, letterSpacing: 2, fontWeight: 500 }}>MARKET CAP</div>
-              <div style={{ fontFamily: grotesk, fontWeight: 700, fontSize: 52, color: t.gold, marginTop: 10, lineHeight: 1 }}>{marketCap != null ? fmtUsdCompact(marketCap) : "—"}</div>
-              <div style={{ fontSize: 20, color: t.inkFaint, marginTop: 6, fontWeight: 500 }}>USD</div>
+              <div style={{ fontFamily: grotesk, fontWeight: 700, fontSize: 52, color: t.gold, marginTop: 10, lineHeight: "1.1", display: "block" }}>{marketCap != null ? fmtUsdCompact(marketCap) : "—"}</div>
+              <div style={{ fontSize: 20, color: t.inkFaint, marginTop: 6, fontWeight: 500, lineHeight: 1.2, display: "block" }}>USD</div>
             </div>
             <div style={{ background: t.cardBg, border: `1.5px solid ${t.borderFaint}`, borderRadius: 6, padding: "32px 28px" }}>
               <div style={{ fontSize: 15, color: t.inkLight, letterSpacing: 2, fontWeight: 500 }}>DEX</div>
-              <div style={{ fontFamily: grotesk, fontWeight: 700, fontSize: 52, color: t.ink, marginTop: 10, lineHeight: 1 }}>ICPSWAP</div>
-              <div style={{ fontSize: 20, color: t.inkFaint, marginTop: 6, fontWeight: 500 }}>exchange</div>
+              <div style={{ fontFamily: grotesk, fontWeight: 700, fontSize: 52, color: t.ink, marginTop: 10, lineHeight: "1.1", display: "block" }}>ICPSWAP</div>
+              <div style={{ fontSize: 20, color: t.inkFaint, marginTop: 6, fontWeight: 500, lineHeight: 1.2, display: "block" }}>exchange</div>
             </div>
           </div>
           {/* Volume table */}
@@ -477,16 +479,16 @@ const GldtStatusTerminal = forwardRef<HTMLDivElement, TerminalProps>(
           <div style={{ marginTop: 24, background: t.greenBg, border: `1.5px solid ${t.greenBorder}`, borderRadius: 6, padding: "32px 36px", display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 20, alignItems: "center" }}>
             <div>
               <div style={{ fontSize: 15, color: t.inkLight, letterSpacing: 2, fontWeight: 500 }}>UPTIME</div>
-              <div style={{ fontFamily: grotesk, fontWeight: 700, fontSize: 64, color: t.green, lineHeight: 1, marginTop: 8 }}>{uptime}+</div>
-              <div style={{ fontSize: 18, color: t.inkLight, fontWeight: 500, marginTop: 4 }}>days</div>
+              <div style={{ fontFamily: grotesk, fontWeight: 700, fontSize: 64, color: t.green, lineHeight: "1.1", marginTop: 8, display: "block" }}>{uptime}+</div>
+              <div style={{ fontSize: 18, color: t.inkLight, fontWeight: 500, marginTop: 4, lineHeight: 1.2, display: "block" }}>days</div>
             </div>
             <div style={{ textAlign: "center" }}>
               <div style={{ fontSize: 15, color: t.inkLight, letterSpacing: 2, fontWeight: 500 }}>SINCE FIRST TRADE</div>
-              <div style={{ fontFamily: grotesk, fontWeight: 700, fontSize: 34, color: t.ink, marginTop: 10, lineHeight: 1.2 }}>Oct 30, 2024</div>
+              <div style={{ fontFamily: grotesk, fontWeight: 700, fontSize: 34, color: t.ink, marginTop: 10, lineHeight: "1.2", display: "block" }}>Oct 30, 2024</div>
             </div>
             <div style={{ textAlign: "right" }}>
               <div style={{ fontSize: 15, color: t.inkLight, letterSpacing: 2, fontWeight: 500 }}>DOWNTIME</div>
-              <div style={{ fontFamily: grotesk, fontWeight: 700, fontSize: 64, color: t.green, lineHeight: 1, marginTop: 8 }}>ZERO</div>
+              <div style={{ fontFamily: grotesk, fontWeight: 700, fontSize: 64, color: t.green, lineHeight: "1.1", marginTop: 8, display: "block" }}>ZERO</div>
             </div>
           </div>
           {/* Footer */}
