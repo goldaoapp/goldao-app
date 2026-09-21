@@ -444,51 +444,51 @@ const GldtStatusTerminal = forwardRef<HTMLDivElement, TerminalProps>(
             <div style={{ background: t.cardBg, border: `1.5px solid ${t.borderFaint}`, borderRadius: 6, padding: "32px 28px" }}>
               <div style={{ fontSize: 15, color: t.inkLight, letterSpacing: 2, fontWeight: 500 }}>GOLD IN VAULT</div>
               <div style={{ fontFamily: grotesk, fontWeight: 700, fontSize: 52, color: t.ink, marginTop: 10, lineHeight: "1.1", display: "block" }}>{goldGrams != null ? `${fmtNum(goldGrams, 2)}g` : "—"}</div>
-              <div style={{ fontSize: 20, color: t.inkFaint, marginTop: 6, fontWeight: 500, lineHeight: 1.2, display: "block" }}>{goldOz != null ? `~${fmtNum(goldOz, 0)} oz` : "—"}</div>
+              <div style={{ fontSize: 20, color: t.inkFaint, marginTop: 10, fontWeight: 500, lineHeight: "1.2", display: "block" }}>{goldOz != null ? `~${fmtNum(goldOz, 0)} oz` : "—"}</div>
             </div>
             <div style={{ background: t.cardBg, border: `1.5px solid ${t.borderFaint}`, borderRadius: 6, padding: "32px 28px" }}>
               <div style={{ fontSize: 15, color: t.inkLight, letterSpacing: 2, fontWeight: 500 }}>MARKET CAP</div>
               <div style={{ fontFamily: grotesk, fontWeight: 700, fontSize: 52, color: t.gold, marginTop: 10, lineHeight: "1.1", display: "block" }}>{marketCap != null ? fmtUsdCompact(marketCap) : "—"}</div>
-              <div style={{ fontSize: 20, color: t.inkFaint, marginTop: 6, fontWeight: 500, lineHeight: 1.2, display: "block" }}>USD</div>
+              <div style={{ fontSize: 20, color: t.inkFaint, marginTop: 10, fontWeight: 500, lineHeight: "1.2", display: "block" }}>USD</div>
             </div>
             <div style={{ background: t.cardBg, border: `1.5px solid ${t.borderFaint}`, borderRadius: 6, padding: "32px 28px" }}>
               <div style={{ fontSize: 15, color: t.inkLight, letterSpacing: 2, fontWeight: 500 }}>DEX</div>
               <div style={{ fontFamily: grotesk, fontWeight: 700, fontSize: 52, color: t.ink, marginTop: 10, lineHeight: "1.1", display: "block" }}>ICPSWAP</div>
-              <div style={{ fontSize: 20, color: t.inkFaint, marginTop: 6, fontWeight: 500, lineHeight: 1.2, display: "block" }}>exchange</div>
+              <div style={{ fontSize: 20, color: t.inkFaint, marginTop: 10, fontWeight: 500, lineHeight: "1.2", display: "block" }}>exchange</div>
             </div>
           </div>
           {/* Volume table */}
           <div style={{ marginTop: 24, border: `1.5px solid ${t.borderLight}`, borderRadius: 6, overflow: "hidden", background: t.tableBg }}>
-            <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr 1fr", background: t.tableHeaderBg, padding: "18px 28px" }}>
-              <div style={{ fontSize: 15, color: t.headerLabel, letterSpacing: 2, fontWeight: 600 }}>METRIC</div>
-              <div style={{ fontSize: 15, color: t.headerLabel, letterSpacing: 2, fontWeight: 600, textAlign: "right" }}>VALUE</div>
-              <div style={{ fontSize: 15, color: t.headerLabel, letterSpacing: 2, fontWeight: 600, textAlign: "right" }}>% OF STORED</div>
+            <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr 1fr", background: t.tableHeaderBg, padding: "18px 28px", alignItems: "center" }}>
+              <div style={{ fontSize: 15, color: t.headerLabel, letterSpacing: 2, fontWeight: 600, lineHeight: "1.2" }}>METRIC</div>
+              <div style={{ fontSize: 15, color: t.headerLabel, letterSpacing: 2, fontWeight: 600, textAlign: "right", lineHeight: "1.2" }}>VALUE</div>
+              <div style={{ fontSize: 15, color: t.headerLabel, letterSpacing: 2, fontWeight: 600, textAlign: "right", lineHeight: "1.2" }}>% OF STORED</div>
             </div>
-            <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr 1fr", padding: "26px 28px", borderBottom: `1px solid ${t.rowBorder}` }}>
-              <div style={{ fontWeight: 700, fontSize: 28, color: t.ink }}>VOLUME 7D</div>
-              <div style={{ fontWeight: 700, fontSize: 42, color: t.ink, textAlign: "right" }}>{vol7d != null ? fmtUsdCompact(vol7d) : "—"}</div>
-              <div style={{ fontWeight: 700, fontSize: 36, color: t.inkFaded, textAlign: "right" }}>{vol7dPct != null ? `${vol7dPct.toFixed(2)}%` : "—"}</div>
+            <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr 1fr", padding: "26px 28px", borderBottom: `1px solid ${t.rowBorder}`, alignItems: "center" }}>
+              <div style={{ fontWeight: 700, fontSize: 28, color: t.ink, lineHeight: "1.2" }}>VOLUME 7D</div>
+              <div style={{ fontWeight: 700, fontSize: 42, color: t.ink, textAlign: "right", lineHeight: "1.1" }}>{vol7d != null ? fmtUsdCompact(vol7d) : "—"}</div>
+              <div style={{ fontWeight: 700, fontSize: 36, color: t.inkFaded, textAlign: "right", lineHeight: "1.1" }}>{vol7dPct != null ? `${vol7dPct.toFixed(2)}%` : "—"}</div>
             </div>
-            <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr 1fr", padding: "26px 28px", background: t.tableAltBg }}>
-              <div style={{ fontWeight: 700, fontSize: 28, color: t.ink }}>TOTAL VOLUME</div>
-              <div style={{ fontWeight: 700, fontSize: 42, color: t.gold, textAlign: "right" }}>{totalVol != null ? fmtUsdCompact(totalVol) : "—"}</div>
-              <div style={{ fontWeight: 600, fontSize: 16, color: t.inkFaintest, textAlign: "right", alignSelf: "center" }}>ALL TIME</div>
+            <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr 1fr", padding: "26px 28px", background: t.tableAltBg, alignItems: "center" }}>
+              <div style={{ fontWeight: 700, fontSize: 28, color: t.ink, lineHeight: "1.2" }}>TOTAL VOLUME</div>
+              <div style={{ fontWeight: 700, fontSize: 42, color: t.gold, textAlign: "right", lineHeight: "1.1" }}>{totalVol != null ? fmtUsdCompact(totalVol) : "—"}</div>
+              <div style={{ fontWeight: 600, fontSize: 16, color: t.inkFaintest, textAlign: "right" }}>ALL TIME</div>
             </div>
           </div>
           {/* Uptime callout */}
-          <div style={{ marginTop: 24, background: t.greenBg, border: `1.5px solid ${t.greenBorder}`, borderRadius: 6, padding: "32px 36px", display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 20, alignItems: "center" }}>
+          <div style={{ marginTop: 24, background: t.greenBg, border: `1.5px solid ${t.greenBorder}`, borderRadius: 6, padding: "28px 36px", display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 20, alignItems: "start" }}>
             <div>
-              <div style={{ fontSize: 15, color: t.inkLight, letterSpacing: 2, fontWeight: 500 }}>UPTIME</div>
-              <div style={{ fontFamily: grotesk, fontWeight: 700, fontSize: 64, color: t.green, lineHeight: "1.1", marginTop: 8, display: "block" }}>{uptime}+</div>
-              <div style={{ fontSize: 18, color: t.inkLight, fontWeight: 500, marginTop: 4, lineHeight: 1.2, display: "block" }}>days</div>
+              <div style={{ fontSize: 15, color: t.inkLight, letterSpacing: 2, fontWeight: 500, lineHeight: "1.2" }}>UPTIME</div>
+              <div style={{ fontFamily: grotesk, fontWeight: 700, fontSize: 64, color: t.green, lineHeight: "1.0", marginTop: 6, display: "block" }}>{uptime}+</div>
+              <div style={{ fontSize: 18, color: t.inkLight, fontWeight: 500, marginTop: 6, lineHeight: "1.2", display: "block" }}>days</div>
             </div>
             <div style={{ textAlign: "center" }}>
-              <div style={{ fontSize: 15, color: t.inkLight, letterSpacing: 2, fontWeight: 500 }}>SINCE FIRST TRADE</div>
-              <div style={{ fontFamily: grotesk, fontWeight: 700, fontSize: 34, color: t.ink, marginTop: 10, lineHeight: "1.2", display: "block" }}>Oct 30, 2024</div>
+              <div style={{ fontSize: 15, color: t.inkLight, letterSpacing: 2, fontWeight: 500, lineHeight: "1.2" }}>SINCE FIRST TRADE</div>
+              <div style={{ fontFamily: grotesk, fontWeight: 700, fontSize: 34, color: t.ink, marginTop: 8, lineHeight: "1.2", display: "block" }}>Oct 30, 2024</div>
             </div>
             <div style={{ textAlign: "right" }}>
-              <div style={{ fontSize: 15, color: t.inkLight, letterSpacing: 2, fontWeight: 500 }}>DOWNTIME</div>
-              <div style={{ fontFamily: grotesk, fontWeight: 700, fontSize: 64, color: t.green, lineHeight: "1.1", marginTop: 8, display: "block" }}>ZERO</div>
+              <div style={{ fontSize: 15, color: t.inkLight, letterSpacing: 2, fontWeight: 500, lineHeight: "1.2" }}>DOWNTIME</div>
+              <div style={{ fontFamily: grotesk, fontWeight: 700, fontSize: 64, color: t.green, lineHeight: "1.0", marginTop: 6, display: "block" }}>ZERO</div>
             </div>
           </div>
           {/* Footer */}
