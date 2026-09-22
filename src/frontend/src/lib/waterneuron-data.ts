@@ -1,16 +1,20 @@
 /**
  * WaterNeuron protocol data for ICP reward estimation.
  *
- * Gold DAO holds WTN in 4 SNS neurons. WaterNeuron distributes 10% of
- * the ICP maturity from its 8-year NNS neuron to WTN SNS stakers.
+ * Gold DAO holds WTN in 4 SNS neurons. Two sources of rewards:
+ *
+ * A) ICP from 10% maturity fee: WaterNeuron distributes 10% of ICP maturity
+ *    from its 8-year NNS neuron to WTN SNS stakers proportional to VP.
+ *
+ * B) WTN from SNS staking rewards: the WTN SNS has a 3% reward rate.
+ *    Gold DAO earns WTN which has ICP value via ICPSwap.
  *
  * Formula:
- *   gold_dao_vp    = gold_dao_wtn_total × VP_MULTIPLIER
- *   total_vp       = fetched from latest WTN SNS proposal tally
- *   icp_from_wtn   = maturity_annual × 10% × (gold_dao_vp / total_vp)
- *
- * VP_MULTIPLIER is fixed at ×2.88 for now (best Gold DAO neuron).
- * TODO: use real per-neuron VP once dissolve delays are optimized.
+ *   gold_dao_vp     = gold_dao_wtn × VP_MULTIPLIER
+ *   icp_from_fee    = nns_maturity × 10% × (gold_dao_vp / total_vp)
+ *   wtn_earned      = gold_dao_wtn × WTN_REWARD_RATE
+ *   wtn_as_icp      = wtn_earned / wtn_per_icp_ratio
+ *   total_icp       = icp_from_fee + wtn_as_icp
  */
 
 /** 10% of ICP maturity goes to WTN SNS stakers (protocol constant) */
@@ -19,17 +23,29 @@ export const WTN_FEE_PCT = 0.10;
 /** VP multiplier applied to Gold DAO's WTN stake. Fixed for now. */
 export const VP_MULTIPLIER = 2.88;
 
+/** WTN SNS governance reward rate (from SNS config: 3% to 3% over 1 year) */
+export const WTN_REWARD_RATE = 0.03;
+
 const WTN_SNS_ROOT = "jmod6-4iaaa-aaaaq-aadkq-cai";
 
 /* ── Types ──────────────────────────────────────────────────────────────── */
 
 export interface WaterNeuronData {
-  /** ICP staked in the 8-year NNS neuron */
-  neuron8yStakedIcp: number;
-  /** Estimated annual ICP maturity from the 8-year neuron */
+  /** Estimated annual ICP maturity from the 8-year NNS neuron */
   estimatedAnnualMaturity: number;
   /** Total VP in WTN governance (from last decided proposal) */
   totalWtnVp: number;
+}
+
+export interface WtnRewardBreakdown {
+  /** ICP/year from 10% NNS maturity fee */
+  icpFromFee: number;
+  /** WTN earned/year from 3% SNS staking rewards */
+  wtnEarned: number;
+  /** ICP equivalent of WTN earned (wtnEarned / wtnPerIcp) */
+  wtnAsIcp: number;
+  /** Total ICP/year (icpFromFee + wtnAsIcp) */
+  totalIcpAnnual: number;
 }
 
 /* ── Defaults (dashboard Sep 2026) ─────────────────────────────────────── */
@@ -66,13 +82,10 @@ async function fetchTotalWtnVp(): Promise<number | null> {
 
 /**
  * Fetch WaterNeuron protocol data. Called once on load.
- * Uses dashboard-verified APY (7.98%) for the 8y neuron.
  */
 export async function fetchWaterNeuronData(): Promise<WaterNeuronData> {
   const totalWtnVpLive = await fetchTotalWtnVp();
-
   return {
-    neuron8yStakedIcp: DEFAULTS.neuron8yStakedIcp,
     estimatedAnnualMaturity:
       DEFAULTS.neuron8yStakedIcp * DEFAULTS.neuron8yApy,
     totalWtnVp: totalWtnVpLive ?? DEFAULTS.totalWtnVp,
@@ -80,18 +93,34 @@ export async function fetchWaterNeuronData(): Promise<WaterNeuronData> {
 }
 
 /**
- * ICP/year Gold DAO receives from WTN rewards.
+ * Full breakdown of ICP/year Gold DAO receives from WTN.
  *
- * @param annualMaturity  Total ICP maturity/year from WaterNeuron NNS neurons
- * @param goldDaoWtn      Gold DAO's total WTN (from use-live-data.ts wtnTotal)
+ * @param annualMaturity  ICP maturity/year from WaterNeuron 8y NNS neuron
+ * @param goldDaoWtn      Gold DAO's total WTN (from use-live-data.ts)
  * @param totalVp         Total VP in WTN governance
+ * @param wtnPerIcp       WTN/ICP exchange ratio (from ICPSwap)
  */
 export function calcIcpFromWtn(
   annualMaturity: number,
   goldDaoWtn: number,
   totalVp: number,
-): number {
-  if (totalVp <= 0 || goldDaoWtn <= 0 || annualMaturity <= 0) return 0;
-  const goldDaoVp = goldDaoWtn * VP_MULTIPLIER;
-  return annualMaturity * WTN_FEE_PCT * (goldDaoVp / totalVp);
+  wtnPerIcp: number,
+): WtnRewardBreakdown {
+  // Source A: ICP from 10% maturity fee
+  let icpFromFee = 0;
+  if (totalVp > 0 && goldDaoWtn > 0 && annualMaturity > 0) {
+    const goldDaoVp = goldDaoWtn * VP_MULTIPLIER;
+    icpFromFee = annualMaturity * WTN_FEE_PCT * (goldDaoVp / totalVp);
+  }
+
+  // Source B: WTN earned from 3% SNS reward rate → ICP equivalent
+  const wtnEarned = goldDaoWtn * WTN_REWARD_RATE;
+  const wtnAsIcp = wtnPerIcp > 0 ? wtnEarned / wtnPerIcp : 0;
+
+  return {
+    icpFromFee,
+    wtnEarned,
+    wtnAsIcp,
+    totalIcpAnnual: icpFromFee + wtnAsIcp,
+  };
 }
