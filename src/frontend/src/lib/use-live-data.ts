@@ -164,7 +164,7 @@ export function useLiveData(): LiveData {
 
     // ── ONE-TIME: WTN neurons (4 neurons, no polling) ──
     async function fetchWTN(): Promise<number> {
-      let totalVp = 0;
+      let wtnTotal = 0;
       try {
         const results = await Promise.all(
           API.WTN_NEURONS.map(async (url) => {
@@ -203,7 +203,8 @@ export function useLiveData(): LiveData {
         const total = Math.round(
           results.reduce((a, b) => a + b.wtn, 0),
         );
-        totalVp = results.reduce((a, b) => a + b.vp, 0);
+        const totalVp = results.reduce((a, b) => a + b.vp, 0);
+        wtnTotal = total;
         icpswapRef.current.wtnTotal = total;
         setExtra((prev) => ({ ...prev, wtnTotal: total, wtnVp: totalVp }));
         // Calc ICP value if price already available
@@ -214,7 +215,7 @@ export function useLiveData(): LiveData {
       } catch (_) {
         /* default */
       }
-      return totalVp;
+      return wtnTotal;
     }
 
     // ── ONE-TIME: GOLDAO supply (no polling) ──
@@ -245,20 +246,21 @@ export function useLiveData(): LiveData {
       }));
     }
 
-    // ── ONE-TIME: WTN → ICP rewards (receives Gold DAO VP from fetchWTN) ──
-    async function fetchWtnIcpRewards(goldDaoVp: number) {
+    // ── ONE-TIME: WTN → ICP rewards (uses WTN total, not VP directly) ──
+    async function fetchWtnIcpRewards(wtnTotal: number) {
       try {
-        if (goldDaoVp <= 0) return;
+        if (wtnTotal <= 0) return;
         const wnData = await fetchWaterNeuronData();
         if (cancelled) return;
         const icpAnnual = calcIcpFromWtn(
           wnData.estimatedAnnualMaturity,
-          goldDaoVp,
+          wtnTotal,
           wnData.totalWtnVp,
         );
         console.log("[WTN ICP calc]", {
           maturity: wnData.estimatedAnnualMaturity,
-          goldDaoVp,
+          wtnTotal,
+          goldDaoVp: wtnTotal * 2.88,
           totalWtnVp: wnData.totalWtnVp,
           icpAnnual,
         });
@@ -360,7 +362,7 @@ export function useLiveData(): LiveData {
     // Initial fetch: all (WTN + supply + neurons only once)
     fetchPoolQuotes();
     fetchLight();
-    fetchWTN().then((vp) => fetchWtnIcpRewards(vp));
+    fetchWTN().then((wtn) => fetchWtnIcpRewards(wtn));
     fetchSupply();
     fetchIcpNeurons();
 
