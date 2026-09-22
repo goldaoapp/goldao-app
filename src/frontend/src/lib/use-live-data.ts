@@ -246,25 +246,31 @@ export function useLiveData(): LiveData {
       }));
     }
 
-    // ── ONE-TIME: WTN → ICP rewards (uses WTN total, not VP directly) ──
+    // ── ONE-TIME: WTN → ICP rewards (both sources: 10% fee + 3% staking) ──
     async function fetchWtnIcpRewards(wtnTotal: number) {
       try {
         if (wtnTotal <= 0) return;
         const wnData = await fetchWaterNeuronData();
         if (cancelled) return;
-        const icpAnnual = calcIcpFromWtn(
+        // Wait briefly for ICPSwap pool quote to be available
+        const wtnPerIcp = icpswapRef.current.wtnPerIcp ?? 0;
+        const breakdown = calcIcpFromWtn(
           wnData.estimatedAnnualMaturity,
           wtnTotal,
           wnData.totalWtnVp,
+          wtnPerIcp,
         );
         console.log("[WTN ICP calc]", {
           maturity: wnData.estimatedAnnualMaturity,
           wtnTotal,
-          goldDaoVp: wtnTotal * 2.88,
           totalWtnVp: wnData.totalWtnVp,
-          icpAnnual,
+          wtnPerIcp,
+          icpFromFee: breakdown.icpFromFee,
+          wtnEarned: breakdown.wtnEarned,
+          wtnAsIcp: breakdown.wtnAsIcp,
+          totalIcpAnnual: breakdown.totalIcpAnnual,
         });
-        apply("wtn_icp_annual", Math.round(icpAnnual));
+        apply("wtn_icp_annual", Math.round(breakdown.totalIcpAnnual));
       } catch {
         /* default — wtn_icp_annual stays at 0 */
       }
@@ -360,9 +366,11 @@ export function useLiveData(): LiveData {
     }
 
     // Initial fetch: all (WTN + supply + neurons only once)
-    fetchPoolQuotes();
     fetchLight();
-    fetchWTN().then((wtn) => fetchWtnIcpRewards(wtn));
+    // WTN ICP calc needs both wtnTotal (fetchWTN) and wtnPerIcp (fetchPoolQuotes)
+    Promise.all([fetchWTN(), fetchPoolQuotes()]).then(([wtn]) =>
+      fetchWtnIcpRewards(wtn),
+    );
     fetchSupply();
     fetchIcpNeurons();
 
