@@ -80,6 +80,7 @@ const ASSUMPTION_FIELDS: {
   { key: "ogy_staked", label: "OGY Staked", unit: "OGY", live: true },
   { key: "ogy_apy", label: "OGY APY", unit: "%" },
   { key: "wtn_icp_annual", label: "WTN → ICP/year", unit: "ICP", live: true },
+  { key: "origyn_ogy_icp_annual", label: "ORIGYN → OGY as ICP/year", unit: "ICP", live: true },
   { key: "price_icp_usd", label: "ICP Price", unit: "USD", live: true },
   { key: "price_ogy_usd", label: "OGY Price", unit: "USD", live: true },
 ];
@@ -106,6 +107,11 @@ const ACCENT: Record<string, { text: string; ring: string; soft: string }> = {
     text: "text-[oklch(0.7_0.12_185)]",
     ring: "border-[oklch(0.7_0.12_185)]/40",
     soft: "bg-[oklch(0.7_0.12_185)]/10",
+  },
+  origyn_ogy: {
+    text: "text-[oklch(0.72_0.14_145)]",
+    ring: "border-[oklch(0.72_0.14_145)]/40",
+    soft: "bg-[oklch(0.72_0.14_145)]/10",
   },
 };
 
@@ -206,6 +212,7 @@ const LIVE_TO_ASSUMPTION: Partial<Record<string, AKey>> = {
   price_icp_usd: "price_icp_usd",
   price_ogy_usd: "price_ogy_usd",
   wtn_icp_annual: "wtn_icp_annual",
+  origyn_ogy_icp_annual: "origyn_ogy_icp_annual",
 };
 
 export default function RewardsSimulator() {
@@ -701,11 +708,12 @@ export default function RewardsSimulator() {
             <RewardCard kind="gldt" r={result.gldt} />
             <RewardCard kind="ogy" r={result.ogy} />
             <RewardCard kind="wtn_icp" r={result.wtn_icp} />
+            <RewardCard kind="origyn_ogy" r={result.origyn_ogy} />
           </div>
 
           <div className="rounded-lg border border-primary/30 bg-card/50 p-4">
             <p className="mb-2 font-mono text-[10px] uppercase tracking-widest text-primary">
-              Recurring total (ICP + GLDT + OGY + WTN)
+              Recurring total (ICP + GLDT + OGY + WTN + ORIGYN)
             </p>
             <div className="flex items-end justify-between gap-4">
               <div>
