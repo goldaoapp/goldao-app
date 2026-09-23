@@ -41,6 +41,7 @@ const LIVE_FIELDS: FieldDef[] = [
   { key: "price_ogy_usd", label: "OGY Price", unit: "USD" },
   { key: "price_icp_usd", label: "ICP Price", unit: "USD" },
   { key: "wtn_icp_annual", label: "WTN → ICP (annual)", unit: "ICP" },
+  { key: "origyn_ogy_icp_annual", label: "ORIGYN → OGY as ICP (annual)", unit: "ICP" },
 ];
 
 const COLLAPSIBLE_SECTIONS: SectionDef[] = [
@@ -591,8 +592,26 @@ function Results({
         />
       </StepCard>
 
+      <StepCard step={"4b"} title="ORIGYN – Gold DAO Partnership" accent="green">
+        <Note>
+          ORIGYN holds 100M GOLDAO staked. All non-OGY rewards are swapped to
+          OGY and distributed to 5-year OGY stakers. Gold DAO (503M OGY, ~26%
+          VP) recaptures a significant share of the distributed OGY.
+        </Note>
+        <Row
+          label="▶ OGY as ICP (annual)"
+          value={`${fmtNum(r.origyn_ogy_icp_annual)} ICP`}
+          accent="green"
+        />
+        <Row
+          label="= per week"
+          value={`${fmtNum(r.origyn_ogy_icp_weekly, 1)} ICP`}
+          dim
+        />
+      </StepCard>
+
       <StepCard step={5} title="Direct Yield per GOLDAO" accent="gold">
-        <Note>(ICP stakers + GLDT + OGY + WTN) ÷ eligible GOLDAO</Note>
+        <Note>(ICP + GLDT + OGY + WTN + ORIGYN) ÷ eligible GOLDAO</Note>
         <Row label="Direct pool" value={`${fmtNum(r.pool_directo)} ICP`} />
         <Row
           label={`÷ ${fmtNum(params.goldao_eligible / 1e6)}M eligible`}
