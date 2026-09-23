@@ -35,6 +35,9 @@ export interface FairValueParams {
   // WTN → ICP yield (from waterneuron-data.ts)
   wtn_icp_annual: number;
 
+  // ORIGYN–Gold DAO Partnership → OGY as ICP equiv/year
+  origyn_ogy_icp_annual: number;
+
   // GOLDAO supply
   goldao_eligible: number;
 
@@ -61,6 +64,10 @@ export interface FairValueResult {
   // Step 4 — WTN → ICP (annual yield from WaterNeuron protocol)
   wtn_icp_annual: number;
   wtn_icp_weekly: number;
+
+  // Step 4b — ORIGYN–Gold DAO Partnership
+  origyn_ogy_icp_annual: number;
+  origyn_ogy_icp_weekly: number;
 
   // Step 5 — Direct yield
   pool_directo: number;
@@ -96,6 +103,7 @@ export const DEFAULTS: FairValueParams = {
   price_ogy_usd: 0,
 
   wtn_icp_annual: 0,
+  origyn_ogy_icp_annual: 0,
 
   goldao_eligible: 0,
 
@@ -122,9 +130,13 @@ export function calcular(p: FairValueParams): FairValueResult {
   const wtn_icp_annual = p.wtn_icp_annual;
   const wtn_icp_weekly = wtn_icp_annual / 52;
 
-  // Step 5 — Direct yield to eligible holders (ICP + GLDT + OGY + WTN ICP)
+  // Step 4b — ORIGYN–Gold DAO Partnership
+  const origyn_ogy_icp_annual = p.origyn_ogy_icp_annual;
+  const origyn_ogy_icp_weekly = origyn_ogy_icp_annual / 52;
+
+  // Step 5 — Direct yield to eligible holders
   const pool_directo =
-    icp_stakers + icp_gldt + ogy_icp + wtn_icp_annual;
+    icp_stakers + icp_gldt + ogy_icp + wtn_icp_annual + origyn_ogy_icp_annual;
   const elig = p.goldao_eligible > 0 ? p.goldao_eligible : 1;
   const yield_directo = pool_directo / elig;
 
@@ -161,6 +173,8 @@ export function calcular(p: FairValueParams): FairValueResult {
     ogy_icp,
     wtn_icp_annual,
     wtn_icp_weekly,
+    origyn_ogy_icp_annual,
+    origyn_ogy_icp_weekly,
     pool_directo,
     yield_directo,
     price_goldao_icp_mkt,
