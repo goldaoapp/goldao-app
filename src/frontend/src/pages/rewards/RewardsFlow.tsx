@@ -538,7 +538,7 @@ export default function RewardsFlow() {
       {/* Description + status */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <p className="max-w-2xl text-sm text-muted-foreground">
-          How ICP maturity from the DAO's NNS neurons moves through the split,
+          How ICP maturity from the DAO&apos;s NNS neuron moves through the split,
           buyback cascade, and GLDT job on its way to stakers. Structural values
           are fixed by governance; ICP balances are fetched from the ICP ledger
           on load.
