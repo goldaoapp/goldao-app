@@ -289,7 +289,7 @@ export function useLiveData(): LiveData {
         console.log("[Protocol rewards]", {
           wtn: { ...wtn },
           origyn: {
-            share: (origyn.origynShare * 100).toFixed(2) + "%",
+            share: `${(origyn.origynShare * 100).toFixed(2)}%`,
             ogyDistributed: Math.round(origyn.totalOgyDistributed),
             gdOgyReceived: Math.round(origyn.gdOgyReceived),
             gdOgyAsIcp: Math.round(origyn.gdOgyAsIcp),
