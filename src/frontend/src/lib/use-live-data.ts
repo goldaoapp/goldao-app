@@ -238,8 +238,8 @@ export function useLiveData(): LiveData {
     // ── ONE-TIME: NNS neuron stake + maturity via icp_neuron canister ──
     async function fetchIcpNeurons() {
       const totals = await fetchIcpNeuronTotals();
+      console.log("[ICP neurons]", totals);
       if (cancelled || totals === null) return;
-      // Feed staked ICP into the calc params so every page uses live data
       apply("icp_staked", Math.round(totals.staked));
       setExtra((prev) => ({
         ...prev,
