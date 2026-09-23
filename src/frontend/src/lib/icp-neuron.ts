@@ -1,7 +1,7 @@
 /**
- * Reads the DAO's NNS neurons directly from the icp_neuron canister via Candid.
- * icp_neuron (j4jiq-sqaaa-aaaap-ab23a-cai) is the controller of the 7 NNS
- * neurons, so its `list_neurons` query returns real staked ICP + maturity.
+ * Reads the DAO's NNS neuron(s) directly from the icp_neuron canister via Candid.
+ * icp_neuron (j4jiq-sqaaa-aaaap-ab23a-cai) is the controller of the NNS
+ * neuron(s), so its `list_neurons` query returns real staked ICP + maturity.
  *
  * Called once on load (values change slowly). Returns aggregate totals so the
  * whole app can replace the hardcoded icp_staked default with live data.
