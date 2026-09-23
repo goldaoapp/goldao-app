@@ -111,7 +111,7 @@ export default function HomePage() {
           <StatCard
             value={fmtIcpStaked}
             label="ICP"
-            info="ICP held by the DAO across its NNS neurons — the treasury's core reserve and the source of all reward flows."
+            info="ICP held by the DAO in its NNS neuron — the treasury's core reserve and the source of all reward flows."
             accent
           />
           <StatCard
