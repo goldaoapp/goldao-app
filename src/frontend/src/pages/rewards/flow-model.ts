@@ -62,7 +62,7 @@ export const NODES: FlowNode[] = [
     w: 300,
     h: 74,
     accent: "gold",
-    title: "7 NNS neurons",
+    title: "1 NNS neuron",
     sub: "generate ICP maturity",
     flowKey: "nns",
   },
