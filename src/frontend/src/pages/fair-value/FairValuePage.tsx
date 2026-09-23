@@ -592,7 +592,7 @@ function Results({
         />
       </StepCard>
 
-      <StepCard step={"4b"} title="ORIGYN – Gold DAO Partnership" accent="green">
+      <StepCard step={5} title="ORIGYN – Gold DAO Partnership" accent="green">
         <Note>
           ORIGYN holds 100M GOLDAO staked. All non-OGY rewards are swapped to
           OGY and distributed to 5-year OGY stakers. Gold DAO (503M OGY, ~26%
@@ -610,7 +610,7 @@ function Results({
         />
       </StepCard>
 
-      <StepCard step={5} title="Direct Yield per GOLDAO" accent="gold">
+      <StepCard step={6} title="Direct Yield per GOLDAO" accent="gold">
         <Note>(ICP + GLDT + OGY + WTN + ORIGYN) ÷ eligible GOLDAO</Note>
         <Row label="Direct pool" value={`${fmtNum(r.pool_directo)} ICP`} />
         <Row
@@ -620,7 +620,7 @@ function Results({
         />
       </StepCard>
 
-      <StepCard step={6} title="Effective APY (ICP)" accent="green">
+      <StepCard step={7} title="Effective APY (ICP)" accent="green">
         <Note>APY = yield per GOLDAO ÷ GOLDAO price in ICP × 100</Note>
         <Row
           label="Effective APY (ICP)"
@@ -634,7 +634,7 @@ function Results({
         />
       </StepCard>
 
-      <StepCard step={7} title="Equilibrium Ratio" accent="amber">
+      <StepCard step={8} title="Equilibrium Ratio" accent="amber">
         <Note>
           price_eq = yield per GOLDAO ÷ APY NNS · ratio = 1 / price_eq
         </Note>
@@ -672,7 +672,7 @@ function Results({
         };
         return (
           <StepCard
-            step={8}
+            step={9}
             title="Market vs Equilibrium"
             accent={accentMap[zone.id]}
           >
