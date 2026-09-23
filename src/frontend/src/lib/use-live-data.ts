@@ -191,16 +191,6 @@ export function useLiveData(): LiveData {
               vp = wtn * ddB * ageB;
             }
             // Debug: log what the API returns for VP calculation
-            console.log("[WTN neuron]", {
-              url: url.slice(-12),
-              wtn,
-              voting_power: data.voting_power,
-              dissolve_delay_seconds: data.dissolve_delay_seconds,
-              age_seconds: data.age_seconds,
-              vp,
-            });
-            return { wtn, vp };
-          }),
         );
         const total = Math.round(
           results.reduce((a, b) => a + b.wtn, 0),
@@ -238,7 +228,6 @@ export function useLiveData(): LiveData {
     // ── ONE-TIME: NNS neuron stake + maturity via icp_neuron canister ──
     async function fetchIcpNeurons() {
       const totals = await fetchIcpNeuronTotals();
-      console.log("[ICP neurons]", totals);
       if (cancelled || totals === null) return;
       apply("icp_staked", Math.round(totals.staked));
       setExtra((prev) => ({
@@ -268,7 +257,7 @@ export function useLiveData(): LiveData {
 
         // ORIGYN partnership: use defaults for GOLDAO reward pools
         // (these rarely change and are seeded from live data elsewhere)
-        const icpGross = 555_888 * 0.0815;
+        const icpGross = 555_880 * 0.0815;
         const icpPool = icpGross * 0.33;
         const gldtPool = icpGross * 0.33;
         const ogyPool = 0; // OGY staking pool fed separately
@@ -285,16 +274,6 @@ export function useLiveData(): LiveData {
           protoData.totalOgyVp,
         );
         apply("origyn_ogy_icp_annual", Math.round(origyn.gdOgyAsIcp));
-
-        console.log("[Protocol rewards]", {
-          wtn: { ...wtn },
-          origyn: {
-            share: `${(origyn.origynShare * 100).toFixed(2)}%`,
-            ogyDistributed: Math.round(origyn.totalOgyDistributed),
-            gdOgyReceived: Math.round(origyn.gdOgyReceived),
-            gdOgyAsIcp: Math.round(origyn.gdOgyAsIcp),
-          },
-        });
       } catch {
         /* defaults stay at 0 */
       }
