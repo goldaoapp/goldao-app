@@ -17,15 +17,12 @@ const WEEKS_PER_YEAR = 52;
 const MONTHS_PER_YEAR = 12;
 
 export interface RewardPools {
-  /** ICP/year routed directly to stakers (33% of gross NNS maturity) */
   icp_annual: number;
-  /** GLDT ICP-equivalent/year (33% of gross NNS maturity, same value) */
   gldt_icp_annual: number;
-  /** OGY/year distributed to stakers, native OGY */
   ogy_annual: number;
-  /** ICP/year from WTN rewards (10% of WaterNeuron maturity × VP share) */
   wtn_icp_annual: number;
-  /** Total eligible GOLDAO — the reward denominator */
+  /** ICP-equiv/year from ORIGYN partnership OGY flywheel */
+  origyn_ogy_icp_annual: number;
   goldao_eligible: number;
   price_icp_usd: number;
   price_ogy_usd: number;
@@ -50,7 +47,7 @@ export interface RewardResult {
   gldt: TokenReward;
   ogy: TokenReward;
   wtn_icp: TokenReward;
-  /** recurring USD total (ICP + GLDT + OGY + WTN ICP) */
+  origyn_ogy: TokenReward;
   total_weekly_usd: number;
   total_monthly_usd: number;
   total_annual_usd: number;
@@ -100,13 +97,18 @@ export function simulate(
     pools.wtn_icp_annual * share,
     pools.price_icp_usd,
   );
+  const origyn_ogy = tokenReward(
+    "OGY (ORIGYN)",
+    pools.origyn_ogy_icp_annual * share,
+    pools.price_icp_usd,
+  );
 
   const sumWeekly =
-    icp.weekly_usd + gldt.weekly_usd + ogy.weekly_usd + wtn_icp.weekly_usd;
+    icp.weekly_usd + gldt.weekly_usd + ogy.weekly_usd + wtn_icp.weekly_usd + origyn_ogy.weekly_usd;
   const sumMonthly =
-    icp.monthly_usd + gldt.monthly_usd + ogy.monthly_usd + wtn_icp.monthly_usd;
+    icp.monthly_usd + gldt.monthly_usd + ogy.monthly_usd + wtn_icp.monthly_usd + origyn_ogy.monthly_usd;
   const sumAnnual =
-    icp.annual_usd + gldt.annual_usd + ogy.annual_usd + wtn_icp.annual_usd;
+    icp.annual_usd + gldt.annual_usd + ogy.annual_usd + wtn_icp.annual_usd + origyn_ogy.annual_usd;
 
   return {
     share,
@@ -116,6 +118,7 @@ export function simulate(
     gldt,
     ogy,
     wtn_icp,
+    origyn_ogy,
     total_weekly_usd: sumWeekly,
     total_monthly_usd: sumMonthly,
     total_annual_usd: sumAnnual,
@@ -132,6 +135,8 @@ export interface RewardAssumptions {
   ogy_apy: number;
   /** ICP/year from WTN (calculated by waterneuron-data.ts) */
   wtn_icp_annual: number;
+  /** ICP-equiv/year from ORIGYN partnership flywheel */
+  origyn_ogy_icp_annual: number;
   goldao_eligible: number;
   price_icp_usd: number;
   price_ogy_usd: number;
@@ -145,12 +150,12 @@ export const ASSUMPTION_DEFAULTS: RewardAssumptions = {
   ogy_staked: 0,
   ogy_apy: 6,
   wtn_icp_annual: 0,
+  origyn_ogy_icp_annual: 0,
   goldao_eligible: 0,
   price_icp_usd: 0,
   price_ogy_usd: 0,
 };
 
-/** Derive reward pools from editable assumptions. */
 export function poolsFrom(a: RewardAssumptions): RewardPools {
   const icp_gross = a.icp_staked * (a.nns_apy / 100);
   const icp_annual = icp_gross * (a.pct_stakers / 100);
@@ -161,6 +166,7 @@ export function poolsFrom(a: RewardAssumptions): RewardPools {
     gldt_icp_annual,
     ogy_annual,
     wtn_icp_annual: a.wtn_icp_annual,
+    origyn_ogy_icp_annual: a.origyn_ogy_icp_annual,
     goldao_eligible: a.goldao_eligible,
     price_icp_usd: a.price_icp_usd,
     price_ogy_usd: a.price_ogy_usd,
