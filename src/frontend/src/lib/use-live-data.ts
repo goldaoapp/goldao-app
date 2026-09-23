@@ -17,8 +17,10 @@ import {
 import type { FairValueParams } from "@/lib/fairvalue-calc";
 import { fetchIcpNeuronTotals } from "@/lib/icp-neuron";
 import {
-  calcIcpFromWtn,
-  fetchWaterNeuronData,
+  calcWtnRewards,
+  calcOrigynPartnership,
+  fetchProtocolRewardsData,
+  DEFAULTS as PROTO_DEFAULTS,
 } from "@/lib/waterneuron-data";
 import { getPoolRatio } from "@/lib/icpswap-quote";
 import { useEffect, useRef, useState } from "react";
@@ -246,33 +248,55 @@ export function useLiveData(): LiveData {
       }));
     }
 
-    // ── ONE-TIME: WTN → ICP rewards (both sources: 10% fee + 3% staking) ──
-    async function fetchWtnIcpRewards(wtnTotal: number) {
+    // ── ONE-TIME: Protocol rewards (WTN + ORIGYN partnership) ──
+    async function fetchProtocolRewards(wtnTotal: number) {
       try {
         if (wtnTotal <= 0) return;
-        const wnData = await fetchWaterNeuronData();
+        const protoData = await fetchProtocolRewardsData();
         if (cancelled) return;
-        // Wait briefly for ICPSwap pool quote to be available
         const wtnPerIcp = icpswapRef.current.wtnPerIcp ?? 0;
-        const breakdown = calcIcpFromWtn(
-          wnData.estimatedAnnualMaturity,
+        const ogyPerIcp = icpswapRef.current.ogyPerIcp ?? 0;
+
+        // WTN rewards
+        const wtn = calcWtnRewards(
+          protoData.wtnAnnualMaturity,
           wtnTotal,
-          wnData.totalWtnVp,
+          protoData.totalWtnVp,
           wtnPerIcp,
         );
-        console.log("[WTN ICP calc]", {
-          maturity: wnData.estimatedAnnualMaturity,
-          wtnTotal,
-          totalWtnVp: wnData.totalWtnVp,
-          wtnPerIcp,
-          icpFromFee: breakdown.icpFromFee,
-          wtnEarned: breakdown.wtnEarned,
-          wtnAsIcp: breakdown.wtnAsIcp,
-          totalIcpAnnual: breakdown.totalIcpAnnual,
+        apply("wtn_icp_annual", Math.round(wtn.totalIcpAnnual));
+
+        // ORIGYN partnership: use defaults for GOLDAO reward pools
+        // (these rarely change and are seeded from live data elsewhere)
+        const icpGross = 555_888 * 0.0815;
+        const icpPool = icpGross * 0.33;
+        const gldtPool = icpGross * 0.33;
+        const ogyPool = 0; // OGY staking pool fed separately
+        const goldaoEligible = 248_854_757;
+
+        const origyn = calcOrigynPartnership(
+          icpPool,
+          gldtPool,
+          wtn.totalIcpAnnual,
+          ogyPool,
+          goldaoEligible,
+          ogyPerIcp,
+          PROTO_DEFAULTS.gdOgyVp,
+          protoData.totalOgyVp,
+        );
+        apply("origyn_ogy_icp_annual", Math.round(origyn.gdOgyAsIcp));
+
+        console.log("[Protocol rewards]", {
+          wtn: { ...wtn },
+          origyn: {
+            share: (origyn.origynShare * 100).toFixed(2) + "%",
+            ogyDistributed: Math.round(origyn.totalOgyDistributed),
+            gdOgyReceived: Math.round(origyn.gdOgyReceived),
+            gdOgyAsIcp: Math.round(origyn.gdOgyAsIcp),
+          },
         });
-        apply("wtn_icp_annual", Math.round(breakdown.totalIcpAnnual));
       } catch {
-        /* default — wtn_icp_annual stays at 0 */
+        /* defaults stay at 0 */
       }
     }
 
@@ -369,7 +393,7 @@ export function useLiveData(): LiveData {
     fetchLight();
     // WTN ICP calc needs both wtnTotal (fetchWTN) and wtnPerIcp (fetchPoolQuotes)
     Promise.all([fetchWTN(), fetchPoolQuotes()]).then(([wtn]) =>
-      fetchWtnIcpRewards(wtn),
+      fetchProtocolRewards(wtn),
     );
     fetchSupply();
     fetchIcpNeurons();
