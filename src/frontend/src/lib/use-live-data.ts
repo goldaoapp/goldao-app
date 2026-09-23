@@ -190,7 +190,8 @@ export function useLiveData(): LiveData {
                 1 + Math.min((data.age_seconds ?? 0) / WTN_MAX_AGE, 1);
               vp = wtn * ddB * ageB;
             }
-            // Debug: log what the API returns for VP calculation
+            return { wtn, vp };
+          }),
         );
         const total = Math.round(
           results.reduce((a, b) => a + b.wtn, 0),
