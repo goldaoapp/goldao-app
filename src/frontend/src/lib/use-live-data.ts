@@ -22,6 +22,10 @@ import {
   fetchProtocolRewardsData,
   DEFAULTS as PROTO_DEFAULTS,
 } from "@/lib/waterneuron-data";
+import {
+  fetchRewardRounds,
+  type RewardsCanisterData,
+} from "@/lib/rewards-canister";
 import { getPoolRatio } from "@/lib/icpswap-quote";
 import { useEffect, useRef, useState } from "react";
 
@@ -69,6 +73,8 @@ export interface LiveExtra {
   icpStaked: number | null;
   /** Live maturity in the DAO's NNS neurons (whole ICP) */
   icpMaturity: number | null;
+  /** Latest payment round data from sns_rewards canister (Fase 2) */
+  rewardRounds: RewardsCanisterData | null;
 }
 
 export interface LiveData {
@@ -94,6 +100,7 @@ export function useLiveData(): LiveData {
     totalBurned: null,
     icpStaked: null,
     icpMaturity: null,
+    rewardRounds: null,
   });
   const icpswapRef = useRef<{
     ogyPerIcp: number | null;
@@ -280,6 +287,13 @@ export function useLiveData(): LiveData {
       }
     }
 
+    // ── ONE-TIME: Payment rounds from sns_rewards canister (Fase 2) ──
+    async function fetchCanisterRounds() {
+      const data = await fetchRewardRounds();
+      if (cancelled || !data) return;
+      setExtra((prev) => ({ ...prev, rewardRounds: data }));
+    }
+
     // ── FAST: lightweight APIs (every 30 s) ──
     async function fetchLight() {
       // 1 — Eligible GOLDAO + Members
@@ -377,6 +391,7 @@ export function useLiveData(): LiveData {
     );
     fetchSupply();
     fetchIcpNeurons();
+    fetchCanisterRounds();
 
     const fastId = setInterval(fetchLight, POLL.FAST);
     const slowId = setInterval(fetchPoolQuotes, POLL.SLOW);
