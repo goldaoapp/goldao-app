@@ -19,6 +19,10 @@ import {
   poolsFrom,
   simulate,
 } from "@/lib/rewards-calc";
+import {
+  annualizePool,
+  neuronShareFromRound,
+} from "@/lib/rewards-canister";
 import { useLiveData } from "@/lib/use-live-data";
 
 /* number helpers */
@@ -216,7 +220,8 @@ const LIVE_TO_ASSUMPTION: Partial<Record<string, AKey>> = {
 };
 
 export default function RewardsSimulator() {
-  const { params: live, flash } = useLiveData();
+  const { params: live, flash, extra } = useLiveData();
+  const rewardRounds = extra.rewardRounds;
 
   const [raw, setRaw] = useState<Record<string, string>>(() => {
     const init: Record<string, string> = {};
@@ -354,20 +359,62 @@ export default function RewardsSimulator() {
     return neuronAgg.totalGoldao;
   }, [mode, amount, neurons, neuronAgg]);
 
-  // Average VP multiplier for the eligible cohort (dissolve 2× + avg age bonus).
+  // Canister-based share: use maturity delta from actual payment rounds.
+  // Falls back to VP proxy if canister data not yet loaded.
   const AVG_VP_MULT = 2.3;
 
-  // In neuron mode with known VP, compute share from VP instead of stake.
+  const canisterShare = useMemo<number | undefined>(() => {
+    if (mode !== "neuron" || neuronIneligible || neurons.length === 0)
+      return undefined;
+    if (!rewardRounds) return undefined;
+
+    // Use ICP round as the reference (weekly, most reliable)
+    const icpRound = rewardRounds.rounds.ICP;
+    if (!icpRound || icpRound.totalNeuronMaturity === 0n) return undefined;
+
+    // Sum deltas for all user neurons found in the payment map
+    let totalDelta = 0n;
+    let foundAny = false;
+    for (const n of neurons) {
+      if (n.eligible === false) continue;
+      const match = neuronShareFromRound(n.id, icpRound);
+      if (match) {
+        totalDelta += match.delta;
+        foundAny = true;
+      }
+    }
+    if (!foundAny) return undefined;
+    return Number(totalDelta) / Number(icpRound.totalNeuronMaturity);
+  }, [mode, neurons, neuronIneligible, rewardRounds]);
+
+  // VP-based fallback when canister data unavailable
   const vpShare = useMemo<number | undefined>(() => {
+    if (canisterShare !== undefined) return undefined;
     if (mode !== "neuron" || !neuronAgg.hasVP || neuronIneligible)
       return undefined;
     const totalVp = assumptions.goldao_eligible * AVG_VP_MULT;
     return totalVp > 0 ? neuronAgg.totalVP / totalVp : undefined;
-  }, [mode, neuronAgg, neuronIneligible, assumptions.goldao_eligible]);
+  }, [canisterShare, mode, neuronAgg, neuronIneligible, assumptions.goldao_eligible]);
+
+  const shareOverride = canisterShare ?? vpShare;
+
+  // Build pools: use canister round data to annualize if available,
+  // otherwise fall back to assumption-based calculation.
+  const pools = useMemo(() => {
+    const base = poolsFrom(assumptions);
+    if (!rewardRounds) return base;
+
+    const r = rewardRounds.rounds;
+    if (r.ICP) base.icp_annual = annualizePool(r.ICP, false);
+    if (r.GLDT) base.gldt_icp_annual = annualizePool(r.GLDT, true);
+    if (r.OGY) base.ogy_annual = annualizePool(r.OGY, false);
+    // WTN and ORIGYN pools come from protocol calcs, not the reward canister
+    return base;
+  }, [assumptions, rewardRounds]);
 
   const result = useMemo<RewardResult>(
-    () => simulate(poolsFrom(assumptions), userGoldao, vpShare),
-    [assumptions, userGoldao, vpShare],
+    () => simulate(pools, userGoldao, shareOverride),
+    [pools, userGoldao, shareOverride],
   );
 
   const liveLoading = assumptions.goldao_eligible <= 0;
@@ -589,9 +636,11 @@ export default function RewardsSimulator() {
           <div className="rounded-lg border border-border bg-card/50 p-4">
             <div className="flex items-baseline justify-between">
               <span className="font-mono text-xs text-muted-foreground">
-                {vpShare !== undefined
-                  ? "Your share by voting power"
-                  : "Your share of eligible GOLDAO"}
+                {canisterShare !== undefined
+                  ? "Your share by maturity delta"
+                  : vpShare !== undefined
+                    ? "Your share by voting power"
+                    : "Your share of eligible GOLDAO"}
                 {mode === "neuron" &&
                   neurons.length > 1 &&
                   ` (${neurons.length} neurons)`}
@@ -609,7 +658,18 @@ export default function RewardsSimulator() {
                 style={{ width: `${Math.min(result.share * 100, 100)}%` }}
               />
             </div>
-            {vpShare !== undefined && neuronAgg.totalVP > 0 ? (
+            {canisterShare !== undefined ? (
+              <div className="mt-2 space-y-0.5">
+                <p className="font-mono text-[11px] text-muted-foreground">
+                  Share from on-chain maturity delta (last ICP round)
+                </p>
+                <p className="font-mono text-[10px] text-muted-foreground/70">
+                  Exact share from the sns_rewards canister. Your neuron
+                  {neurons.length > 1 ? "s'" : "'s"} maturity delta vs total
+                  delta of all active neurons.
+                </p>
+              </div>
+            ) : vpShare !== undefined && neuronAgg.totalVP > 0 ? (
               <div className="mt-2 space-y-0.5">
                 <p className="font-mono text-[11px] text-muted-foreground">
                   {fmtInt(neuronAgg.totalVP)} VP of ~
@@ -619,9 +679,9 @@ export default function RewardsSimulator() {
                   estimated total VP
                 </p>
                 <p className="font-mono text-[10px] text-muted-foreground/70">
-                  Total VP estimated from {fmtInt(result.eligible)} eligible
-                  GOLDAO × {AVG_VP_MULT}× avg multiplier. Actual rewards depend
-                  on proposal participation across all neurons.
+                  Canister data loading — using VP estimate. Total VP from{" "}
+                  {fmtInt(result.eligible)} eligible GOLDAO × {AVG_VP_MULT}×
+                  avg multiplier.
                 </p>
               </div>
             ) : (
@@ -695,6 +755,12 @@ export default function RewardsSimulator() {
               once it arrives.
             </p>
           )}
+          {rewardRounds && (
+            <p className="rounded-md border border-[oklch(0.72_0.17_162)]/30 bg-[oklch(0.72_0.17_162)]/10 px-3 py-2 font-mono text-xs text-[oklch(0.72_0.17_162)]">
+              <span className="inline-block size-1.5 rounded-full bg-[oklch(0.72_0.17_162)] mr-1.5 align-middle" />
+              Pools from on-chain data (sns_rewards canister). GLDT monthly, rest weekly.
+            </p>
+          )}
           {neuronIneligible && (
             <p className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 font-mono text-xs text-destructive">
               {neurons.length === 1
@@ -742,10 +808,11 @@ export default function RewardsSimulator() {
               </div>
             </div>
             <p className="mt-3 font-mono text-[10px] leading-relaxed text-muted-foreground">
-              Estimate. Rewards are distributed by maturity delta; share is
-              modeled from stake within the max-delay cohort. GLDT rewards have
-              the same ICP value. WTN ICP comes from WaterNeuron&apos;s 10%
-              maturity fee, proportional to Gold DAO&apos;s VP in WTN governance.
+              Estimate based on the latest completed round from the sns_rewards
+              canister. GLDT is distributed monthly; all other tokens weekly.
+              In neuron mode, share is computed from actual maturity delta.
+              WTN ICP comes from WaterNeuron&apos;s 10% maturity fee,
+              proportional to Gold DAO&apos;s VP in WTN governance.
             </p>
           </div>
         </div>
