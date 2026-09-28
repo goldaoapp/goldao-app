@@ -23,6 +23,7 @@ const emptyLiveData: LiveData = {
     totalBurned: null,
     icpStaked: null,
     icpMaturity: null,
+    rewardRounds: null,
   },
 };
 describe("HomePage", () => {
