@@ -130,7 +130,7 @@ export async function fetchRewardRounds(): Promise<RewardsCanisterData | null> {
     });
 
     // biome-ignore lint: canister returns dynamic shape
-    const raw: any[] = await actor.get_historic_payment_rounds();
+    const raw = (await actor.get_historic_payment_rounds()) as any[];
 
     // raw is Vec<(u16, PaymentRound)> — an array of [roundId, round] tuples
     const rounds: Partial<Record<TokenKey, RoundData>> = {};
