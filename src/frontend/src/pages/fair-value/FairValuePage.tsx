@@ -389,11 +389,13 @@ function getZone(difPct: number): ZoneInfo {
 /* ── Spectrum bar ────────────────────────────────────────────────────────── */
 
 function SpectrumBarTop({ r }: { r: FairValueResult }) {
-  const eq = r.ratio_eq;
+  // Use active voter equilibrium as primary when available
+  const hasActive = r.goldao_active_eligible > 0 && r.ratio_eq_active > 0;
+  const eq = hasActive ? r.ratio_eq_active : r.ratio_eq;
+  const dif = hasActive ? r.diferencia_pct_active : r.diferencia_pct;
   const mkt = r.market_ratio;
   if (eq <= 0 || mkt <= 0) return null;
 
-  const dif = r.diferencia_pct;
   const zone = getZone(dif);
 
   // Bar range: eq ± 35% so all 5 bands fit with room for the dot
@@ -613,39 +615,52 @@ function Results({
       <StepCard step={6} title="Direct Yield per GOLDAO" accent="gold">
         <Note>(ICP + GLDT + OGY + WTN + ORIGYN) ÷ eligible GOLDAO</Note>
         <Row label="Direct pool" value={`${fmtNum(r.pool_directo)} ICP`} />
-        <Row
-          label={`÷ ${fmtNum(params.goldao_eligible / 1e6)}M eligible`}
-          value={`${r.yield_directo.toFixed(9)} ICP/GOLDAO`}
-          accent="gold"
-        />
-        {r.goldao_active_eligible > 0 && (
+        {r.goldao_active_eligible > 0 ? (
           <>
-            <div className="mt-2 pt-2 border-t border-border/50" />
-            <Note>
-              Active voters only ({fmtNum(r.goldao_active_eligible / 1e6)}M of{" "}
-              {fmtNum(params.goldao_eligible / 1e6)}M — from on-chain maturity)
-            </Note>
             <Row
               label={`÷ ${fmtNum(r.goldao_active_eligible / 1e6)}M active`}
               value={`${r.yield_active.toFixed(9)} ICP/GOLDAO`}
-              accent="green"
+              accent="gold"
             />
+            <Row
+              label={`÷ ${fmtNum(params.goldao_eligible / 1e6)}M all eligible`}
+              value={`${r.yield_directo.toFixed(9)} ICP/GOLDAO`}
+              dim
+            />
+            <Note>
+              Active voters: {fmtNum(r.goldao_active_eligible / 1e6)}M of{" "}
+              {fmtNum(params.goldao_eligible / 1e6)}M (from on-chain maturity)
+            </Note>
           </>
+        ) : (
+          <Row
+            label={`÷ ${fmtNum(params.goldao_eligible / 1e6)}M eligible`}
+            value={`${r.yield_directo.toFixed(9)} ICP/GOLDAO`}
+            accent="gold"
+          />
         )}
       </StepCard>
 
       <StepCard step={7} title="Effective APY (ICP)" accent="green">
         <Note>APY = yield per GOLDAO ÷ GOLDAO price in ICP × 100</Note>
-        <Row
-          label="Effective APY (ICP)"
-          value={`${fmtNum(r.apy_efectivo, 2)}%`}
-          accent={r.apy_efectivo >= params.nns_apy ? "green" : "destructive"}
-        />
-        {r.goldao_active_eligible > 0 && (
+        {r.goldao_active_eligible > 0 ? (
+          <>
+            <Row
+              label="Effective APY (active)"
+              value={`${fmtNum(r.apy_active, 2)}%`}
+              accent={r.apy_active >= params.nns_apy ? "green" : "destructive"}
+            />
+            <Row
+              label="All eligible APY"
+              value={`${fmtNum(r.apy_efectivo, 2)}%`}
+              dim
+            />
+          </>
+        ) : (
           <Row
-            label="Active voter APY"
-            value={`${fmtNum(r.apy_active, 2)}%`}
-            accent="green"
+            label="Effective APY (ICP)"
+            value={`${fmtNum(r.apy_efectivo, 2)}%`}
+            accent={r.apy_efectivo >= params.nns_apy ? "green" : "destructive"}
           />
         )}
         <Row
@@ -659,35 +674,50 @@ function Results({
         <Note>
           price_eq = yield per GOLDAO ÷ APY NNS · ratio = 1 / price_eq
         </Note>
-        <Row
-          label="Equilibrium price"
-          value={`${r.precio_eq.toFixed(8)} ICP ($${r.precio_eq_usd.toFixed(6)})`}
-        />
-        <Row
-          label="▶ EQUILIBRIUM RATIO"
-          value={`1 ICP : ${fmtNum(r.ratio_eq, 0)} GOLDAO`}
-          accent="amber"
-        />
-        {r.goldao_active_eligible > 0 && (
+        {r.goldao_active_eligible > 0 ? (
           <>
-            <div className="mt-2 pt-2 border-t border-border/50" />
-            <Note>Active voters only (on-chain maturity delta)</Note>
             <Row
               label="Active eq. price"
               value={`${r.precio_eq_active.toFixed(8)} ICP ($${r.precio_eq_active_usd.toFixed(6)})`}
             />
             <Row
-              label="▶ ACTIVE EQ. RATIO"
+              label="▶ EQUILIBRIUM RATIO (active)"
               value={`1 ICP : ${fmtNum(r.ratio_eq_active, 0)} GOLDAO`}
-              accent="green"
+              accent="amber"
+            />
+            <div className="mt-2 pt-2 border-t border-border/50" />
+            <Row
+              label="All eligible eq. price"
+              value={`${r.precio_eq.toFixed(8)} ICP ($${r.precio_eq_usd.toFixed(6)})`}
+              dim
+            />
+            <Row
+              label="All eligible ratio"
+              value={`1 ICP : ${fmtNum(r.ratio_eq, 0)} GOLDAO`}
+              dim
+            />
+          </>
+        ) : (
+          <>
+            <Row
+              label="Equilibrium price"
+              value={`${r.precio_eq.toFixed(8)} ICP ($${r.precio_eq_usd.toFixed(6)})`}
+            />
+            <Row
+              label="▶ EQUILIBRIUM RATIO"
+              value={`1 ICP : ${fmtNum(r.ratio_eq, 0)} GOLDAO`}
+              accent="amber"
             />
           </>
         )}
       </StepCard>
 
       {(() => {
-        const zone = getZone(r.diferencia_pct);
-        const dif = Math.abs(r.diferencia_pct);
+        const hasActive = r.goldao_active_eligible > 0 && r.ratio_eq_active > 0;
+        const eqRatio = hasActive ? r.ratio_eq_active : r.ratio_eq;
+        const difPct = hasActive ? r.diferencia_pct_active : r.diferencia_pct;
+        const zone = getZone(difPct);
+        const dif = Math.abs(difPct);
         const accentMap: Record<ZoneId, string> = {
           expensive: "destructive",
           slightly_expensive: "amber",
@@ -714,14 +744,21 @@ function Results({
           >
             <div className="space-y-0.5">
               <Row
-                label="Equilibrium"
-                value={`1 ICP = ${fmtNum(r.ratio_eq, 0)} GOLDAO`}
+                label={hasActive ? "Equilibrium (active)" : "Equilibrium"}
+                value={`1 ICP = ${fmtNum(eqRatio, 0)} GOLDAO`}
                 accent="amber"
               />
               <Row
                 label="Market"
                 value={`1 ICP = ${fmtNum(r.market_ratio, 0)} GOLDAO`}
               />
+              {hasActive && (
+                <Row
+                  label="Standard eq. (all eligible)"
+                  value={`1 ICP = ${fmtNum(r.ratio_eq, 0)} GOLDAO`}
+                  dim
+                />
+              )}
             </div>
             <div
               className={`rounded-md border-l-4 ${zone.borderClass} ${zone.bgClass} px-3 py-2 mt-2`}
@@ -730,7 +767,7 @@ function Results({
                 className={`text-sm font-mono font-semibold ${zone.textClass}`}
               >
                 GOLDAO is {zone.label} ({fmtNum(dif)}%{" "}
-                {r.diferencia_pct >= 0 ? "above" : "below"} equilibrium)
+                {difPct >= 0 ? "above" : "below"} equilibrium)
               </p>
               <p className="text-[10px] text-muted-foreground font-mono mt-0.5">
                 {descriptions[zone.id]}
