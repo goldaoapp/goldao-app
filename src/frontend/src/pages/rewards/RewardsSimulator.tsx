@@ -368,9 +368,8 @@ export default function RewardsSimulator() {
       return undefined;
     if (!rewardRounds) return undefined;
 
-    // Use ICP round as the reference (weekly, most reliable)
-    const icpRound = rewardRounds.rounds.ICP;
-    if (!icpRound || icpRound.totalNeuronMaturity === 0n) return undefined;
+    const icpRound = rewardRounds.icpRound;
+    if (icpRound.totalNeuronMaturity === 0n) return undefined;
 
     // Sum deltas for all user neurons found in the payment map
     let totalDelta = 0n;
@@ -398,17 +397,16 @@ export default function RewardsSimulator() {
 
   const shareOverride = canisterShare ?? vpShare;
 
-  // Build pools: use canister round data to annualize if available,
+  // Build pools: use canister ICP round to annualize if available,
   // otherwise fall back to assumption-based calculation.
   const pools = useMemo(() => {
     const base = poolsFrom(assumptions);
-    if (!rewardRounds) return base;
-
-    const r = rewardRounds.rounds;
-    if (r.ICP) base.icp_annual = annualizePool(r.ICP, false);
-    if (r.GLDT) base.gldt_icp_annual = annualizePool(r.GLDT, true);
-    if (r.OGY) base.ogy_annual = annualizePool(r.OGY, false);
-    // WTN and ORIGYN pools come from protocol calcs, not the reward canister
+    if (rewardRounds) {
+      base.icp_annual = annualizePool(
+        rewardRounds.icpRound.tokensToDistribute,
+        false,
+      );
+    }
     return base;
   }, [assumptions, rewardRounds]);
 
