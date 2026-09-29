@@ -40,6 +40,8 @@ export interface FairValueParams {
 
   // GOLDAO supply
   goldao_eligible: number;
+  /** GOLDAO actively voting (from canister maturity data). 0 = not available. */
+  goldao_active_eligible: number;
 
   // Market
   market_ratio: number;
@@ -86,6 +88,18 @@ export interface FairValueResult {
   market_ratio: number;
   diferencia_pct: number;
   esta_barato: boolean;
+
+  // Step 9 — Active voter yield (from canister maturity data)
+  /** GOLDAO that actively votes and earns rewards. 0 = data not available. */
+  goldao_active_eligible: number;
+  /** Yield per GOLDAO for active voters only */
+  yield_active: number;
+  /** Effective APY for active voters */
+  apy_active: number;
+  /** Equilibrium price for active voters */
+  precio_eq_active: number;
+  ratio_eq_active: number;
+  precio_eq_active_usd: number;
 }
 
 export const DEFAULTS: FairValueParams = {
@@ -106,6 +120,7 @@ export const DEFAULTS: FairValueParams = {
   origyn_ogy_icp_annual: 0,
 
   goldao_eligible: 0,
+  goldao_active_eligible: 0,
 
   market_ratio: 0,
 };
@@ -161,6 +176,21 @@ export function calcular(p: FairValueParams): FairValueResult {
     ratio_eq > 0 ? ((p.market_ratio - ratio_eq) / ratio_eq) * 100 : 0;
   const esta_barato = p.market_ratio > ratio_eq;
 
+  // Step 9 — Active voter yield (maturity delta denominator)
+  const activeElig =
+    p.goldao_active_eligible > 0 ? p.goldao_active_eligible : 0;
+  const yield_active = activeElig > 0 ? pool_directo / activeElig : 0;
+  const apy_active =
+    activeElig > 0 ? (yield_active / price_goldao_icp_mkt) * 100 : 0;
+
+  let precio_eq_active = 0;
+  let ratio_eq_active = 0;
+  if (apy > 0 && yield_active > 0) {
+    precio_eq_active = yield_active / apy;
+    ratio_eq_active = 1 / precio_eq_active;
+  }
+  const precio_eq_active_usd = precio_eq_active * p.price_icp_usd;
+
   return {
     icp_gross,
     total_pct,
@@ -185,5 +215,11 @@ export function calcular(p: FairValueParams): FairValueResult {
     market_ratio: p.market_ratio,
     diferencia_pct,
     esta_barato,
+    goldao_active_eligible: activeElig,
+    yield_active,
+    apy_active,
+    precio_eq_active,
+    ratio_eq_active,
+    precio_eq_active_usd,
   };
 }
