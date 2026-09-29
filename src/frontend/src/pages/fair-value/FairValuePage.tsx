@@ -618,6 +618,20 @@ function Results({
           value={`${r.yield_directo.toFixed(9)} ICP/GOLDAO`}
           accent="gold"
         />
+        {r.goldao_active_eligible > 0 && (
+          <>
+            <div className="mt-2 pt-2 border-t border-border/50" />
+            <Note>
+              Active voters only ({fmtNum(r.goldao_active_eligible / 1e6)}M of{" "}
+              {fmtNum(params.goldao_eligible / 1e6)}M — from on-chain maturity)
+            </Note>
+            <Row
+              label={`÷ ${fmtNum(r.goldao_active_eligible / 1e6)}M active`}
+              value={`${r.yield_active.toFixed(9)} ICP/GOLDAO`}
+              accent="green"
+            />
+          </>
+        )}
       </StepCard>
 
       <StepCard step={7} title="Effective APY (ICP)" accent="green">
@@ -627,6 +641,13 @@ function Results({
           value={`${fmtNum(r.apy_efectivo, 2)}%`}
           accent={r.apy_efectivo >= params.nns_apy ? "green" : "destructive"}
         />
+        {r.goldao_active_eligible > 0 && (
+          <Row
+            label="Active voter APY"
+            value={`${fmtNum(r.apy_active, 2)}%`}
+            accent="green"
+          />
+        )}
         <Row
           label="NNS Benchmark APY"
           value={`${fmtNum(params.nns_apy)}%`}
@@ -647,6 +668,21 @@ function Results({
           value={`1 ICP : ${fmtNum(r.ratio_eq, 0)} GOLDAO`}
           accent="amber"
         />
+        {r.goldao_active_eligible > 0 && (
+          <>
+            <div className="mt-2 pt-2 border-t border-border/50" />
+            <Note>Active voters only (on-chain maturity delta)</Note>
+            <Row
+              label="Active eq. price"
+              value={`${r.precio_eq_active.toFixed(8)} ICP ($${r.precio_eq_active_usd.toFixed(6)})`}
+            />
+            <Row
+              label="▶ ACTIVE EQ. RATIO"
+              value={`1 ICP : ${fmtNum(r.ratio_eq_active, 0)} GOLDAO`}
+              accent="green"
+            />
+          </>
+        )}
       </StepCard>
 
       {(() => {
@@ -710,7 +746,8 @@ function Results({
 /* ── Page ─────────────────────────────────────────────────────────────────── */
 
 export default function FairValuePage() {
-  const { params: liveParams, flash } = useLiveData();
+  const { params: liveParams, flash, extra } = useLiveData();
+  const rewardRounds = extra.rewardRounds;
 
   const [raw, setRaw] = useState<Record<string, string>>(() => {
     const init: Record<string, string> = {};
@@ -751,8 +788,14 @@ export default function FairValuePage() {
     for (const [k, v] of Object.entries(raw)) {
       p[k] = parseInput(v, DEFAULTS[k as keyof FairValueParams]);
     }
+    // Derive active eligible from canister maturity data
+    if (rewardRounds && rewardRounds.totalNeurons > 0 && rewardRounds.activeNeurons > 0 && p.goldao_eligible > 0) {
+      p.goldao_active_eligible = Math.round(
+        p.goldao_eligible * (rewardRounds.activeNeurons / rewardRounds.totalNeurons),
+      );
+    }
     return p as unknown as FairValueParams;
-  }, [raw]);
+  }, [raw, rewardRounds]);
 
   const result = useMemo(() => calcular(params), [params]);
 
