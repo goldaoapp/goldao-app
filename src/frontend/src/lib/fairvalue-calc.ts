@@ -100,6 +100,7 @@ export interface FairValueResult {
   precio_eq_active: number;
   ratio_eq_active: number;
   precio_eq_active_usd: number;
+  diferencia_pct_active: number;
 }
 
 export const DEFAULTS: FairValueParams = {
@@ -191,6 +192,11 @@ export function calcular(p: FairValueParams): FairValueResult {
   }
   const precio_eq_active_usd = precio_eq_active * p.price_icp_usd;
 
+  const diferencia_pct_active =
+    ratio_eq_active > 0
+      ? ((p.market_ratio - ratio_eq_active) / ratio_eq_active) * 100
+      : 0;
+
   return {
     icp_gross,
     total_pct,
@@ -221,5 +227,6 @@ export function calcular(p: FairValueParams): FairValueResult {
     precio_eq_active,
     ratio_eq_active,
     precio_eq_active_usd,
+    diferencia_pct_active,
   };
 }
