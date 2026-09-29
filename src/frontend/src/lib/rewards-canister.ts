@@ -1,17 +1,24 @@
 /**
- * Candid query to the sns_rewards canister (hidden API).
+ * Queries to the sns_rewards canister via get_all_neurons_maturity + get_neuron_by_id.
  *
- * Fetches the latest ICP payment round via `get_historic_payment_round`.
- * Only ICP is needed — the neuron share (delta / total_delta) is identical
- * across all reward tokens because maturity deltas scale proportionally.
+ * The payment round queries (get_historic_payment_round / _rounds) exceed the
+ * IC instruction limit due to an O(n) scan over all history. Instead we use:
  *
- * Distribution cadence: GLDT = monthly, everything else = weekly.
+ *   get_all_neurons_maturity() → all neurons' accumulated + rewarded maturity
+ *   get_neuron_by_id(id)       → single neuron lookup
+ *
+ * Share = neuron_delta / total_delta (identical across all reward tokens).
+ *
+ * Reference token priority: GLDT (monthly, rarely 0) > WTN > GOLDAO > ICP > OGY.
+ * Falls back to cached share from localStorage when all deltas are 0
+ * (brief window right after distribution).
  */
 
 import { Actor, HttpAgent } from "@dfinity/agent";
 import type { IDL as IDLType } from "@dfinity/candid";
 
 const SNS_REWARDS_CANISTER = "iyehc-lqaaa-aaaap-ab25a-cai";
+const CACHE_KEY = "goldao_rewards_canister_cache";
 
 /* ── Candid IDL ──────────────────────────────────────────────────────────── */
 
@@ -26,32 +33,22 @@ const rewardsIdlFactory = (({ IDL }: { IDL: typeof IDLType }) => {
 
   const NeuronId = IDL.Record({ id: IDL.Vec(IDL.Nat8) });
 
-  const PaymentStatus = IDL.Variant({
-    Pending: IDL.Null,
-    Triggered: IDL.Null,
-    Completed: IDL.Null,
-    Failed: IDL.Text,
-  });
-
-  const Payment = IDL.Tuple(IDL.Nat, PaymentStatus, IDL.Nat64);
-
-  const PaymentRound = IDL.Record({
-    id: IDL.Nat16,
-    round_funds_total: IDL.Nat,
-    tokens_to_distribute: IDL.Nat,
-    fees: IDL.Nat,
-    ledger_id: IDL.Principal,
-    token: TokenSymbol,
-    date_initialized: IDL.Nat64,
-    total_neuron_maturity: IDL.Nat64,
-    payments: IDL.Vec(IDL.Tuple(NeuronId, Payment)),
-    retries: IDL.Nat8,
+  const NeuronInfo = IDL.Record({
+    accumulated_maturity: IDL.Nat64,
+    last_synced_maturity: IDL.Nat64,
+    rewarded_maturity: IDL.Vec(IDL.Tuple(TokenSymbol, IDL.Nat64)),
+    last_disburse_event_considered: IDL.Opt(IDL.Nat64),
   });
 
   return IDL.Service({
-    get_historic_payment_round: IDL.Func(
-      [IDL.Record({ token: TokenSymbol, round_id: IDL.Nat16 })],
-      [IDL.Vec(IDL.Tuple(IDL.Nat16, PaymentRound))],
+    get_all_neurons_maturity: IDL.Func(
+      [],
+      [IDL.Vec(IDL.Tuple(NeuronId, NeuronInfo))],
+      ["query"],
+    ),
+    get_neuron_by_id: IDL.Func(
+      [NeuronId],
+      [IDL.Opt(NeuronInfo)],
       ["query"],
     ),
   });
@@ -70,129 +67,114 @@ function getAgent(): Promise<HttpAgent> {
 
 /* ── Types ───────────────────────────────────────────────────────────────── */
 
-export interface NeuronPayment {
-  neuronIdHex: string;
-  reward: bigint;
-  maturityDelta: bigint;
-}
+type TokenKey = "ICP" | "OGY" | "WTN" | "GOLDAO" | "GLDT";
 
-export interface RoundData {
-  roundId: number;
-  totalNeuronMaturity: bigint;
-  tokensToDistribute: bigint;
-  dateInitialized: bigint;
-  payments: NeuronPayment[];
+export interface TokenDeltaStats {
+  token: TokenKey;
+  totalDelta: bigint;
+  neuronsWithDelta: number;
 }
 
 export interface RewardsCanisterData {
-  /** Latest ICP round — share from this applies to all tokens */
-  icpRound: RoundData;
+  /** Total neurons tracked by the canister */
+  totalNeurons: number;
+  /** Delta stats per token (all 5) */
+  tokenStats: TokenDeltaStats[];
+  /** Reference token used for share calc (highest priority with delta > 0) */
+  referenceToken: TokenKey;
+  /** Total delta of the reference token (denominator) */
+  totalDelta: bigint;
+  /** Neuron count with delta > 0 for reference token */
+  activeNeurons: number;
+  /** Timestamp of fetch */
   fetchedAt: number;
+  /** Whether this data came from cache */
+  fromCache: boolean;
+}
+
+export interface NeuronMaturityData {
+  neuronIdHex: string;
+  accumulatedMaturity: bigint;
+  /** Delta per token (accumulated - rewarded) */
+  deltas: Partial<Record<TokenKey, bigint>>;
+  /** Share using the reference token's delta */
+  share: number | null;
 }
 
 /* ── Helpers ──────────────────────────────────────────────────────────────── */
 
-function neuronIdToHex(idBytes: number[] | Uint8Array): string {
-  return Array.from(idBytes)
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
+const TOKEN_KEYS: TokenKey[] = ["ICP", "OGY", "WTN", "GOLDAO", "GLDT"];
+
+/** Priority order: GLDT first (monthly = rarely 0) */
+const REF_PRIORITY: TokenKey[] = ["GLDT", "WTN", "GOLDAO", "ICP", "OGY"];
+
+function hexToBytes(hex: string): number[] {
+  return (hex.match(/.{2}/g) ?? []).map((h) => parseInt(h, 16));
 }
 
-function parseRound(raw: any): RoundData | null {
-  if (!raw) return null;
-  const payments: NeuronPayment[] = [];
-  for (const [neuronId, payment] of raw.payments ?? []) {
-    payments.push({
-      neuronIdHex: neuronIdToHex(neuronId.id),
-      reward: BigInt(payment[0]),
-      maturityDelta: BigInt(payment[2]),
-    });
-  }
-  return {
-    roundId: Number(raw.id),
-    totalNeuronMaturity: BigInt(raw.total_neuron_maturity),
-    tokensToDistribute: BigInt(raw.tokens_to_distribute),
-    dateInitialized: BigInt(raw.date_initialized),
-    payments,
-  };
+function getDelta(
+  info: any,
+  token: TokenKey,
+): bigint {
+  const acc: bigint = BigInt(info.accumulated_maturity);
+  const rewarded: [Record<string, null>, bigint][] = info.rewarded_maturity ?? [];
+  const entry = rewarded.find(([t]: [Record<string, null>, bigint]) => token in t);
+  const rew = entry ? BigInt(entry[1]) : 0n;
+  const delta = acc - rew;
+  return delta > 0n ? delta : 0n;
 }
 
-/* ── Probe: fetch one ICP round by id ────────────────────────────────────── */
+/* ── Cache ───────────────────────────────────────────────────────────────── */
 
-async function fetchIcpRound(
-  actor: any,
-  roundId: number,
-): Promise<RoundData | null> {
+interface CachedData {
+  referenceToken: TokenKey;
+  totalDelta: string;
+  activeNeurons: number;
+  totalNeurons: number;
+  fetchedAt: number;
+}
+
+function saveCache(data: RewardsCanisterData): void {
   try {
-    const result = (await actor.get_historic_payment_round({
-      token: { ICP: null },
-      round_id: roundId,
-    })) as any[];
-    if (!result || result.length === 0) return null;
-    const entry = result[0];
-    return parseRound(entry[1] ?? entry);
+    const c: CachedData = {
+      referenceToken: data.referenceToken,
+      totalDelta: data.totalDelta.toString(),
+      activeNeurons: data.activeNeurons,
+      totalNeurons: data.totalNeurons,
+      fetchedAt: data.fetchedAt,
+    };
+    localStorage.setItem(CACHE_KEY, JSON.stringify(c));
+  } catch { /* localStorage unavailable */ }
+}
+
+function loadCache(): RewardsCanisterData | null {
+  try {
+    const raw = localStorage.getItem(CACHE_KEY);
+    if (!raw) return null;
+    const c: CachedData = JSON.parse(raw);
+    // Cache valid for 24h
+    if (Date.now() - c.fetchedAt > 24 * 60 * 60 * 1000) return null;
+    return {
+      totalNeurons: c.totalNeurons,
+      tokenStats: [],
+      referenceToken: c.referenceToken,
+      totalDelta: BigInt(c.totalDelta),
+      activeNeurons: c.activeNeurons,
+      fetchedAt: c.fetchedAt,
+      fromCache: true,
+    };
   } catch {
     return null;
   }
 }
 
-/* ── Find latest round_id ────────────────────────────────────────────────── */
-
-async function findLatestRoundId(actor: any): Promise<number> {
-  // Probe anchors in parallel
-  const probes = [300, 200, 150, 100, 50, 25, 10];
-  const results = await Promise.all(
-    probes.map(async (id) => ({
-      id,
-      found: (await fetchIcpRound(actor, id)) !== null,
-    })),
-  );
-
-  let hi = 0;
-  for (const r of results) {
-    if (r.found && r.id > hi) hi = r.id;
-  }
-  if (hi === 0) return 0;
-
-  // Ceiling: lowest probe above hi that returned nothing
-  let ceil = 500;
-  for (const r of results) {
-    if (!r.found && r.id > hi && r.id < ceil) ceil = r.id;
-  }
-
-  // Scan up from hi in batches to find the exact latest
-  const BATCH = 10;
-  for (let start = hi + 1; start < ceil; start += BATCH) {
-    const batch = Array.from(
-      { length: Math.min(BATCH, ceil - start) },
-      (_, i) => start + i,
-    );
-    const found = await Promise.all(
-      batch.map(async (id) => ({
-        id,
-        found: (await fetchIcpRound(actor, id)) !== null,
-      })),
-    );
-    let anyFound = false;
-    for (const r of found) {
-      if (r.found && r.id > hi) {
-        hi = r.id;
-        anyFound = true;
-      }
-    }
-    if (!anyFound) break;
-  }
-
-  return hi;
-}
-
 /* ── Public API ──────────────────────────────────────────────────────────── */
 
 /**
- * Fetch the latest completed ICP payment round from the sns_rewards canister.
- * The neuron share derived from this round applies to all reward tokens.
+ * Fetch all neurons' maturity from the sns_rewards canister.
+ * Computes total delta per token, picks the best reference token.
  */
-export async function fetchRewardRounds(): Promise<RewardsCanisterData | null> {
+export async function fetchRewardsMaturity(): Promise<RewardsCanisterData | null> {
   try {
     const agent = await getAgent();
     const actor = Actor.createActor(rewardsIdlFactory, {
@@ -200,60 +182,117 @@ export async function fetchRewardRounds(): Promise<RewardsCanisterData | null> {
       canisterId: SNS_REWARDS_CANISTER,
     });
 
-    const latestId = await findLatestRoundId(actor);
-    if (latestId === 0) {
-      console.warn("[rewards-canister] no ICP rounds found");
-      return null;
+    const raw = (await actor.get_all_neurons_maturity()) as any[];
+
+    const stats: TokenDeltaStats[] = TOKEN_KEYS.map((token) => {
+      let totalDelta = 0n;
+      let neuronsWithDelta = 0;
+      for (const entry of raw) {
+        const info = entry[1] ?? entry;
+        const d = getDelta(info, token);
+        if (d > 0n) {
+          totalDelta += d;
+          neuronsWithDelta++;
+        }
+      }
+      return { token, totalDelta, neuronsWithDelta };
+    });
+
+    // Pick best reference: first in priority order with delta > 0
+    let refToken: TokenKey = "GLDT";
+    let refStats = stats.find((s) => s.token === "GLDT")!;
+
+    for (const tok of REF_PRIORITY) {
+      const s = stats.find((st) => st.token === tok)!;
+      if (s.totalDelta > 0n) {
+        refToken = tok;
+        refStats = s;
+        break;
+      }
     }
 
-    const icpRound = await fetchIcpRound(actor, latestId);
-    if (!icpRound) {
-      console.warn("[rewards-canister] failed to fetch ICP round", latestId);
-      return null;
+    // If all zeros, try cache
+    if (refStats.totalDelta === 0n) {
+      console.info("[rewards-canister] all deltas zero (just distributed), using cache");
+      return loadCache();
     }
+
+    const data: RewardsCanisterData = {
+      totalNeurons: raw.length,
+      tokenStats: stats,
+      referenceToken: refToken,
+      totalDelta: refStats.totalDelta,
+      activeNeurons: refStats.neuronsWithDelta,
+      fetchedAt: Date.now(),
+      fromCache: false,
+    };
+
+    saveCache(data);
 
     console.info(
-      `[rewards-canister] ICP round #${icpRound.roundId}: ` +
-      `${icpRound.payments.length} neurons, ` +
-      `pool ${Number(icpRound.tokensToDistribute) / 1e8} ICP, ` +
-      `total_maturity ${icpRound.totalNeuronMaturity}`,
+      `[rewards-canister] ${raw.length} neurons, ref=${refToken}: ` +
+        `${refStats.neuronsWithDelta} active, total_delta=${refStats.totalDelta}`,
     );
 
-    return { icpRound, fetchedAt: Date.now() };
+    return data;
   } catch (e) {
-    console.error("[rewards-canister] fetch failed:", e);
+    console.error("[rewards-canister] fetchRewardsMaturity failed:", e);
+    return loadCache();
+  }
+}
+
+/**
+ * Fetch a single neuron's maturity data and compute its share.
+ */
+export async function fetchNeuronMaturity(
+  neuronIdHex: string,
+  canisterData: RewardsCanisterData,
+): Promise<NeuronMaturityData | null> {
+  try {
+    const agent = await getAgent();
+    const actor = Actor.createActor(rewardsIdlFactory, {
+      agent,
+      canisterId: SNS_REWARDS_CANISTER,
+    });
+
+    const bytes = hexToBytes(neuronIdHex);
+    const result = (await actor.get_neuron_by_id({ id: bytes })) as any[];
+
+    if (!result || result.length === 0 || !result[0]) return null;
+
+    const info = result[0];
+    const deltas: Partial<Record<TokenKey, bigint>> = {};
+    for (const tok of TOKEN_KEYS) {
+      const d = getDelta(info, tok);
+      if (d > 0n) deltas[tok] = d;
+    }
+
+    const refDelta = deltas[canisterData.referenceToken] ?? 0n;
+    const share =
+      canisterData.totalDelta > 0n
+        ? Number(refDelta) / Number(canisterData.totalDelta)
+        : null;
+
+    return {
+      neuronIdHex: neuronIdHex.toLowerCase(),
+      accumulatedMaturity: BigInt(info.accumulated_maturity),
+      deltas,
+      share,
+    };
+  } catch (e) {
+    console.warn("[rewards-canister] fetchNeuronMaturity failed:", e);
     return null;
   }
 }
 
-/* ── Reward helpers ──────────────────────────────────────────────────────── */
-
 /**
- * Compute a neuron's exact share from the ICP payment map.
- * This share applies to ALL reward tokens (ICP, GLDT, OGY, etc).
- * Returns null if the neuron is not in the map.
+ * Compute a neuron's share from pre-fetched canister data.
+ * Used when we already have the neuron's delta from a previous call.
  */
-export function neuronShareFromRound(
-  neuronIdHex: string,
-  round: RoundData,
-): { share: number; delta: bigint } | null {
-  const normalized = neuronIdHex.toLowerCase();
-  const entry = round.payments.find((p) => p.neuronIdHex === normalized);
-  if (!entry || round.totalNeuronMaturity === 0n) return null;
-  return {
-    share: Number(entry.maturityDelta) / Number(round.totalNeuronMaturity),
-    delta: entry.maturityDelta,
-  };
-}
-
-/**
- * Annualize a single round's pool.
- * GLDT = monthly (×12), everything else = weekly (×52).
- */
-export function annualizePool(
-  tokensToDistribute: bigint,
-  isGldt: boolean,
+export function computeShare(
+  neuronDelta: bigint,
+  totalDelta: bigint,
 ): number {
-  const poolTokens = Number(tokensToDistribute) / 1e8;
-  return poolTokens * (isGldt ? 12 : 52);
+  if (totalDelta === 0n || neuronDelta === 0n) return 0;
+  return Number(neuronDelta) / Number(totalDelta);
 }
