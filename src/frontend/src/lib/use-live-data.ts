@@ -23,7 +23,7 @@ import {
   DEFAULTS as PROTO_DEFAULTS,
 } from "@/lib/waterneuron-data";
 import {
-  fetchRewardRounds,
+  fetchRewardsMaturity,
   type RewardsCanisterData,
 } from "@/lib/rewards-canister";
 import { getPoolRatio } from "@/lib/icpswap-quote";
@@ -287,9 +287,9 @@ export function useLiveData(): LiveData {
       }
     }
 
-    // ── ONE-TIME: Payment rounds from sns_rewards canister (Fase 2) ──
+    // ── ONE-TIME: Maturity data from sns_rewards canister ──
     async function fetchCanisterRounds() {
-      const data = await fetchRewardRounds();
+      const data = await fetchRewardsMaturity();
       if (cancelled || !data) return;
       setExtra((prev) => ({ ...prev, rewardRounds: data }));
     }
