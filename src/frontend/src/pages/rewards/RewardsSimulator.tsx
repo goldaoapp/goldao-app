@@ -20,8 +20,8 @@ import {
   simulate,
 } from "@/lib/rewards-calc";
 import {
-  annualizePool,
-  neuronShareFromRound,
+  fetchNeuronMaturity,
+  computeShare,
 } from "@/lib/rewards-canister";
 import { useLiveData } from "@/lib/use-live-data";
 
@@ -359,32 +359,53 @@ export default function RewardsSimulator() {
     return neuronAgg.totalGoldao;
   }, [mode, amount, neurons, neuronAgg]);
 
-  // Canister-based share: use maturity delta from actual payment rounds.
+  // Canister-based share: use maturity delta from get_all_neurons_maturity.
+  // Fetches individual neuron delta via get_neuron_by_id when neurons change.
   // Falls back to VP proxy if canister data not yet loaded.
   const AVG_VP_MULT = 2.3;
+
+  const [neuronDeltas, setNeuronDeltas] = useState<
+    Record<string, bigint>
+  >({});
+
+  // Fetch neuron deltas from canister when neurons change
+  useEffect(() => {
+    if (!rewardRounds || neurons.length === 0) return;
+    let cancelled = false;
+
+    (async () => {
+      const newDeltas: Record<string, bigint> = {};
+      for (const n of neurons) {
+        if (n.eligible === false) continue;
+        const data = await fetchNeuronMaturity(n.id, rewardRounds);
+        if (cancelled) return;
+        if (data && data.share !== null && data.deltas[rewardRounds.referenceToken]) {
+          newDeltas[n.id] = data.deltas[rewardRounds.referenceToken]!;
+        }
+      }
+      if (!cancelled) setNeuronDeltas(newDeltas);
+    })();
+
+    return () => { cancelled = true; };
+  }, [neurons, rewardRounds]);
 
   const canisterShare = useMemo<number | undefined>(() => {
     if (mode !== "neuron" || neuronIneligible || neurons.length === 0)
       return undefined;
-    if (!rewardRounds) return undefined;
+    if (!rewardRounds || rewardRounds.totalDelta === 0n) return undefined;
 
-    const icpRound = rewardRounds.icpRound;
-    if (icpRound.totalNeuronMaturity === 0n) return undefined;
-
-    // Sum deltas for all user neurons found in the payment map
     let totalDelta = 0n;
     let foundAny = false;
     for (const n of neurons) {
-      if (n.eligible === false) continue;
-      const match = neuronShareFromRound(n.id, icpRound);
-      if (match) {
-        totalDelta += match.delta;
+      const d = neuronDeltas[n.id];
+      if (d && d > 0n) {
+        totalDelta += d;
         foundAny = true;
       }
     }
     if (!foundAny) return undefined;
-    return Number(totalDelta) / Number(icpRound.totalNeuronMaturity);
-  }, [mode, neurons, neuronIneligible, rewardRounds]);
+    return computeShare(totalDelta, rewardRounds.totalDelta);
+  }, [mode, neurons, neuronIneligible, rewardRounds, neuronDeltas]);
 
   // VP-based fallback when canister data unavailable
   const vpShare = useMemo<number | undefined>(() => {
@@ -397,18 +418,7 @@ export default function RewardsSimulator() {
 
   const shareOverride = canisterShare ?? vpShare;
 
-  // Build pools: use canister ICP round to annualize if available,
-  // otherwise fall back to assumption-based calculation.
-  const pools = useMemo(() => {
-    const base = poolsFrom(assumptions);
-    if (rewardRounds) {
-      base.icp_annual = annualizePool(
-        rewardRounds.icpRound.tokensToDistribute,
-        false,
-      );
-    }
-    return base;
-  }, [assumptions, rewardRounds]);
+  const pools = useMemo(() => poolsFrom(assumptions), [assumptions]);
 
   const result = useMemo<RewardResult>(
     () => simulate(pools, userGoldao, shareOverride),
@@ -656,15 +666,16 @@ export default function RewardsSimulator() {
                 style={{ width: `${Math.min(result.share * 100, 100)}%` }}
               />
             </div>
-            {canisterShare !== undefined ? (
+            {canisterShare !== undefined && rewardRounds ? (
               <div className="mt-2 space-y-0.5">
                 <p className="font-mono text-[11px] text-muted-foreground">
-                  Share from on-chain maturity delta (last ICP round)
+                  Share from on-chain maturity delta ({rewardRounds.activeNeurons} active neurons,
+                  ref: {rewardRounds.referenceToken})
+                  {rewardRounds.fromCache && " (cached)"}
                 </p>
                 <p className="font-mono text-[10px] text-muted-foreground/70">
-                  Exact share from the sns_rewards canister. Your neuron
-                  {neurons.length > 1 ? "s'" : "'s"} maturity delta vs total
-                  delta of all active neurons.
+                  Your neuron{neurons.length > 1 ? "s'" : "'s"} delta vs total
+                  delta of all neurons that vote actively.
                 </p>
               </div>
             ) : vpShare !== undefined && neuronAgg.totalVP > 0 ? (
@@ -756,7 +767,9 @@ export default function RewardsSimulator() {
           {rewardRounds && (
             <p className="rounded-md border border-[oklch(0.72_0.17_162)]/30 bg-[oklch(0.72_0.17_162)]/10 px-3 py-2 font-mono text-xs text-[oklch(0.72_0.17_162)]">
               <span className="inline-block size-1.5 rounded-full bg-[oklch(0.72_0.17_162)] mr-1.5 align-middle" />
-              Pools from on-chain data (sns_rewards canister). GLDT monthly, rest weekly.
+              On-chain maturity data ({rewardRounds.totalNeurons} neurons,
+              {" "}{rewardRounds.activeNeurons} active, ref: {rewardRounds.referenceToken})
+              {rewardRounds.fromCache && " — cached"}
             </p>
           )}
           {neuronIneligible && (
