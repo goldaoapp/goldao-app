@@ -10,11 +10,13 @@ import {
   Lock,
   LogOut,
   type LucideIcon,
+  Moon,
   Scale,
   Shield,
+  Sun,
   Wallet,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/context/AuthContext";
@@ -68,12 +70,42 @@ export function Sidebar() {
     }
     return false;
   });
+  const [darkMode, setDarkMode] = useState(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("theme") === "dark" || 
+             document.documentElement.classList.contains("dark");
+    }
+    return false;
+  });
   const { location } = useRouterState();
+
+  useEffect(() => {
+    const theme = localStorage.getItem("theme");
+    if (theme === "dark") {
+      document.documentElement.classList.add("dark");
+      setDarkMode(true);
+    } else if (theme === "light") {
+      document.documentElement.classList.remove("dark");
+      setDarkMode(false);
+    }
+  }, []);
 
   const toggle = () => {
     const next = !collapsed;
     setCollapsed(next);
     localStorage.setItem("sidebar-collapsed", String(next));
+  };
+
+  const toggleDarkMode = () => {
+    const newDarkMode = !darkMode;
+    setDarkMode(newDarkMode);
+    if (newDarkMode) {
+      document.documentElement.classList.add("dark");
+      localStorage.setItem("theme", "dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+      localStorage.setItem("theme", "light");
+    }
   };
 
   return (
@@ -142,6 +174,24 @@ export function Sidebar() {
 
       {/* Bottom section */}
       <div className="p-2.5 flex flex-col gap-2 border-t border-border">
+        {/* Theme toggle */}
+        <button
+          type="button"
+          onClick={toggleDarkMode}
+          aria-label={darkMode ? "Switch to light mode" : "Switch to dark mode"}
+          className={cn(
+            "flex items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] font-medium text-muted-foreground hover:text-foreground hover:bg-secondary transition-smooth outline-none focus-visible:ring-2 focus-visible:ring-ring",
+            collapsed && "justify-center px-0",
+          )}
+        >
+          {darkMode ? (
+            <Sun className="size-[18px]" />
+          ) : (
+            <Moon className="size-[18px]" />
+          )}
+          {!collapsed && (darkMode ? "Light" : "Dark")}
+        </button>
+
         {/* Collapse toggle */}
         <button
           type="button"
@@ -183,11 +233,10 @@ function AuthControls({ collapsed }: { collapsed: boolean }) {
         disabled={isLoading}
         title={collapsed ? "Connect Wallet" : undefined}
         className={cn(
-          "rounded-full gradient-primary text-primary-foreground font-medium shadow-subtle hover:opacity-90 transition-opacity",
+          "rounded-lg gradient-primary text-primary-foreground font-medium shadow-subtle hover:opacity-90 transition-opacity border border-primary/30",
           collapsed && "rounded-lg px-0 w-full",
         )}
       >
-        <Wallet className="size-4 flex-shrink-0" />
         {!collapsed && (isLoading ? "…" : "Connect Wallet")}
       </Button>
     );
@@ -227,14 +276,14 @@ function AuthControls({ collapsed }: { collapsed: boolean }) {
         type="button"
         onClick={logout}
         data-ocid="nav.logout"
-        title={collapsed ? "Salir" : undefined}
+        title={collapsed ? "Logout" : undefined}
         className={cn(
           "flex items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] font-medium text-muted-foreground hover:text-foreground hover:bg-secondary transition-smooth outline-none focus-visible:ring-2 focus-visible:ring-ring",
           collapsed && "justify-center px-0",
         )}
       >
         <LogOut className="size-[18px] flex-shrink-0" aria-hidden="true" />
-        {!collapsed && "Salir"}
+        {!collapsed && "Logout"}
       </button>
     </div>
   );
@@ -376,7 +425,7 @@ function MoreMenu({ pathname }: { pathname: string }) {
                   className="flex w-full items-center gap-2.5 px-4 py-2.5 text-[13px] font-medium text-muted-foreground transition-colors"
                 >
                   <LogOut className="size-4" aria-hidden="true" />
-                  Salir
+                  Logout
                 </button>
               </>
             )}
