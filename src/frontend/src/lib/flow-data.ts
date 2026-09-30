@@ -1,12 +1,13 @@
 /**
- * Fetches ICP balances for key accounts in the reward flow.
+ * Live balances for the Reward Flow diagram.
  * Called once when the Reward Flow tab mounts — no polling.
  *
- * Uses the ICP Ledger API (ledger-api.internetcomputer.org) which returns
- * account data by AccountIdentifier (64-char hex hash of principal + subaccount).
+ * ICP balances come from the ICP Ledger API by AccountIdentifier (64-char hex
+ * of principal + subaccount). Every value is `null` when its source fails, so
+ * the UI can show "—" instead of a made-up number.
  */
 
-import { API, type SnsNeuronResponse, POOLS } from "@/lib/api";
+import { API, POOLS, type SnsNeuronResponse } from "@/lib/api";
 import { getPoolRatio } from "@/lib/icpswap-quote";
 
 const LEDGER_API = "https://ledger-api.internetcomputer.org/accounts";
@@ -21,24 +22,40 @@ const TOKEN_LEDGERS = {
   gldt: "6c7su-kiaaa-aaaar-qaira-cai",
 } as const;
 
-/**
- * Known ICP accounts in the reward pipeline (ICP Ledger AccountIdentifiers).
- */
-const ACCOUNTS: Record<string, string> = {
+/** Known ICP accounts in the reward pipeline (ICP Ledger AccountIdentifiers). */
+const ACCOUNTS = {
+  /** Cycle management — pre-split diversion if below 1,000 ICP */
   cycle: "a51ceabd4d86c16c94936db0422d9b814b4f20e58fa013aeace0053af2305e8c",
+  /** sns_rewards ICP reward pool — paid out on Wednesdays */
   rewards: "6dc2515bbb9b0a97b8d977ebac3eba643a1fb4b6da8b33455e0dba957f0ce7da",
+  /** buyback_burn ICP — spent by the GOLDAO / OGY / compound cascade */
   buyback: "31836130dcff35502d04752ea5b82a24e44d41955f2a30bb8c2d284f4a318d82",
+  /** GLDT job ICP — spent buying GLDT for stakers */
   gldt: "7cfd793d618d7000b8d845104396a714045438b67b8f213811f0c1ac37086eac",
-};
-
-/** Hardcoded ICP balance of the compound neuron — TODO: automate */
-const ICP_NEURON_HARDCODED = 0;
+} as const;
 
 export interface FlowBalances {
-  [flowKey: string]: number | null;
+  /** ICP in the cycle management account */
+  cycle: number | null;
+  /** ICP waiting in the staker reward pool */
+  rewards: number | null;
+  /** ICP available to the buyback cascade */
+  buyback: number | null;
+  /** ICP available to the GLDT job */
+  gldt: number | null;
+  /** OGY waiting in the staker reward pool */
+  poolOgy: number | null;
+  /** GLDT waiting in the staker reward pool */
+  poolGldt: number | null;
+  /** GOLDAO received for 1 ICP (ICPSwap quote — same check as the canister) */
+  goldaoRatio: number | null;
+  /** OGY received for 1 ICP */
+  ogyRatio: number | null;
+  /** OGY staked in the DAO's ORIGYN neuron (stake + maturity) */
+  ogyStaked: number | null;
 }
 
-/** Fetch ICP balance from the ICP Ledger API (returns e8s). */
+/** Fetch ICP balance from the ICP Ledger API (whole ICP). */
 async function fetchIcpBalance(accountId: string): Promise<number | null> {
   try {
     const res = await fetch(`${LEDGER_API}/${accountId}`);
@@ -84,65 +101,46 @@ async function fetchOgyStaked(): Promise<number | null> {
   }
 }
 
-function fmtIcp(v: number): string {
-  if (v >= 1000) return `${(v / 1000).toFixed(1)}K ICP`;
-  return `${v.toFixed(2)} ICP`;
+async function safe<T>(p: Promise<T | null>): Promise<T | null> {
+  try {
+    return await p;
+  } catch {
+    return null;
+  }
 }
 
-function fmtToken(v: number, symbol: string): string {
-  if (v >= 1_000_000) return `${(v / 1_000_000).toFixed(2)}M ${symbol}`;
-  if (v >= 1000) return `${(v / 1000).toFixed(1)}K ${symbol}`;
-  return `${v.toFixed(2)} ${symbol}`;
-}
-
-/**
- * Fetch all known balances in parallel. Returns a map of flowKey → display string.
- * Called once on mount — no polling.
- *
- * Keys returned:
- * - cycle, rewards, buyback, gldt → ICP balances from the ICP Ledger
- * - pool_ogy → OGY balance in the sns_rewards reward pool
- * - pool_gldt → GLDT balance in the sns_rewards reward pool
- * - goldao_ratio → GOLDAO per ICP (ICPSwap pool, drives Burn cascade)
- * - ogy_ratio → OGY per ICP (ICPSwap pool, drives Stake OGY cascade)
- * - ogy_staked → OGY staked in DAO neuron (display string)
- * - icp_neuron → ICP balance of compound neuron (hardcoded for now)
- */
-export async function fetchFlowBalances(): Promise<Record<string, string>> {
-  const icpEntries = Object.entries(ACCOUNTS);
-
-  const [icpResults, ogyBal, gldtBal, goldaoRatio, ogyRatio, ogyStaked] =
-    await Promise.all([
-      Promise.allSettled(
-        icpEntries.map(([, accountId]) => fetchIcpBalance(accountId)),
-      ),
-      fetchIcrcBalance(TOKEN_LEDGERS.ogy, SNS_REWARDS, 8),
-      fetchIcrcBalance(TOKEN_LEDGERS.gldt, SNS_REWARDS, 8),
-      getPoolRatio(POOLS.GOLDAO_ICP.id, POOLS.GOLDAO_ICP.zeroForOne),
-      getPoolRatio(POOLS.OGY_ICP.id, POOLS.OGY_ICP.zeroForOne),
-      fetchOgyStaked(),
-    ]);
-
-  const out: Record<string, string> = {};
-
-  icpEntries.forEach(([key], i) => {
-    const r = icpResults[i];
-    const val = r.status === "fulfilled" ? r.value : null;
-    if (val !== null) out[key] = fmtIcp(val);
-  });
-
-  if (ogyBal !== null) out.pool_ogy = fmtToken(ogyBal, "OGY");
-  if (gldtBal !== null) out.pool_gldt = fmtToken(gldtBal, "GLDT");
-
-  // Raw numeric strings — RewardsFlow parses with Number() for cascade logic
-  if (goldaoRatio !== null) out.goldao_ratio = String(Math.round(goldaoRatio));
-  if (ogyRatio !== null) out.ogy_ratio = String(Math.round(ogyRatio));
-
-  if (ogyStaked !== null)
-    out.ogy_staked = fmtToken(Math.round(ogyStaked), "OGY");
-
-  // Compound neuron balance — hardcoded until on-chain fetch is wired
-  out.icp_neuron = fmtIcp(ICP_NEURON_HARDCODED);
-
-  return out;
+/** Fetch all flow balances in parallel. */
+export async function fetchFlowBalances(): Promise<FlowBalances> {
+  const [
+    cycle,
+    rewards,
+    buyback,
+    gldt,
+    poolOgy,
+    poolGldt,
+    goldaoRatio,
+    ogyRatio,
+    ogyStaked,
+  ] = await Promise.all([
+    fetchIcpBalance(ACCOUNTS.cycle),
+    fetchIcpBalance(ACCOUNTS.rewards),
+    fetchIcpBalance(ACCOUNTS.buyback),
+    fetchIcpBalance(ACCOUNTS.gldt),
+    fetchIcrcBalance(TOKEN_LEDGERS.ogy, SNS_REWARDS, 8),
+    fetchIcrcBalance(TOKEN_LEDGERS.gldt, SNS_REWARDS, 8),
+    safe(getPoolRatio(POOLS.GOLDAO_ICP.id, POOLS.GOLDAO_ICP.zeroForOne)),
+    safe(getPoolRatio(POOLS.OGY_ICP.id, POOLS.OGY_ICP.zeroForOne)),
+    fetchOgyStaked(),
+  ]);
+  return {
+    cycle,
+    rewards,
+    buyback,
+    gldt,
+    poolOgy,
+    poolGldt,
+    goldaoRatio,
+    ogyRatio,
+    ogyStaked,
+  };
 }
