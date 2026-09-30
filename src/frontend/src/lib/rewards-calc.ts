@@ -104,11 +104,23 @@ export function simulate(
   );
 
   const sumWeekly =
-    icp.weekly_usd + gldt.weekly_usd + ogy.weekly_usd + wtn_icp.weekly_usd + origyn_ogy.weekly_usd;
+    icp.weekly_usd +
+    gldt.weekly_usd +
+    ogy.weekly_usd +
+    wtn_icp.weekly_usd +
+    origyn_ogy.weekly_usd;
   const sumMonthly =
-    icp.monthly_usd + gldt.monthly_usd + ogy.monthly_usd + wtn_icp.monthly_usd + origyn_ogy.monthly_usd;
+    icp.monthly_usd +
+    gldt.monthly_usd +
+    ogy.monthly_usd +
+    wtn_icp.monthly_usd +
+    origyn_ogy.monthly_usd;
   const sumAnnual =
-    icp.annual_usd + gldt.annual_usd + ogy.annual_usd + wtn_icp.annual_usd + origyn_ogy.annual_usd;
+    icp.annual_usd +
+    gldt.annual_usd +
+    ogy.annual_usd +
+    wtn_icp.annual_usd +
+    origyn_ogy.annual_usd;
 
   return {
     share,
@@ -137,6 +149,13 @@ export interface RewardAssumptions {
   wtn_icp_annual: number;
   /** ICP-equiv/year from ORIGYN partnership flywheel */
   origyn_ogy_icp_annual: number;
+  /**
+   * Measured OGY paid to all stakers per week (average of recent sns_rewards
+   * rounds). Already includes the ORIGYN partnership OGY, because both arrive
+   * through the DAO's OGY neuron. When > 0 it replaces ogy_staked × ogy_apy
+   * and the separate ORIGYN estimate. 0 = use the model.
+   */
+  ogy_pool_weekly: number;
   goldao_eligible: number;
   price_icp_usd: number;
   price_ogy_usd: number;
@@ -151,6 +170,7 @@ export const ASSUMPTION_DEFAULTS: RewardAssumptions = {
   ogy_apy: 6,
   wtn_icp_annual: 0,
   origyn_ogy_icp_annual: 0,
+  ogy_pool_weekly: 0,
   goldao_eligible: 0,
   price_icp_usd: 0,
   price_ogy_usd: 0,
@@ -160,13 +180,17 @@ export function poolsFrom(a: RewardAssumptions): RewardPools {
   const icp_gross = a.icp_staked * (a.nns_apy / 100);
   const icp_annual = icp_gross * (a.pct_stakers / 100);
   const gldt_icp_annual = icp_gross * (a.pct_gldt / 100);
-  const ogy_annual = a.ogy_staked * (a.ogy_apy / 100);
+  const measuredOgy = a.ogy_pool_weekly > 0;
+  const ogy_annual = measuredOgy
+    ? a.ogy_pool_weekly * WEEKS_PER_YEAR
+    : a.ogy_staked * (a.ogy_apy / 100);
   return {
     icp_annual,
     gldt_icp_annual,
     ogy_annual,
     wtn_icp_annual: a.wtn_icp_annual,
-    origyn_ogy_icp_annual: a.origyn_ogy_icp_annual,
+    // Measured OGY already contains the partnership share — don't add it twice.
+    origyn_ogy_icp_annual: measuredOgy ? 0 : a.origyn_ogy_icp_annual,
     goldao_eligible: a.goldao_eligible,
     price_icp_usd: a.price_icp_usd,
     price_ogy_usd: a.price_ogy_usd,
