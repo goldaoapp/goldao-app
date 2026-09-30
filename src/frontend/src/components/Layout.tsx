@@ -1,6 +1,7 @@
 import { Outlet } from "@tanstack/react-router";
 
 import { MobileTabBar, Sidebar } from "@/components/Navbar";
+import ThemeToggle from "@/components/ThemeToggle";
 
 export default function Layout() {
   return (
@@ -15,6 +16,9 @@ export default function Layout() {
       >
         <Outlet />
       </main>
+
+      {/* Light / dark switch — always visible, top-right */}
+      <ThemeToggle className="fixed right-4 top-4 z-50" />
 
       {/* Mobile bottom tab bar */}
       <MobileTabBar />
