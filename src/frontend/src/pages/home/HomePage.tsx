@@ -2,6 +2,7 @@ import { DEFAULTS, type FairValueParams, calcular } from "@/lib/fairvalue-calc";
 import { useLiveData } from "@/lib/use-live-data";
 import { Info } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
+import BurnBar from "./BurnBar";
 
 /* ── Page ──────────────────────────────────────────────────────────────── */
 
@@ -31,10 +32,8 @@ export default function HomePage() {
       };
     }
     const r = calcular(full);
-    const eqRatio =
-      r.ratio_eq_active > 0 ? r.ratio_eq_active : r.ratio_eq;
-    const apy =
-      r.apy_active > 0 ? r.apy_active : r.apy_efectivo;
+    const eqRatio = r.ratio_eq_active > 0 ? r.ratio_eq_active : r.ratio_eq;
+    const apy = r.apy_active > 0 ? r.apy_active : r.apy_efectivo;
     return {
       marketRatio: Math.round(full.market_ratio),
       equilibrium: eqRatio > 0 ? Math.round(eqRatio) : null,
@@ -56,14 +55,8 @@ export default function HomePage() {
 
   return (
     <div className="flex flex-col gap-8 p-4 sm:p-6 lg:p-10 max-w-5xl mx-auto">
-      {/* Beta Banner */}
-      <div className="rounded-lg bg-primary/10 border border-primary/20 px-4 py-3 text-center text-sm text-primary font-medium">
-        BETA VERSION — Data is under active development and may be out of date
-        or inaccurate.
-      </div>
-
       {/* Hero */}
-      <section className="flex flex-col items-center text-center gap-4 py-8 sm:py-12 animate-fade-in-up">
+      <section className="flex flex-col items-center text-center gap-3 pt-0 pb-2 sm:pb-4 animate-fade-in-up">
         <span className="inline-flex items-center rounded-full border border-border bg-card px-4 py-1.5 text-xs font-mono font-medium text-primary tracking-wider uppercase">
           100% On-Chain
         </span>
@@ -84,7 +77,7 @@ export default function HomePage() {
         <h2 className="font-mono text-[10px] tracking-widest uppercase text-primary mb-3">
           GOLDAO Token
         </h2>
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 gap-3">
           <StatCard
             value={stats.marketRatio !== null ? String(stats.marketRatio) : "—"}
             label="ICP / GOLDAO Ratio"
@@ -97,24 +90,9 @@ export default function HomePage() {
             info="Break-even ratio: the GOLDAO-per-ICP price at which holding GOLDAO yields the same annual return as staking ICP in the NNS. When the market ratio is above it, GOLDAO is comparatively cheap; below it, staking ICP wins."
             accent
           />
-          <StatCard
-            value={
-              extra.totalBurned !== null
-                ? `${(extra.totalBurned / 1e6).toFixed(1)} M`
-                : "—"
-            }
-            label="Total Burn"
-            info="Cumulative GOLDAO permanently removed from circulation by the buyback-and-burn canister since launch."
-          />
-          <StatCard
-            value={
-              extra.supply !== null
-                ? `${(extra.supply / 1e6).toFixed(1)} M`
-                : "—"
-            }
-            label="Supply"
-            info="Total GOLDAO tokens currently in existence, net of everything already burned."
-          />
+        </div>
+        <div className="mt-3">
+          <BurnBar />
         </div>
       </section>
 
