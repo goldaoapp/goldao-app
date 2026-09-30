@@ -55,7 +55,18 @@ export default function HomePage() {
       : "580 K";
 
   return (
-    <div className="flex flex-col gap-8 p-4 sm:p-6 lg:p-10 max-w-5xl mx-auto">
+    <div className="flex flex-col gap-8 p-4 sm:p-6 lg:p-10 max-w-7xl mx-auto relative">
+      {/* Subtle background grid */}
+      <div 
+        className="fixed inset-0 pointer-events-none opacity-5 dark:opacity-3 -z-10"
+        style={{
+          backgroundImage: `
+            repeating-linear-gradient(90deg, transparent, transparent 107px, currentColor 107px, currentColor 108px),
+            repeating-linear-gradient(0deg, transparent, transparent 107px, currentColor 107px, currentColor 108px)
+          `
+        }}
+      />
+
       {/* Alpha Banner */}
       <div className="rounded-lg bg-primary/10 border border-primary/20 px-4 py-3 text-center text-sm text-primary font-medium">
         BETA VERSION — Data is under active development and may be out of date
@@ -63,8 +74,8 @@ export default function HomePage() {
       </div>
 
       {/* Hero */}
-      <section className="flex flex-col items-center text-center gap-4 py-8 sm:py-12 animate-fade-in-up">
-        <span className="inline-flex items-center rounded-full border border-border bg-card px-4 py-1.5 text-xs font-mono font-medium text-primary tracking-wider uppercase">
+      <section className="flex flex-col items-center text-center gap-4 py-8 sm:py-12 animate-fade-in-up relative">
+        <span className="inline-flex items-center rounded-full border border-border bg-card/60 px-4 py-1.5 text-xs font-mono font-medium text-primary tracking-wider uppercase backdrop-blur-sm">
           100% On-Chain
         </span>
         <h1 className="font-display text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight">
@@ -80,8 +91,8 @@ export default function HomePage() {
       </section>
 
       {/* GOLDAO Token Stats */}
-      <section>
-        <h2 className="font-mono text-[10px] tracking-widest uppercase text-primary mb-3">
+      <section className="relative">
+        <h2 className="font-mono text-[10px] tracking-widest uppercase text-primary mb-3 font-semibold">
           GOLDAO Token
         </h2>
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
@@ -119,8 +130,8 @@ export default function HomePage() {
       </section>
 
       {/* Treasury Overview */}
-      <section>
-        <h2 className="font-mono text-[10px] tracking-widest uppercase text-primary mb-3">
+      <section className="relative">
+        <h2 className="font-mono text-[10px] tracking-widest uppercase text-primary mb-3 font-semibold">
           Treasury Overview
         </h2>
         <div className="grid grid-cols-3 gap-3">
@@ -144,7 +155,7 @@ export default function HomePage() {
       </section>
 
       {/* Quick Stats */}
-      <section>
+      <section className="relative">
         <div className="grid grid-cols-3 gap-3">
           <StatCard
             value={
@@ -189,19 +200,21 @@ function StatCard({
 }) {
   return (
     <div
-      className={`relative rounded-lg p-4 sm:p-5 text-center ${
+      className={`relative rounded-lg p-4 sm:p-5 text-center backdrop-blur-sm transition-all duration-300 ${
         accent
-          ? "border border-primary/15 bg-gradient-to-br from-primary/8 to-primary/2"
-          : "border border-border bg-card/50"
+          ? "border border-primary/25 bg-gradient-to-br from-primary/10 to-primary/3 hover:border-primary/40 hover:shadow-lg"
+          : "border border-border/60 bg-card/40 hover:border-border hover:bg-card/60 hover:shadow-md"
       }`}
     >
       {info && <InfoTip text={info} />}
       <div
-        className={`font-mono text-lg sm:text-xl lg:text-2xl font-bold ${accent ? "text-primary" : "text-foreground"}`}
+        className={`font-mono text-lg sm:text-xl lg:text-2xl font-bold tracking-tight ${
+          accent ? "text-primary" : "text-foreground"
+        }`}
       >
         {value}
       </div>
-      <div className="text-[10px] sm:text-xs text-muted-foreground mt-1 leading-snug">
+      <div className="text-[10px] sm:text-xs text-muted-foreground mt-1.5 leading-snug font-medium">
         {label}
       </div>
     </div>
