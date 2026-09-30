@@ -10,6 +10,18 @@ export default function HomePage() {
 
   const stats = useMemo(() => {
     const full: FairValueParams = { ...DEFAULTS, ...liveParams };
+    // Inject active eligible from canister data
+    if (
+      extra.rewardRounds &&
+      extra.rewardRounds.totalNeurons > 0 &&
+      extra.rewardRounds.activeNeurons > 0 &&
+      full.goldao_eligible > 0
+    ) {
+      full.goldao_active_eligible = Math.round(
+        full.goldao_eligible *
+          (extra.rewardRounds.activeNeurons / extra.rewardRounds.totalNeurons),
+      );
+    }
     if (!full.market_ratio || !full.price_icp_usd || !full.goldao_eligible) {
       return {
         marketRatio: null,
@@ -19,13 +31,17 @@ export default function HomePage() {
       };
     }
     const r = calcular(full);
+    const eqRatio =
+      r.ratio_eq_active > 0 ? r.ratio_eq_active : r.ratio_eq;
+    const apy =
+      r.apy_active > 0 ? r.apy_active : r.apy_efectivo;
     return {
       marketRatio: Math.round(full.market_ratio),
-      equilibrium: r.ratio_eq > 0 ? Math.round(r.ratio_eq) : null,
+      equilibrium: eqRatio > 0 ? Math.round(eqRatio) : null,
       ogyStaked: full.ogy_staked > 0 ? Math.round(full.ogy_staked) : null,
-      apyEfectivo: r.apy_efectivo > 0 ? r.apy_efectivo.toFixed(1) : null,
+      apyEfectivo: apy > 0 ? apy.toFixed(1) : null,
     };
-  }, [liveParams]);
+  }, [liveParams, extra.rewardRounds]);
 
   const fmtOgy =
     stats.ogyStaked !== null ? `${(stats.ogyStaked / 1e6).toFixed(1)} M` : "—";
