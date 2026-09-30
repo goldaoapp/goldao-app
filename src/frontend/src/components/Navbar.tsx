@@ -1,5 +1,6 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import {
+  Activity,
   BookOpen,
   ChevronLeft,
   ChevronRight,
@@ -70,6 +71,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: "Treasury", to: "/treasury", icon: Lock, ocid: "nav.treasury" },
   { label: "Proposals", to: "/proposals", icon: Gavel, ocid: "nav.proposals" },
   { label: "Rewards", to: "/rewards", icon: Gift, ocid: "nav.rewards" },
+  { label: "Events", to: "/events", icon: Activity, ocid: "nav.events" },
   {
     label: "Fair Value",
     to: "/fair-value",
@@ -90,7 +92,7 @@ const MOBILE_TABS: NavItem[] = [
   NAV_ITEMS[0], // Home
   NAV_ITEMS[1], // Treasury
   NAV_ITEMS[3], // Rewards
-  NAV_ITEMS[4], // Fair Value
+  NAV_ITEMS[5], // Fair Value
 ];
 
 function isActive(currentPath: string, to: string): boolean {
@@ -344,8 +346,9 @@ export function MobileTabBar() {
 
 const MORE_ITEMS: NavItem[] = [
   NAV_ITEMS[2], // Proposals
-  NAV_ITEMS[5], // Docs
-  NAV_ITEMS[6], // News
+  NAV_ITEMS[4], // Events
+  NAV_ITEMS[6], // Docs
+  NAV_ITEMS[7], // News
 ];
 
 function MoreMenu({ pathname }: { pathname: string }) {
