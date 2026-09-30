@@ -1,8 +1,20 @@
 import { DEFAULTS, type FairValueParams, calcular } from "@/lib/fairvalue-calc";
+import { nextDistribution } from "@/lib/reward-events";
 import { useLiveData } from "@/lib/use-live-data";
+import { cn } from "@/lib/utils";
 import { Info } from "lucide-react";
+import type React from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import BurnBar from "./BurnBar";
+
+/* ── Terminal tokens (index.css --term-*) ──────────────────────────────── */
+
+const ink = "text-[color:var(--term-ink)]";
+const inkMid = "text-[color:var(--term-ink-mid)]";
+const inkFaint = "text-[color:var(--term-ink-faint)]";
+const gold = "text-[color:var(--term-gold)]";
+const panel =
+  "rounded-xl border border-[color:var(--term-border)] bg-[var(--term-card)]";
 
 /* ── Page ──────────────────────────────────────────────────────────────── */
 
@@ -43,144 +55,295 @@ export default function HomePage() {
   }, [liveParams, extra.rewardRounds]);
 
   const fmtOgy =
-    stats.ogyStaked !== null ? `${(stats.ogyStaked / 1e6).toFixed(1)} M` : "—";
-
+    stats.ogyStaked !== null ? `${(stats.ogyStaked / 1e6).toFixed(1)}M` : "—";
   const fmtWtn =
-    extra.wtnTotal !== null ? `${(extra.wtnTotal / 1e6).toFixed(1)} M` : "—";
-
+    extra.wtnTotal !== null ? `${(extra.wtnTotal / 1e6).toFixed(1)}M` : "—";
   const fmtIcpStaked =
-    extra.icpStaked !== null
-      ? `${(extra.icpStaked / 1000).toFixed(0)} K`
-      : "580 K";
+    extra.icpStaked !== null ? `${(extra.icpStaked / 1000).toFixed(1)}K` : "—";
+
+  const next = new Date(nextDistribution());
+  const nextLabel = `${next.toLocaleString("en-US", { month: "short", day: "numeric", timeZone: "UTC" })} · 14:00 UTC`;
 
   return (
-    <div className="flex flex-col gap-8 p-4 sm:p-6 lg:p-10 max-w-5xl mx-auto">
+    <div className="mx-auto flex max-w-6xl flex-col gap-8 p-4 sm:p-6 lg:p-10">
+      {/* Brand */}
+      <div
+        className={cn(
+          "flex h-8 items-center gap-2.5 pr-20 font-mono text-xs font-semibold uppercase tracking-[0.2em]",
+          ink,
+        )}
+      >
+        <img src="/logos/goldao.png" alt="" className="size-6 rounded-full" />
+        GOLDAO <span className={gold}>App</span>
+      </div>
+
       {/* Hero */}
-      <section className="flex flex-col items-center text-center gap-3 pt-0 pb-2 sm:pb-4 animate-fade-in-up">
-        <span className="inline-flex items-center rounded-full border border-border bg-card px-4 py-1.5 text-xs font-mono font-medium text-primary tracking-wider uppercase">
-          100% On-Chain
-        </span>
-        <h1 className="font-display text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight">
-          <span className="text-gradient-gold">GOLDAO APP</span>
+      <section className="max-w-3xl animate-fade-in-up">
+        <p
+          className={cn(
+            "font-mono text-[10px] font-semibold uppercase tracking-[0.18em] sm:text-[11px]",
+            gold,
+          )}
+        >
+          100% On-Chain · Internet Computer
+        </p>
+        <h1
+          className={cn(
+            "mt-3 font-display text-4xl font-semibold leading-[1.05] tracking-tight sm:text-5xl",
+            ink,
+          )}
+        >
+          The on-chain app for GOLDAO holders
         </h1>
-        <p className="font-display text-lg sm:text-xl font-medium text-foreground">
-          Your DAO. Your treasury. Real-time.
-        </p>
-        <p className="max-w-xl text-sm sm:text-base text-muted-foreground leading-relaxed">
-          Real-time treasury tracking, governance proposals, rewards simulation,
-          and community tools — all 100% on-chain on the Internet Computer.
+        <p className={cn("mt-4 max-w-2xl text-base leading-relaxed", inkMid)}>
+          Treasury, burns, rewards and fair value for Gold DAO — read straight
+          from the chain, in real time.
         </p>
       </section>
 
-      {/* GOLDAO Token Stats */}
-      <section>
-        <h2 className="font-mono text-[10px] tracking-widest uppercase text-primary mb-3">
-          GOLDAO Token
-        </h2>
-        <div className="grid grid-cols-2 gap-3">
-          <StatCard
-            value={stats.marketRatio !== null ? String(stats.marketRatio) : "—"}
-            label="ICP / GOLDAO Ratio"
-            info="Current market rate: how many GOLDAO one ICP buys right now on ICPSwap. A higher number means GOLDAO is cheaper relative to ICP."
-            accent
-          />
-          <StatCard
-            value={stats.equilibrium !== null ? String(stats.equilibrium) : "—"}
-            label="ICP / GOLDAO Equilibrium"
-            info="Break-even ratio: the GOLDAO-per-ICP price at which holding GOLDAO yields the same annual return as staking ICP in the NNS. When the market ratio is above it, GOLDAO is comparatively cheap; below it, staking ICP wins."
-            accent
-          />
-        </div>
-        <div className="mt-3">
-          <BurnBar />
-        </div>
-      </section>
+      {/* Burn — the main element */}
+      <BurnBar />
 
-      {/* Treasury Overview */}
-      <section>
-        <h2 className="font-mono text-[10px] tracking-widest uppercase text-primary mb-3">
-          Treasury Overview
-        </h2>
-        <div className="grid grid-cols-3 gap-3">
-          <StatCard
-            value={fmtIcpStaked}
-            label="ICP"
-            info="ICP held by the DAO in its NNS neuron — the treasury's core reserve and the source of all reward flows."
-            accent
-          />
-          <StatCard
-            value={fmtOgy}
-            label="OGY"
-            info="An OGY neuron owned by Gold DAO, staked in ORIGYN's SNS."
-          />
-          <StatCard
-            value={fmtWtn}
-            label="WTN"
-            info="The combined balance of all WTN (Water Neuron) neurons owned by Gold DAO."
-          />
+      {/* Three panels */}
+      <section className="grid gap-4 md:grid-cols-3">
+        <div className={cn(panel, "p-5")}>
+          <PanelLabel info="Market: how many GOLDAO one ICP buys right now on ICPSwap. Equilibrium: the ratio at which holding GOLDAO yields the same as staking ICP in the NNS. Market above equilibrium = GOLDAO comparatively cheap.">
+            Market vs fair value
+          </PanelLabel>
+          <div className="mt-2 flex flex-wrap items-baseline gap-x-2">
+            <span
+              className={cn(
+                "font-display text-3xl font-semibold tabular-nums",
+                gold,
+              )}
+            >
+              {stats.marketRatio ?? "—"}
+            </span>
+            <span className={cn("font-mono text-xs", inkFaint)}>
+              vs {stats.equilibrium ?? "—"} eq · GOLDAO/ICP
+            </span>
+          </div>
+          <div className="mt-4">
+            <MiniFairBar
+              market={stats.marketRatio}
+              equilibrium={stats.equilibrium}
+            />
+          </div>
+          <div className="mt-3">
+            <KV
+              k="ICP / GOLDAO Ratio"
+              v={stats.marketRatio !== null ? String(stats.marketRatio) : "—"}
+            />
+            <KV
+              k="ICP / GOLDAO Equilibrium"
+              v={stats.equilibrium !== null ? String(stats.equilibrium) : "—"}
+            />
+            <KV
+              k="Effective APY (ICP)"
+              v={stats.apyEfectivo !== null ? `${stats.apyEfectivo}%` : "—"}
+              strong
+            />
+          </div>
         </div>
-      </section>
 
-      {/* Quick Stats */}
-      <section>
-        <div className="grid grid-cols-3 gap-3">
-          <StatCard
-            value={
-              extra.proposalsActive !== null && extra.proposalsTotal !== null
-                ? `${extra.proposalsActive} / ${extra.proposalsTotal}`
-                : "—"
-            }
-            label="Active / Total Proposals"
-            info="Currently open SNS governance proposals versus the total ever submitted to the GOLDAO DAO."
-          />
-          <StatCard
-            value={
-              extra.members !== null
-                ? extra.members.toLocaleString("en-US")
-                : "—"
-            }
-            label="Members"
-            info="Number of GOLDAO governance participants — distinct neuron holders in the SNS."
-          />
-          <StatCard
-            value={stats.apyEfectivo !== null ? `${stats.apyEfectivo}%` : "—"}
-            label="Effective APY (ICP)"
-            info="Estimated annual return for an eligible GOLDAO staker, expressed as ICP-equivalent yield at the current market ratio."
-            accent
-          />
+        <div className={cn(panel, "p-5")}>
+          <PanelLabel info="Assets held by Gold DAO: the NNS neuron (source of all ICP rewards), the OGY neuron staked in ORIGYN's SNS and the WTN neurons in WaterNeuron.">
+            Treasury Overview
+          </PanelLabel>
+          <div className="mt-2">
+            <KV icon="/logos/icp.png" k="ICP · NNS neuron" v={fmtIcpStaked} />
+            <KV icon="/logos/ogy.png" k="OGY · ORIGYN" v={fmtOgy} />
+            <KV
+              icon="/logos/wtn.png"
+              iconFallback="W"
+              k="WTN · WaterNeuron"
+              v={fmtWtn}
+            />
+          </div>
+        </div>
+
+        <div className={cn(panel, "p-5")}>
+          <PanelLabel info="SNS governance: open proposals vs all ever submitted, distinct neuron holders, and the next weekly ICP/OGY reward distribution.">
+            Governance
+          </PanelLabel>
+          <div className="mt-2">
+            <KV
+              k="Active / Total Proposals"
+              v={
+                extra.proposalsActive !== null && extra.proposalsTotal !== null
+                  ? `${extra.proposalsActive} / ${extra.proposalsTotal}`
+                  : "—"
+              }
+            />
+            <KV
+              k="Members"
+              v={
+                extra.members !== null
+                  ? extra.members.toLocaleString("en-US")
+                  : "—"
+              }
+            />
+            <KV k="Next rewards" v={nextLabel} strong />
+          </div>
         </div>
       </section>
     </div>
   );
 }
 
-function StatCard({
-  value,
-  label,
+/* ── Pieces ────────────────────────────────────────────────────────────── */
+
+function PanelLabel({
+  children,
   info,
-  accent = false,
 }: {
-  value: string;
-  label: string;
+  children: React.ReactNode;
   info?: string;
-  accent?: boolean;
 }) {
   return (
-    <div
-      className={`relative rounded-lg p-4 sm:p-5 text-center transition-all duration-200 ${
-        accent
-          ? "border border-primary/20 bg-primary/8 hover:border-primary/35"
-          : "border border-border/50 bg-card/50 hover:border-border"
-      }`}
-    >
-      {info && <InfoTip text={info} />}
-      <div
-        className={`font-mono text-lg sm:text-xl lg:text-2xl font-bold ${accent ? "text-primary" : "text-foreground"}`}
+    <div className="flex items-center justify-between gap-2">
+      <span
+        className={cn(
+          "font-mono text-[10px] font-semibold uppercase tracking-[0.16em]",
+          inkMid,
+        )}
       >
-        {value}
+        {children}
+      </span>
+      {info && <InfoTip text={info} />}
+    </div>
+  );
+}
+
+function KV({
+  k,
+  v,
+  strong,
+  icon,
+  iconFallback,
+}: {
+  k: string;
+  v: string;
+  strong?: boolean;
+  icon?: string;
+  iconFallback?: string;
+}) {
+  const [broken, setBroken] = useState(false);
+  return (
+    <div className="flex items-center justify-between gap-3 border-t border-[color:var(--term-border-faint)] py-2.5 first:border-t-0">
+      <span
+        className={cn(
+          "flex min-w-0 items-center gap-2 font-mono text-[12px]",
+          inkMid,
+        )}
+      >
+        {icon &&
+          (broken ? (
+            iconFallback && (
+              <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-[var(--term-gold-soft)] font-mono text-[10px] font-bold text-[color:var(--term-gold)]">
+                {iconFallback}
+              </span>
+            )
+          ) : (
+            <img
+              src={icon}
+              alt=""
+              className="size-5 shrink-0 rounded-full"
+              onError={() => setBroken(true)}
+            />
+          ))}
+        <span className="truncate">{k}</span>
+      </span>
+      <span
+        className={cn(
+          "whitespace-nowrap font-mono text-[14px] tabular-nums",
+          strong ? cn(gold, "font-semibold") : ink,
+        )}
+      >
+        {v}
+      </span>
+    </div>
+  );
+}
+
+/** Same zones as the Fair Value page: ±10% fair, ±20% slightly, beyond. */
+function MiniFairBar({
+  market,
+  equilibrium,
+}: {
+  market: number | null;
+  equilibrium: number | null;
+}) {
+  if (!market || !equilibrium) {
+    return <div className="h-2 rounded-full bg-[var(--term-border-faint)]" />;
+  }
+  const min = equilibrium * 0.65;
+  const max = equilibrium * 1.35;
+  const toPct = (v: number) =>
+    Math.max(0, Math.min(100, ((v - min) / (max - min)) * 100));
+  const bands = [
+    {
+      from: min,
+      to: equilibrium * 0.8,
+      cls: "bg-[oklch(0.58_0.2_25)] dark:bg-[oklch(0.65_0.19_22)]",
+    },
+    {
+      from: equilibrium * 0.8,
+      to: equilibrium * 0.9,
+      cls: "bg-[oklch(0.66_0.16_50)] dark:bg-[oklch(0.75_0.14_55)]",
+    },
+    {
+      from: equilibrium * 0.9,
+      to: equilibrium * 1.1,
+      cls: "bg-[oklch(0.7_0.13_80)] dark:bg-[oklch(0.83_0.13_70)]",
+    },
+    {
+      from: equilibrium * 1.1,
+      to: equilibrium * 1.2,
+      cls: "bg-[oklch(0.62_0.14_140)] dark:bg-[oklch(0.72_0.13_140)]",
+    },
+    {
+      from: equilibrium * 1.2,
+      to: max,
+      cls: "bg-[oklch(0.55_0.14_162)] dark:bg-[oklch(0.72_0.17_162)]",
+    },
+  ];
+  return (
+    <div>
+      <div className="relative h-2 overflow-hidden rounded-full bg-[var(--term-border-faint)]">
+        {bands.map((b) => (
+          <div
+            key={b.from}
+            className={cn(
+              "absolute inset-y-0 opacity-60 dark:opacity-40",
+              b.cls,
+            )}
+            style={{
+              left: `${toPct(b.from)}%`,
+              width: `${toPct(b.to) - toPct(b.from)}%`,
+            }}
+          />
+        ))}
+        <div
+          className="absolute inset-y-0 w-0.5 bg-[var(--term-ink)]"
+          style={{ left: `${toPct(equilibrium)}%` }}
+        />
       </div>
-      <div className="text-[10px] sm:text-xs text-muted-foreground mt-1 leading-snug">
-        {label}
+      <div className="relative -mt-3 h-4">
+        <span
+          className="absolute top-0 size-4 -translate-x-1/2 rounded-full border-2 border-white bg-[var(--term-gold)] shadow dark:border-[#1c1e22]"
+          style={{ left: `${toPct(market)}%` }}
+          title={`Market ${market}`}
+        />
+      </div>
+      <div
+        className={cn(
+          "flex justify-between font-mono text-[9px] uppercase tracking-wider",
+          inkFaint,
+        )}
+      >
+        <span>Expensive</span>
+        <span>Cheap</span>
       </div>
     </div>
   );
@@ -211,7 +374,7 @@ function InfoTip({ text }: { text: string }) {
   return (
     <div
       ref={ref}
-      className="absolute right-1.5 top-1.5 z-10"
+      className="relative z-10"
       onMouseEnter={() => setOpen(true)}
       onMouseLeave={() => setOpen(false)}
     >
@@ -219,14 +382,17 @@ function InfoTip({ text }: { text: string }) {
         type="button"
         aria-label="What does this mean?"
         onClick={() => setOpen((o) => !o)}
-        className="flex h-5 w-5 items-center justify-center rounded-full text-muted-foreground/40 hover:text-primary transition-smooth"
+        className={cn(
+          "flex h-5 w-5 items-center justify-center rounded-full transition-smooth hover:text-[color:var(--term-gold)]",
+          inkFaint,
+        )}
       >
         <Info className="h-3.5 w-3.5" />
       </button>
       {open && (
         <div
           role="tooltip"
-          className="absolute right-0 top-6 z-20 w-40 max-w-[calc(100vw-2rem)] rounded-lg border border-border bg-popover px-3 py-2 text-left text-[11px] font-normal normal-case leading-snug text-popover-foreground shadow-elevated"
+          className="absolute right-0 top-6 z-20 w-56 max-w-[calc(100vw-2rem)] rounded-lg border border-border bg-popover px-3 py-2 text-left text-[11px] font-normal normal-case leading-snug text-popover-foreground shadow-elevated"
         >
           {text}
         </div>
