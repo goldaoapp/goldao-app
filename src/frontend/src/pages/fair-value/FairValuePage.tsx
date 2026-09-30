@@ -1,3 +1,4 @@
+import { PageHeader } from "@/components/common";
 import {
   DEFAULTS,
   type FairValueParams,
@@ -947,14 +948,11 @@ export default function FairValuePage() {
 
   return (
     <div className="mx-auto flex max-w-6xl flex-col gap-6 p-4 sm:p-6 lg:p-10">
-      <div>
-        <h1 className="font-display text-2xl font-bold tracking-tight sm:text-3xl">
-          <span className="text-gradient-gold">Fair Value</span>
-        </h1>
-        <p className="mt-1 font-mono text-xs text-muted-foreground sm:text-sm">
-          GOLDAO vs ICP — equilibrium based on direct staker yield
-        </p>
-      </div>
+      <PageHeader
+        tag="Fair value"
+        title="GOLDAO vs ICP"
+        description="Equilibrium price based on the direct yield paid to stakers."
+      />
 
       <Hero r={result} params={params} />
 
