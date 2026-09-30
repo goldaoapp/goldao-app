@@ -7,6 +7,7 @@ import {
 import Layout from "@/components/Layout";
 import AdminPage from "@/pages/admin/AdminPage";
 import DocumentationPage from "@/pages/documentation/DocumentationPage";
+import EventsPage from "@/pages/events/EventsPage";
 import FairValuePage from "@/pages/fair-value/FairValuePage";
 import GldtPage from "@/pages/gldt/GldtPage";
 import HomePage from "@/pages/home/HomePage";
@@ -41,6 +42,12 @@ const rewardsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/rewards",
   component: RewardsPage,
+});
+
+const eventsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/events",
+  component: EventsPage,
 });
 
 const documentationRoute = createRoute({
@@ -79,6 +86,7 @@ const routeTree = rootRoute.addChildren([
   treasuryRoute,
   proposalsRoute,
   rewardsRoute,
+  eventsRoute,
   fairValueRoute,
   documentationRoute,
   newsRoute,
