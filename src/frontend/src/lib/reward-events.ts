@@ -212,7 +212,6 @@ function upsertRound(
 
 function parseRewards(logs: RawLogEntry[], p: ParsedPipeline) {
   const rounds = new Map<number, RoundSummary>();
-  let lastRoundId = 0;
 
   logs.forEach((e, i) => {
     const m = e.message;
@@ -230,7 +229,6 @@ function parseRewards(logs: RawLogEntry[], p: ParsedPipeline) {
     if (metrics) {
       const [, rid, status, token, total, ok, retries, amt] = metrics;
       const roundId = Number(rid);
-      lastRoundId = Math.max(lastRoundId, roundId);
       const amount = n(amt) / E8S;
       const st: TokenRoundResult["status"] =
         status === "CompletedFull"
@@ -452,7 +450,7 @@ function parseIcpNeuron(logs: RawLogEntry[], p: ParsedPipeline) {
 function parseBuyback(logs: RawLogEntry[], p: ParsedPipeline) {
   const pending = new Map<number, BuybackRun>();
   let burnStart: number | null = null;
-  let burnFailed = false;
+  let burnState: "ok" | "empty" | "error" = "ok";
 
   const closeBurn = () => {
     if (burnStart === null) return;
@@ -461,17 +459,28 @@ function parseBuyback(logs: RawLogEntry[], p: ParsedPipeline) {
       ts: burnStart,
       source: "buyback_burn",
       kind: "burn",
-      severity: burnFailed ? "info" : "success",
-      title: burnFailed
-        ? "Daily GOLDAO burn: nothing to burn"
-        : "Daily GOLDAO burn executed",
-      detail: burnFailed
-        ? "No GOLDAO had been bought since the last burn."
-        : "Bought GOLDAO sent to the minting account (permanently destroyed).",
+      severity:
+        burnState === "ok"
+          ? "success"
+          : burnState === "empty"
+            ? "info"
+            : "error",
+      title:
+        burnState === "ok"
+          ? "Daily GOLDAO burn executed"
+          : burnState === "empty"
+            ? "Daily GOLDAO burn: nothing to burn"
+            : "Daily GOLDAO burn failed",
+      detail:
+        burnState === "ok"
+          ? "Bought GOLDAO sent to the minting account (permanently destroyed)."
+          : burnState === "empty"
+            ? "No GOLDAO had been bought since the last burn."
+            : "The burn transfer failed; see the related buyback error.",
       mode: "goldao",
     });
     burnStart = null;
-    burnFailed = false;
+    burnState = "ok";
   };
 
   logs.forEach((e, i) => {
@@ -551,12 +560,15 @@ function parseBuyback(logs: RawLogEntry[], p: ParsedPipeline) {
       return;
     }
     if (burnStart !== null && m.includes("Calculated burn amount is zero")) {
-      burnFailed = true;
+      burnState = "empty";
       return;
     }
 
     // Benign: destination already emptied after an unconstrained swap.
     if (m.includes("Balance (0) is too low to cover fee")) return;
+
+    if (burnStart !== null && /burn|minting account/i.test(m))
+      burnState = "error";
 
     if (
       e.level === "ERROR" ||
@@ -608,8 +620,11 @@ function parseBuyback(logs: RawLogEntry[], p: ParsedPipeline) {
       agg.count += 1;
       byMode.set(r.mode, agg);
     }
-    const parts = [...byMode.entries()].map(
-      ([mode, a]) => `${BUYBACK_LABEL[mode]}: ${fmt(a.icp)} ICP (${a.count}×)`,
+    const total = runs.reduce((sum, r) => sum + r.icp, 0);
+    const parts = [...byMode.entries()].map(([mode, a]) =>
+      mode === "compound" && a.icp === 0
+        ? `${BUYBACK_LABEL[mode]}: ${a.count}× (amount not logged)`
+        : `${BUYBACK_LABEL[mode]}: ${fmt(a.icp)} ICP (${a.count}×)`,
     );
     p.events.push({
       id: `bb-day-${day}`,
@@ -617,7 +632,10 @@ function parseBuyback(logs: RawLogEntry[], p: ParsedPipeline) {
       source: "buyback_burn",
       kind: "buyback",
       severity: "success",
-      title: `Buyback activity — ${fmt(runs.reduce((s, r) => s + r.icp, 0))} ICP used`,
+      title:
+        total > 0
+          ? `Buyback activity — ${fmt(total)} ICP used`
+          : "Buyback activity",
       detail: parts.join(" · "),
     });
   }
@@ -878,7 +896,8 @@ export function deriveAlerts(p: ParsedPipeline, now = Date.now()): Alert[] {
         title: e.title,
         detail: e.detail ?? "",
       });
-    if (e.severity === "error" && e.kind !== "round_error")
+    // Round payment failures are already reported from the round table.
+    if (e.severity === "error" && e.roundId === undefined)
       alerts.push({
         severity: "error",
         title: e.title,
@@ -913,7 +932,7 @@ export function fmt(v: number, max = 2): string {
 }
 
 export function fmtDate(ts: number, withTime = false): string {
-  return new Date(ts).toLocaleString(undefined, {
+  return new Date(ts).toLocaleString("en-US", {
     month: "short",
     day: "numeric",
     ...(withTime ? { hour: "2-digit", minute: "2-digit" } : {}),
