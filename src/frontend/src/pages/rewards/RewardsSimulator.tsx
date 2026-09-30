@@ -418,7 +418,23 @@ export default function RewardsSimulator() {
 
   const shareOverride = canisterShare ?? vpShare;
 
-  const pools = useMemo(() => poolsFrom(assumptions), [assumptions]);
+  const pools = useMemo(() => {
+    const base = poolsFrom(assumptions);
+    // In "by amount" mode, use active eligible as denominator if available
+    if (
+      shareOverride === undefined &&
+      rewardRounds &&
+      rewardRounds.totalNeurons > 0 &&
+      rewardRounds.activeNeurons > 0 &&
+      base.goldao_eligible > 0
+    ) {
+      base.goldao_eligible = Math.round(
+        base.goldao_eligible *
+          (rewardRounds.activeNeurons / rewardRounds.totalNeurons),
+      );
+    }
+    return base;
+  }, [assumptions, rewardRounds, shareOverride]);
 
   const result = useMemo<RewardResult>(
     () => simulate(pools, userGoldao, shareOverride),
