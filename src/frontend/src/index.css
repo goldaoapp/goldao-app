@@ -103,20 +103,91 @@
     @apply bg-background text-foreground font-body antialiased;
     position: relative;
   }
-  /* Cream texture overlay — light mode only, matches CreamTerminals */
-  body::before {
+  /* Page background — same layers as CreamTerminals (CreamBg / DarkBg):
+     ::before = paper texture (light only), ::after = radial light + 108px grid */
+  body::before,
+  body::after {
     content: "";
     position: fixed;
     inset: 0;
     z-index: -1;
+    pointer-events: none;
+  }
+  body::before {
     background-image: url("/assets/gldt/bg.png");
     background-size: cover;
     background-position: center;
     opacity: 0.5;
-    pointer-events: none;
+  }
+  body::after {
+    background:
+      repeating-linear-gradient(
+        90deg,
+        transparent,
+        transparent 107px,
+        var(--term-grid) 107px,
+        var(--term-grid) 108px
+      ),
+      repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 107px,
+        var(--term-grid) 107px,
+        var(--term-grid) 108px
+      ),
+      var(--term-glow);
   }
   .dark body::before {
     opacity: 0;
+  }
+
+  /* Terminal surface tokens — exact CreamTerminals THEMES values */
+  :root {
+    --term-glow: radial-gradient(
+      ellipse 70% 70% at 50% 45%,
+      rgba(248, 222, 209, 0.9) 0%,
+      rgba(196, 167, 151, 0.4) 60%,
+      rgba(140, 105, 75, 0.35) 100%
+    );
+    --term-grid: rgba(58, 53, 47, 0.03);
+    --term-card: rgba(255, 255, 255, 0.3);
+    --term-header: rgba(58, 53, 47, 0.07);
+    --term-alt: rgba(58, 53, 47, 0.04);
+    --term-border: rgba(58, 53, 47, 0.15);
+    --term-border-faint: rgba(58, 53, 47, 0.08);
+    --term-ink: #2a2520;
+    --term-ink-mid: rgba(42, 37, 32, 0.55);
+    --term-ink-faint: rgba(42, 37, 32, 0.4);
+    --term-gold: #b08830;
+    --term-gold-soft: rgba(176, 136, 48, 0.12);
+    --term-green: #2d8a5e;
+    --term-green-bg: rgba(45, 138, 94, 0.08);
+    --term-green-border: rgba(45, 138, 94, 0.25);
+    --term-warn: #b45309;
+    --term-warn-bg: rgba(180, 83, 9, 0.08);
+  }
+  .dark {
+    --term-glow: radial-gradient(
+      ellipse 80% 80% at 50% 40%,
+      rgba(199, 154, 59, 0.04) 0%,
+      transparent 70%
+    );
+    --term-grid: rgba(199, 154, 59, 0.02);
+    --term-card: rgba(255, 255, 255, 0.04);
+    --term-header: rgba(199, 154, 59, 0.06);
+    --term-alt: rgba(199, 154, 59, 0.03);
+    --term-border: rgba(199, 154, 59, 0.14);
+    --term-border-faint: rgba(199, 154, 59, 0.08);
+    --term-ink: #f0e6d6;
+    --term-ink-mid: rgba(240, 230, 214, 0.55);
+    --term-ink-faint: rgba(240, 230, 214, 0.35);
+    --term-gold: #c79a3b;
+    --term-gold-soft: rgba(199, 154, 59, 0.12);
+    --term-green: #3dba78;
+    --term-green-bg: rgba(61, 186, 120, 0.08);
+    --term-green-border: rgba(61, 186, 120, 0.22);
+    --term-warn: #f59e0b;
+    --term-warn-bg: rgba(245, 158, 11, 0.08);
   }
 }
 
