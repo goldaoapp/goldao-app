@@ -22,6 +22,42 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/context/AuthContext";
 import { cn } from "@/lib/utils";
 
+/* ── Shared dark-mode hook ──────────────────────────────────────────────── */
+
+function useDarkMode() {
+  const [darkMode, setDarkMode] = useState(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("theme") === "dark";
+    }
+    return false;
+  });
+
+  useEffect(() => {
+    const theme = localStorage.getItem("theme");
+    if (theme === "dark") {
+      document.documentElement.classList.add("dark");
+      setDarkMode(true);
+    } else {
+      document.documentElement.classList.remove("dark");
+      setDarkMode(false);
+    }
+  }, []);
+
+  const toggleDarkMode = () => {
+    const next = !darkMode;
+    setDarkMode(next);
+    if (next) {
+      document.documentElement.classList.add("dark");
+      localStorage.setItem("theme", "dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+      localStorage.setItem("theme", "light");
+    }
+  };
+
+  return { darkMode, toggleDarkMode };
+}
+
 type NavItem = {
   label: string;
   to: string;
@@ -70,42 +106,13 @@ export function Sidebar() {
     }
     return false;
   });
-  const [darkMode, setDarkMode] = useState(() => {
-    if (typeof window !== "undefined") {
-      return localStorage.getItem("theme") === "dark" || 
-             document.documentElement.classList.contains("dark");
-    }
-    return false;
-  });
+  const { darkMode, toggleDarkMode } = useDarkMode();
   const { location } = useRouterState();
-
-  useEffect(() => {
-    const theme = localStorage.getItem("theme");
-    if (theme === "dark") {
-      document.documentElement.classList.add("dark");
-      setDarkMode(true);
-    } else if (theme === "light") {
-      document.documentElement.classList.remove("dark");
-      setDarkMode(false);
-    }
-  }, []);
 
   const toggle = () => {
     const next = !collapsed;
     setCollapsed(next);
     localStorage.setItem("sidebar-collapsed", String(next));
-  };
-
-  const toggleDarkMode = () => {
-    const newDarkMode = !darkMode;
-    setDarkMode(newDarkMode);
-    if (newDarkMode) {
-      document.documentElement.classList.add("dark");
-      localStorage.setItem("theme", "dark");
-    } else {
-      document.documentElement.classList.remove("dark");
-      localStorage.setItem("theme", "light");
-    }
   };
 
   return (
@@ -292,6 +299,7 @@ function AuthControls({ collapsed }: { collapsed: boolean }) {
 /* ─── Mobile Bottom Tab Bar ─── */
 export function MobileTabBar() {
   const { location } = useRouterState();
+  const { darkMode, toggleDarkMode } = useDarkMode();
 
   return (
     <nav
@@ -318,6 +326,16 @@ export function MobileTabBar() {
           </Link>
         );
       })}
+      {/* Theme toggle */}
+      <button
+        type="button"
+        onClick={toggleDarkMode}
+        aria-label={darkMode ? "Light mode" : "Dark mode"}
+        className="flex flex-col items-center gap-1 py-1.5 px-3 rounded-md transition-colors outline-none text-muted-foreground"
+      >
+        {darkMode ? <Sun className="size-5" /> : <Moon className="size-5" />}
+        <span className="text-[9px] font-medium">{darkMode ? "Light" : "Dark"}</span>
+      </button>
       {/* More button — opens remaining items */}
       <MoreMenu pathname={location.pathname} />
     </nav>
