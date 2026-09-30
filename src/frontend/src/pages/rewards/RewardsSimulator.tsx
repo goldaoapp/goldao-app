@@ -12,6 +12,11 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { type NeuronLookup, lookupNeuron } from "@/lib/goldao-neuron";
 import {
+  type RoundSummary,
+  buildPipeline,
+  fetchLogs,
+} from "@/lib/reward-events";
+import {
   ASSUMPTION_DEFAULTS,
   type RewardAssumptions,
   type RewardResult,
@@ -19,10 +24,7 @@ import {
   poolsFrom,
   simulate,
 } from "@/lib/rewards-calc";
-import {
-  fetchNeuronMaturity,
-  computeShare,
-} from "@/lib/rewards-canister";
+import { computeShare, fetchNeuronMaturity } from "@/lib/rewards-canister";
 import { useLiveData } from "@/lib/use-live-data";
 
 /* number helpers */
@@ -81,10 +83,21 @@ const ASSUMPTION_FIELDS: {
   { key: "nns_apy", label: "NNS APY", unit: "%" },
   { key: "pct_stakers", label: "% to Stakers (ICP)", unit: "%" },
   { key: "pct_gldt", label: "% to Stakers (GLDT)", unit: "%" },
+  {
+    key: "ogy_pool_weekly",
+    label: "OGY paid / week (avg)",
+    unit: "OGY",
+    live: true,
+  },
   { key: "ogy_staked", label: "OGY Staked", unit: "OGY", live: true },
   { key: "ogy_apy", label: "OGY APY", unit: "%" },
   { key: "wtn_icp_annual", label: "WTN → ICP/year", unit: "ICP", live: true },
-  { key: "origyn_ogy_icp_annual", label: "ORIGYN → OGY as ICP/year", unit: "ICP", live: true },
+  {
+    key: "origyn_ogy_icp_annual",
+    label: "ORIGYN → OGY as ICP/year",
+    unit: "ICP",
+    live: true,
+  },
   { key: "price_icp_usd", label: "ICP Price", unit: "USD", live: true },
   { key: "price_ogy_usd", label: "OGY Price", unit: "USD", live: true },
 ];
@@ -94,76 +107,110 @@ const ASSUMPTION_FIELDS: {
 const ACCENT: Record<string, { text: string; ring: string; soft: string }> = {
   icp: {
     text: "text-primary",
-    ring: "border-primary/40",
-    soft: "bg-primary/10",
+    ring: "border-border",
+    soft: "border-b border-border bg-secondary/40",
   },
   gldt: {
     text: "text-[oklch(0.75_0.15_80)]",
-    ring: "border-[oklch(0.75_0.15_80)]/40",
-    soft: "bg-[oklch(0.75_0.15_80)]/10",
+    ring: "border-border",
+    soft: "border-b border-border bg-secondary/40",
   },
   ogy: {
     text: "text-[oklch(0.65_0.18_304)]",
-    ring: "border-[oklch(0.65_0.18_304)]/40",
-    soft: "bg-[oklch(0.65_0.18_304)]/10",
+    ring: "border-border",
+    soft: "border-b border-border bg-secondary/40",
   },
   wtn_icp: {
     text: "text-[oklch(0.7_0.12_185)]",
-    ring: "border-[oklch(0.7_0.12_185)]/40",
-    soft: "bg-[oklch(0.7_0.12_185)]/10",
+    ring: "border-border",
+    soft: "border-b border-border bg-secondary/40",
   },
   origyn_ogy: {
     text: "text-[oklch(0.72_0.14_145)]",
-    ring: "border-[oklch(0.72_0.14_145)]/40",
-    soft: "bg-[oklch(0.72_0.14_145)]/10",
+    ring: "border-border",
+    soft: "border-b border-border bg-secondary/40",
   },
 };
 
 function RewardCard({
   kind,
   r,
+  unit,
+  source,
+  last,
 }: {
   kind: string;
   r: TokenReward;
+  unit: string;
+  source: string;
+  last?: { roundId: number; amount: number };
 }) {
   const a = ACCENT[kind] ?? ACCENT.icp;
   return (
-    <div className={`rounded-lg border ${a.ring} bg-card/50 overflow-hidden`}>
-      <div
-        className={`flex items-center justify-between px-4 py-2.5 ${a.soft}`}
-      >
-        <span className={`font-display text-sm font-semibold ${a.text}`}>
-          {r.token}
-        </span>
-        <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">
-          weekly stream
-        </span>
+    <div
+      className={`flex flex-col overflow-hidden rounded-lg border ${a.ring} bg-card/50`}
+    >
+      <div className={`px-4 py-3 ${a.soft}`}>
+        <div className="flex items-baseline justify-between gap-2">
+          <span className={`font-display text-base font-semibold ${a.text}`}>
+            {r.token}
+          </span>
+          <span className="shrink-0 font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
+            weekly
+          </span>
+        </div>
+        <p className="mt-0.5 font-mono text-[10px] leading-snug text-muted-foreground">
+          {source}
+        </p>
       </div>
-      <div className="px-4 py-3 space-y-2">
+      <div className="flex flex-1 flex-col gap-3 px-4 py-3">
         <div>
-          <p className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">
+          <p className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
             Per week
           </p>
-          <p className={`font-mono text-2xl font-bold ${a.text}`}>
+          <p className={`font-mono text-2xl font-bold tabular-nums ${a.text}`}>
             {fmtToken(r.weekly)}
+            <span className="ml-1.5 text-xs font-medium text-muted-foreground">
+              {unit}
+            </span>
           </p>
-          <p className="text-xs font-mono text-muted-foreground">
+          <p className="font-mono text-xs text-muted-foreground">
             {fmtUsd(r.weekly_usd)}
           </p>
         </div>
-        <div className="flex items-baseline justify-between border-t border-border pt-2">
-          <span className="text-xs font-mono text-muted-foreground">
-            Per month
-          </span>
-          <span className="text-right">
-            <span className="font-mono text-sm font-semibold text-foreground">
-              {fmtToken(r.monthly)}
-            </span>
-            <span className="ml-2 font-mono text-xs text-muted-foreground">
-              {fmtUsd(r.monthly_usd)}
-            </span>
-          </span>
-        </div>
+        <dl className="mt-auto divide-y divide-border border-t border-border font-mono text-xs">
+          {(
+            [
+              ["Per month", r.monthly, r.monthly_usd],
+              ["Per year", r.annual, r.annual_usd],
+            ] as const
+          ).map(([label, v, usd]) => (
+            <div
+              key={label}
+              className="grid grid-cols-[auto_1fr] items-baseline gap-x-3 py-1.5"
+            >
+              <dt className="text-muted-foreground">{label}</dt>
+              <dd className="min-w-0 text-right">
+                <span className="font-semibold tabular-nums text-foreground">
+                  {fmtToken(v)}
+                </span>
+                <span className="block text-[11px] text-muted-foreground">
+                  {fmtUsd(usd)}
+                </span>
+              </dd>
+            </div>
+          ))}
+          {last && (
+            <div className="grid grid-cols-[auto_1fr] items-baseline gap-x-3 py-1.5">
+              <dt className="text-muted-foreground">
+                Last paid #{last.roundId}
+              </dt>
+              <dd className="text-right tabular-nums text-foreground">
+                {fmtToken(last.amount)} {unit}
+              </dd>
+            </div>
+          )}
+        </dl>
       </div>
     </div>
   );
@@ -211,6 +258,7 @@ function AssumptionField({
 /* page section */
 
 const LIVE_TO_ASSUMPTION: Partial<Record<string, AKey>> = {
+  ogy_pool_weekly: "ogy_pool_weekly",
   goldao_eligible: "goldao_eligible",
   ogy_staked: "ogy_staked",
   price_icp_usd: "price_icp_usd",
@@ -267,6 +315,54 @@ export default function RewardsSimulator() {
   const [lookupProgress, setLookupProgress] = useState("");
 
   const [showAssumptions, setShowAssumptions] = useState(false);
+
+  // Recent distribution rounds from the sns_rewards log (last ~100 lines).
+  const [rounds, setRounds] = useState<RoundSummary[]>([]);
+  useEffect(() => {
+    let cancelled = false;
+    fetchLogs("sns_rewards")
+      .then((logs) => {
+        if (!cancelled) setRounds(buildPipeline({ sns_rewards: logs }).rounds);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Measured OGY pool: average of the recent paid OGY rounds.
+  const ogyMeasured = useMemo(() => {
+    const paid = rounds
+      .map((r) => r.tokens.OGY)
+      .filter((t) => t && t.status === "paid" && t.amount)
+      .slice(0, 6)
+      .map((t) => t!.amount as number);
+    if (paid.length === 0) return null;
+    return {
+      weekly: paid.reduce((a, b) => a + b, 0) / paid.length,
+      rounds: paid.length,
+    };
+  }, [rounds]);
+
+  useEffect(() => {
+    if (!ogyMeasured) return;
+    setRaw((prev) => ({
+      ...prev,
+      ogy_pool_weekly: fmtDefault(Math.round(ogyMeasured.weekly)),
+    }));
+  }, [ogyMeasured]);
+
+  // Most recent paid round per token (total paid to all neurons).
+  const lastPaid = useMemo(() => {
+    const out: Record<string, { roundId: number; amount: number }> = {};
+    for (const r of rounds) {
+      for (const [token, t] of Object.entries(r.tokens)) {
+        if (!out[token] && t.status === "paid" && t.amount)
+          out[token] = { roundId: r.roundId, amount: t.amount };
+      }
+    }
+    return out;
+  }, [rounds]);
 
   const assumptions = useMemo<RewardAssumptions>(() => {
     const a: Record<string, number> = {};
@@ -364,9 +460,7 @@ export default function RewardsSimulator() {
   // Falls back to VP proxy if canister data not yet loaded.
   const AVG_VP_MULT = 2.3;
 
-  const [neuronDeltas, setNeuronDeltas] = useState<
-    Record<string, bigint>
-  >({});
+  const [neuronDeltas, setNeuronDeltas] = useState<Record<string, bigint>>({});
 
   // Fetch neuron deltas from canister when neurons change
   useEffect(() => {
@@ -379,14 +473,20 @@ export default function RewardsSimulator() {
         if (n.eligible === false) continue;
         const data = await fetchNeuronMaturity(n.id, rewardRounds);
         if (cancelled) return;
-        if (data && data.share !== null && data.deltas[rewardRounds.referenceToken]) {
+        if (
+          data &&
+          data.share !== null &&
+          data.deltas[rewardRounds.referenceToken]
+        ) {
           newDeltas[n.id] = data.deltas[rewardRounds.referenceToken]!;
         }
       }
       if (!cancelled) setNeuronDeltas(newDeltas);
     })();
 
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [neurons, rewardRounds]);
 
   const canisterShare = useMemo<number | undefined>(() => {
@@ -414,7 +514,13 @@ export default function RewardsSimulator() {
       return undefined;
     const totalVp = assumptions.goldao_eligible * AVG_VP_MULT;
     return totalVp > 0 ? neuronAgg.totalVP / totalVp : undefined;
-  }, [canisterShare, mode, neuronAgg, neuronIneligible, assumptions.goldao_eligible]);
+  }, [
+    canisterShare,
+    mode,
+    neuronAgg,
+    neuronIneligible,
+    assumptions.goldao_eligible,
+  ]);
 
   const shareOverride = canisterShare ?? vpShare;
 
@@ -442,12 +548,21 @@ export default function RewardsSimulator() {
   );
 
   const liveLoading = assumptions.goldao_eligible <= 0;
+  const ogyFromRounds = assumptions.ogy_pool_weekly > 0;
+  const lastFor = (token: string) => {
+    const l = lastPaid[token];
+    return l && result.share > 0
+      ? { roundId: l.roundId, amount: l.amount * result.share }
+      : undefined;
+  };
 
   const handleReset = useCallback(() => {
     const init: Record<string, string> = {};
     for (const [k, v] of Object.entries(ASSUMPTION_DEFAULTS)) {
       init[k] = fmtDefault(v);
     }
+    if (ogyMeasured)
+      init.ogy_pool_weekly = fmtDefault(Math.round(ogyMeasured.weekly));
     setRaw(init);
     setAmount("100000");
     setSingleNeuronId("");
@@ -456,11 +571,11 @@ export default function RewardsSimulator() {
     setShowBulkInput(false);
     setLookupState("idle");
     setLookupError("");
-  }, []);
+  }, [ogyMeasured]);
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(320px,1fr)_minmax(360px,1.5fr)]">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(300px,380px)_minmax(0,1fr)]">
         {/* input column */}
         <div className="flex flex-col gap-4">
           <div className="rounded-lg border border-border bg-card/50 p-4">
@@ -685,8 +800,9 @@ export default function RewardsSimulator() {
             {canisterShare !== undefined && rewardRounds ? (
               <div className="mt-2 space-y-0.5">
                 <p className="font-mono text-[11px] text-muted-foreground">
-                  Share from on-chain maturity delta ({rewardRounds.activeNeurons} active neurons,
-                  ref: {rewardRounds.referenceToken})
+                  Share from on-chain maturity delta (
+                  {rewardRounds.activeNeurons} active neurons, ref:{" "}
+                  {rewardRounds.referenceToken})
                   {rewardRounds.fromCache && " (cached)"}
                 </p>
                 <p className="font-mono text-[10px] text-muted-foreground/70">
@@ -705,8 +821,8 @@ export default function RewardsSimulator() {
                 </p>
                 <p className="font-mono text-[10px] text-muted-foreground/70">
                   Canister data loading — using VP estimate. Total VP from{" "}
-                  {fmtInt(result.eligible)} eligible GOLDAO × {AVG_VP_MULT}×
-                  avg multiplier.
+                  {fmtInt(result.eligible)} eligible GOLDAO × {AVG_VP_MULT}× avg
+                  multiplier.
                 </p>
               </div>
             ) : (
@@ -783,8 +899,9 @@ export default function RewardsSimulator() {
           {rewardRounds && (
             <p className="rounded-md border border-[oklch(0.72_0.17_162)]/30 bg-[oklch(0.72_0.17_162)]/10 px-3 py-2 font-mono text-xs text-[oklch(0.72_0.17_162)]">
               <span className="inline-block size-1.5 rounded-full bg-[oklch(0.72_0.17_162)] mr-1.5 align-middle" />
-              On-chain maturity data ({rewardRounds.totalNeurons} neurons,
-              {" "}{rewardRounds.activeNeurons} active, ref: {rewardRounds.referenceToken})
+              On-chain maturity data ({rewardRounds.totalNeurons} neurons,{" "}
+              {rewardRounds.activeNeurons} active, ref:{" "}
+              {rewardRounds.referenceToken})
               {rewardRounds.fromCache && " — cached"}
             </p>
           )}
@@ -796,24 +913,58 @@ export default function RewardsSimulator() {
             </p>
           )}
 
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            <RewardCard kind="icp" r={result.icp} />
-            <RewardCard kind="gldt" r={result.gldt} />
-            <RewardCard kind="ogy" r={result.ogy} />
-            <RewardCard kind="wtn_icp" r={result.wtn_icp} />
-            <RewardCard kind="origyn_ogy" r={result.origyn_ogy} />
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <RewardCard
+              kind="icp"
+              r={result.icp}
+              unit="ICP"
+              source="33% of NNS neuron maturity"
+              last={lastFor("ICP")}
+            />
+            <RewardCard
+              kind="gldt"
+              r={result.gldt}
+              unit="ICP eq."
+              source="33% of NNS maturity, paid as GLDT monthly"
+            />
+            <RewardCard
+              kind="ogy"
+              r={result.ogy}
+              unit="OGY"
+              source={
+                ogyFromRounds
+                  ? `DAO OGY neuron + ORIGYN partnership · avg of last ${ogyMeasured?.rounds ?? ""} rounds`
+                  : "DAO OGY neuron · staked × APY"
+              }
+              last={lastFor("OGY")}
+            />
+            <RewardCard
+              kind="wtn_icp"
+              r={result.wtn_icp}
+              unit="ICP"
+              source="WaterNeuron 10% fee · Gold DAO VP share"
+            />
+            {!ogyFromRounds && (
+              <RewardCard
+                kind="origyn_ogy"
+                r={result.origyn_ogy}
+                unit="ICP eq."
+                source="ORIGYN partnership OGY, shown in ICP value"
+              />
+            )}
           </div>
 
           <div className="rounded-lg border border-primary/30 bg-card/50 p-4">
             <p className="mb-2 font-mono text-[10px] uppercase tracking-widest text-primary">
-              Recurring total (ICP + GLDT + OGY + WTN + ORIGYN)
+              Recurring total (ICP + GLDT + OGY + WTN
+              {ogyFromRounds ? "" : " + ORIGYN"})
             </p>
-            <div className="flex items-end justify-between gap-4">
+            <div className="grid grid-cols-3 items-end gap-4">
               <div>
                 <p className="font-mono text-[11px] text-muted-foreground">
                   Per week
                 </p>
-                <p className="font-mono text-2xl font-bold text-foreground">
+                <p className="font-mono text-lg font-bold tabular-nums text-foreground sm:text-2xl">
                   {fmtUsd(result.total_weekly_usd)}
                 </p>
               </div>
@@ -821,7 +972,7 @@ export default function RewardsSimulator() {
                 <p className="font-mono text-[11px] text-muted-foreground">
                   Per month
                 </p>
-                <p className="font-mono text-2xl font-bold text-foreground">
+                <p className="font-mono text-lg font-bold tabular-nums text-foreground sm:text-2xl">
                   {fmtUsd(result.total_monthly_usd)}
                 </p>
               </div>
@@ -829,17 +980,19 @@ export default function RewardsSimulator() {
                 <p className="font-mono text-[11px] text-muted-foreground">
                   Per year
                 </p>
-                <p className="font-mono text-xl font-semibold text-gradient-gold">
+                <p className="font-mono text-lg font-bold tabular-nums text-gradient-gold sm:text-2xl">
                   {fmtUsd(result.total_annual_usd)}
                 </p>
               </div>
             </div>
             <p className="mt-3 font-mono text-[10px] leading-relaxed text-muted-foreground">
-              Estimate based on the latest completed round from the sns_rewards
-              canister. GLDT is distributed monthly; all other tokens weekly.
-              In neuron mode, share is computed from actual maturity delta.
-              WTN ICP comes from WaterNeuron&apos;s 10% maturity fee,
-              proportional to Gold DAO&apos;s VP in WTN governance.
+              Weekly averages, not a promise for any single week: ICP arrives
+              when the NNS neuron&apos;s spawns are disbursed, so some weeks pay
+              none and the next pays more. OGY uses the amount actually paid in
+              recent rounds, which already includes the ORIGYN partnership. GLDT
+              is paid monthly. In neuron mode, share comes from your on-chain
+              maturity delta. &quot;Last paid&quot; shows what your share would
+              have received in the latest paid round.
             </p>
           </div>
         </div>
