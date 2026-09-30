@@ -66,7 +66,7 @@ type NavItem = {
   ocid: string;
 };
 
-const NAV_ITEMS: NavItem[] = [
+const ALL_NAV_ITEMS: NavItem[] = [
   { label: "Home", to: "/", icon: Home, ocid: "nav.home" },
   { label: "Treasury", to: "/treasury", icon: Lock, ocid: "nav.treasury" },
   { label: "Proposals", to: "/proposals", icon: Gavel, ocid: "nav.proposals" },
@@ -87,13 +87,18 @@ const NAV_ITEMS: NavItem[] = [
   { label: "News", to: "/news", icon: FileText, ocid: "nav.news" },
 ];
 
+// Not developed yet — hidden from the menu, routes still reachable by URL.
+// Remove a path from this list to show it again.
+const HIDDEN_PATHS = new Set(["/proposals", "/documentation", "/news"]);
+
+const NAV_ITEMS = ALL_NAV_ITEMS.filter((i) => !HIDDEN_PATHS.has(i.to));
+
+const navItem = (to: string) => NAV_ITEMS.find((i) => i.to === to);
+
 // Mobile bottom tab order: Home, Treasury, Rewards, Fair Value, More
-const MOBILE_TABS: NavItem[] = [
-  NAV_ITEMS[0], // Home
-  NAV_ITEMS[1], // Treasury
-  NAV_ITEMS[3], // Rewards
-  NAV_ITEMS[5], // Fair Value
-];
+const MOBILE_TABS: NavItem[] = ["/", "/treasury", "/rewards", "/fair-value"]
+  .map(navItem)
+  .filter((i): i is NavItem => i !== undefined);
 
 function isActive(currentPath: string, to: string): boolean {
   if (to === "/") return currentPath === "/";
@@ -344,12 +349,10 @@ export function MobileTabBar() {
   );
 }
 
-const MORE_ITEMS: NavItem[] = [
-  NAV_ITEMS[2], // Proposals
-  NAV_ITEMS[4], // Events
-  NAV_ITEMS[6], // Docs
-  NAV_ITEMS[7], // News
-];
+// Everything not in the bottom tab bar goes in "More"
+const MORE_ITEMS: NavItem[] = NAV_ITEMS.filter(
+  (i) => !MOBILE_TABS.includes(i),
+);
 
 function MoreMenu({ pathname }: { pathname: string }) {
   const [open, setOpen] = useState(false);
