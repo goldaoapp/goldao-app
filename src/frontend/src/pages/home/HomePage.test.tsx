@@ -52,17 +52,18 @@ describe("HomePage", () => {
     render(<HomePage />);
     expect(screen.queryByText(/ALPHA VERSION/i)).not.toBeInTheDocument();
   });
-  it("keeps the hero content unchanged", () => {
+  it("renders the hero headline", () => {
     render(<HomePage />);
-    expect(screen.getByText("GOLDAO APP")).toBeInTheDocument();
     expect(
-      screen.getByText("Your DAO. Your treasury. Real-time."),
+      screen.getByText("The on-chain app for GOLDAO holders"),
     ).toBeInTheDocument();
-    expect(screen.getByText("100% On-Chain")).toBeInTheDocument();
+    expect(
+      screen.getByText("100% On-Chain · Internet Computer"),
+    ).toBeInTheDocument();
   });
-  it("keeps the token stat sections unchanged", () => {
+  it("renders the market, treasury and governance panels", () => {
     render(<HomePage />);
-    expect(screen.getByText("GOLDAO Token")).toBeInTheDocument();
+    expect(screen.getByText("Market vs fair value")).toBeInTheDocument();
     expect(screen.getByText("ICP / GOLDAO Ratio")).toBeInTheDocument();
     expect(screen.getByText("Treasury Overview")).toBeInTheDocument();
     expect(screen.getByText("Active / Total Proposals")).toBeInTheDocument();
