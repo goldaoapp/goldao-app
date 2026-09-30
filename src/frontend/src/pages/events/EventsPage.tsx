@@ -145,7 +145,7 @@ export default function EventsPage() {
           {updatedAt && (
             <span className="text-xs text-muted-foreground">
               Updated{" "}
-              {new Date(updatedAt).toLocaleTimeString([], {
+              {new Date(updatedAt).toLocaleTimeString("en-US", {
                 hour: "2-digit",
                 minute: "2-digit",
               })}
@@ -249,9 +249,9 @@ function LoadingState() {
 function AlertList({ alerts }: { alerts: Alert[] }) {
   return (
     <div className="flex flex-col gap-2">
-      {alerts.map((a) => (
+      {alerts.map((a, i) => (
         <div
-          key={a.title}
+          key={`${a.title}-${i}`}
           className={cn(
             "flex gap-3 rounded-lg border px-4 py-3",
             a.severity === "error"
@@ -591,7 +591,7 @@ function Timeline({ events }: { events: PipelineEvent[] }) {
     );
   const groups: { day: string; items: PipelineEvent[] }[] = [];
   for (const e of events) {
-    const day = new Date(e.ts).toLocaleDateString(undefined, {
+    const day = new Date(e.ts).toLocaleDateString("en-US", {
       weekday: "short",
       month: "short",
       day: "numeric",
@@ -629,7 +629,7 @@ function Timeline({ events }: { events: PipelineEvent[] }) {
                     </p>
                   )}
                   <span className="font-mono text-[11px] text-muted-foreground">
-                    {new Date(e.ts).toLocaleTimeString([], {
+                    {new Date(e.ts).toLocaleTimeString("en-US", {
                       hour: "2-digit",
                       minute: "2-digit",
                     })}
