@@ -9,6 +9,11 @@ const mockUseLiveData = vi.hoisted(() => vi.fn());
 vi.mock("@/lib/use-live-data", () => ({
   useLiveData: mockUseLiveData,
 }));
+vi.mock("@/lib/goldao-ledger", () => ({
+  GOLDAO_ORIGINAL_SUPPLY: 1_000_000_000,
+  fetchTotalSupply: vi.fn().mockResolvedValue(null),
+  fetchLastBurn: vi.fn().mockResolvedValue(null),
+}));
 const emptyLiveData: LiveData = {
   params: {},
   flash: new Set<string>(),
@@ -33,11 +38,15 @@ describe("HomePage", () => {
   beforeEach(() => {
     mockUseLiveData.mockReturnValue(emptyLiveData);
   });
-  it("renders the banner label as BETA VERSION", () => {
+  it("does not render the BETA VERSION banner", () => {
     render(<HomePage />);
-    expect(
-      screen.getByText(/BETA VERSION — Data is under active development/i),
-    ).toBeInTheDocument();
+    expect(screen.queryByText(/BETA VERSION/i)).not.toBeInTheDocument();
+  });
+  it("renders the burn bar instead of the burn/supply cards", () => {
+    render(<HomePage />);
+    expect(screen.getByText("Total Burned")).toBeInTheDocument();
+    expect(screen.getByText("Last burn")).toBeInTheDocument();
+    expect(screen.queryByText("Total Burn")).not.toBeInTheDocument();
   });
   it("does not render the old ALPHA VERSION label", () => {
     render(<HomePage />);
