@@ -11,53 +11,15 @@ import {
   Lock,
   LogOut,
   type LucideIcon,
-  Moon,
   Scale,
   Shield,
-  Sun,
   Wallet,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/context/AuthContext";
 import { cn } from "@/lib/utils";
-
-/* ── Shared dark-mode hook ──────────────────────────────────────────────── */
-
-function useDarkMode() {
-  const [darkMode, setDarkMode] = useState(() => {
-    if (typeof window !== "undefined") {
-      return localStorage.getItem("theme") === "dark";
-    }
-    return false;
-  });
-
-  useEffect(() => {
-    const theme = localStorage.getItem("theme");
-    if (theme === "dark") {
-      document.documentElement.classList.add("dark");
-      setDarkMode(true);
-    } else {
-      document.documentElement.classList.remove("dark");
-      setDarkMode(false);
-    }
-  }, []);
-
-  const toggleDarkMode = () => {
-    const next = !darkMode;
-    setDarkMode(next);
-    if (next) {
-      document.documentElement.classList.add("dark");
-      localStorage.setItem("theme", "dark");
-    } else {
-      document.documentElement.classList.remove("dark");
-      localStorage.setItem("theme", "light");
-    }
-  };
-
-  return { darkMode, toggleDarkMode };
-}
 
 type NavItem = {
   label: string;
@@ -113,7 +75,6 @@ export function Sidebar() {
     }
     return false;
   });
-  const { darkMode, toggleDarkMode } = useDarkMode();
   const { location } = useRouterState();
 
   const toggle = () => {
@@ -188,24 +149,6 @@ export function Sidebar() {
 
       {/* Bottom section */}
       <div className="p-2.5 flex flex-col gap-2 border-t border-border">
-        {/* Theme toggle */}
-        <button
-          type="button"
-          onClick={toggleDarkMode}
-          aria-label={darkMode ? "Switch to light mode" : "Switch to dark mode"}
-          className={cn(
-            "flex items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] font-medium text-muted-foreground hover:text-foreground hover:bg-secondary transition-smooth outline-none focus-visible:ring-2 focus-visible:ring-ring",
-            collapsed && "justify-center px-0",
-          )}
-        >
-          {darkMode ? (
-            <Sun className="size-[18px]" />
-          ) : (
-            <Moon className="size-[18px]" />
-          )}
-          {!collapsed && (darkMode ? "Light" : "Dark")}
-        </button>
-
         {/* Collapse toggle */}
         <button
           type="button"
@@ -306,7 +249,6 @@ function AuthControls({ collapsed }: { collapsed: boolean }) {
 /* ─── Mobile Bottom Tab Bar ─── */
 export function MobileTabBar() {
   const { location } = useRouterState();
-  const { darkMode, toggleDarkMode } = useDarkMode();
 
   return (
     <nav
@@ -333,16 +275,6 @@ export function MobileTabBar() {
           </Link>
         );
       })}
-      {/* Theme toggle */}
-      <button
-        type="button"
-        onClick={toggleDarkMode}
-        aria-label={darkMode ? "Light mode" : "Dark mode"}
-        className="flex flex-col items-center gap-1 py-1.5 px-3 rounded-md transition-colors outline-none text-muted-foreground"
-      >
-        {darkMode ? <Sun className="size-5" /> : <Moon className="size-5" />}
-        <span className="text-[9px] font-medium">{darkMode ? "Light" : "Dark"}</span>
-      </button>
       {/* More button — opens remaining items */}
       <MoreMenu pathname={location.pathname} />
     </nav>
