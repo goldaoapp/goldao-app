@@ -11,87 +11,89 @@
     --font-mono: "JetBrains Mono", monospace;
     --radius: 0.625rem;
 
-    --background: 0.99 0 0;
-    --foreground: 0.15 0 0;
-    --card: 1.0 0 0;
-    --card-foreground: 0.15 0 0;
-    --popover: 1.0 0 0;
-    --popover-foreground: 0.15 0 0;
+    /* Cream palette — warm tones matching CreamTerminals light mode */
+    --background: 0.87 0.035 55;
+    --foreground: 0.2 0.02 55;
+    --card: 0.91 0.025 55;
+    --card-foreground: 0.2 0.02 55;
+    --popover: 0.92 0.025 55;
+    --popover-foreground: 0.2 0.02 55;
 
-    --primary: 0.78 0.15 85;
-    --primary-foreground: 0.145 0 0;
+    --primary: 0.72 0.14 80;
+    --primary-foreground: 0.98 0.01 55;
 
-    --secondary: 0.95 0 0;
-    --secondary-foreground: 0.25 0 0;
-    --muted: 0.95 0 0;
-    --muted-foreground: 0.5 0 0;
+    --secondary: 0.84 0.03 55;
+    --secondary-foreground: 0.25 0.02 55;
+    --muted: 0.84 0.03 55;
+    --muted-foreground: 0.45 0.02 55;
 
-    --accent: 0.78 0.15 85;
-    --accent-foreground: 0.145 0 0;
+    --accent: 0.72 0.14 80;
+    --accent-foreground: 0.98 0.01 55;
 
     --destructive: 0.55 0.22 25;
     --destructive-foreground: 0.98 0 0;
 
-    --border: 0.9 0 0;
-    --input: 0.9 0 0;
-    --ring: 0.78 0.15 85;
+    --border: 0.76 0.03 55;
+    --input: 0.8 0.03 55;
+    --ring: 0.72 0.14 80;
 
-    --chart-1: 0.78 0.15 85;
+    --chart-1: 0.72 0.14 80;
     --chart-2: 0.7 0.12 185;
     --chart-3: 0.6 0.1 227;
     --chart-4: 0.83 0.13 70;
     --chart-5: 0.72 0.14 50;
 
-    --sidebar: 0.98 0 0;
-    --sidebar-foreground: 0.15 0 0;
-    --sidebar-primary: 0.78 0.15 85;
-    --sidebar-primary-foreground: 0.145 0 0;
-    --sidebar-accent: 0.95 0 0;
-    --sidebar-accent-foreground: 0.25 0 0;
-    --sidebar-border: 0.9 0 0;
-    --sidebar-ring: 0.78 0.15 85;
+    --sidebar: 0.85 0.035 55;
+    --sidebar-foreground: 0.2 0.02 55;
+    --sidebar-primary: 0.72 0.14 80;
+    --sidebar-primary-foreground: 0.98 0.01 55;
+    --sidebar-accent: 0.82 0.03 55;
+    --sidebar-accent-foreground: 0.25 0.02 55;
+    --sidebar-border: 0.76 0.03 55;
+    --sidebar-ring: 0.72 0.14 80;
   }
 
   .dark {
-    --background: 0.145 0 0;
-    --foreground: 0.95 0 0;
-    --card: 0.18 0 0;
-    --card-foreground: 0.95 0 0;
-    --popover: 0.22 0 0;
-    --popover-foreground: 0.95 0 0;
+    /* Dark palette — matching CreamTerminals dark mode */
+    --background: 0.16 0.005 260;
+    --foreground: 0.93 0.02 55;
+    --card: 0.19 0.005 260;
+    --card-foreground: 0.93 0.02 55;
+    --popover: 0.22 0.005 260;
+    --popover-foreground: 0.93 0.02 55;
 
-    --primary: 0.82 0.15 85;
-    --primary-foreground: 0.145 0 0;
+    --primary: 0.72 0.14 80;
+    --primary-foreground: 0.16 0.005 260;
 
-    --secondary: 0.22 0 0;
-    --secondary-foreground: 0.85 0 0;
-    --muted: 0.22 0 0;
-    --muted-foreground: 0.6 0 0;
+    --secondary: 0.22 0.005 260;
+    --secondary-foreground: 0.85 0.02 55;
+    --muted: 0.22 0.005 260;
+    --muted-foreground: 0.55 0.01 55;
 
-    --accent: 0.82 0.15 85;
-    --accent-foreground: 0.145 0 0;
+    --accent: 0.72 0.14 80;
+    --accent-foreground: 0.16 0.005 260;
 
     --destructive: 0.65 0.19 22;
-    --destructive-foreground: 0.145 0 0;
+    --destructive-foreground: 0.16 0.005 260;
 
-    --border: 0.28 0 0;
-    --input: 0.28 0 0;
-    --ring: 0.82 0.15 85;
+    --border: 0.3 0.03 80;
+    --input: 0.3 0.03 80;
+    --ring: 0.72 0.14 80;
 
-    --chart-1: 0.82 0.15 85;
+    --chart-1: 0.72 0.14 80;
     --chart-2: 0.7 0.17 162;
     --chart-3: 0.77 0.13 70;
     --chart-4: 0.63 0.18 304;
     --chart-5: 0.65 0.2 16;
 
-    --sidebar: 0.18 0 0;
-    --sidebar-foreground: 0.95 0 0;
-    --sidebar-primary: 0.82 0.15 85;
-    --sidebar-primary-foreground: 0.145 0 0;
-    --sidebar-accent: 0.22 0 0;
-    --sidebar-accent-foreground: 0.85 0 0;
-    --sidebar-border: 0.28 0 0;
-    --sidebar-ring: 0.82 0.15 85;
+    --sidebar: 0.18 0.005 260;
+    --sidebar-foreground: 0.93 0.02 55;
+    --sidebar-primary: 0.72 0.14 80;
+    --sidebar-primary-foreground: 0.16 0.005 260;
+    --sidebar-accent: 0.22 0.005 260;
+    --sidebar-accent-foreground: 0.85 0.02 55;
+    --sidebar-border: 0.3 0.03 80;
+    --sidebar-ring: 0.72 0.14 80;
   }
 
   * {
@@ -109,22 +111,22 @@
   .gradient-primary {
     background-image: linear-gradient(
       135deg,
-      oklch(0.82 0.15 85) 0%,
-      oklch(0.72 0.13 50) 100%
+      oklch(0.72 0.14 80) 0%,
+      oklch(0.62 0.12 50) 100%
     );
   }
   .gradient-subtle {
     background-image: linear-gradient(
       180deg,
-      oklch(0.18 0 0) 0%,
-      oklch(0.145 0 0) 100%
+      oklch(0.19 0.005 260) 0%,
+      oklch(0.16 0.005 260) 100%
     );
   }
   .text-gradient-gold {
     background-image: linear-gradient(
       135deg,
-      oklch(0.88 0.14 85) 0%,
-      oklch(0.72 0.15 50) 100%
+      oklch(0.82 0.14 80) 0%,
+      oklch(0.65 0.14 50) 100%
     );
     -webkit-background-clip: text;
     background-clip: text;
