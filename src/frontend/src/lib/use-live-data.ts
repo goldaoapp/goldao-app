@@ -108,6 +108,19 @@ export function useLiveData(): LiveData {
     wtnTotal: number | null;
     icpUsd: number | null;
   }>({ ogyPerIcp: null, wtnPerIcp: null, wtnTotal: null, icpUsd: null });
+  const liveRef = useRef<{
+    icpStaked: number;
+    goldaoEligible: number;
+    pctStakers: number;
+    pctGldt: number;
+    nnsApy: number;
+  }>({
+    icpStaked: 555_880,
+    goldaoEligible: 0,
+    pctStakers: 33,
+    pctGldt: 33,
+    nnsApy: 8.15,
+  });
 
   useEffect(() => {
     let cancelled = false;
@@ -238,6 +251,7 @@ export function useLiveData(): LiveData {
       const totals = await fetchIcpNeuronTotals();
       if (cancelled || totals === null) return;
       apply("icp_staked", Math.round(totals.staked));
+      liveRef.current.icpStaked = totals.staked;
       setExtra((prev) => ({
         ...prev,
         icpStaked: totals.staked,
@@ -263,13 +277,13 @@ export function useLiveData(): LiveData {
         );
         apply("wtn_icp_annual", Math.round(wtn.totalIcpAnnual));
 
-        // ORIGYN partnership: use defaults for GOLDAO reward pools
-        // (these rarely change and are seeded from live data elsewhere)
-        const icpGross = 555_880 * 0.0815;
-        const icpPool = icpGross * 0.33;
-        const gldtPool = icpGross * 0.33;
+        // ORIGYN partnership: use live data from refs (fall back to defaults)
+        const lr = liveRef.current;
+        const icpGross = lr.icpStaked * (lr.nnsApy / 100);
+        const icpPool = icpGross * (lr.pctStakers / 100);
+        const gldtPool = icpGross * (lr.pctGldt / 100);
         const ogyPool = 0; // OGY staking pool fed separately
-        const goldaoEligible = 248_854_757;
+        const goldaoEligible = lr.goldaoEligible > 0 ? lr.goldaoEligible : 248_854_757;
 
         const origyn = calcOrigynPartnership(
           icpPool,
@@ -306,6 +320,7 @@ export function useLiveData(): LiveData {
         );
         if (max) {
           apply("goldao_eligible", Math.round(max.total_stake));
+          liveRef.current.goldaoEligible = Math.round(max.total_stake);
           setExtra((prev) => ({ ...prev, members: max.unique_owners }));
         }
       } catch (_) {
