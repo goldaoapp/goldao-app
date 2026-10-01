@@ -155,9 +155,10 @@ export function tokenForPick(pick: number): TokenKey {
 /** Strategy guide: simulated odds per chip with a mixed public. */
 /** Simulated share of chips (%) ending in each tier: Treasure, Ingot, Nugget, Gold dust, Rock. Each row sums to 100. */
 export const STRATEGY_GUIDE: { saveAt: number; odds: number[] }[] = [
-  { saveAt: 3, odds: [0, 4, 38, 51, 7] },
-  { saveAt: 4, odds: [0, 28, 12, 48, 12] },
-  { saveAt: 5, odds: [3, 17, 23, 34, 23] },
-  { saveAt: 6, odds: [6, 17, 31, 22, 24] },
-  { saveAt: 8, odds: [16, 9, 21, 19, 35] },
+  { saveAt: 3, odds: [0, 1, 45, 47, 7] },
+  { saveAt: 4, odds: [0, 20, 21, 48, 11] },
+  { saveAt: 5, odds: [2, 16, 25, 35, 22] },
+  { saveAt: 6, odds: [6, 17, 32, 23, 22] },
+  { saveAt: 7, odds: [10, 24, 6, 37, 23] },
+  { saveAt: 8, odds: [12, 12, 22, 20, 34] },
 ];
