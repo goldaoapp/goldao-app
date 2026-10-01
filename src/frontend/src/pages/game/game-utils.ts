@@ -22,6 +22,9 @@ export const eyebrow =
 /** Expected points of an unplayed excavation (auto-played saving at 3 at close). Mirrors AUTO_EV in the backend. */
 export const AUTO_SAVE_EV = 100;
 
+/** Typical chip-average cutoffs (x100) for Treasure, Ingot, Nugget and Gold dust, from simulations. Used while the week has too few chips to have its own. */
+export const TYPICAL_CUTS_X100 = [13_800, 11_500, 10_200, 8_200];
+
 /** Set to an image path (e.g. "/assets/images/diamond.png") once the diamond artwork is added. */
 export const DIAMOND_IMG: string | null = "/assets/images/diamond.png";
 
