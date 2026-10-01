@@ -39,7 +39,7 @@ export function fmtGoldao(e8s: bigint, digits = 0): string {
 }
 
 /** Average points are sent as x100 integers. */
-export function fmtAvg(x100: bigint): string {
+export function fmtAvg(x100: bigint | number): string {
   return (Number(x100) / 100).toLocaleString("en-US", {
     minimumFractionDigits: 1,
     maximumFractionDigits: 1,
