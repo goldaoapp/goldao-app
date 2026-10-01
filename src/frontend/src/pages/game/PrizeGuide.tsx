@@ -194,7 +194,8 @@ export function PrizeGuide({ ranking, config }: Props) {
           Where a chip ends at the weekly close if all its excavations save at
           that pick, compared with everyone else. This is not the per-pick
           &quot;safe&quot; chance shown while digging. Simulated with a mixed
-          set of players; every row adds up to 100%.
+          set of players; every row adds up to 100%. Saving starts at pick 3:
+          the first two picks are free.
         </p>
       </div>
 
