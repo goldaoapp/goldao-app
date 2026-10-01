@@ -120,6 +120,7 @@ module {
     used : Nat;
     points : Nat;
     avgX100 : Nat;
+    projectedX100 : Nat; // average counting each unplayed excavation as AUTO_EV points
     diamonds : Nat;
     tier : TierIndex; // provisional
     gapToNextX100 : ?Nat; // average points missing to reach the next tier
@@ -179,6 +180,7 @@ module {
     treasuryBps : Nat;
     drawBps : Nat;
     minChips : Nat;
+    minPlayers : Nat;
     faucetCapE8s : Nat;
     pointsTable : [Nat];
     week : Nat;
