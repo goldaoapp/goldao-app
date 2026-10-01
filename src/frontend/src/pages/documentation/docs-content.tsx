@@ -556,6 +556,7 @@ export const DOC_PAGES: DocPage[] = [
                 "25d323c1-6192-47d5-931e-0ed9ee199608",
               )}
               alt="Copy your principal in the NNS dApp"
+              local="stake-1-copy-principal.png"
             />
           </li>
           <li>
@@ -567,6 +568,7 @@ export const DOC_PAGES: DocPage[] = [
                 "ffd4b421-f1d2-4a54-bb34-65abc5846d79",
               )}
               alt="Stake GOLDAO in the NNS dApp"
+              local="stake-2-stake-goldao.png"
             />
           </li>
           <li>
@@ -577,6 +579,7 @@ export const DOC_PAGES: DocPage[] = [
                 "7d408a55-e35c-48a9-ac0b-a00d05735cbb",
               )}
               alt="Neuron settings in the NNS dApp"
+              local="stake-3-neuron-settings.png"
             />
             Set the <B>dissolve delay</B> and the <B>voting delegation</B>{" "}
             (follow a neuron if you won&apos;t vote yourself). The main
@@ -611,6 +614,11 @@ export const DOC_PAGES: DocPage[] = [
           rewards canister measures that maturity and assigns each neuron its
           share of the rewards.
         </P>
+        <Callout>
+          Rewards are paid in ICP, OGY, GLDT and WTN.{" "}
+          <B>GOLDAO rewards no longer exist.</B> Only neurons with a 2-year
+          dissolve delay that are not dissolving are eligible.
+        </Callout>
         <Table
           head={["Token", "Source", "Paid"]}
           rows={[
@@ -667,6 +675,7 @@ export const DOC_PAGES: DocPage[] = [
                 "2d0212fb-502b-49d9-9c37-fc1a25a02dc7",
               )}
               alt="Gold DAO dApp login"
+              local="configure-1-login.png"
             />
           </li>
           <li>
@@ -677,6 +686,7 @@ export const DOC_PAGES: DocPage[] = [
                 "694852eb-1d9c-494a-a280-31ce041340ee",
               )}
               alt="Rewards page"
+              local="configure-2-rewards-page.png"
             />
           </li>
           <li>
@@ -687,6 +697,7 @@ export const DOC_PAGES: DocPage[] = [
                 "3da21e77-5003-4884-906b-352ff9018ff8",
               )}
               alt="Add a neuron"
+              local="configure-3-add-neuron.png"
             />
           </li>
           <li>
@@ -697,6 +708,7 @@ export const DOC_PAGES: DocPage[] = [
                 "f0b9bf2d-0b7d-49aa-936d-7ee687e73d7a",
               )}
               alt="Copy your dApp principal"
+              local="configure-4-copy-principal.png"
             />
           </li>
           <li>
@@ -710,6 +722,7 @@ export const DOC_PAGES: DocPage[] = [
                 "ecf1ef12-f946-465e-bb8a-cce66d5f9f26",
               )}
               alt="Add a hotkey in the NNS dApp"
+              local="configure-5-add-hotkey.png"
             />
           </li>
           <li>
@@ -720,6 +733,7 @@ export const DOC_PAGES: DocPage[] = [
                 "307481ae-ba4a-435c-9cdc-f7e223142111",
               )}
               alt="Neuron listed in the dApp"
+              local="configure-6-neuron-listed.png"
             />
           </li>
         </OL>
@@ -734,6 +748,7 @@ export const DOC_PAGES: DocPage[] = [
             "cb0314dd-d094-4cd2-9aa5-d01c77797516",
           )}
           alt="Following settings"
+          local="configure-7-followees.png"
         />
         <P>
           To follow the Gold DAO developer team, follow{" "}
@@ -848,6 +863,10 @@ export const DOC_PAGES: DocPage[] = [
             ],
           ]}
         />
+        <Callout>
+          GOLDAO is no longer paid as a reward: the former GOLDAO reward stream
+          has ended.
+        </Callout>
         <H2>Weeks without a token</H2>
         <P>
           Each token is distributed independently. If a pool is empty (for
