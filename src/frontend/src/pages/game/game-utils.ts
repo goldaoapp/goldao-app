@@ -23,7 +23,7 @@ export const eyebrow =
 export const AUTO_SAVE_EV = 100;
 
 /** Set to an image path (e.g. "/assets/images/diamond.png") once the diamond artwork is added. */
-export const DIAMOND_IMG: string | null = null;
+export const DIAMOND_IMG: string | null = "/assets/images/diamond.png";
 
 const E8S = 100_000_000;
 
