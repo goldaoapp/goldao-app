@@ -3,13 +3,15 @@ import { useEffect, useState } from "react";
 
 import { cn } from "@/lib/utils";
 
+const THEME_EVENT = "goldao-theme-change";
+
 /** Reads / writes the theme ("light" | "dark") in localStorage, same key as before. */
 function useDarkMode() {
   const [dark, setDark] = useState(() => {
     try {
       return localStorage.getItem("theme") === "dark";
     } catch {
-      return false;
+      return document.documentElement.classList.contains("dark");
     }
   });
 
@@ -22,7 +24,20 @@ function useDarkMode() {
     }
   }, [dark]);
 
-  return { dark, toggle: () => setDark((d) => !d) };
+  // Keep every toggle instance (desktop + mobile top bar) in sync.
+  useEffect(() => {
+    const onChange = (e: Event) => setDark((e as CustomEvent<boolean>).detail);
+    window.addEventListener(THEME_EVENT, onChange);
+    return () => window.removeEventListener(THEME_EVENT, onChange);
+  }, []);
+
+  const toggle = () => {
+    const next = !dark;
+    setDark(next);
+    window.dispatchEvent(new CustomEvent(THEME_EVENT, { detail: next }));
+  };
+
+  return { dark, toggle };
 }
 
 /** Light / dark switch, fixed in the top-right corner of every page. */
