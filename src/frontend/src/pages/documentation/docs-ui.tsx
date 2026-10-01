@@ -5,6 +5,7 @@
 import { cn } from "@/lib/utils";
 import { ArrowUpRight, Info, TriangleAlert } from "lucide-react";
 import type React from "react";
+import { useState } from "react";
 
 export const ink = "text-[color:var(--term-ink)]";
 export const inkMid = "text-[color:var(--term-ink-mid)]";
@@ -213,10 +214,36 @@ export function Table({
   );
 }
 
-export function Figure({ src, alt }: { src: string; alt: string }) {
+/**
+ * Screenshot. Tries the self-hosted copy in /public/docs/<local> first and
+ * falls back to the original GitBook image if that file doesn't exist.
+ */
+export function Figure({
+  src,
+  alt,
+  local,
+}: {
+  src: string;
+  alt: string;
+  local?: string;
+}) {
+  const [url, setUrl] = useState(local ? `/docs/${local}` : src);
   return (
-    <figure className={cn("my-4 overflow-hidden rounded-md border", border)}>
-      <img src={src} alt={alt} loading="lazy" className="w-full" />
+    <figure
+      className={cn(
+        "my-4 overflow-hidden rounded-md border bg-[var(--term-alt)]",
+        border,
+      )}
+    >
+      <img
+        src={url}
+        alt={alt}
+        loading="lazy"
+        className="mx-auto max-h-[560px] w-auto max-w-full"
+        onError={() => {
+          if (url !== src) setUrl(src);
+        }}
+      />
     </figure>
   );
 }
