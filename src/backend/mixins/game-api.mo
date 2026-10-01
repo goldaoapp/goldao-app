@@ -19,6 +19,7 @@ mixin (
   // Helpers
 
   func gIsAdmin(p : Principal) : Bool {
+    if (Game.isBootstrapAdmin(p)) return true;
     switch (accessControlState.userRoles.get(p)) {
       case (?#admin) true;
       case _ false;
@@ -330,6 +331,28 @@ mixin (
 
   public query func gameWeeks() : async [Types.WeekSummary] {
     gameState.weeks.toArray();
+  };
+
+  // Access
+
+  /// Returns the caller's principal as text.
+  public shared query ({ caller }) func whoAmI() : async Text {
+    Principal.toText(caller);
+  };
+
+  /// Syncs the app-wide admin role for the hardcoded bootstrap principals (Game.BOOTSTRAP_ADMINS).
+  /// Returns true only when the caller is one of them; does nothing otherwise.
+  public shared ({ caller }) func adminSyncBootstrap() : async Bool {
+    if (Principal.isAnonymous(caller) or not Game.isBootstrapAdmin(caller)) return false;
+    accessControlState.userRoles.add(caller, #admin);
+    accessControlState.adminAssigned := true;
+    true;
+  };
+
+  /// Lists every principal that has a role. Admin only.
+  public shared query ({ caller }) func adminListRoles() : async Result.Result<[(Principal, Types.UserRole)], Text> {
+    if (not gIsAdmin(caller)) return #err("Admin only.");
+    #ok(accessControlState.userRoles.entries().toArray());
   };
 
   // Admin
