@@ -148,9 +148,9 @@ export function tokenForPick(pick: number): TokenKey {
 
 /** Strategy guide: simulated odds per chip with a mixed public. */
 export const STRATEGY_GUIDE = [
-  { saveAt: 3, treasure: "0%", ingot: "9%", rock: "5%", range: "88 – 114" },
-  { saveAt: 4, treasure: "1%", ingot: "17%", rock: "16%", range: "83 – 122" },
-  { saveAt: 5, treasure: "3%", ingot: "20%", rock: "22%", range: "75 – 123" },
-  { saveAt: 6, treasure: "9%", ingot: "15%", rock: "26%", range: "71 – 129" },
-  { saveAt: 8, treasure: "13%", ingot: "15%", rock: "32%", range: "65 – 140" },
+  { saveAt: 3, treasure: "0%", ingot: "4%", rock: "7%", range: "76 – 114" },
+  { saveAt: 4, treasure: "0%", ingot: "28%", rock: "12%", range: "69 – 131" },
+  { saveAt: 5, treasure: "3%", ingot: "17%", rock: "23%", range: "70 – 134" },
+  { saveAt: 6, treasure: "6%", ingot: "17%", rock: "24%", range: "60 – 151" },
+  { saveAt: 8, treasure: "16%", ingot: "10%", rock: "35%", range: "59 – 153" },
 ];
