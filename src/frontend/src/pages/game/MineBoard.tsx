@@ -21,6 +21,7 @@ import {
   useTransform,
 } from "motion/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Spinner } from "./Spinner";
 import {
   AUTO_SAVE_EV,
   DIAMOND_CELL,
@@ -106,6 +107,8 @@ export function MineBoard({ dashboard, config }: Props) {
   const weekOpen = dashboard?.status === "open";
   const excavationsLeft = dashboard ? Number(dashboard.excavationsLeft) : 0;
   const busy = digging !== null;
+  // Signed in but the dashboard has not arrived yet
+  const loadingDash = isAuthenticated && !dashboard;
 
   // Restore an excavation left open (reload, another tab) from the backend.
   const open = dashboard?.open;
@@ -348,6 +351,8 @@ export function MineBoard({ dashboard, config }: Props) {
                   Chip {chipNumber} · excavation {excNumber} of {excPerChip}
                 </span>
               </>
+            ) : loadingDash ? (
+              <Spinner />
             ) : (
               "No active chip"
             )}
@@ -453,6 +458,7 @@ export function MineBoard({ dashboard, config }: Props) {
             used={Number(trackChip?.used ?? 0)}
             excPerChip={excPerChip}
             estimated={estimated}
+            loading={loadingDash || !ranking}
             digging={!!exc}
             canSave={!!exc?.canSave}
             avgNow={exc ? avgNow : trackChip ? projectedOf(trackChip) : null}
@@ -469,11 +475,27 @@ export function MineBoard({ dashboard, config }: Props) {
           <div className="grid grid-cols-2 gap-2">
             <MiniStat
               label="Excavations left"
-              value={dashboard ? String(excavationsLeft) : "—"}
+              value={
+                dashboard ? (
+                  String(excavationsLeft)
+                ) : loadingDash ? (
+                  <Spinner />
+                ) : (
+                  "—"
+                )
+              }
             />
             <MiniStat
               label="Diamonds"
-              value={dashboard ? String(Number(dashboard.diamonds)) : "—"}
+              value={
+                dashboard ? (
+                  String(Number(dashboard.diamonds))
+                ) : loadingDash ? (
+                  <Spinner />
+                ) : (
+                  "—"
+                )
+              }
               accent
             />
           </div>
@@ -697,7 +719,7 @@ function MiniStat({
   label,
   value,
   accent,
-}: { label: string; value: string; accent?: boolean }) {
+}: { label: string; value: React.ReactNode; accent?: boolean }) {
   return (
     <div className="rounded-md border border-[color:var(--term-border-faint)] bg-[var(--term-alt)] px-3 py-2">
       <div className={cn("font-mono text-[10px] uppercase", inkFaint)}>
@@ -888,6 +910,7 @@ function ChipTrack({
   used,
   excPerChip,
   estimated,
+  loading,
   digging,
   canSave,
   avgNow,
@@ -900,6 +923,7 @@ function ChipTrack({
   used: number;
   excPerChip: number;
   estimated: boolean;
+  loading: boolean;
   digging: boolean;
   canSave: boolean;
   avgNow: number | null;
@@ -974,7 +998,16 @@ function ChipTrack({
       </div>
 
       {/* Prize track */}
-      {!ready || avgNow === null ? (
+      {loading ? (
+        <span
+          className={cn(
+            "flex items-center gap-2 font-mono text-[11px]",
+            inkFaint,
+          )}
+        >
+          <Spinner /> Loading your chip
+        </span>
+      ) : !ready || avgNow === null ? (
         <span className={cn("font-mono text-[11px]", inkFaint)}>
           {avgNow === null
             ? "Buy a chip to see where it lands."
@@ -1181,7 +1214,7 @@ function DrawCard({
             DIAMOND_TEXT,
           )}
         >
-          {prize === undefined ? "—" : fmtGoldao(prize)}
+          {prize === undefined ? <Spinner /> : fmtGoldao(prize)}
         </motion.span>
         <span className={cn("font-mono text-[10px]", inkFaint)}>GOLDAO</span>
       </div>
