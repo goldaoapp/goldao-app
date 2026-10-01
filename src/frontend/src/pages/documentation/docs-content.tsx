@@ -177,8 +177,8 @@ export const DOC_PAGES: DocPage[] = [
     render: (live) => (
       <>
         <P>
-          The Gold DAO stakes its ICP in a <B>single NNS neuron</B>, locked for
-          8 years and controlled by the{" "}
+          The Gold DAO stakes its ICP in a <B>single NNS neuron</B>, locked at
+          the NNS maximum dissolve delay of 2 years and controlled by the{" "}
           <A href={`${DASH}/canister/j4jiq-sqaaa-aaaap-ab23a-cai`}>
             icp_neuron canister
           </A>
@@ -193,7 +193,7 @@ export const DOC_PAGES: DocPage[] = [
                 {NNS_NEURON_ID}
               </A>,
             ],
-            ["Dissolve delay", "8 years"],
+            ["Dissolve delay", "2 years (NNS maximum)"],
             ["Staked", <Live key="s" value={live.nnsStaked} unit="ICP" />],
             [
               "Current maturity",
