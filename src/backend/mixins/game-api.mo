@@ -130,6 +130,7 @@ mixin (
       treasuryBps = Game.TREASURY_BPS;
       drawBps = Game.DRAW_BPS;
       minChips = Game.MIN_CHIPS;
+      minPlayers = Game.MIN_PLAYERS;
       faucetCapE8s = Game.FAUCET_CAP;
       pointsTable = Game.POINTS;
       week = gameState.week;
@@ -275,11 +276,12 @@ mixin (
       st.ranked,
       func((f, t, _)) {
         if (f.owner != caller) return null;
+        let proj = Game.projectedX100(f);
         let gap : ?Nat = if (t == 0 or f.used == 0) null else switch (st.cutsX100[Game.sub(t, 1)]) {
-          case (?c) { let a = Game.avgX100(f); ?(if (c > a) Game.sub(c, a) + 1 else 1) };
+          case (?c) ?(if (c > proj) Game.sub(c, proj) + 1 else 1);
           case null null;
         };
-        ?{ id = f.id; used = f.used; points = f.points; avgX100 = Game.avgX100(f); diamonds = f.diamonds; tier = t; gapToNextX100 = gap };
+        ?{ id = f.id; used = f.used; points = f.points; avgX100 = Game.avgX100(f); projectedX100 = proj; diamonds = f.diamonds; tier = t; gapToNextX100 = gap };
       },
     );
     let sorted = Array.sort(chips, func(a : Types.ChipView, b : Types.ChipView) : { #less; #equal; #greater } { Nat.compare(a.id, b.id) });
@@ -388,7 +390,12 @@ mixin (
     if (gameState.status != #open) return #err("The week is not open.");
     let k = gameState.chips.size();
     if (k < Game.MIN_CHIPS) {
-      return #err("There are " # Nat.toText(k) # " chips. With fewer than 20 the week is extended.");
+      return #err("There are " # Nat.toText(k) # " chips. With fewer than " # Nat.toText(Game.MIN_CHIPS) # " the week is extended.");
+    };
+    let owners = Map.empty<Principal, ()>();
+    for (f in gameState.chips.values()) owners.add(f.owner, ());
+    if (owners.size() < Game.MIN_PLAYERS) {
+      return #err("There are " # Nat.toText(owners.size()) # " players. With fewer than " # Nat.toText(Game.MIN_PLAYERS) # " the week is extended.");
     };
     gameState.status := #closing;
 
