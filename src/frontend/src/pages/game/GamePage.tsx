@@ -166,7 +166,7 @@ function Tab({
   return (
     <TabsTrigger
       value={value}
-      className="h-full min-w-0 flex-col gap-1 px-1 py-1.5 font-mono text-[10px] sm:flex-row sm:gap-1.5 sm:px-3 sm:py-1 sm:text-xs data-[state=active]:bg-primary data-[state=active]:text-primary-foreground dark:data-[state=active]:bg-primary dark:data-[state=active]:text-primary-foreground [&_svg]:size-3.5"
+      className="h-full min-w-0 flex-col gap-1 px-1 py-1.5 sm:min-w-max font-mono text-[10px] sm:flex-row sm:gap-1.5 sm:px-3 sm:py-1 sm:text-xs data-[state=active]:bg-primary data-[state=active]:text-primary-foreground dark:data-[state=active]:bg-primary dark:data-[state=active]:text-primary-foreground [&_svg]:size-3.5"
     >
       {icon}
       <span className="sm:hidden">{short ?? label}</span>
