@@ -113,7 +113,7 @@ export function PrizeGuide({ ranking, config }: Props) {
           >
             <span>Save at</span>
             <span>Where the chip ends</span>
-            <span className="text-right">Win or recover</span>
+            <span className="text-right">Win or break even</span>
           </div>
           {STRATEGY_GUIDE.map((s, row) => (
             <div
@@ -215,8 +215,7 @@ export function PrizeGuide({ ranking, config }: Props) {
             finished first.
           </Rule>
           <Rule title="Fees">
-            If you receive anything, every fee you paid is refunded with your
-            prize.
+            If a chip pays out, every fee you paid is refunded with your prize.
           </Rule>
           <Rule
             title={
@@ -226,11 +225,12 @@ export function PrizeGuide({ ranking, config }: Props) {
             }
           >
             2% chance on every safe pick. Each diamond is a ticket for the
-            weekly draw of {drawPct}% of the pot. One winner, verifiable on
-            chain.
+            weekly draw of {drawPct}% of the prize pool. One winner, verifiable
+            on chain.
           </Rule>
-          <Rule title="Treasury">
-            {treasuryPct}% of the pot stays in the treasury to pay for cycles.
+          <Rule title="Running costs">
+            {treasuryPct}% of the prize pool is kept to pay for the cycles that
+            run the game.
           </Rule>
           <Rule title="Weekly close">
             Open excavations are saved and unused ones are auto-played saving at
