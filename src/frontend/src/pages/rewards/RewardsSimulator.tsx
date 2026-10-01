@@ -137,13 +137,11 @@ function RewardCard({
   r,
   unit,
   source,
-  last,
 }: {
   kind: string;
   r: TokenReward;
   unit: string;
   source: string;
-  last?: { roundId: number; amount: number };
 }) {
   const a = ACCENT[kind] ?? ACCENT.icp;
   return (
@@ -200,16 +198,6 @@ function RewardCard({
               </dd>
             </div>
           ))}
-          {last && (
-            <div className="grid grid-cols-[auto_1fr] items-baseline gap-x-3 py-1.5">
-              <dt className="text-muted-foreground">
-                Last paid #{last.roundId}
-              </dt>
-              <dd className="text-right tabular-nums text-foreground">
-                {fmtToken(last.amount)} {unit}
-              </dd>
-            </div>
-          )}
         </dl>
       </div>
     </div>
@@ -351,18 +339,6 @@ export default function RewardsSimulator() {
       ogy_pool_weekly: fmtDefault(Math.round(ogyMeasured.weekly)),
     }));
   }, [ogyMeasured]);
-
-  // Most recent paid round per token (total paid to all neurons).
-  const lastPaid = useMemo(() => {
-    const out: Record<string, { roundId: number; amount: number }> = {};
-    for (const r of rounds) {
-      for (const [token, t] of Object.entries(r.tokens)) {
-        if (!out[token] && t.status === "paid" && t.amount)
-          out[token] = { roundId: r.roundId, amount: t.amount };
-      }
-    }
-    return out;
-  }, [rounds]);
 
   const assumptions = useMemo<RewardAssumptions>(() => {
     const a: Record<string, number> = {};
@@ -549,12 +525,6 @@ export default function RewardsSimulator() {
 
   const liveLoading = assumptions.goldao_eligible <= 0;
   const ogyFromRounds = assumptions.ogy_pool_weekly > 0;
-  const lastFor = (token: string) => {
-    const l = lastPaid[token];
-    return l && result.share > 0
-      ? { roundId: l.roundId, amount: l.amount * result.share }
-      : undefined;
-  };
 
   const handleReset = useCallback(() => {
     const init: Record<string, string> = {};
@@ -919,7 +889,6 @@ export default function RewardsSimulator() {
               r={result.icp}
               unit="ICP"
               source="33% of NNS neuron maturity"
-              last={lastFor("ICP")}
             />
             <RewardCard
               kind="gldt"
@@ -936,7 +905,6 @@ export default function RewardsSimulator() {
                   ? `DAO OGY neuron + ORIGYN partnership · avg of last ${ogyMeasured?.rounds ?? ""} rounds`
                   : "DAO OGY neuron · staked × APY"
               }
-              last={lastFor("OGY")}
             />
             <RewardCard
               kind="wtn_icp"
@@ -991,8 +959,7 @@ export default function RewardsSimulator() {
               none and the next pays more. OGY uses the amount actually paid in
               recent rounds, which already includes the ORIGYN partnership. GLDT
               is paid monthly. In neuron mode, share comes from your on-chain
-              maturity delta. &quot;Last paid&quot; shows what your share would
-              have received in the latest paid round.
+              maturity delta.
             </p>
           </div>
         </div>
