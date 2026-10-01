@@ -43,7 +43,7 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
     if (!actor) return;
     setMsg(null);
     try {
-      const s = await run("close", () => actor.gameAdminCloseWeek());
+      const s = await run("close", () => actor.gameAdminCloseWeek(), "all");
       setMsg({
         ok: true,
         text: s.drawWinner
@@ -61,7 +61,7 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
     if (!actor) return;
     setMsg(null);
     try {
-      await run("recover", () => actor.gameAdminRecoverClosing());
+      await run("recover", () => actor.gameAdminRecoverClosing(), "all");
       setMsg({ ok: true, text: "Week reopened. Run the close again." });
     } catch (e) {
       setMsg({ ok: false, text: errorMessage(e) });
@@ -72,7 +72,11 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
     if (!actor) return;
     setMsg(null);
     try {
-      const total = await run("pay", () => actor.gameAdminPayAndOpenNext());
+      const total = await run(
+        "pay",
+        () => actor.gameAdminPayAndOpenNext(),
+        "all",
+      );
       setMsg({
         ok: true,
         text: `Paid ${fmtGoldao(total)} GOLDAO. Next week is open.`,
