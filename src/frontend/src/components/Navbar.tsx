@@ -17,6 +17,8 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 
+import ThemeToggle from "@/components/ThemeToggle";
+
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/context/AuthContext";
 import { cn } from "@/lib/utils";
@@ -55,12 +57,8 @@ const HIDDEN_PATHS = new Set(["/proposals", "/news"]);
 
 const NAV_ITEMS = ALL_NAV_ITEMS.filter((i) => !HIDDEN_PATHS.has(i.to));
 
-const navItem = (to: string) => NAV_ITEMS.find((i) => i.to === to);
-
-// Mobile bottom tab order: Home, Treasury, Rewards, Fair Value, More
-const MOBILE_TABS: NavItem[] = ["/", "/treasury", "/rewards", "/fair-value"]
-  .map(navItem)
-  .filter((i): i is NavItem => i !== undefined);
+// Mobile bottom bar shows every visible module (6 fit on a 360 px phone).
+const MOBILE_TABS: NavItem[] = NAV_ITEMS;
 
 function isActive(currentPath: string, to: string): boolean {
   if (to === "/") return currentPath === "/";
@@ -247,6 +245,111 @@ function AuthControls({ collapsed }: { collapsed: boolean }) {
 }
 
 /* ─── Mobile Bottom Tab Bar ─── */
+/* ─── Mobile top bar: brand + wallet + theme ─── */
+export function MobileTopBar() {
+  return (
+    <header
+      data-ocid="mobile-topbar"
+      className="fixed inset-x-0 top-0 z-40 flex h-14 items-center justify-between border-b border-[color:var(--term-border)] bg-card/95 px-4 pt-[env(safe-area-inset-top,0px)] backdrop-blur-md md:hidden"
+    >
+      <Link
+        to="/"
+        aria-label="GOLDAO home"
+        className="flex items-center gap-2 font-mono text-[11px] font-semibold uppercase tracking-[0.2em] text-[color:var(--term-ink)]"
+      >
+        <img
+          src="/assets/images/goldao-icon.png"
+          alt=""
+          className="size-6 rounded-md"
+        />
+        GOLDAO <span className="text-[color:var(--term-gold)]">App</span>
+      </Link>
+      <div className="flex items-center gap-2">
+        <MobileAuth />
+        <ThemeToggle />
+      </div>
+    </header>
+  );
+}
+
+function MobileAuth() {
+  const [open, setOpen] = useState(false);
+  const { isAuthenticated, isLoading, isAdmin, principalId, login, logout } =
+    useAuth();
+
+  if (!isAuthenticated) {
+    return (
+      <button
+        type="button"
+        onClick={() => login()}
+        disabled={isLoading}
+        data-ocid="mobile.nav.connect_wallet"
+        className="flex h-8 items-center gap-1.5 rounded-full bg-[var(--term-gold)] px-3 font-mono text-[11px] font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-60"
+      >
+        <Wallet className="size-3.5" aria-hidden="true" />
+        {isLoading ? "…" : "Connect"}
+      </button>
+    );
+  }
+
+  const short = principalId
+    ? `${principalId.slice(0, 5)}…${principalId.slice(-3)}`
+    : "Account";
+
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        data-ocid="mobile.nav.account"
+        className="flex h-8 items-center gap-1.5 rounded-full border border-[color:var(--term-border)] bg-[var(--term-card)] px-3 font-mono text-[11px] text-[color:var(--term-ink)]"
+      >
+        <Wallet
+          className="size-3.5 text-[color:var(--term-gold)]"
+          aria-hidden="true"
+        />
+        {short}
+      </button>
+      {open && (
+        <>
+          <div
+            className="fixed inset-0 z-40"
+            onClick={() => setOpen(false)}
+            onKeyDown={() => {}}
+            role="presentation"
+          />
+          <div className="absolute right-0 top-full z-50 mt-2 min-w-[160px] rounded-lg border border-border bg-card/95 py-1 shadow-lg backdrop-blur-md">
+            {isAdmin && (
+              <Link
+                to="/admin"
+                onClick={() => setOpen(false)}
+                className="flex items-center gap-2.5 px-4 py-2.5 text-[13px] font-medium text-primary"
+              >
+                <Shield className="size-4" aria-hidden="true" />
+                Panel Admin
+              </Link>
+            )}
+            <button
+              type="button"
+              onClick={() => {
+                setOpen(false);
+                logout();
+              }}
+              data-ocid="mobile.nav.logout"
+              className="flex w-full items-center gap-2.5 px-4 py-2.5 text-[13px] font-medium text-muted-foreground"
+            >
+              <LogOut className="size-4" aria-hidden="true" />
+              Logout
+            </button>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+/* ─── Mobile bottom tab bar: every module, no "More" ─── */
 export function MobileTabBar() {
   const { location } = useRouterState();
 
@@ -254,7 +357,10 @@ export function MobileTabBar() {
     <nav
       data-ocid="mobile-tabs"
       aria-label="Mobile navigation"
-      className="fixed bottom-0 left-0 right-0 z-40 flex items-center justify-around border-t border-border bg-card/95 backdrop-blur-md px-2 pb-[env(safe-area-inset-bottom,0px)] pt-2 md:hidden"
+      className="fixed inset-x-0 bottom-0 z-40 grid border-t border-[color:var(--term-border)] bg-card/95 px-1 pb-[max(env(safe-area-inset-bottom,0px),0.5rem)] pt-2 backdrop-blur-md md:hidden"
+      style={{
+        gridTemplateColumns: `repeat(${MOBILE_TABS.length}, minmax(0, 1fr))`,
+      }}
     >
       {MOBILE_TABS.map((item) => {
         const active = isActive(location.pathname, item.to);
@@ -266,127 +372,26 @@ export function MobileTabBar() {
             data-ocid={`mobile.${item.ocid}`}
             aria-current={active ? "page" : undefined}
             className={cn(
-              "flex flex-col items-center gap-1 py-1.5 px-3 rounded-md transition-colors outline-none",
-              active ? "text-primary" : "text-muted-foreground",
+              "flex min-w-0 flex-col items-center gap-1 rounded-md py-1 outline-none transition-colors",
+              active
+                ? "text-[color:var(--term-gold)]"
+                : "text-[color:var(--term-ink-mid)]",
             )}
           >
             <Icon className="size-5" aria-hidden="true" />
-            <span className="text-[9px] font-medium">{item.label}</span>
+            <span className="w-full truncate text-center text-[9.5px] font-medium leading-none">
+              {item.label}
+            </span>
+            <span
+              className={cn(
+                "h-0.5 w-5 rounded-full",
+                active ? "bg-[var(--term-gold)]" : "bg-transparent",
+              )}
+            />
           </Link>
         );
       })}
-      {/* More button — opens remaining items */}
-      <MoreMenu pathname={location.pathname} />
     </nav>
-  );
-}
-
-// Everything not in the bottom tab bar goes in "More"
-const MORE_ITEMS: NavItem[] = NAV_ITEMS.filter((i) => !MOBILE_TABS.includes(i));
-
-function MoreMenu({ pathname }: { pathname: string }) {
-  const [open, setOpen] = useState(false);
-  const { isAuthenticated, isLoading, isAdmin, login, logout } = useAuth();
-  const moreActive = MORE_ITEMS.some((item) => isActive(pathname, item.to));
-
-  return (
-    <div className="relative">
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        data-ocid="mobile.nav.more"
-        className={cn(
-          "flex flex-col items-center gap-1 py-1.5 px-3 rounded-md transition-colors outline-none",
-          moreActive ? "text-primary" : "text-muted-foreground",
-        )}
-      >
-        <svg
-          width="20"
-          height="20"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.8"
-          className="size-5"
-          role="img"
-          aria-label="More"
-        >
-          <circle cx="10" cy="10" r="2" />
-          <path d="M10 3v2M10 15v2M3 10h2M15 10h2" />
-        </svg>
-        <span className="text-[9px] font-medium">More</span>
-      </button>
-      {open && (
-        <>
-          <div
-            className="fixed inset-0 z-40"
-            onClick={() => setOpen(false)}
-            onKeyDown={() => {}}
-            role="presentation"
-          />
-          <div className="absolute bottom-full right-0 mb-2 z-50 min-w-[160px] rounded-lg border border-border bg-card/95 backdrop-blur-md shadow-lg py-1">
-            {MORE_ITEMS.map((item) => {
-              const active = isActive(pathname, item.to);
-              const Icon = item.icon;
-              return (
-                <Link
-                  key={item.to}
-                  to={item.to}
-                  onClick={() => setOpen(false)}
-                  className={cn(
-                    "flex items-center gap-2.5 px-4 py-2.5 text-[13px] font-medium transition-colors",
-                    active ? "text-primary" : "text-muted-foreground",
-                  )}
-                >
-                  <Icon className="size-4" aria-hidden="true" />
-                  {item.label}
-                </Link>
-              );
-            })}
-
-            <div className="my-1 border-t border-border" />
-
-            {!isAuthenticated ? (
-              <button
-                type="button"
-                onClick={() => {
-                  setOpen(false);
-                  login();
-                }}
-                disabled={isLoading}
-                className="flex w-full items-center gap-2.5 px-4 py-2.5 text-[13px] font-medium text-primary transition-colors"
-              >
-                <Wallet className="size-4" aria-hidden="true" />
-                Connect Wallet
-              </button>
-            ) : (
-              <>
-                {isAdmin && (
-                  <Link
-                    to="/admin"
-                    onClick={() => setOpen(false)}
-                    className="flex items-center gap-2.5 px-4 py-2.5 text-[13px] font-medium text-primary transition-colors"
-                  >
-                    <Shield className="size-4" aria-hidden="true" />
-                    Panel Admin
-                  </Link>
-                )}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setOpen(false);
-                    logout();
-                  }}
-                  className="flex w-full items-center gap-2.5 px-4 py-2.5 text-[13px] font-medium text-muted-foreground transition-colors"
-                >
-                  <LogOut className="size-4" aria-hidden="true" />
-                  Logout
-                </button>
-              </>
-            )}
-          </div>
-        </>
-      )}
-    </div>
   );
 }
 
