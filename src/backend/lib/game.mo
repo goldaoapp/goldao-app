@@ -6,6 +6,7 @@ import Nat "mo:core/Nat";
 import Nat8 "mo:core/Nat8";
 import Order "mo:core/Order";
 import Nat64 "mo:core/Nat64";
+import Int "mo:core/Int";
 
 module {
   public type Chip = Types.Chip;
@@ -43,6 +44,12 @@ module {
     459, 587, 770, 1045, 1480, 2220, 3608, 6614, 14882, 52087,
   ];
 
+  // Saturating subtraction: returns 0 instead of trapping when b > a.
+  public func sub(a : Nat, b : Nat) : Nat {
+    let d : Int = a - b;
+    if (d > 0) Int.abs(d) else 0;
+  };
+
   public func pointsAt(k : Nat) : Nat { POINTS[k] };
 
   // Collapse after k safe picks: keeps half (rounded up)
@@ -52,7 +59,7 @@ module {
 
   // Chance (x100) that the next pick is safe
   public func safePctX100(picks : Nat) : Nat {
-    if (picks < SAFE) 10_000 else if (picks >= MAX_PICKS) 0 else (CELLS - MINES - picks) * 10_000 / (CELLS - picks);
+    if (picks < SAFE) 10_000 else if (picks >= MAX_PICKS) 0 else sub(sub(CELLS, MINES), picks) * 10_000 / sub(CELLS, picks);
   };
 
   public func bytesToNat(bytes : [Nat8], from : Nat, len : Nat) : Nat {
@@ -69,7 +76,7 @@ module {
   public func decidePick(picks : Nat, bytes : [Nat8]) : { collapsed : Bool; diamond : Bool } {
     let r1 = bytesToNat(bytes, 0, 4);
     let r2 = bytesToNat(bytes, 4, 4);
-    let collapsed = picks >= SAFE and (r1 % (CELLS - picks)) < MINES;
+    let collapsed = picks >= SAFE and (r1 % sub(CELLS, picks)) < MINES;
     let diamond = not collapsed and (r2 % 10_000) < DIAMOND_BPS;
     { collapsed; diamond };
   };
@@ -93,7 +100,7 @@ module {
     var picks = 0;
     var diamonds = 0;
     loop {
-      if (picks >= SAFE and rng.below(CELLS - picks) < MINES) return (collapsePoints(picks), diamonds);
+      if (picks >= SAFE and rng.below(sub(CELLS, picks)) < MINES) return (collapsePoints(picks), diamonds);
       picks += 1;
       if (rng.below(10_000) < DIAMOND_BPS) diamonds += 1;
       if (picks == stopAt or picks == MAX_PICKS) return (pointsAt(picks), diamonds);
@@ -205,15 +212,15 @@ module {
 
     let treasuryKeep = pot * TREASURY_BPS / 10_000;
     let drawPrize = pot * DRAW_BPS / 10_000 + drawCarry;
-    let budgetBase = pot - treasuryKeep - pot * DRAW_BPS / 10_000;
-    let budget = if (budgetBase > reimb) budgetBase - reimb else 0;
+    let budgetBase = sub(sub(pot, treasuryKeep), pot * DRAW_BPS / 10_000);
+    let budget = sub(budgetBase, reimb);
 
     var spent = 0;
     var ng = 0;
     for (t in tiers.values()) {
       if (t == TREASURE) ng += 1 else spent += CHIP_PRICE * MULT_BPS[t] / 10_000;
     };
-    let treasurePerChip = if (ng > 0 and budget > spent) (budget - spent) / ng else 0;
+    let treasurePerChip = if (ng > 0) sub(budget, spent) / ng else 0;
 
     let ranked = Array.tabulate<(Chip, Nat, Nat)>(
       k,
