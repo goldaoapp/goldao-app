@@ -138,7 +138,7 @@ mixin (
     };
   };
 
-  /// Test GOLDAO: up to 10,000 per principal per week.
+  /// Test GOLDAO: up to FAUCET_CAP per principal per week.
   public shared ({ caller }) func gameRequestTestTokens(goldao : Nat) : async Result.Result<Nat, Text> {
     switch (gRequireUser(caller)) { case (?e) return #err(e); case null {} };
     if (goldao == 0) return #err("Enter an amount.");
@@ -146,7 +146,7 @@ mixin (
     let used = gFaucetUsed(caller);
     if (used + amount > Game.FAUCET_CAP) {
       let left = Game.sub(Game.FAUCET_CAP, used) / Game.E8S;
-      return #err("Weekly cap of 10,000 test GOLDAO reached. Remaining: " # Nat.toText(left) # ".");
+      return #err("Weekly cap of " # Nat.toText(Game.FAUCET_CAP / Game.E8S) # " test GOLDAO reached. Remaining: " # Nat.toText(left) # ".");
     };
     if (gFaucetWeekTotal() + amount > Game.FAUCET_GLOBAL_CAP) {
       return #err("The faucet is empty for this week. Try again next week.");
