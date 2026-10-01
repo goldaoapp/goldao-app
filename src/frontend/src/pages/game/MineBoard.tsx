@@ -187,6 +187,15 @@ export function MineBoard({ dashboard, config }: Props) {
     : chips.find((c) => Number(c.used) < excPerChip);
   const chipNumber = currentChip ? chips.indexOf(currentChip) + 1 : null;
   const picks = exc ? Number(exc.picks) : 0;
+  // Every step from the free picks to 10; past 10, the current and next step are added.
+  const savingSteps = useMemo(() => {
+    const last = Math.min(table.length - 1, Math.max(10, picks + 1));
+    const steps: number[] = [];
+    for (let k = safePicks; k <= last; k++) {
+      if (k <= 10 || k >= picks) steps.push(k);
+    }
+    return steps;
+  }, [table, picks, safePicks]);
 
   return (
     <div className={cn(panel, "overflow-hidden")}>
@@ -315,7 +324,7 @@ export function MineBoard({ dashboard, config }: Props) {
       <div className="border-t border-[color:var(--term-border-faint)] px-4 py-4 sm:px-6">
         <span className={cn(eyebrow, inkFaint)}>Points when saving</span>
         <div className="mt-3 flex flex-wrap gap-2">
-          {[2, 3, 4, 5, 6, 8, 10].map((k) => (
+          {savingSteps.map((k) => (
             <div
               key={k}
               className={cn(
