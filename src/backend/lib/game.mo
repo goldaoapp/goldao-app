@@ -26,7 +26,7 @@ module {
   public let DRAW_BPS : Nat = 240; // 2.4%
   public let MIN_CHIPS : Nat = 20;
   public let MIN_PLAYERS : Nat = 5;
-  public let FAUCET_CAP : Nat = 1_000_000_000_000; // 10,000 GOLDAO
+  public let FAUCET_CAP : Nat = 2_000_000_000_000; // 20,000 GOLDAO
   // Total test GOLDAO the faucet gives per week across all players (limits cycle abuse with many principals).
   public let FAUCET_GLOBAL_CAP : Nat = 200_000_000_000_000; // 2,000,000 GOLDAO
   public let MAX_CHIPS_PER_BUY : Nat = 10;
