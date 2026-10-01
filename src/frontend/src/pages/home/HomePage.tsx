@@ -110,19 +110,36 @@ export default function HomePage() {
           <PanelLabel info="Market: how many GOLDAO one ICP buys right now on ICPSwap. Equilibrium: the ratio at which holding GOLDAO yields the same as staking ICP in the NNS. Market above equilibrium = GOLDAO comparatively cheap.">
             Market vs fair value
           </PanelLabel>
-          <div className="mt-2 flex flex-wrap items-baseline gap-x-2">
-            <span
-              className={cn(
-                "font-display text-3xl font-semibold tabular-nums",
-                gold,
-              )}
-            >
-              {stats.marketRatio ?? "—"}
-            </span>
-            <span className={cn("font-mono text-xs", inkFaint)}>
-              vs {stats.equilibrium ?? "—"} eq · GOLDAO/ICP
-            </span>
+          <div className="mt-3 grid grid-cols-2 gap-3">
+            <div>
+              <div className={cn("font-mono text-[11px]", inkMid)}>Market</div>
+              <div
+                className={cn(
+                  "font-display text-3xl font-semibold tabular-nums",
+                  gold,
+                )}
+              >
+                {stats.marketRatio ?? "—"}
+              </div>
+            </div>
+            <div>
+              <div className={cn("font-mono text-[11px]", inkMid)}>
+                Equilibrium
+              </div>
+              <div
+                className={cn(
+                  "font-display text-3xl font-semibold tabular-nums",
+                  ink,
+                )}
+              >
+                {stats.equilibrium ?? "—"}
+              </div>
+            </div>
           </div>
+          <ZoneBadge
+            market={stats.marketRatio}
+            equilibrium={stats.equilibrium}
+          />
           <div className="mt-4">
             <MiniFairBar
               market={stats.marketRatio}
@@ -204,7 +221,7 @@ function PanelLabel({
     <div className="flex items-center justify-between gap-2">
       <span
         className={cn(
-          "font-mono text-[10px] font-semibold uppercase tracking-[0.16em]",
+          "font-mono text-[11px] font-semibold uppercase tracking-[0.16em]",
           inkMid,
         )}
       >
@@ -233,7 +250,7 @@ function KV({
     <div className="flex items-center justify-between gap-3 border-t border-[color:var(--term-border-faint)] py-2.5 first:border-t-0">
       <span
         className={cn(
-          "flex min-w-0 items-center gap-2 font-mono text-[12px]",
+          "flex min-w-0 items-center gap-2 font-mono text-[13px]",
           inkMid,
         )}
       >
@@ -261,6 +278,60 @@ function KV({
         )}
       >
         {v}
+      </span>
+    </div>
+  );
+}
+
+/** Dynamic verdict: same thresholds as the Fair Value page (±10% / ±20%). */
+function ZoneBadge({
+  market,
+  equilibrium,
+}: {
+  market: number | null;
+  equilibrium: number | null;
+}) {
+  if (!market || !equilibrium) return null;
+  const dif = ((market - equilibrium) / equilibrium) * 100;
+  const zone =
+    dif > 20
+      ? {
+          label: "Cheap",
+          cls: "border-[oklch(0.5_0.14_162)]/40 bg-[oklch(0.5_0.14_162)]/12 text-[oklch(0.42_0.12_162)] dark:text-[oklch(0.76_0.16_162)]",
+        }
+      : dif > 10
+        ? {
+            label: "Slightly cheap",
+            cls: "border-[oklch(0.55_0.14_140)]/40 bg-[oklch(0.55_0.14_140)]/12 text-[oklch(0.42_0.12_140)] dark:text-[oklch(0.76_0.13_140)]",
+          }
+        : dif >= -10
+          ? {
+              label: "Fair value",
+              cls: "border-[oklch(0.62_0.13_75)]/40 bg-[oklch(0.62_0.13_75)]/12 text-[oklch(0.48_0.1_75)] dark:text-[oklch(0.83_0.13_70)]",
+            }
+          : dif >= -20
+            ? {
+                label: "Slightly expensive",
+                cls: "border-[oklch(0.6_0.16_50)]/40 bg-[oklch(0.6_0.16_50)]/12 text-[oklch(0.5_0.14_50)] dark:text-[oklch(0.78_0.13_55)]",
+              }
+            : {
+                label: "Expensive",
+                cls: "border-[oklch(0.55_0.2_25)]/40 bg-[oklch(0.55_0.2_25)]/12 text-[oklch(0.5_0.19_25)] dark:text-[oklch(0.72_0.17_22)]",
+              };
+  return (
+    <div className="mt-3 flex flex-wrap items-center gap-2">
+      <span
+        className={cn(
+          "inline-flex items-center gap-1.5 rounded border px-2.5 py-1 font-mono text-xs font-bold uppercase tracking-wider",
+          zone.cls,
+        )}
+      >
+        <span className="inline-block size-1.5 rounded-full bg-current" />
+        {zone.label}
+      </span>
+      <span className={cn("font-mono text-xs", inkMid)}>
+        {dif >= 0 ? "+" : ""}
+        {dif.toFixed(1)}% vs equilibrium · GOLDAO/ICP
       </span>
     </div>
   );
