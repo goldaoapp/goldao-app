@@ -241,6 +241,7 @@ export function MineBoard({ dashboard, config }: Props) {
     : chips.find((c) => Number(c.used) < excPerChip);
   const chipNumber = currentChip ? chips.indexOf(currentChip) + 1 : null;
   const picks = exc ? Number(exc.picks) : 0;
+  const excNumber = Math.min(excPerChip, Number(currentChip?.used ?? 0) + 1);
 
   // Live prize of the current chip, using this week's cutoffs.
   const cuts = ranking?.cutsX100;
@@ -263,14 +264,31 @@ export function MineBoard({ dashboard, config }: Props) {
   return (
     <div className={cn(panel, "overflow-hidden")}>
       <div className={panelHeader}>
-        <span className={cn(eyebrow, gold, "flex items-center gap-2")}>
+        <span
+          className={cn(
+            eyebrow,
+            gold,
+            "flex shrink-0 items-center gap-2 whitespace-nowrap",
+          )}
+        >
           <Pickaxe className="size-3.5" /> Gold mine
         </span>
         <div className="flex items-center gap-3">
-          <span className={cn("font-mono text-[11px]", inkFaint)}>
-            {chipNumber
-              ? `Chip ${chipNumber} · excavation ${Math.min(excPerChip, Number(currentChip?.used ?? 0) + 1)} of ${excPerChip}`
-              : "No active chip"}
+          <span
+            className={cn("whitespace-nowrap font-mono text-[11px]", inkFaint)}
+          >
+            {chipNumber ? (
+              <>
+                <span className="sm:hidden">
+                  Chip {chipNumber} · {excNumber}/{excPerChip}
+                </span>
+                <span className="hidden sm:inline">
+                  Chip {chipNumber} · excavation {excNumber} of {excPerChip}
+                </span>
+              </>
+            ) : (
+              "No active chip"
+            )}
           </span>
           <button
             type="button"
