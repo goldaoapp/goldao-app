@@ -46,6 +46,14 @@ mixin (
     };
   };
 
+  func gFaucetWeekTotal() : Nat {
+    var total = 0;
+    for ((_, (w, used)) in gameState.faucet.entries()) {
+      if (w == gameState.week) total += used;
+    };
+    total;
+  };
+
   func gExcView(e : Types.Excavation) : Types.ExcavationView {
     {
       chipId = e.chipId;
@@ -138,6 +146,9 @@ mixin (
     if (used + amount > Game.FAUCET_CAP) {
       let left = Game.sub(Game.FAUCET_CAP, used) / Game.E8S;
       return #err("Weekly cap of 10,000 test GOLDAO reached. Remaining: " # Nat.toText(left) # ".");
+    };
+    if (gFaucetWeekTotal() + amount > Game.FAUCET_GLOBAL_CAP) {
+      return #err("The faucet is empty for this week. Try again next week.");
     };
     gameState.faucet.add(caller, (gameState.week, used + amount));
     let b = gBalance(caller) + amount;
@@ -459,6 +470,15 @@ mixin (
     gameState.drawCarry := if (winner == null) st.drawPrize else 0;
     gameState.status := #closed;
     #ok(summary);
+  };
+
+  /// Recovery: if a close was interrupted (status stuck in #closing), reopens the week
+  /// so the admin can run the close again. Open excavations were already saved.
+  public shared ({ caller }) func gameAdminRecoverClosing() : async Result.Result<(), Text> {
+    if (not gIsAdmin(caller)) return #err("Admin only.");
+    if (gameState.status != #closing) return #err("The week is not stuck closing.");
+    gameState.status := #open;
+    #ok(());
   };
 
   /// Credits all payouts (simulated), archives the week and opens the next one.
