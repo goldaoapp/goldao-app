@@ -19,6 +19,9 @@ export const panelHeader =
 export const eyebrow =
   "font-mono text-[11px] font-semibold uppercase tracking-[0.18em]";
 
+/** Expected points of an unplayed excavation (auto-played saving at 3 at close). Mirrors AUTO_EV in the backend. */
+export const AUTO_SAVE_EV = 100;
+
 /** Set to an image path (e.g. "/assets/images/diamond.png") once the diamond artwork is added. */
 export const DIAMOND_IMG: string | null = null;
 
