@@ -252,6 +252,14 @@ export function MineBoard({ dashboard, config }: Props) {
   const chipNumber = currentChip ? chips.indexOf(currentChip) + 1 : null;
   const picks = exc ? Number(exc.picks) : 0;
   const excNumber = Math.min(excPerChip, Number(currentChip?.used ?? 0) + 1);
+  // Chip shown on the prize track: the active one, or the last one once every chip is finished.
+  const trackChip = currentChip ?? chips[chips.length - 1];
+  // Projected average (x100) of a chip, computed here so it never depends on stale bindings.
+  const projectedOf = (c: { points: bigint; used: bigint }) =>
+    ((Number(c.points) +
+      AUTO_SAVE_EV * Math.max(0, excPerChip - Number(c.used))) *
+      100) /
+    excPerChip;
 
   // Live prize of the current chip, using this week's cutoffs.
   // With few chips some prizes do not exist yet (Treasure needs 11 chips), so the
@@ -450,18 +458,12 @@ export function MineBoard({ dashboard, config }: Props) {
 
           <ChipTrack
             cuts={(cuts ?? []).map((c) => (c == null ? null : Number(c)))}
-            used={Number(currentChip?.used ?? 0)}
+            used={Number(trackChip?.used ?? 0)}
             excPerChip={excPerChip}
             estimated={estimated}
             digging={!!exc}
             canSave={!!exc?.canSave}
-            avgNow={
-              exc
-                ? avgNow
-                : currentChip
-                  ? Number(currentChip.projectedX100)
-                  : null
-            }
+            avgNow={exc ? avgNow : trackChip ? projectedOf(trackChip) : null}
             avgNext={exc ? chipAvgFor(Number(exc.nextPoints)) : null}
             avgCollapse={
               exc && picks >= safePicks
