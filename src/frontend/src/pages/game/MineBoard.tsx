@@ -1,12 +1,12 @@
 import type { Dashboard, ExcavationView, GameConfig } from "@/backend";
-import { Button } from "@/components/ui/button";
 import { useAuth } from "@/context/AuthContext";
 import { cn } from "@/lib/utils";
 import {
   Gem,
   Mountain,
   Pickaxe,
-  Save,
+  RotateCcw,
+  Shield,
   ShieldCheck,
   Trophy,
   Volume2,
@@ -22,6 +22,7 @@ import {
 } from "motion/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  AUTO_SAVE_EV,
   DIAMOND_CELL,
   DIAMOND_IMG,
   DIAMOND_TEXT,
@@ -224,6 +225,13 @@ export function MineBoard({ dashboard, config }: Props) {
     }
   };
 
+  // Clears the finished board so every cell can be picked again.
+  const newGame = () => {
+    setCells({});
+    setResult(null);
+    setError(null);
+  };
+
   const save = async () => {
     if (!actor || !exc?.canSave || busy) return;
     setError(null);
@@ -248,9 +256,11 @@ export function MineBoard({ dashboard, config }: Props) {
   const hasCuts = !!cuts?.some((c) => c != null);
   const tierFor = (pts: number): number | null => {
     if (!currentChip || !cuts || !hasCuts) return null;
+    // Same projection as the backend ranking: unplayed excavations count as AUTO_SAVE_EV.
+    const remaining = Math.max(0, excPerChip - Number(currentChip.used) - 1);
     const avgX100 =
-      ((Number(currentChip.points) + pts) * 100) /
-      (Number(currentChip.used) + 1);
+      ((Number(currentChip.points) + pts + AUTO_SAVE_EV * remaining) * 100) /
+      excPerChip;
     for (let t = 0; t < 4; t++) {
       const c = cuts[t];
       if (c != null && avgX100 >= Number(c)) return t;
@@ -355,23 +365,33 @@ export function MineBoard({ dashboard, config }: Props) {
             safePicks={safePicks}
             canPlay={excavationsLeft > 0 && weekOpen}
             isAuthenticated={isAuthenticated}
+            onNewGame={newGame}
           />
         </div>
 
         {/* Run panel */}
         <div className="flex flex-col gap-4">
-          <Stat label="This excavation">
-            <RollingNumber
-              value={exc ? (table[picks] ?? 0) : 0}
-              className={cn(
-                "font-display text-4xl font-semibold tabular-nums",
-                ink,
-              )}
-            />
-            <span className={cn("ml-1.5 font-mono text-xs", inkFaint)}>
-              pts
-            </span>
-          </Stat>
+          <div className="flex flex-col gap-1 border-b border-[color:var(--term-border-faint)] pb-3">
+            <span className={cn(eyebrow, inkFaint)}>This excavation</span>
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-baseline">
+                <RollingNumber
+                  value={exc ? (table[picks] ?? 0) : 0}
+                  className={cn(
+                    "font-display text-4xl font-semibold tabular-nums",
+                    ink,
+                  )}
+                />
+                <span className={cn("ml-1.5 font-mono text-xs", inkFaint)}>
+                  pts
+                </span>
+              </div>
+              <SaveButton
+                canSave={!!exc?.canSave && !busy}
+                onSave={() => void save()}
+              />
+            </div>
+          </div>
 
           <Stat label="If it collapses now">
             <span className={cn("font-mono text-sm", inkMid)}>
@@ -404,15 +424,6 @@ export function MineBoard({ dashboard, config }: Props) {
               tierNext={tierNext}
             />
           </Stat>
-
-          <Button
-            onClick={() => void save()}
-            disabled={!exc?.canSave || busy}
-            className="gradient-primary text-primary-foreground"
-          >
-            <Save className="size-4" />
-            Save {exc?.canSave ? `${table[picks]} pts` : "points"}
-          </Button>
 
           <div className="grid grid-cols-2 gap-2">
             <MiniStat
@@ -557,6 +568,7 @@ function BoardMessage({
   safePicks,
   canPlay,
   isAuthenticated,
+  onNewGame,
 }: {
   exc: ExcavationView | null;
   result: RunResult | null;
@@ -565,6 +577,7 @@ function BoardMessage({
   safePicks: number;
   canPlay: boolean;
   isAuthenticated: boolean;
+  onNewGame: () => void;
 }) {
   let content: { text: string; tone: "gold" | "rock" | "mid" | "err" };
   if (error) content = { text: error, tone: "err" };
@@ -599,7 +612,7 @@ function BoardMessage({
   }[content.tone];
 
   return (
-    <div className="flex h-6 items-center">
+    <div className="flex min-h-8 flex-wrap items-center justify-center gap-3">
       <AnimatePresence mode="wait">
         <motion.p
           key={content.text}
@@ -617,6 +630,23 @@ function BoardMessage({
           )}
           {content.text}
         </motion.p>
+      </AnimatePresence>
+      <AnimatePresence>
+        {result && !busy && (
+          <motion.button
+            type="button"
+            onClick={onNewGame}
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.9 }}
+            whileHover={{ y: -1 }}
+            whileTap={{ scale: 0.95 }}
+            className="flex items-center gap-1.5 rounded-full border border-primary/60 bg-primary/10 px-3 py-1 font-mono text-xs font-medium text-[color:var(--term-gold)] transition-colors hover:bg-primary/20"
+          >
+            <RotateCcw className="size-3.5" />
+            New game
+          </motion.button>
+        )}
       </AnimatePresence>
     </div>
   );
@@ -744,6 +774,47 @@ function SavingStep({
         </motion.div>
       )}
     </div>
+  );
+}
+
+/** Round save button next to the points; glows while saving is allowed. */
+function SaveButton({
+  canSave,
+  onSave,
+}: { canSave: boolean; onSave: () => void }) {
+  return (
+    <motion.button
+      type="button"
+      onClick={onSave}
+      disabled={!canSave}
+      whileHover={canSave ? { y: -2 } : undefined}
+      whileTap={canSave ? { scale: 0.94 } : undefined}
+      animate={
+        canSave
+          ? {
+              boxShadow: [
+                "0 0 0 0 oklch(0.74 0.14 80 / 0.45)",
+                "0 0 0 8px oklch(0.74 0.14 80 / 0)",
+              ],
+            }
+          : { boxShadow: "0 0 0 0 oklch(0.74 0.14 80 / 0)" }
+      }
+      transition={
+        canSave
+          ? { boxShadow: { duration: 1.6, repeat: Number.POSITIVE_INFINITY } }
+          : undefined
+      }
+      className={cn(
+        "flex shrink-0 items-center gap-2 rounded-full px-4 py-2 font-display text-sm font-semibold transition-opacity",
+        canSave
+          ? "gradient-primary text-primary-foreground"
+          : "cursor-not-allowed border border-[color:var(--term-border)] bg-[var(--term-alt)] text-[color:var(--term-ink-faint)]",
+      )}
+      aria-label="Save points"
+    >
+      <Shield className="size-4" />
+      Save
+    </motion.button>
   );
 }
 
