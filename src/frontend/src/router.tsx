@@ -9,6 +9,7 @@ import AdminPage from "@/pages/admin/AdminPage";
 import DocumentationPage from "@/pages/documentation/DocumentationPage";
 import EventsPage from "@/pages/events/EventsPage";
 import FairValuePage from "@/pages/fair-value/FairValuePage";
+import GamePage from "@/pages/game/GamePage";
 import GldtPage from "@/pages/gldt/GldtPage";
 import HomePage from "@/pages/home/HomePage";
 import NewsPage from "@/pages/news/NewsPage";
@@ -68,6 +69,12 @@ const newsRoute = createRoute({
   component: NewsPage,
 });
 
+const gameRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/game",
+  component: GamePage,
+});
+
 const adminRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/admin",
@@ -90,6 +97,7 @@ const routeTree = rootRoute.addChildren([
   fairValueRoute,
   documentationRoute,
   newsRoute,
+  gameRoute,
   adminRoute,
   gldtRoute,
 ]);
