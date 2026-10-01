@@ -21,6 +21,7 @@ import {
   TOKENS,
   type TokenKey,
   eyebrow,
+  fmtGoldao,
   fmtPct,
   gold,
   ink,
@@ -31,7 +32,7 @@ import {
   tokenForPick,
 } from "./game-utils";
 import { playSound, preloadSounds, useSoundToggle } from "./sounds";
-import { errorMessage, useGameAction } from "./useGame";
+import { errorMessage, useGameAction, useRanking } from "./useGame";
 
 type Cell =
   | { kind: "token"; token: TokenKey }
@@ -64,6 +65,7 @@ export function MineBoard({ dashboard, config }: Props) {
   const [error, setError] = useState<string | null>(null);
   const skipRestoreUntil = useRef(0);
   const { muted, toggleMuted } = useSoundToggle();
+  const { data: ranking } = useRanking();
 
   useEffect(() => {
     preloadSounds();
@@ -317,6 +319,12 @@ export function MineBoard({ dashboard, config }: Props) {
               accent
             />
           </div>
+
+          <DrawCard
+            prize={ranking?.drawPrize}
+            mine={dashboard ? Number(dashboard.diamonds) : 0}
+            total={dashboard ? Number(dashboard.totalDiamonds) : 0}
+          />
         </div>
       </div>
 
@@ -560,6 +568,47 @@ function MiniStat({
         )}
       >
         {value}
+      </div>
+    </div>
+  );
+}
+
+/** Diamond draw jackpot with the player's current odds. */
+function DrawCard({
+  prize,
+  mine,
+  total,
+}: { prize: bigint | undefined; mine: number; total: number }) {
+  const chance = total > 0 ? (mine / total) * 100 : 0;
+  return (
+    <div className="relative overflow-hidden rounded-md border border-[oklch(0.75_0.14_350/0.35)] bg-[oklch(0.75_0.14_350/0.08)] px-3 py-3">
+      <div
+        className={cn(
+          "flex items-center gap-1.5 font-mono text-[10px] uppercase",
+          DIAMOND_TEXT,
+        )}
+      >
+        <Gem className="size-3" /> Diamond draw
+      </div>
+      <div className="flex items-baseline gap-1.5">
+        <motion.span
+          key={prize === undefined ? "none" : String(prize)}
+          initial={{ opacity: 0, y: 6, scale: 0.96 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={{ type: "spring", stiffness: 260, damping: 18 }}
+          className={cn(
+            "font-display text-2xl font-semibold tabular-nums",
+            DIAMOND_TEXT,
+          )}
+        >
+          {prize === undefined ? "—" : fmtGoldao(prize)}
+        </motion.span>
+        <span className={cn("font-mono text-[10px]", inkFaint)}>GOLDAO</span>
+      </div>
+      <div className={cn("font-mono text-[10px]", inkFaint)}>
+        {mine > 0
+          ? `Your chance ${chance.toFixed(1)}% · ${mine} of ${total} tickets`
+          : "Find a diamond to enter the draw"}
       </div>
     </div>
   );
