@@ -7,6 +7,7 @@ import Nat8 "mo:core/Nat8";
 import Order "mo:core/Order";
 import Nat64 "mo:core/Nat64";
 import Int "mo:core/Int";
+import Principal "mo:core/Principal";
 
 module {
   public type Chip = Types.Chip;
@@ -27,6 +28,20 @@ module {
   public let FAUCET_CAP : Nat = 1_000_000_000_000; // 10,000 GOLDAO
   public let MAX_CHIPS_PER_BUY : Nat = 10;
   public let AUTO_SAVE_AT : Nat = 3;
+
+  // Principals that are always admin. Paste Internet Identity principals here before deploying.
+  public let BOOTSTRAP_ADMINS : [Text] = [
+    "o4k5k-q4hdh-hmf4x-qnqbw-m53ao-c4u6t-6vyft-ejkie-iepjy-ziitc-3ae",
+    "nxdvu-ipwv3-xgadl-ws3fw-ply6m-vf5st-nd5mq-4hv5c-nzvgc-o6swr-oae",
+  ];
+
+  public func isBootstrapAdmin(p : Principal) : Bool {
+    let t = Principal.toText(p);
+    for (a in BOOTSTRAP_ADMINS.values()) {
+      if (a == t) return true;
+    };
+    false;
+  };
 
   // % per tier: Treasure, Ingot, Nugget, Gold dust, Rock
   public let CUTS_PCT : [Nat] = [5, 15, 25, 35, 20];
