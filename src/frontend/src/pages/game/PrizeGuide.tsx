@@ -6,6 +6,7 @@ import {
   DIAMOND_TEXT,
   STRATEGY_GUIDE,
   TIERS,
+  TYPICAL_CUTS_X100,
   eyebrow,
   fmtAvg,
   gold,
@@ -22,7 +23,13 @@ interface Props {
 }
 
 export function PrizeGuide({ ranking, config }: Props) {
-  const cuts = ranking?.cutsX100 ?? [];
+  // With few chips the week's own cutoffs are distorted (a tier may hold a single
+  // chip, and Treasure needs 11 chips): show typical ones until every tier exists.
+  const liveCuts = ranking?.cutsX100 ?? [];
+  const estimated = liveCuts.length !== 4 || liveCuts.some((c) => c == null);
+  const cuts: (bigint | number | null)[] = estimated
+    ? TYPICAL_CUTS_X100
+    : liveCuts;
   const chipPrice = config ? Number(config.chipPriceE8s) / 1e8 : 1000;
   const excPerChip = config ? Number(config.excavationsPerChip) : 5;
   const mines = config ? Number(config.mines) : 5;
@@ -88,10 +95,11 @@ export function PrizeGuide({ ranking, config }: Props) {
             inkFaint,
           )}
         >
-          Current cutoffs (average points per chip; unfinished chips count each
-          missing excavation as 100). The percentage of each prize is fixed; the
-          cutoffs move with how everyone plays and are confirmed at the weekly
-          close.
+          {estimated
+            ? "Typical cutoffs (average points per chip), shown until this week has enough chips to have its own."
+            : "Current cutoffs (average points per chip; unfinished chips count each missing excavation as 100)."}{" "}
+          The percentage of each prize is fixed; the cutoffs move with how
+          everyone plays and are confirmed at the weekly close.
         </p>
       </div>
 
