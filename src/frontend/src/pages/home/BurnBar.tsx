@@ -1,6 +1,6 @@
 import { useBurnTracker } from "@/lib/use-burn-tracker";
 import { cn } from "@/lib/utils";
-import { Flame } from "lucide-react";
+import { Flame, TrendingDown } from "lucide-react";
 import { useEffect, useState } from "react";
 
 /*
@@ -134,7 +134,7 @@ export default function BurnBar() {
         </span>
       </header>
 
-      <div className="flex flex-col gap-4 px-5 pt-6 sm:flex-row sm:items-end sm:justify-between sm:px-6">
+      <div className="flex flex-col gap-4 px-5 pt-6 sm:flex-row sm:items-stretch sm:justify-between sm:px-6">
         <div className="min-w-0">
           <Label>Total Burned</Label>
           <div className="mt-1 flex flex-wrap items-baseline gap-x-3">
@@ -147,19 +147,28 @@ export default function BurnBar() {
             <span className={cn("font-mono text-sm", inkMid)}>GOLDAO</span>
           </div>
         </div>
-        <div className="h-7">
-          {visiblePulse && (
-            <span
-              key={visiblePulse.id}
-              className="burn-anim inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border border-orange-500/40 bg-orange-500/10 px-3 py-1 font-mono text-xs font-semibold text-orange-600 dark:text-orange-400"
-              style={{
-                animation: `burnChipIn ${PULSE_VISIBLE_MS}ms ease-out forwards`,
-              }}
-            >
-              <Flame className="size-3.5" aria-hidden="true" />+
-              {fmtAmount(visiblePulse.amount)} GOLDAO burned
-            </span>
-          )}
+        <div className="flex flex-col items-start justify-between gap-2 sm:items-end">
+          <span
+            className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border border-orange-600/50 bg-orange-600/10 px-3 py-1 font-mono text-[11px] font-bold uppercase tracking-[0.12em] text-orange-700 dark:border-orange-400/40 dark:bg-orange-400/10 dark:text-orange-300"
+            data-testid="deflationary-badge"
+          >
+            <TrendingDown className="size-3.5" aria-hidden="true" />
+            Extremely deflationary
+          </span>
+          <div className="h-7">
+            {visiblePulse && (
+              <span
+                key={visiblePulse.id}
+                className="burn-anim inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border border-orange-500/40 bg-orange-500/10 px-3 py-1 font-mono text-xs font-semibold text-orange-600 dark:text-orange-400"
+                style={{
+                  animation: `burnChipIn ${PULSE_VISIBLE_MS}ms ease-out forwards`,
+                }}
+              >
+                <Flame className="size-3.5" aria-hidden="true" />+
+                {fmtAmount(visiblePulse.amount)} GOLDAO burned
+              </span>
+            )}
+          </div>
         </div>
       </div>
 
