@@ -28,6 +28,7 @@ import {
   DIAMOND_TEXT,
   ROCK_CELL,
   TOKENS,
+  TYPICAL_CUTS_X100,
   type TokenKey,
   eyebrow,
   fmtAvg,
@@ -253,7 +254,16 @@ export function MineBoard({ dashboard, config }: Props) {
   const excNumber = Math.min(excPerChip, Number(currentChip?.used ?? 0) + 1);
 
   // Live prize of the current chip, using this week's cutoffs.
-  const cuts = ranking?.cutsX100;
+  // With few chips some prizes do not exist yet (Treasure needs 11 chips), so the
+  // week has no full set of cutoffs: fall back to typical ones, shown as estimated.
+  const liveCuts = ranking?.cutsX100;
+  const estimated =
+    !liveCuts || liveCuts.length !== 4 || liveCuts.some((c) => c == null);
+  const cuts: (bigint | number | null)[] | undefined = ranking
+    ? estimated
+      ? TYPICAL_CUTS_X100
+      : liveCuts
+    : undefined;
   const hasCuts = !!cuts?.some((c) => c != null);
   // Chip average (x100) if this excavation ends with `pts`. Same projection as the
   // backend ranking: the chip's other unplayed excavations count as AUTO_SAVE_EV.
@@ -442,6 +452,7 @@ export function MineBoard({ dashboard, config }: Props) {
             cuts={(cuts ?? []).map((c) => (c == null ? null : Number(c)))}
             used={Number(currentChip?.used ?? 0)}
             excPerChip={excPerChip}
+            estimated={estimated}
             digging={!!exc}
             canSave={!!exc?.canSave}
             avgNow={
@@ -746,7 +757,7 @@ function SavingStep({
             className="flex flex-col gap-1"
           >
             <span className={cn(eyebrow, gold)}>
-              {picks === null ? "Not digging" : `Pick ${picks}`}
+              {picks === null ? "Ready to dig" : `Pick ${picks}`}
             </span>
             <span className="flex items-baseline gap-1.5">
               <span
@@ -882,6 +893,7 @@ function ChipTrack({
   cuts,
   used,
   excPerChip,
+  estimated,
   digging,
   canSave,
   avgNow,
@@ -893,6 +905,7 @@ function ChipTrack({
   cuts: (number | null)[];
   used: number;
   excPerChip: number;
+  estimated: boolean;
   digging: boolean;
   canSave: boolean;
   avgNow: number | null;
@@ -1032,6 +1045,11 @@ function ChipTrack({
             <span>Rock</span>
             <span>Treasure</span>
           </div>
+          {estimated && (
+            <span className={cn("font-mono text-[10px]", inkFaint)}>
+              Estimated with typical cutoffs: this week still has few chips.
+            </span>
+          )}
 
           {/* Legend */}
           <div className="flex flex-col gap-1 font-mono text-[11px]">
