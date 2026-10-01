@@ -260,16 +260,6 @@ export function MineBoard({ dashboard, config }: Props) {
   const tierNext = exc ? tierFor(Number(exc.nextPoints)) : null;
   const tierCollapse =
     exc && picks >= safePicks ? tierFor(Number(exc.ifCollapse)) : null;
-  // Every step from the free picks to 10; past 10, the current and next step are added.
-  const savingSteps = useMemo(() => {
-    const last = Math.min(table.length - 1, Math.max(10, picks + 1));
-    const steps: number[] = [];
-    for (let k = safePicks; k <= last; k++) {
-      if (k <= 10 || k >= picks) steps.push(k);
-    }
-    return steps;
-  }, [table, picks, safePicks]);
-
   return (
     <div className={cn(panel, "overflow-hidden")}>
       <div className={panelHeader}>
@@ -429,36 +419,13 @@ export function MineBoard({ dashboard, config }: Props) {
       {/* Points table */}
       <div className="border-t border-[color:var(--term-border-faint)] px-4 py-4 sm:px-6">
         <span className={cn(eyebrow, inkFaint)}>Points when saving</span>
-        <div className="mt-3 flex flex-wrap gap-2">
-          {savingSteps.map((k) => (
-            <div
-              key={k}
-              className={cn(
-                "min-w-[76px] rounded-md border px-3 py-2 text-center transition-smooth",
-                exc && picks === k
-                  ? "border-primary/70 bg-primary/10"
-                  : "border-[color:var(--term-border-faint)] bg-[var(--term-alt)]",
-              )}
-            >
-              <div className={cn("font-mono text-[10px] uppercase", inkFaint)}>
-                {k} picks
-              </div>
-              <div
-                className={cn(
-                  "font-display text-lg font-semibold tabular-nums",
-                  ink,
-                )}
-              >
-                {table[k] ?? "—"}
-              </div>
-              <div className={cn("font-mono text-[10px]", inkFaint)}>
-                {k === safePicks
-                  ? "free"
-                  : `collapse ${Math.ceil((table[k - 1] ?? 0) / 2)}`}
-              </div>
-            </div>
-          ))}
-        </div>
+        <SavingStep
+          picks={exc ? picks : null}
+          points={exc ? (table[picks] ?? 0) : 0}
+          nextPoints={exc ? (table[picks + 1] ?? null) : null}
+          safePicks={safePicks}
+          canSave={!!exc?.canSave}
+        />
         <Legend />
       </div>
     </div>
@@ -667,6 +634,97 @@ function MiniStat({
       >
         {value}
       </div>
+    </div>
+  );
+}
+
+/** Single card with the current step of the excavation; animates on every pick. */
+function SavingStep({
+  picks,
+  points,
+  nextPoints,
+  safePicks,
+  canSave,
+}: {
+  picks: number | null;
+  points: number;
+  nextPoints: number | null;
+  safePicks: number;
+  canSave: boolean;
+}) {
+  const note =
+    picks === null
+      ? "Pick any cell to start"
+      : canSave
+        ? "Yours if you save now"
+        : picks < safePicks
+          ? "Free picks · nothing at risk"
+          : "Free · you can save from the next pick";
+
+  return (
+    <div className="mt-3 flex flex-wrap items-stretch gap-3">
+      <div className="relative min-w-[220px] overflow-hidden rounded-xl border border-primary/50 bg-primary/10 px-6 py-4">
+        <AnimatePresence mode="popLayout" initial={false}>
+          <motion.div
+            key={picks ?? "idle"}
+            initial={{ opacity: 0, y: 18, scale: 0.92 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -18, scale: 0.96 }}
+            transition={{ type: "spring", stiffness: 340, damping: 24 }}
+            className="flex flex-col gap-1"
+          >
+            <span className={cn(eyebrow, gold)}>
+              {picks === null ? "Not digging" : `Pick ${picks}`}
+            </span>
+            <span className="flex items-baseline gap-1.5">
+              <span
+                className={cn(
+                  "font-display text-5xl font-semibold tabular-nums",
+                  ink,
+                )}
+              >
+                {points.toLocaleString("en-US")}
+              </span>
+              <span className={cn("font-mono text-xs", inkFaint)}>pts</span>
+            </span>
+            <span className={cn("font-mono text-[11px]", inkMid)}>{note}</span>
+          </motion.div>
+        </AnimatePresence>
+        {/* Light sweep on every change */}
+        <motion.span
+          key={`sweep-${picks ?? "idle"}`}
+          aria-hidden
+          initial={{ x: "-120%" }}
+          animate={{ x: "220%" }}
+          transition={{ duration: 0.9, ease: "easeOut" }}
+          className="pointer-events-none absolute inset-y-0 left-0 w-1/2 -skew-x-12 bg-gradient-to-r from-transparent via-white/25 to-transparent"
+        />
+      </div>
+
+      {nextPoints !== null && (
+        <motion.div
+          key={`next-${picks ?? "idle"}`}
+          initial={{ opacity: 0, x: -8 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: 0.15, duration: 0.3 }}
+          className="flex flex-col justify-center gap-1 rounded-xl border border-[color:var(--term-border-faint)] bg-[var(--term-alt)] px-5 py-4"
+        >
+          <span className={cn(eyebrow, inkFaint)}>
+            Next · pick {(picks ?? 0) + 1}
+          </span>
+          <span
+            className={cn(
+              "font-display text-2xl font-semibold tabular-nums",
+              inkMid,
+            )}
+          >
+            {nextPoints.toLocaleString("en-US")}
+            <span className={cn("ml-1 font-mono text-[10px]", inkFaint)}>
+              pts
+            </span>
+          </span>
+        </motion.div>
+      )}
     </div>
   );
 }
