@@ -285,58 +285,99 @@ export function PlayerDashboard({ dashboard }: Props) {
             Your closed weeks will show up here.
           </p>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full font-mono text-xs">
-              <thead>
-                <tr className={cn("text-left", inkFaint)}>
-                  <th className="px-5 py-2 font-medium">Week</th>
-                  <th className="px-3 py-2 font-medium">Chips</th>
-                  <th className="px-3 py-2 font-medium">Prizes</th>
-                  <th className="px-3 py-2 font-medium">Diamonds</th>
-                  <th className="px-3 py-2 text-right font-medium">Paid</th>
-                  <th className="px-5 py-2 text-right font-medium">Received</th>
-                </tr>
-              </thead>
-              <tbody>
-                {[...dashboard.history].reverse().map((h) => {
-                  const diff = Number(h.received) - Number(h.paid);
-                  return (
-                    <tr
-                      key={String(h.week)}
-                      className="border-t border-[color:var(--term-border-faint)]"
-                    >
-                      <td className={cn("px-5 py-2.5", ink)}>
-                        #{Number(h.week)}
-                      </td>
-                      <td className={cn("px-3 py-2.5", inkMid)}>
-                        {Number(h.chips)}
-                      </td>
-                      <td className="px-3 py-2.5">
-                        <TierSummary tiers={h.tiers} />
-                      </td>
-                      <td className={cn("px-3 py-2.5", DIAMOND_TEXT)}>
-                        {Number(h.diamonds)}
+          <>
+            {/* Mobile: one card per week */}
+            <ul className="sm:hidden">
+              {[...dashboard.history].reverse().map((h) => {
+                const diff = Number(h.received) - Number(h.paid);
+                return (
+                  <li
+                    key={String(h.week)}
+                    className="flex flex-col gap-2 border-t border-[color:var(--term-border-faint)] px-4 py-3 font-mono text-xs"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <span className={ink}>
+                        Week #{Number(h.week)} · {Number(h.chips)} chips
+                      </span>
+                      <span
+                        className={cn("flex items-center gap-1", DIAMOND_TEXT)}
+                      >
+                        <Gem className="size-3" /> {Number(h.diamonds)}
                         {h.drawWon && " · draw won"}
-                      </td>
-                      <td className={cn("px-3 py-2.5 text-right", inkMid)}>
-                        {fmtGoldao(h.paid)}
-                      </td>
-                      <td
-                        className={cn(
-                          "px-5 py-2.5 text-right",
+                      </span>
+                    </div>
+                    <TierSummary tiers={h.tiers} />
+                    <div className="flex items-center justify-between gap-2">
+                      <span className={inkMid}>Paid {fmtGoldao(h.paid)}</span>
+                      <span
+                        className={
                           diff >= 0
                             ? "text-[color:var(--term-green)]"
-                            : "text-destructive",
-                        )}
+                            : "text-destructive"
+                        }
                       >
-                        {fmtGoldao(h.received)}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+                        Received {fmtGoldao(h.received)}
+                      </span>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+            <div className="hidden overflow-x-auto sm:block">
+              <table className="w-full font-mono text-xs">
+                <thead>
+                  <tr className={cn("text-left", inkFaint)}>
+                    <th className="px-5 py-2 font-medium">Week</th>
+                    <th className="px-3 py-2 font-medium">Chips</th>
+                    <th className="px-3 py-2 font-medium">Prizes</th>
+                    <th className="px-3 py-2 font-medium">Diamonds</th>
+                    <th className="px-3 py-2 text-right font-medium">Paid</th>
+                    <th className="px-5 py-2 text-right font-medium">
+                      Received
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {[...dashboard.history].reverse().map((h) => {
+                    const diff = Number(h.received) - Number(h.paid);
+                    return (
+                      <tr
+                        key={String(h.week)}
+                        className="border-t border-[color:var(--term-border-faint)]"
+                      >
+                        <td className={cn("px-5 py-2.5", ink)}>
+                          #{Number(h.week)}
+                        </td>
+                        <td className={cn("px-3 py-2.5", inkMid)}>
+                          {Number(h.chips)}
+                        </td>
+                        <td className="px-3 py-2.5">
+                          <TierSummary tiers={h.tiers} />
+                        </td>
+                        <td className={cn("px-3 py-2.5", DIAMOND_TEXT)}>
+                          {Number(h.diamonds)}
+                          {h.drawWon && " · draw won"}
+                        </td>
+                        <td className={cn("px-3 py-2.5 text-right", inkMid)}>
+                          {fmtGoldao(h.paid)}
+                        </td>
+                        <td
+                          className={cn(
+                            "px-5 py-2.5 text-right",
+                            diff >= 0
+                              ? "text-[color:var(--term-green)]"
+                              : "text-destructive",
+                          )}
+                        >
+                          {fmtGoldao(h.received)}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </div>
     </div>
