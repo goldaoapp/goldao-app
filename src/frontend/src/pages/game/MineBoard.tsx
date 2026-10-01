@@ -30,6 +30,7 @@ import {
   TOKENS,
   type TokenKey,
   eyebrow,
+  fmtAvg,
   fmtGoldao,
   fmtPct,
   gold,
@@ -254,13 +255,19 @@ export function MineBoard({ dashboard, config }: Props) {
   // Live prize of the current chip, using this week's cutoffs.
   const cuts = ranking?.cutsX100;
   const hasCuts = !!cuts?.some((c) => c != null);
-  const tierFor = (pts: number): number | null => {
-    if (!currentChip || !cuts || !hasCuts) return null;
-    // Same projection as the backend ranking: unplayed excavations count as AUTO_SAVE_EV.
+  // Chip average (x100) if this excavation ends with `pts`. Same projection as the
+  // backend ranking: the chip's other unplayed excavations count as AUTO_SAVE_EV.
+  const chipAvgFor = (pts: number): number | null => {
+    if (!currentChip) return null;
     const remaining = Math.max(0, excPerChip - Number(currentChip.used) - 1);
-    const avgX100 =
+    return (
       ((Number(currentChip.points) + pts + AUTO_SAVE_EV * remaining) * 100) /
-      excPerChip;
+      excPerChip
+    );
+  };
+  const tierFor = (pts: number): number | null => {
+    const avgX100 = chipAvgFor(pts);
+    if (avgX100 === null || !cuts || !hasCuts) return null;
     for (let t = 0; t < 4; t++) {
       const c = cuts[t];
       if (c != null && avgX100 >= Number(c)) return t;
@@ -271,6 +278,47 @@ export function MineBoard({ dashboard, config }: Props) {
   const tierNext = exc ? tierFor(Number(exc.nextPoints)) : null;
   const tierCollapse =
     exc && picks >= safePicks ? tierFor(Number(exc.ifCollapse)) : null;
+  const avgNow = exc ? chipAvgFor(table[picks] ?? 0) : null;
+  // Cutoff of the tier right above the current one
+  const upCut =
+    tierNow !== null && tierNow > 0 && cuts ? cuts[tierNow - 1] : null;
+
+  // First pick at which saving would move the chip up a tier
+  const nextUnlock = (() => {
+    if (!exc || tierNow === null || tierNow === 0) return null;
+    for (let k = picks + 1; k < table.length; k++) {
+      const t = tierFor(table[k] ?? 0);
+      if (t !== null && t < tierNow) return { tier: t, pick: k, pts: table[k] };
+    }
+    return null;
+  })();
+
+  // Big celebration on the board when saving now reaches a better tier
+  const [tierPop, setTierPop] = useState<{
+    tier: number;
+    next: { tier: number; pick: number; pts: number } | null;
+  } | null>(null);
+  const lastTier = useRef<number | null>(null);
+  const popTimer = useRef<number | undefined>(undefined);
+  const excKey = exc
+    ? Number(exc.chipId) * 100 + Number(currentChip?.used ?? 0)
+    : null;
+  // Fires only when the excavation or its tier changes; nextUnlock derives from the same inputs.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: intentional
+  useEffect(() => {
+    if (excKey === null) {
+      lastTier.current = null;
+      return;
+    }
+    if (tierNow === null || tierNow >= 4) return;
+    if (lastTier.current === null || tierNow < lastTier.current) {
+      lastTier.current = tierNow;
+      setTierPop({ tier: tierNow, next: nextUnlock });
+      window.clearTimeout(popTimer.current);
+      popTimer.current = window.setTimeout(() => setTierPop(null), 2600);
+    }
+  }, [excKey, tierNow]);
+  useEffect(() => () => window.clearTimeout(popTimer.current), []);
   return (
     <div className={cn(panel, "overflow-hidden")}>
       <div className={panelHeader}>
@@ -324,6 +372,9 @@ export function MineBoard({ dashboard, config }: Props) {
         <div className="flex flex-col items-center gap-4">
           <div className="relative w-full max-w-[420px]">
             <AnimatePresence>
+              {tierPop && <TierPop key={`${tierPop.tier}`} {...tierPop} />}
+            </AnimatePresence>
+            <AnimatePresence>
               {record && (
                 <motion.div
                   key={record}
@@ -373,7 +424,7 @@ export function MineBoard({ dashboard, config }: Props) {
         <div className="flex flex-col gap-4">
           <div className="flex flex-col gap-1 border-b border-[color:var(--term-border-faint)] pb-3">
             <span className={cn(eyebrow, inkFaint)}>This excavation</span>
-            <div className="flex items-center justify-between gap-3">
+            <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
               <div className="flex items-baseline">
                 <RollingNumber
                   value={exc ? (table[picks] ?? 0) : 0}
@@ -422,6 +473,8 @@ export function MineBoard({ dashboard, config }: Props) {
               canSave={!!exc?.canSave}
               tierNow={tierNow}
               tierNext={tierNext}
+              avgNow={avgNow}
+              upCut={upCut == null ? null : Number(upCut)}
             />
           </Stat>
 
@@ -841,11 +894,15 @@ function ChipPrize({
   canSave,
   tierNow,
   tierNext,
+  avgNow,
+  upCut,
 }: {
   active: boolean;
   canSave: boolean;
   tierNow: number | null;
   tierNext: number | null;
+  avgNow: number | null;
+  upCut: number | null;
 }) {
   if (!active)
     return <span className={cn("font-mono text-sm", inkMid)}>—</span>;
@@ -882,6 +939,14 @@ function ChipPrize({
           You can save from pick 3
         </span>
       )}
+      {canSave && avgNow !== null && (
+        <span className={cn("font-mono text-[11px]", inkMid)}>
+          Chip average {fmtAvg(avgNow)}
+          {tierNow !== null && tierNow > 0 && upCut !== null
+            ? ` · ${tierOf(tierNow - 1).name} needs ${fmtAvg(upCut)}`
+            : ""}
+        </span>
+      )}
       <span
         className={cn(
           "font-mono text-[11px]",
@@ -892,6 +957,75 @@ function ChipPrize({
         {improves ? " ↑" : ""}
       </span>
     </div>
+  );
+}
+
+/** Large animated card shown on the board when saving now reaches a better tier. */
+function TierPop({
+  tier,
+  next,
+}: {
+  tier: number;
+  next: { tier: number; pick: number; pts: number } | null;
+}) {
+  const t = tierOf(tier);
+  const Icon = t.icon;
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.25 }}
+      className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center rounded-xl bg-white/10 backdrop-blur-[2px]"
+    >
+      <motion.div
+        initial={{ scale: 0.6, y: 16, opacity: 0 }}
+        animate={{ scale: 1, y: 0, opacity: 1 }}
+        exit={{ scale: 0.9, y: -12, opacity: 0 }}
+        transition={{ type: "spring", stiffness: 260, damping: 18 }}
+        className={cn(
+          "relative flex flex-col items-center gap-2 overflow-hidden rounded-2xl border-2 px-8 py-6 text-center shadow-2xl",
+          t.pill,
+        )}
+      >
+        <motion.span
+          initial={{ rotate: -20, scale: 0.5 }}
+          animate={{ rotate: 0, scale: 1 }}
+          transition={{
+            type: "spring",
+            stiffness: 300,
+            damping: 12,
+            delay: 0.1,
+          }}
+        >
+          <Icon className="size-10" />
+        </motion.span>
+        <span className="font-mono text-[10px] uppercase tracking-[0.2em] opacity-80">
+          Save now for
+        </span>
+        <span className="font-display text-3xl font-bold">{t.name}</span>
+        {next ? (
+          <motion.span
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.35 }}
+            className="font-mono text-[11px] opacity-90"
+          >
+            Next: {tierOf(next.tier).name} at pick {next.pick} ({next.pts} pts)
+          </motion.span>
+        ) : tier === 0 ? (
+          <span className="font-mono text-[11px] opacity-90">Top prize</span>
+        ) : null}
+        {/* Light sweep */}
+        <motion.span
+          aria-hidden
+          initial={{ x: "-150%" }}
+          animate={{ x: "250%" }}
+          transition={{ duration: 1.1, ease: "easeOut", delay: 0.15 }}
+          className="absolute inset-y-0 left-0 w-1/3 -skew-x-12 bg-gradient-to-r from-transparent via-white/40 to-transparent"
+        />
+      </motion.div>
+    </motion.div>
   );
 }
 
