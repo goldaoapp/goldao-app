@@ -236,18 +236,26 @@ export function PlayerDashboard({ dashboard }: Props) {
                       )}
                     >
                       {used > 0 ? fmtAvg(c.avgX100) : "—"}
+                      {used < excPerChip && (
+                        <span
+                          className={cn(
+                            "ml-1.5 font-mono text-[10px] font-normal",
+                            inkFaint,
+                          )}
+                        >
+                          proj. {fmtAvg(c.projectedX100)}
+                        </span>
+                      )}
                     </span>
-                    {used > 0 && (
-                      <span
-                        className={cn(
-                          "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium",
-                          tier.pill,
-                        )}
-                      >
-                        <tier.icon className="size-3" />
-                        {tier.name}
-                      </span>
-                    )}
+                    <span
+                      className={cn(
+                        "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium",
+                        tier.pill,
+                      )}
+                    >
+                      <tier.icon className="size-3" />
+                      {tier.name}
+                    </span>
                   </div>
                   <div className="h-1 overflow-hidden rounded-full bg-[var(--term-header)]">
                     <motion.div
@@ -261,7 +269,7 @@ export function PlayerDashboard({ dashboard }: Props) {
                     {used === 0
                       ? "Not started"
                       : c.gapToNextX100 !== undefined
-                        ? `${fmtAvg(c.gapToNextX100)} pts to ${tierOf(Number(c.tier) - 1).name}`
+                        ? `${fmtAvg(c.gapToNextX100)} avg pts to ${tierOf(Number(c.tier) - 1).name}`
                         : Number(c.tier) === 0
                           ? "Top prize"
                           : " "}
