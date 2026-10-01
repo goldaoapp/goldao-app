@@ -57,6 +57,17 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
     }
   };
 
+  const recover = async () => {
+    if (!actor) return;
+    setMsg(null);
+    try {
+      await run("recover", () => actor.gameAdminRecoverClosing());
+      setMsg({ ok: true, text: "Week reopened. Run the close again." });
+    } catch (e) {
+      setMsg({ ok: false, text: errorMessage(e) });
+    }
+  };
+
   const payAndOpen = async () => {
     if (!actor) return;
     setMsg(null);
@@ -132,6 +143,15 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
               <Send className="size-4" />
               Pay and open next week
             </Button>
+            {status === "closing" && (
+              <Button
+                variant="outline"
+                disabled={!!pending}
+                onClick={() => void recover()}
+              >
+                Recover interrupted close
+              </Button>
+            )}
           </div>
 
           <AnimatePresence>
