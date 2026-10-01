@@ -8,10 +8,18 @@ import {
   Pickaxe,
   Save,
   ShieldCheck,
+  Trophy,
   Volume2,
   VolumeX,
 } from "lucide-react";
-import { AnimatePresence, motion, useAnimate } from "motion/react";
+import {
+  AnimatePresence,
+  animate as animateValue,
+  motion,
+  useAnimate,
+  useMotionValue,
+  useTransform,
+} from "motion/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   DIAMOND_CELL,
@@ -29,6 +37,7 @@ import {
   inkMid,
   panel,
   panelHeader,
+  tierOf,
   tokenForPick,
 } from "./game-utils";
 import { playSound, preloadSounds, useSoundToggle } from "./sounds";
@@ -40,6 +49,9 @@ type Cell =
   | { kind: "rock" };
 
 type RunResult = { kind: "saved" | "collapse" | "emptied"; points: number };
+
+/** Personal records at the start of the current excavation. */
+type RecordBase = { best: number; deepest: number; depthShown: boolean };
 
 const CELLS = 25;
 
@@ -66,6 +78,17 @@ export function MineBoard({ dashboard, config }: Props) {
   const skipRestoreUntil = useRef(0);
   const { muted, toggleMuted } = useSoundToggle();
   const { data: ranking } = useRanking();
+  const [record, setRecord] = useState<string | null>(null);
+  const recordBase = useRef<RecordBase | null>(null);
+  const recordTimer = useRef<number | undefined>(undefined);
+
+  const showRecord = useCallback((text: string) => {
+    window.clearTimeout(recordTimer.current);
+    setRecord(text);
+    recordTimer.current = window.setTimeout(() => setRecord(null), 3500);
+  }, []);
+
+  useEffect(() => () => window.clearTimeout(recordTimer.current), []);
 
   useEffect(() => {
     preloadSounds();
@@ -90,19 +113,31 @@ export function MineBoard({ dashboard, config }: Props) {
     RESTORE_ORDER.slice(0, picks).forEach((idx, i) => {
       restored[idx] = { kind: "token", token: tokenForPick(i + 1) };
     });
+    recordBase.current = dashboard
+      ? {
+          best: Number(dashboard.stats.best),
+          deepest: Number(dashboard.stats.deepest),
+          depthShown: false,
+        }
+      : null;
     setExc(open);
     setCells(restored);
     setResult(null);
-  }, [open, exc, busy]);
+  }, [open, exc, busy, dashboard]);
 
   const endRun = useCallback(
     (r: RunResult) => {
       skipRestoreUntil.current = Date.now() + 8000;
+      const base = recordBase.current;
+      if (base && base.best > 0 && r.points > base.best) {
+        showRecord(`New record: ${r.points} pts in one excavation`);
+      }
+      recordBase.current = null;
       setExc(null);
       setResult(r);
       void refreshAll();
     },
-    [refreshAll],
+    [refreshAll, showRecord],
   );
 
   const shake = useCallback(() => {
@@ -135,6 +170,13 @@ export function MineBoard({ dashboard, config }: Props) {
       setDigging(index);
       setCells({});
       setResult(null);
+      recordBase.current = dashboard
+        ? {
+            best: Number(dashboard.stats.best),
+            deepest: Number(dashboard.stats.deepest),
+            depthShown: false,
+          }
+        : null;
       try {
         current = await run("start", () => actor.gameStartExcavation());
         setExc(current);
@@ -159,6 +201,16 @@ export function MineBoard({ dashboard, config }: Props) {
         : { kind: "token", token: tokenForPick(Number(r.picks)) };
       setCells((c) => ({ ...c, [index]: cell }));
       playSound(r.diamond ? "diamond" : "success");
+      const base = recordBase.current;
+      if (
+        base &&
+        !base.depthShown &&
+        base.deepest > 0 &&
+        Number(r.picks) > base.deepest
+      ) {
+        base.depthShown = true;
+        showRecord(`New depth record: pick ${Number(r.picks)}`);
+      }
       if (r.ended) {
         endRun({ kind: "emptied", points: Number(r.pointsSaved) });
       } else {
@@ -189,6 +241,25 @@ export function MineBoard({ dashboard, config }: Props) {
     : chips.find((c) => Number(c.used) < excPerChip);
   const chipNumber = currentChip ? chips.indexOf(currentChip) + 1 : null;
   const picks = exc ? Number(exc.picks) : 0;
+
+  // Live prize of the current chip, using this week's cutoffs.
+  const cuts = ranking?.cutsX100;
+  const hasCuts = !!cuts?.some((c) => c != null);
+  const tierFor = (pts: number): number | null => {
+    if (!currentChip || !cuts || !hasCuts) return null;
+    const avgX100 =
+      ((Number(currentChip.points) + pts) * 100) /
+      (Number(currentChip.used) + 1);
+    for (let t = 0; t < 4; t++) {
+      const c = cuts[t];
+      if (c != null && avgX100 >= Number(c)) return t;
+    }
+    return 4;
+  };
+  const tierNow = exc?.canSave ? tierFor(table[picks] ?? 0) : null;
+  const tierNext = exc ? tierFor(Number(exc.nextPoints)) : null;
+  const tierCollapse =
+    exc && picks >= safePicks ? tierFor(Number(exc.ifCollapse)) : null;
   // Every step from the free picks to 10; past 10, the current and next step are added.
   const savingSteps = useMemo(() => {
     const last = Math.min(table.length - 1, Math.max(10, picks + 1));
@@ -233,21 +304,40 @@ export function MineBoard({ dashboard, config }: Props) {
       <div className="grid gap-6 p-4 sm:p-6 lg:grid-cols-[minmax(0,1fr)_260px]">
         {/* Board */}
         <div className="flex flex-col items-center gap-4">
-          <div
-            ref={scope}
-            className="grid w-full max-w-[420px] grid-cols-5 gap-2 sm:gap-2.5"
-          >
-            {Array.from({ length: CELLS }, (_, i) => (
-              <MineCell
-                // biome-ignore lint/suspicious/noArrayIndexKey: fixed 5x5 board
-                key={i}
-                cell={cells[i]}
-                digging={digging === i}
-                disabled={busy && digging !== i}
-                idle={!exc && !result}
-                onClick={() => void dig(i)}
-              />
-            ))}
+          <div className="relative w-full max-w-[420px]">
+            <AnimatePresence>
+              {record && (
+                <motion.div
+                  key={record}
+                  initial={{ opacity: 0, y: -12, scale: 0.9 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: -8 }}
+                  transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                  className="pointer-events-none absolute inset-x-0 -top-3 z-10 flex justify-center"
+                >
+                  <span className="gradient-primary flex items-center gap-2 rounded-full px-4 py-1.5 font-mono text-xs font-semibold text-primary-foreground shadow-lg">
+                    <Trophy className="size-3.5" />
+                    {record}
+                  </span>
+                </motion.div>
+              )}
+            </AnimatePresence>
+            <div
+              ref={scope}
+              className="grid w-full grid-cols-5 gap-2 sm:gap-2.5"
+            >
+              {Array.from({ length: CELLS }, (_, i) => (
+                <MineCell
+                  // biome-ignore lint/suspicious/noArrayIndexKey: fixed 5x5 board
+                  key={i}
+                  cell={cells[i]}
+                  digging={digging === i}
+                  disabled={busy && digging !== i}
+                  idle={!exc && !result}
+                  onClick={() => void dig(i)}
+                />
+              ))}
+            </div>
           </div>
           <BoardMessage
             exc={exc}
@@ -263,17 +353,13 @@ export function MineBoard({ dashboard, config }: Props) {
         {/* Run panel */}
         <div className="flex flex-col gap-4">
           <Stat label="This excavation">
-            <motion.span
-              key={exc ? picks : "idle"}
-              initial={{ opacity: 0, y: 6 }}
-              animate={{ opacity: 1, y: 0 }}
+            <RollingNumber
+              value={exc ? (table[picks] ?? 0) : 0}
               className={cn(
                 "font-display text-4xl font-semibold tabular-nums",
                 ink,
               )}
-            >
-              {exc ? (table[picks] ?? 0) : 0}
-            </motion.span>
+            />
             <span className={cn("ml-1.5 font-mono text-xs", inkFaint)}>
               pts
             </span>
@@ -286,6 +372,9 @@ export function MineBoard({ dashboard, config }: Props) {
                 : picks < safePicks
                   ? "Nothing at risk yet"
                   : `You keep ${Number(exc.ifCollapse)} pts`}
+              {tierCollapse !== null && (
+                <span className={inkFaint}> · {tierOf(tierCollapse).name}</span>
+              )}
             </span>
           </Stat>
 
@@ -297,6 +386,15 @@ export function MineBoard({ dashboard, config }: Props) {
                   ? `${Number(exc.nextPoints)} pts · safe`
                   : `${Number(exc.nextPoints)} pts · ${fmtPct(exc.safePctX100)} safe`}
             </span>
+          </Stat>
+
+          <Stat label="Chip prize if you save now">
+            <ChipPrize
+              active={!!exc}
+              canSave={!!exc?.canSave}
+              tierNow={tierNow}
+              tierNext={tierNext}
+            />
           </Stat>
 
           <Button
@@ -569,6 +667,83 @@ function MiniStat({
       >
         {value}
       </div>
+    </div>
+  );
+}
+
+/** Number that rolls smoothly to its new value. */
+function RollingNumber({
+  value,
+  className,
+}: { value: number; className?: string }) {
+  const mv = useMotionValue(value);
+  const text = useTransform(mv, (v) => Math.round(v).toLocaleString("en-US"));
+  useEffect(() => {
+    const controls = animateValue(mv, value, {
+      duration: 0.6,
+      ease: "easeOut",
+    });
+    return () => controls.stop();
+  }, [mv, value]);
+  return <motion.span className={className}>{text}</motion.span>;
+}
+
+/** Prize this chip would get if the excavation were saved now, and after one more safe pick. */
+function ChipPrize({
+  active,
+  canSave,
+  tierNow,
+  tierNext,
+}: {
+  active: boolean;
+  canSave: boolean;
+  tierNow: number | null;
+  tierNext: number | null;
+}) {
+  if (!active)
+    return <span className={cn("font-mono text-sm", inkMid)}>—</span>;
+  if (tierNext === null) {
+    return (
+      <span className={cn("font-mono text-xs", inkFaint)}>
+        Shown once the week has more chips
+      </span>
+    );
+  }
+  const next = tierOf(tierNext);
+  const improves = tierNow !== null && tierNext < tierNow;
+  return (
+    <div className="flex flex-col gap-1.5">
+      {canSave && tierNow !== null ? (
+        <motion.span
+          key={tierNow}
+          initial={{ opacity: 0, scale: 0.85 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ type: "spring", stiffness: 320, damping: 18 }}
+          className={cn(
+            "inline-flex w-fit items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium",
+            tierOf(tierNow).pill,
+          )}
+        >
+          {(() => {
+            const Icon = tierOf(tierNow).icon;
+            return <Icon className="size-3" />;
+          })()}
+          {tierOf(tierNow).name}
+        </motion.span>
+      ) : (
+        <span className={cn("font-mono text-xs", inkMid)}>
+          You can save from pick 3
+        </span>
+      )}
+      <span
+        className={cn(
+          "font-mono text-[11px]",
+          improves ? "text-[color:var(--term-gold)]" : inkFaint,
+        )}
+      >
+        One more safe pick: {next.name}
+        {improves ? " ↑" : ""}
+      </span>
     </div>
   );
 }
