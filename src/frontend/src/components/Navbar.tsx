@@ -51,7 +51,7 @@ const ALL_NAV_ITEMS: NavItem[] = [
 
 // Not developed yet — hidden from the menu, routes still reachable by URL.
 // Remove a path from this list to show it again.
-const HIDDEN_PATHS = new Set(["/proposals", "/documentation", "/news"]);
+const HIDDEN_PATHS = new Set(["/proposals", "/news"]);
 
 const NAV_ITEMS = ALL_NAV_ITEMS.filter((i) => !HIDDEN_PATHS.has(i.to));
 
@@ -282,9 +282,7 @@ export function MobileTabBar() {
 }
 
 // Everything not in the bottom tab bar goes in "More"
-const MORE_ITEMS: NavItem[] = NAV_ITEMS.filter(
-  (i) => !MOBILE_TABS.includes(i),
-);
+const MORE_ITEMS: NavItem[] = NAV_ITEMS.filter((i) => !MOBILE_TABS.includes(i));
 
 function MoreMenu({ pathname }: { pathname: string }) {
   const [open, setOpen] = useState(false);
