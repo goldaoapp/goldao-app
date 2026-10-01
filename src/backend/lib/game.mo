@@ -26,13 +26,15 @@ module {
   public let DRAW_BPS : Nat = 240; // 2.4%
   public let MIN_CHIPS : Nat = 20;
   public let FAUCET_CAP : Nat = 1_000_000_000_000; // 10,000 GOLDAO
+  // Total test GOLDAO the faucet gives per week across all players (limits cycle abuse with many principals).
+  public let FAUCET_GLOBAL_CAP : Nat = 200_000_000_000_000; // 2,000,000 GOLDAO
   public let MAX_CHIPS_PER_BUY : Nat = 10;
   public let AUTO_SAVE_AT : Nat = 3;
 
   // Principals that are always admin. Paste Internet Identity principals here before deploying.
   public let BOOTSTRAP_ADMINS : [Text] = [
-    "o4k5k-q4hdh-hmf4x-qnqbw-m53ao-c4u6t-6vyft-ejkie-iepjy-ziitc-3ae",
-    "nxdvu-ipwv3-xgadl-ws3fw-ply6m-vf5st-nd5mq-4hv5c-nzvgc-o6swr-oae",
+    "PASTE-FIRST-PRINCIPAL-HERE",
+    "PASTE-SECOND-PRINCIPAL-HERE",
   ];
 
   public func isBootstrapAdmin(p : Principal) : Bool {
