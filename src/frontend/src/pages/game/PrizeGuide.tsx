@@ -28,6 +28,8 @@ export function PrizeGuide({ ranking, config }: Props) {
   const mines = config ? Number(config.mines) : 5;
   const drawPct = config ? Number(config.drawBps) / 100 : 2.4;
   const treasuryPct = config ? Number(config.treasuryBps) / 100 : 1;
+  const minChips = config ? Number(config.minChips) : 20;
+  const minPlayers = config ? Number(config.minPlayers) : 5;
 
   return (
     <div className="flex flex-col gap-6">
@@ -86,9 +88,10 @@ export function PrizeGuide({ ranking, config }: Props) {
             inkFaint,
           )}
         >
-          Current cutoffs (average points per chip). The percentage of each
-          prize is fixed; the cutoffs move with how everyone plays and are
-          confirmed at the weekly close.
+          Current cutoffs (average points per chip; unfinished chips count each
+          missing excavation as 100). The percentage of each prize is fixed; the
+          cutoffs move with how everyone plays and are confirmed at the weekly
+          close.
         </p>
       </div>
 
@@ -231,7 +234,8 @@ export function PrizeGuide({ ranking, config }: Props) {
           </Rule>
           <Rule title="Weekly close">
             Open excavations are saved and unused ones are auto-played saving at
-            3. A week needs at least 20 chips to close.
+            3. A week needs at least {minChips} chips from {minPlayers}{" "}
+            different players to close.
           </Rule>
         </ul>
       </div>
