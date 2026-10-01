@@ -19,7 +19,7 @@ import {
   shortPrincipal,
 } from "./game-utils";
 
-type SortKey = "avg" | "diamonds";
+type SortKey = "result" | "avg" | "diamonds";
 
 const TOP = 20;
 
@@ -30,18 +30,28 @@ interface Props {
 
 export function RankingTable({ ranking, weeks }: Props) {
   const { principalId } = useAuth();
-  const [sort, setSort] = useState<SortKey>("avg");
+  const [sort, setSort] = useState<SortKey>("result");
   const [showAll, setShowAll] = useState(false);
 
   const rows = useMemo(() => {
     if (!ranking) return [];
-    const withPos = ranking.players.map((p, i) => ({ ...p, pos: i + 1 }));
-    if (sort === "diamonds") {
-      return [...withPos].sort(
-        (a, b) => Number(b.diamonds) - Number(a.diamonds) || a.pos - b.pos,
-      );
-    }
-    return withPos;
+    // Return = what the player would receive now / what they paid.
+    const ratio = (p: (typeof ranking.players)[number]) =>
+      Number(p.paid) > 0 ? Number(p.estimatedReceive) / Number(p.paid) : 0;
+    const base = [...ranking.players];
+    const sorted =
+      sort === "diamonds"
+        ? base.sort(
+            (a, b) =>
+              Number(b.diamonds) - Number(a.diamonds) || ratio(b) - ratio(a),
+          )
+        : sort === "avg"
+          ? base.sort((a, b) => Number(b.avgX100) - Number(a.avgX100))
+          : base.sort(
+              (a, b) =>
+                ratio(b) - ratio(a) || Number(b.avgX100) - Number(a.avgX100),
+            );
+    return sorted.map((p, i) => ({ ...p, pos: i + 1 }));
   }, [ranking, sort]);
 
   // Top 20 plus the signed-in player, unless the full list is expanded.
@@ -91,6 +101,7 @@ export function RankingTable({ ranking, weeks }: Props) {
           <div className="inline-flex rounded-md border border-[color:var(--term-border)] p-0.5">
             {(
               [
+                ["result", "Result"],
                 ["avg", "Average"],
                 ["diamonds", "Diamonds"],
               ] as [SortKey, string][]
@@ -305,9 +316,10 @@ export function RankingTable({ ranking, weeks }: Props) {
             inkFaint,
           )}
         >
-          One row per player with their overall average. Prizes are decided chip
-          by chip. "Receives" includes refunded fees and is provisional until
-          the weekly close.
+          Sorted by result (receives ÷ paid). Prizes are decided chip by chip,
+          so a good average can still lose if a chip ends in Rock. Unfinished
+          chips count each missing excavation as 100 points (what the weekly
+          close auto-plays). Everything is provisional until the close.
         </p>
       </div>
 
