@@ -2,7 +2,15 @@ import type { Dashboard, ExcavationView, GameConfig } from "@/backend";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/context/AuthContext";
 import { cn } from "@/lib/utils";
-import { Gem, Mountain, Pickaxe, Save, ShieldCheck } from "lucide-react";
+import {
+  Gem,
+  Mountain,
+  Pickaxe,
+  Save,
+  ShieldCheck,
+  Volume2,
+  VolumeX,
+} from "lucide-react";
 import { AnimatePresence, motion, useAnimate } from "motion/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -22,6 +30,7 @@ import {
   panelHeader,
   tokenForPick,
 } from "./game-utils";
+import { playSound, preloadSounds, useSoundToggle } from "./sounds";
 import { errorMessage, useGameAction } from "./useGame";
 
 type Cell =
@@ -54,8 +63,13 @@ export function MineBoard({ dashboard, config }: Props) {
   const [result, setResult] = useState<RunResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const skipRestoreUntil = useRef(0);
+  const { muted, toggleMuted } = useSoundToggle();
 
-  const excPerChip = config ? Number(config.excavationsPerChip) : 10;
+  useEffect(() => {
+    preloadSounds();
+  }, []);
+
+  const excPerChip = config ? Number(config.excavationsPerChip) : 5;
   const safePicks = config ? Number(config.safePicks) : 2;
   const table = useMemo(
     () => (config ? config.pointsTable.map(Number) : []),
@@ -142,6 +156,7 @@ export function MineBoard({ dashboard, config }: Props) {
         ? { kind: "diamond" }
         : { kind: "token", token: tokenForPick(Number(r.picks)) };
       setCells((c) => ({ ...c, [index]: cell }));
+      playSound(r.diamond ? "diamond" : "success");
       if (r.ended) {
         endRun({ kind: "emptied", points: Number(r.pointsSaved) });
       } else {
@@ -179,11 +194,29 @@ export function MineBoard({ dashboard, config }: Props) {
         <span className={cn(eyebrow, gold, "flex items-center gap-2")}>
           <Pickaxe className="size-3.5" /> Gold mine
         </span>
-        <span className={cn("font-mono text-[11px]", inkFaint)}>
-          {chipNumber
-            ? `Chip ${chipNumber} · excavation ${Math.min(excPerChip, Number(currentChip?.used ?? 0) + 1)} of ${excPerChip}`
-            : "No active chip"}
-        </span>
+        <div className="flex items-center gap-3">
+          <span className={cn("font-mono text-[11px]", inkFaint)}>
+            {chipNumber
+              ? `Chip ${chipNumber} · excavation ${Math.min(excPerChip, Number(currentChip?.used ?? 0) + 1)} of ${excPerChip}`
+              : "No active chip"}
+          </span>
+          <button
+            type="button"
+            onClick={toggleMuted}
+            aria-label={muted ? "Turn sound on" : "Turn sound off"}
+            title={muted ? "Sound off" : "Sound on"}
+            className={cn(
+              "rounded-md p-1 transition-smooth hover:text-[color:var(--term-ink)]",
+              muted ? inkFaint : gold,
+            )}
+          >
+            {muted ? (
+              <VolumeX className="size-4" />
+            ) : (
+              <Volume2 className="size-4" />
+            )}
+          </button>
+        </div>
       </div>
 
       <div className="grid gap-6 p-4 sm:p-6 lg:grid-cols-[minmax(0,1fr)_260px]">
