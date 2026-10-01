@@ -4,21 +4,92 @@ type AccessControlState__313657439 =
     var adminAssigned : Bool;
     userRoles : Map__386906547<Principal, UserRole__642808710>
   };
+type AccessControlState__517198284 =
+  {
+    var adminAssigned : Bool;
+    userRoles : Map__386906547<Principal, UserRole__940285103>
+  };
 type AccessControlState__731777866 =
   {
     var adminAssigned : Bool;
     userRoles : Map__386906547<Principal, UserRole__981234465>
   };
+type Chip__673928551 =
+  {
+    diamonds : Nat;
+    finishedAt : Int;
+    id : Nat;
+    owner : Principal;
+    points : Nat;
+    used : Nat
+  };
 type Data__265875254<K, V> = {var count : Nat__58649523; kvs : [var ?(K, V)]};
+type Excavation__240008859 =
+  {busy : Bool; chipId : Nat; diamonds : Nat; picks : Nat};
+type Excavation__504915220 =
+  {busy : Bool; diamonds : Nat; fichaId : Nat; picks : Nat};
+type Ficha__1025827944 =
+  {
+    diamonds : Nat;
+    finishedAt : Int;
+    id : Nat;
+    owner : Principal;
+    points : Nat;
+    used : Nat
+  };
+type GameState__608663671 =
+  {
+    balances : Map__386906547<Principal, Nat>;
+    var burned : Nat;
+    var drawCarry : Nat;
+    faucet : Map__386906547<Principal, (Nat, Nat)>;
+    fichas : Map__386906547<Nat, Ficha__1025827944>;
+    history :
+      Map__386906547<Principal, List__89170296<PlayerWeekResult__438732493>>;
+    var lastClose : ?WeekSummary__708473198;
+    var nextFichaId : Nat;
+    open : Map__386906547<Principal, Excavation__504915220>;
+    var payouts : [Payout__534748512];
+    var pendingResults : [(Principal, PlayerWeekResult__438732493)];
+    stats : Map__386906547<Principal, WeekStats__664896732>;
+    var status : WeekStatus__73284130;
+    var treasury : Nat;
+    var week : Nat;
+    weeks : List__89170296<WeekSummary__708473198>
+  };
 type Internal__161573640<K, V> =
   {children : [var ?Node__430031793<K, V>]; data : Data__265875254<K, V>};
 type Leaf__1045638083<K, V> = {data : Data__265875254<K, V>};
+type List__1004628775<T> =
+  {
+    var blockIndex : Nat__58649523;
+    var blocks : [var [var ?T]];
+    var elementIndex : Nat__58649523
+  };
+type List__89170296<T> = List__1004628775<T>;
 type Map__13625999<K, V> =
   {var root : Node__430031793<K, V>; var size : Nat__58649523};
 type Map__386906547<K, V> = Map__670138087<K, V>;
 type Map__670138087<K, V> = Map__13625999<K, V>;
 type Nat__58649523 = Nat__920180692;
 type Nat__920180692 = Nat;
+type NewAccessControlState__775215549 =
+  {
+    var adminAssigned : Bool;
+    userRoles : Map__386906547<Principal, NewUserRole__495470669>
+  };
+type NewActor__1045774320 =
+  {
+    accessControlState : AccessControlState__517198284;
+    gameState : GameState__608663671;
+    treasurySnapshots : Map__386906547<Text, TreasurySnapshot__11170842>
+  };
+type NewActor__302184456 =
+  {
+    accessControlState : NewAccessControlState__775215549;
+    gameState : NewGameState__728065770;
+    treasurySnapshots : Map__386906547<Text, NewTreasurySnapshot__1036647812>
+  };
 type NewActor__506023031 =
   {accessControlState : AccessControlState__313657439};
 type NewActor__729643281 =
@@ -26,11 +97,248 @@ type NewActor__729643281 =
     accessControlState : AccessControlState__731777866;
     treasurySnapshots : Map__386906547<Text, TreasurySnapshot__649634269>
   };
+type NewChip__125972654 =
+  {
+    diamonds : Nat;
+    finishedAt : Int;
+    id : Nat;
+    owner : Principal;
+    points : Nat;
+    used : Nat
+  };
+type NewExcavation__477473542 =
+  {busy : Bool; chipId : Nat; diamonds : Nat; picks : Nat};
+type NewGameState__728065770 =
+  {
+    balances : Map__386906547<Principal, Nat>;
+    var burned : Nat;
+    chips : Map__386906547<Nat, NewChip__125972654>;
+    var drawCarry : Nat;
+    faucet : Map__386906547<Principal, (Nat, Nat)>;
+    history :
+      Map__386906547<Principal, List__89170296<NewPlayerWeekResult__20461693>>;
+    var lastClose : ?NewWeekSummary__692746832;
+    var nextChipId : Nat;
+    open : Map__386906547<Principal, NewExcavation__477473542>;
+    var payouts : [NewPayout__692264998];
+    var pendingResults : [(Principal, NewPlayerWeekResult__20461693)];
+    stats : Map__386906547<Principal, NewWeekStats__551922593>;
+    var status : NewWeekStatus__52531198;
+    var treasury : Nat;
+    var week : Nat;
+    weeks : List__89170296<NewWeekSummary__692746832>
+  };
+type NewPayoutConcept__468607743 = {#draw; #prize};
+type NewPayout__692264998 =
+  {
+    amount : Nat;
+    concept : NewPayoutConcept__468607743;
+    tiers : [Nat];
+    to : Principal
+  };
+type NewPlayerWeekResult__20461693 =
+  {
+    best : Nat;
+    chips : Nat;
+    collapses : Nat;
+    deepest : Nat;
+    diamonds : Nat;
+    drawWon : Bool;
+    paid : Nat;
+    received : Nat;
+    tiers : [Nat];
+    week : Nat
+  };
+type NewTreasurySnapshot__1036647812 =
+  {
+    date : Text;
+    icp_amount : Float;
+    icp_usd : Float;
+    ogy_amount : Float;
+    ogy_usd : Float;
+    timestamp : Nat64;
+    total_usd : Float;
+    wtn_amount : Float;
+    wtn_usd : Float
+  };
+type NewUserRole__495470669 = {#admin; #guest; #user};
+type NewWeekStats__551922593 =
+  {best : Nat; collapses : Nat; deepest : Nat; playTx : Nat};
+type NewWeekStatus__52531198 = {#closed; #closing; #open};
+type NewWeekSummary__692746832 =
+  {
+    chips : Nat;
+    closedAt : Int;
+    drawPrize : Nat;
+    drawRandom : Nat;
+    drawTicket : Nat;
+    drawTickets : Nat;
+    drawWinner : ?Principal;
+    players : Nat;
+    pot : Nat;
+    treasurePerChip : Nat;
+    treasuryKeep : Nat;
+    week : Nat
+  };
 type Node__430031793<K, V> =
   {#internal : Internal__161573640<K, V>; #leaf : Leaf__1045638083<K, V>};
+type OldAccessControlState__318915640 =
+  {
+    var adminAssigned : Bool;
+    userRoles : Map__386906547<Principal, OldUserRole__713914495>
+  };
 type OldActor__1018259084 =
   {accessControlState : AccessControlState__731777866};
+type OldActor__112540865 =
+  {
+    accessControlState : AccessControlState__517198284;
+    treasurySnapshots : Map__386906547<Text, TreasurySnapshot__11170842>
+  };
 type OldActor__224245412 = {};
+type OldActor__602207383 =
+  {
+    accessControlState : OldAccessControlState__318915640;
+    gameState : OldGameState__1070935553;
+    treasurySnapshots : Map__386906547<Text, OldTreasurySnapshot__938323386>
+  };
+type OldExcavation__593863626 =
+  {busy : Bool; diamonds : Nat; fichaId : Nat; picks : Nat};
+type OldFicha__148734898 =
+  {
+    diamonds : Nat;
+    finishedAt : Int;
+    id : Nat;
+    owner : Principal;
+    points : Nat;
+    used : Nat
+  };
+type OldGameState__1070935553 =
+  {
+    balances : Map__386906547<Principal, Nat>;
+    var burned : Nat;
+    var drawCarry : Nat;
+    faucet : Map__386906547<Principal, (Nat, Nat)>;
+    fichas : Map__386906547<Nat, OldFicha__148734898>;
+    history :
+      Map__386906547<Principal,
+                      List__89170296<OldPlayerWeekResult__610757006>>;
+    var lastClose : ?OldWeekSummary__205863332;
+    var nextFichaId : Nat;
+    open : Map__386906547<Principal, OldExcavation__593863626>;
+    var payouts : [OldPayout__887931726];
+    var pendingResults : [(Principal, OldPlayerWeekResult__610757006)];
+    stats : Map__386906547<Principal, OldWeekStats__478247183>;
+    var status : OldWeekStatus__452273688;
+    var treasury : Nat;
+    var week : Nat;
+    weeks : List__89170296<OldWeekSummary__205863332>
+  };
+type OldPayoutConcept__199056819 = {#premio; #sorteo};
+type OldPayout__887931726 =
+  {
+    amount : Nat;
+    concept : OldPayoutConcept__199056819;
+    tiers : [Nat];
+    to : Principal
+  };
+type OldPlayerWeekResult__610757006 =
+  {
+    best : Nat;
+    deepest : Nat;
+    derrumbes : Nat;
+    diamonds : Nat;
+    drawWon : Bool;
+    fichas : Nat;
+    paid : Nat;
+    received : Nat;
+    tiers : [Nat];
+    week : Nat
+  };
+type OldTreasurySnapshot__938323386 =
+  {
+    date : Text;
+    icp_amount : Float;
+    icp_usd : Float;
+    ogy_amount : Float;
+    ogy_usd : Float;
+    timestamp : Nat64;
+    total_usd : Float;
+    wtn_amount : Float;
+    wtn_usd : Float
+  };
+type OldUserRole__713914495 = {#admin; #guest; #user};
+type OldWeekStats__478247183 =
+  {best : Nat; deepest : Nat; derrumbes : Nat; jugarTx : Nat};
+type OldWeekStatus__452273688 = {#closed; #closing; #open};
+type OldWeekSummary__205863332 =
+  {
+    closedAt : Int;
+    drawPrize : Nat;
+    drawRandom : Nat;
+    drawTicket : Nat;
+    drawTickets : Nat;
+    drawWinner : ?Principal;
+    fichas : Nat;
+    players : Nat;
+    pot : Nat;
+    tesoroPerFicha : Nat;
+    treasuryKeep : Nat;
+    week : Nat
+  };
+type PayoutConcept__790932910 = {#premio; #sorteo};
+type PayoutConcept__858087065 = {#draw; #prize};
+type Payout__473874471 =
+  {
+    amount : Nat;
+    concept : PayoutConcept__858087065;
+    tiers : [Nat];
+    to : Principal
+  };
+type Payout__534748512 =
+  {
+    amount : Nat;
+    concept : PayoutConcept__790932910;
+    tiers : [Nat];
+    to : Principal
+  };
+type PlayerWeekResult__207304040 =
+  {
+    best : Nat;
+    chips : Nat;
+    collapses : Nat;
+    deepest : Nat;
+    diamonds : Nat;
+    drawWon : Bool;
+    paid : Nat;
+    received : Nat;
+    tiers : [Nat];
+    week : Nat
+  };
+type PlayerWeekResult__438732493 =
+  {
+    best : Nat;
+    deepest : Nat;
+    derrumbes : Nat;
+    diamonds : Nat;
+    drawWon : Bool;
+    fichas : Nat;
+    paid : Nat;
+    received : Nat;
+    tiers : [Nat];
+    week : Nat
+  };
+type TreasurySnapshot__11170842 =
+  {
+    date : Text;
+    icp_amount : Float;
+    icp_usd : Float;
+    ogy_amount : Float;
+    ogy_usd : Float;
+    timestamp : Nat64;
+    total_usd : Float;
+    wtn_amount : Float;
+    wtn_usd : Float
+  };
 type TreasurySnapshot__522762438 =
   {
     date : Text;
@@ -57,16 +365,75 @@ type TreasurySnapshot__649634269 =
   };
 type UserRole__642808710 = {#admin; #guest; #user};
 type UserRole__91647283 = {#admin; #guest; #user};
+type UserRole__940285103 = {#admin; #guest; #user};
 type UserRole__981234465 = {#admin; #guest; #user};
+type WeekStats__664896732 =
+  {best : Nat; deepest : Nat; derrumbes : Nat; jugarTx : Nat};
+type WeekStats__753789258 =
+  {best : Nat; collapses : Nat; deepest : Nat; playTx : Nat};
+type WeekStatus__73284130 = {#closed; #closing; #open};
+type WeekStatus__748549823 = {#closed; #closing; #open};
+type WeekSummary__398654781 =
+  {
+    chips : Nat;
+    closedAt : Int;
+    drawPrize : Nat;
+    drawRandom : Nat;
+    drawTicket : Nat;
+    drawTickets : Nat;
+    drawWinner : ?Principal;
+    players : Nat;
+    pot : Nat;
+    treasurePerChip : Nat;
+    treasuryKeep : Nat;
+    week : Nat
+  };
+type WeekSummary__708473198 =
+  {
+    closedAt : Int;
+    drawPrize : Nat;
+    drawRandom : Nat;
+    drawTicket : Nat;
+    drawTickets : Nat;
+    drawWinner : ?Principal;
+    fichas : Nat;
+    players : Nat;
+    pot : Nat;
+    tesoroPerFicha : Nat;
+    treasuryKeep : Nat;
+    week : Nat
+  };
 {
   "20260810_154449" : (_old : OldActor__224245412) -> NewActor__506023031;
-  "20260820_120000" : (_old : OldActor__1018259084) -> NewActor__729643281
+  "20260820_120000" : (_old : OldActor__1018259084) -> NewActor__729643281;
+  "20261001_120000" : (_old : OldActor__112540865) -> NewActor__1045774320;
+  "20261001_130000" : (old : OldActor__602207383) -> NewActor__302184456
 }
 actor  {
   stable accessControlState :
     {
       var adminAssigned : Bool;
       userRoles : Map__386906547<Principal, UserRole__91647283>
+    };
+  stable gameState :
+    {
+      balances : Map__386906547<Principal, Nat>;
+      var burned : Nat;
+      chips : Map__386906547<Nat, Chip__673928551>;
+      var drawCarry : Nat;
+      faucet : Map__386906547<Principal, (Nat, Nat)>;
+      history :
+        Map__386906547<Principal, List__89170296<PlayerWeekResult__207304040>>;
+      var lastClose : ?WeekSummary__398654781;
+      var nextChipId : Nat;
+      open : Map__386906547<Principal, Excavation__240008859>;
+      var payouts : [Payout__473874471];
+      var pendingResults : [(Principal, PlayerWeekResult__207304040)];
+      stats : Map__386906547<Principal, WeekStats__753789258>;
+      var status : WeekStatus__748549823;
+      var treasury : Nat;
+      var week : Nat;
+      weeks : List__89170296<WeekSummary__398654781>
     };
   stable treasurySnapshots :
     {

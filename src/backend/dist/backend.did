@@ -1,3 +1,31 @@
+type WeekSummary = 
+ record {
+   chips: nat;
+   closedAt: int;
+   drawPrize: nat;
+   drawRandom: nat;
+   drawTicket: nat;
+   drawTickets: nat;
+   drawWinner: opt principal;
+   players: nat;
+   pot: nat;
+   treasurePerChip: nat;
+   treasuryKeep: nat;
+   week: nat;
+ };
+type WeekStatus = 
+ variant {
+   closed;
+   closing;
+   open;
+ };
+type WeekStats = 
+ record {
+   best: nat;
+   collapses: nat;
+   deepest: nat;
+   playTx: nat;
+ };
 type Value = 
  variant {
    "bool": bool;
@@ -25,15 +53,143 @@ type TreasurySnapshot =
    wtn_amount: float64;
    wtn_usd: float64;
  };
+type TierIndex = nat;
 type Result__1 = 
+ record {
+   hasMore: bool;
+   rows: vec vec Cell;
+ };
+type Result_7 = 
  variant {
    err: Error;
    ok;
  };
+type Result_6 = 
+ variant {
+   err: text;
+   ok: vec record {
+             principal;
+             UserRole;
+           };
+ };
+type Result_5 = 
+ variant {
+   err: text;
+   ok: WeekSummary;
+ };
+type Result_4 = 
+ variant {
+   err: text;
+   ok;
+ };
+type Result_3 = 
+ variant {
+   err: text;
+   ok: AdminView;
+ };
+type Result_2 = 
+ variant {
+   err: text;
+   ok: PickResult;
+ };
+type Result_1 = 
+ variant {
+   err: text;
+   ok: nat;
+ };
 type Result = 
+ variant {
+   err: text;
+   ok: ExcavationView;
+ };
+type Ranking = 
  record {
-   hasMore: bool;
-   rows: vec vec Cell;
+   chips: nat;
+   cutsX100: vec opt nat;
+   drawPrize: nat;
+   players: vec PlayerRow;
+   pot: nat;
+   status: WeekStatus;
+   totalDiamonds: nat;
+   treasurePerChip: nat;
+   treasuryKeep: nat;
+   week: nat;
+ };
+type PlayerWeekResult = 
+ record {
+   best: nat;
+   chips: nat;
+   collapses: nat;
+   deepest: nat;
+   diamonds: nat;
+   drawWon: bool;
+   paid: nat;
+   received: nat;
+   tiers: vec nat;
+   week: nat;
+ };
+type PlayerRow = 
+ record {
+   avgX100: nat;
+   chips: nat;
+   diamonds: nat;
+   estimatedReceive: nat;
+   paid: nat;
+   player: principal;
+   playing: bool;
+   tiers: vec nat;
+ };
+type PickResult = 
+ record {
+   collapsed: bool;
+   diamond: bool;
+   ended: bool;
+   excavation: opt ExcavationView;
+   picks: nat;
+   pointsSaved: nat;
+ };
+type PayoutConcept = 
+ variant {
+   draw;
+   prize;
+ };
+type Payout = 
+ record {
+   amount: nat;
+   concept: PayoutConcept;
+   tiers: vec nat;
+   to: principal;
+ };
+type GameConfig = 
+ record {
+   cells: nat;
+   chipPriceE8s: nat;
+   diamondBps: nat;
+   drawBps: nat;
+   excavationsPerChip: nat;
+   faucetCapE8s: nat;
+   feeE8s: nat;
+   minChips: nat;
+   minPlayers: nat;
+   mines: nat;
+   pointsTable: vec nat;
+   safePicks: nat;
+   status: WeekStatus;
+   tierCutsPct: vec nat;
+   tierMultBps: vec nat;
+   treasuryBps: nat;
+   week: nat;
+ };
+type ExcavationView = 
+ record {
+   canSave: bool;
+   chipId: nat;
+   diamonds: nat;
+   ifCollapse: nat;
+   nextPoints: nat;
+   picks: nat;
+   runPoints: nat;
+   safePctX100: nat;
  };
 type Error = 
  variant {
@@ -57,17 +213,81 @@ type Error =
    UnknownNonce;
    UntrustedSsoSource: record {domain: text;};
  };
+type Dashboard = 
+ record {
+   balance: nat;
+   chips: vec ChipView;
+   diamonds: nat;
+   estimatedReceive: nat;
+   excavationsLeft: nat;
+   faucetRemaining: nat;
+   history: vec PlayerWeekResult;
+   open: opt ExcavationView;
+   paid: nat;
+   stats: WeekStats;
+   status: WeekStatus;
+   tiers: vec nat;
+   totalDiamonds: nat;
+   week: nat;
+ };
+type ChipView = 
+ record {
+   avgX100: nat;
+   diamonds: nat;
+   gapToNextX100: opt nat;
+   id: nat;
+   points: nat;
+   projectedX100: nat;
+   tier: TierIndex;
+   used: nat;
+ };
 type Cell = 
  record {
    name: text;
    value: Value;
  };
+type AdminView = 
+ record {
+   burned: nat;
+   drawCarry: nat;
+   lastClose: opt WeekSummary;
+   payouts: vec Payout;
+   status: WeekStatus;
+   treasury: nat;
+   week: nat;
+ };
 service : {
   _initialize_access_control: () -> ();
-  _internet_identity_sign_in_finish: () -> (Result__1);
+  _internet_identity_sign_in_finish: () -> (Result_7);
   _internet_identity_sign_in_start: () -> (blob);
+  /// Lists every principal that has a role. Admin only.
+  adminListRoles: () -> (Result_6) query;
+  /// Syncs the app-wide admin role for the hardcoded bootstrap principals (Game.BOOTSTRAP_ADMINS).
+  /// Returns true only when the caller is one of them; does nothing otherwise.
+  adminSyncBootstrap: () -> (bool);
   assignCallerUserRole: (user: principal, role: UserRole) -> ();
-  execute: (qJson: text) -> (Result) query;
+  execute: (qJson: text) -> (Result__1) query;
+  /// Closes the week: saves open excavations, auto-plays the remaining ones
+  /// saving at 3, ranks chips, computes payouts and runs the diamond draw.
+  gameAdminCloseWeek: () -> (Result_5);
+  /// Credits all payouts (simulated), archives the week and opens the next one.
+  gameAdminPayAndOpenNext: () -> (Result_1);
+  /// Recovery: if a close was interrupted (status stuck in #closing), reopens the week
+  /// so the admin can run the close again. Open excavations were already saved.
+  gameAdminRecoverClosing: () -> (Result_4);
+  gameAdminView: () -> (Result_3) query;
+  /// Buys chips: sends n x 1,000 to the treasury + 10 fee.
+  gameBuyChips: (n: nat) -> (Result_1);
+  gameConfig: () -> (GameConfig) query;
+  gameMyDashboard: () -> (Dashboard) query;
+  /// One pick. Calls raw_rand to resolve collapse (from the 3rd pick) and diamond.
+  gamePick: () -> (Result_2);
+  gameRanking: () -> (Ranking) query;
+  /// Test GOLDAO: up to FAUCET_CAP per principal per week.
+  gameRequestTestTokens: (goldao: nat) -> (Result_1);
+  gameSave: () -> (Result_1);
+  gameStartExcavation: () -> (Result);
+  gameWeeks: () -> (vec WeekSummary) query;
   getCallerUserRole: () -> (UserRole) query;
   /// Full history sorted by date ascending.
   getTreasuryHistory: () -> (vec TreasurySnapshot) query;
@@ -77,4 +297,6 @@ service : {
   /// Save a daily snapshot. Write-once per day — rejects if date exists.
   saveTreasurySnapshot: (snapshot: TreasurySnapshot) -> (bool);
   schema: () -> (text) query;
+  /// Returns the caller's principal as text.
+  whoAmI: () -> (text) query;
 }
