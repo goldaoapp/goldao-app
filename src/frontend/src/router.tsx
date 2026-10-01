@@ -2,6 +2,7 @@ import {
   createRootRoute,
   createRoute,
   createRouter,
+  redirect,
 } from "@tanstack/react-router";
 
 import Layout from "@/components/Layout";
@@ -10,6 +11,7 @@ import DocumentationPage from "@/pages/documentation/DocumentationPage";
 import EventsPage from "@/pages/events/EventsPage";
 import FairValuePage from "@/pages/fair-value/FairValuePage";
 import GamePage from "@/pages/game/GamePage";
+import GameFiPage from "@/pages/gamefi/GameFiPage";
 import GldtPage from "@/pages/gldt/GldtPage";
 import HomePage from "@/pages/home/HomePage";
 import NewsPage from "@/pages/news/NewsPage";
@@ -69,10 +71,25 @@ const newsRoute = createRoute({
   component: NewsPage,
 });
 
+const gamefiRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/gamefi",
+  component: GameFiPage,
+});
+
 const gameRoute = createRoute({
   getParentRoute: () => rootRoute,
-  path: "/game",
+  path: "/gamefi/mine",
   component: GamePage,
+});
+
+// Old URL of the mine, kept so existing links keep working.
+const legacyGameRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/game",
+  beforeLoad: () => {
+    throw redirect({ to: "/gamefi/mine" });
+  },
 });
 
 const adminRoute = createRoute({
@@ -97,7 +114,9 @@ const routeTree = rootRoute.addChildren([
   fairValueRoute,
   documentationRoute,
   newsRoute,
+  gamefiRoute,
   gameRoute,
+  legacyGameRoute,
   adminRoute,
   gldtRoute,
 ]);
