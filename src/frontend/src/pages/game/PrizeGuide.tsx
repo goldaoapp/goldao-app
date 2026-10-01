@@ -2,6 +2,7 @@ import type { GameConfig, Ranking } from "@/backend";
 import { cn } from "@/lib/utils";
 import { BookOpen, Compass, Gem } from "lucide-react";
 import { motion } from "motion/react";
+import { Spinner } from "./Spinner";
 import {
   DIAMOND_TEXT,
   STRATEGY_GUIDE,
@@ -35,6 +36,8 @@ export function PrizeGuide({ ranking, config }: Props) {
   const mines = config ? Number(config.mines) : 5;
   const drawPct = config ? Number(config.drawBps) / 100 : 2.4;
   const treasuryPct = config ? Number(config.treasuryBps) / 100 : 1;
+  // Ring while the ranking loads; a dash only when the value does not exist.
+  const missing = ranking ? "—" : <Spinner />;
   const minChips = config ? Number(config.minChips) : 20;
   const minPlayers = config ? Number(config.minPlayers) : 5;
 
@@ -77,10 +80,10 @@ export function PrizeGuide({ ranking, config }: Props) {
                   {i === 4
                     ? nextUp != null
                       ? `< ${fmtAvg(nextUp)}`
-                      : "—"
+                      : missing
                     : cut != null
                       ? `${fmtAvg(cut)}+`
-                      : "—"}
+                      : missing}
                 </span>
                 <span className={cn("font-mono text-[10px]", inkFaint)}>
                   {t.pct}% of chips · pays {t.payout}
