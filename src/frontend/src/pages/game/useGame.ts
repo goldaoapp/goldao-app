@@ -72,11 +72,26 @@ export function useGameAction() {
   const queryClient = useQueryClient();
   const [pending, setPending] = useState<string | null>(null);
 
+  // "live": only what changes while playing (dashboard and ranking).
+  // "all": every game query, for admin actions that change the week.
+  const refresh = useCallback(
+    (scope: "live" | "all") => {
+      if (scope === "all") {
+        return queryClient.invalidateQueries({ queryKey: [KEY] });
+      }
+      return Promise.all([
+        queryClient.invalidateQueries({ queryKey: [KEY, "dashboard"] }),
+        queryClient.invalidateQueries({ queryKey: [KEY, "ranking"] }),
+      ]);
+    },
+    [queryClient],
+  );
+
   const run = useCallback(
     async <T>(
       name: string,
       call: () => Promise<Res<T>>,
-      refresh = true,
+      scope: "live" | "all" | false = "live",
     ): Promise<T> => {
       setPending(name);
       try {
@@ -85,16 +100,13 @@ export function useGameAction() {
         return res.ok;
       } finally {
         setPending(null);
-        if (refresh) void queryClient.invalidateQueries({ queryKey: [KEY] });
+        if (scope) void refresh(scope);
       }
     },
-    [queryClient],
+    [refresh],
   );
 
-  const refreshAll = useCallback(
-    () => queryClient.invalidateQueries({ queryKey: [KEY] }),
-    [queryClient],
-  );
+  const refreshAll = useCallback(() => refresh("live"), [refresh]);
 
   return { run, pending, refreshAll };
 }
