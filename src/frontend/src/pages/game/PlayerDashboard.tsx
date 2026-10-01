@@ -1,4 +1,5 @@
 import type { Dashboard } from "@/backend";
+import { useAuth } from "@/context/AuthContext";
 import { cn } from "@/lib/utils";
 import {
   Gem,
@@ -10,6 +11,7 @@ import {
   Trophy,
 } from "lucide-react";
 import { motion } from "motion/react";
+import { Spinner } from "./Spinner";
 import {
   DIAMOND_TEXT,
   TIERS,
@@ -31,13 +33,26 @@ interface Props {
 }
 
 export function PlayerDashboard({ dashboard }: Props) {
+  const { isAuthenticated } = useAuth();
   const { data: config } = useGameConfig();
   const excPerChip = config ? Number(config.excavationsPerChip) : 5;
 
   if (!dashboard) {
     return (
-      <div className={cn(panel, "p-8 text-center text-sm", inkFaint)}>
-        Sign in to see your week.
+      <div
+        className={cn(
+          panel,
+          "flex items-center justify-center gap-2 p-8 text-sm",
+          inkFaint,
+        )}
+      >
+        {isAuthenticated ? (
+          <>
+            <Spinner /> Loading your week
+          </>
+        ) : (
+          "Sign in to see your week."
+        )}
       </div>
     );
   }
