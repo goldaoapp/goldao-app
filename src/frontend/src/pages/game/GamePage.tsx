@@ -3,7 +3,9 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/context/AuthContext";
 import { cn } from "@/lib/utils";
+import { Link } from "@tanstack/react-router";
 import {
+  ArrowLeft,
   BookOpen,
   LayoutDashboard,
   ListOrdered,
@@ -29,7 +31,7 @@ import {
 } from "./useGame";
 
 /**
- * Gold mine game — /game (simulated mode, test GOLDAO only).
+ * Gold mine game — /gamefi/mine (simulated mode, test GOLDAO only).
  * All randomness and accounting live in the backend; this page only displays.
  */
 export default function GamePage() {
@@ -45,6 +47,16 @@ export default function GamePage() {
 
   return (
     <section className="mx-auto flex max-w-6xl flex-col gap-6 px-4 py-10 sm:px-6 lg:px-10">
+      <Link
+        to="/gamefi"
+        className={cn(
+          "-mb-4 flex w-fit items-center gap-1.5 font-mono text-xs transition-colors hover:text-[color:var(--term-gold)]",
+          inkFaint,
+        )}
+      >
+        <ArrowLeft className="size-3.5" />
+        All games
+      </Link>
       <PageHeader
         tag="Game"
         tagIcon={Pickaxe}
