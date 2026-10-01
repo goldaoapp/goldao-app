@@ -174,10 +174,10 @@ export function WalletPanel({ dashboard, config }: Props) {
                 <span className={cn("font-semibold", ink)}>
                   {cost.toLocaleString("en-US")} GOLDAO
                 </span>{" "}
-                go to the treasury ({fee} fee included). Each chip competes on
-                its own and 8 out of 10 chips win or get their price back. 100%
-                of the pot is shared out every week; 1% is withheld from
-                winnings to pay for cycles. This can't be undone.
+                go into the prize pool ({fee} fee included). Each chip competes
+                on its own and 8 out of 10 chips win or break even. 100% of the
+                prize pool is paid out every week; 1% is withheld from winnings
+                to pay for cycles. This can't be undone.
               </p>
               <div className="flex shrink-0 gap-2">
                 <Button
