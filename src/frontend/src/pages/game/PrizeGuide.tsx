@@ -24,7 +24,7 @@ interface Props {
 export function PrizeGuide({ ranking, config }: Props) {
   const cuts = ranking?.cutsX100 ?? [];
   const chipPrice = config ? Number(config.chipPriceE8s) / 1e8 : 1000;
-  const excPerChip = config ? Number(config.excavationsPerChip) : 10;
+  const excPerChip = config ? Number(config.excavationsPerChip) : 5;
   const mines = config ? Number(config.mines) : 5;
   const drawPct = config ? Number(config.drawBps) / 100 : 2.4;
   const treasuryPct = config ? Number(config.treasuryBps) / 100 : 1;
