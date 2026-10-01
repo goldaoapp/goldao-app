@@ -14,6 +14,7 @@ import {
 import { AnimatePresence, motion } from "motion/react";
 import { useState } from "react";
 import { TierSummary } from "./PlayerDashboard";
+import { Spinner } from "./Spinner";
 import {
   DIAMOND_TEXT,
   eyebrow,
@@ -94,25 +95,25 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
         <Kpi
           icon={CalendarCheck}
           label="Week"
-          value={view ? `#${Number(view.week)}` : "—"}
+          value={view ? `#${Number(view.week)}` : <Spinner />}
           sub={status ?? ""}
         />
         <Kpi
           icon={Landmark}
           label="Game balance"
-          value={view ? fmtGoldao(view.treasury) : "—"}
+          value={view ? fmtGoldao(view.treasury) : <Spinner />}
           sub="GOLDAO (simulated)"
         />
         <Kpi
           icon={Flame}
           label="Burned fees"
-          value={view ? fmtGoldao(view.burned) : "—"}
+          value={view ? fmtGoldao(view.burned) : <Spinner />}
           sub="GOLDAO"
         />
         <Kpi
           icon={Gem}
           label="Draw rollover"
-          value={view ? fmtGoldao(view.drawCarry) : "—"}
+          value={view ? fmtGoldao(view.drawCarry) : <Spinner />}
           sub="GOLDAO"
           diamond
         />
@@ -321,7 +322,7 @@ function Kpi({
 }: {
   icon: React.ComponentType<{ className?: string }>;
   label: string;
-  value: string;
+  value: React.ReactNode;
   sub: string;
   diamond?: boolean;
 }) {
