@@ -180,9 +180,10 @@ export function PrizeGuide({ ranking, config }: Props) {
             inkFaint,
           )}
         >
-          Share of chips ending in each prize, simulated with a mixed set of
-          players. Every row adds up to 100%. Hover a segment to see its exact
-          value.
+          Where a chip ends at the weekly close if all its excavations save at
+          that pick, compared with everyone else. This is not the per-pick
+          &quot;safe&quot; chance shown while digging. Simulated with a mixed
+          set of players; every row adds up to 100%.
         </p>
       </div>
 
