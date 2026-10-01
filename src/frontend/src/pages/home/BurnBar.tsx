@@ -31,7 +31,6 @@ const SPARKS = [
 
 const ink = "text-[color:var(--term-ink)]";
 const inkMid = "text-[color:var(--term-ink-mid)]";
-const inkFaint = "text-[color:var(--term-ink-faint)]";
 const border = "border-[color:var(--term-border)]";
 
 const fmtM = (v: number) =>
@@ -55,7 +54,7 @@ function Label({ children }: { children: React.ReactNode }) {
   return (
     <div
       className={cn(
-        "font-mono text-[10px] font-semibold uppercase tracking-[0.16em]",
+        "font-mono text-[11px] font-semibold uppercase tracking-[0.16em]",
         inkMid,
       )}
     >
@@ -223,11 +222,16 @@ export default function BurnBar() {
 
         <div
           className={cn(
-            "mt-2 flex justify-between font-mono text-[11px]",
-            inkFaint,
+            "mt-2.5 flex flex-wrap justify-between gap-x-4 gap-y-1 font-mono text-[13px]",
+            inkMid,
           )}
         >
-          <span>{pct.toFixed(2)}% of original supply burned</span>
+          <span>
+            <span className="font-semibold text-orange-600 dark:text-orange-400">
+              {pct.toFixed(2)}%
+            </span>{" "}
+            of original supply burned
+          </span>
           <span>{fmtM(original)} original</span>
         </div>
       </div>
@@ -255,9 +259,7 @@ export default function BurnBar() {
         </div>
         <div className="px-5 py-3.5 sm:px-6">
           <Label>How it burns</Label>
-          <div
-            className={cn("mt-1 font-mono text-[11px] leading-snug", inkMid)}
-          >
+          <div className={cn("mt-1 font-mono text-xs leading-snug", inkMid)}>
             Buyback burns + the 10 GOLDAO fee of every transfer
           </div>
         </div>
