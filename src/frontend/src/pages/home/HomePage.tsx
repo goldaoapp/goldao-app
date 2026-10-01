@@ -69,7 +69,7 @@ export default function HomePage() {
       {/* Brand */}
       <div
         className={cn(
-          "flex h-8 items-center gap-2.5 pr-20 font-mono text-xs font-semibold uppercase tracking-[0.2em]",
+          "hidden h-8 items-center gap-2.5 pr-20 font-mono text-xs font-semibold uppercase tracking-[0.2em] md:flex",
           ink,
         )}
       >
