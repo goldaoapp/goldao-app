@@ -46,7 +46,9 @@ export default function AdminPage() {
         setRolesError(res.err);
       }
     } catch (e) {
-      setRolesError(e instanceof Error ? e.message : "No se pudo cargar la lista.");
+      setRolesError(
+        e instanceof Error ? e.message : "No se pudo cargar la lista.",
+      );
     }
   }, [actor, isAdmin]);
 
@@ -175,7 +177,6 @@ export default function AdminPage() {
                 )}
               </Button>
             </div>
-
           </div>
         </CardContent>
       </Card>,
@@ -308,7 +309,9 @@ export default function AdminPage() {
             <span className="text-xs text-destructive">{rolesError}</span>
           )}
           {roles.length === 0 && !rolesError && (
-            <span className="text-xs text-muted-foreground">Sin roles asignados.</span>
+            <span className="text-xs text-muted-foreground">
+              Sin roles asignados.
+            </span>
           )}
           {roles.map(([p, r]) => (
             <div key={p.toText()} className="flex items-center gap-2">
