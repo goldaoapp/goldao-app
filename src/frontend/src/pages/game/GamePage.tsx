@@ -102,11 +102,21 @@ export default function GamePage() {
       )}
 
       <Tabs defaultValue="mine" className="gap-4">
-        <TabsList className="h-10 w-full justify-start overflow-x-auto rounded-lg border border-[color:var(--term-border)] bg-[var(--term-header)] p-1 sm:w-fit">
+        <TabsList className="grid h-auto w-full auto-cols-fr grid-flow-col rounded-lg border border-[color:var(--term-border)] bg-[var(--term-header)] p-1 sm:flex sm:h-10 sm:w-fit sm:justify-start">
           <Tab value="mine" icon={<Pickaxe />} label="Mine" />
-          <Tab value="week" icon={<LayoutDashboard />} label="My week" />
+          <Tab
+            value="week"
+            icon={<LayoutDashboard />}
+            label="My week"
+            short="Week"
+          />
           <Tab value="ranking" icon={<ListOrdered />} label="Ranking" />
-          <Tab value="guide" icon={<BookOpen />} label="How it works" />
+          <Tab
+            value="guide"
+            icon={<BookOpen />}
+            label="How it works"
+            short="Guide"
+          />
           {adminView && <Tab value="admin" icon={<Shield />} label="Admin" />}
         </TabsList>
 
@@ -151,14 +161,16 @@ function Tab({
   value,
   icon,
   label,
-}: { value: string; icon: ReactNode; label: string }) {
+  short,
+}: { value: string; icon: ReactNode; label: string; short?: string }) {
   return (
     <TabsTrigger
       value={value}
-      className="h-full gap-1.5 px-3 font-mono text-xs data-[state=active]:bg-primary data-[state=active]:text-primary-foreground dark:data-[state=active]:bg-primary dark:data-[state=active]:text-primary-foreground [&_svg]:size-3.5"
+      className="h-full min-w-0 flex-col gap-1 px-1 py-1.5 font-mono text-[10px] sm:flex-row sm:gap-1.5 sm:px-3 sm:py-1 sm:text-xs data-[state=active]:bg-primary data-[state=active]:text-primary-foreground dark:data-[state=active]:bg-primary dark:data-[state=active]:text-primary-foreground [&_svg]:size-3.5"
     >
       {icon}
-      {label}
+      <span className="sm:hidden">{short ?? label}</span>
+      <span className="hidden sm:inline">{label}</span>
     </TabsTrigger>
   );
 }
