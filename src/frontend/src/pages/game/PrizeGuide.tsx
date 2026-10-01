@@ -101,15 +101,17 @@ export function PrizeGuide({ ranking, config }: Props) {
           Saving early protects you from Rock. To fight for the Treasure you
           have to keep digging.
         </p>
-        <div className="overflow-x-auto p-2 sm:p-3">
-          <table className="w-full font-mono text-xs">
+        <div className="p-1 sm:p-3">
+          <table className="w-full font-mono text-[11px] sm:text-xs">
             <thead>
               <tr className={cn("text-left", inkFaint)}>
-                <th className="px-3 py-2 font-medium">Save at</th>
-                <th className="px-3 py-2 font-medium">Treasure</th>
-                <th className="px-3 py-2 font-medium">Ingot</th>
-                <th className="px-3 py-2 font-medium">Rock</th>
-                <th className="px-3 py-2 font-medium">Typical range</th>
+                <th className="px-1.5 py-2 font-medium sm:px-3">Save at</th>
+                <th className="px-1.5 py-2 font-medium sm:px-3">Treasure</th>
+                <th className="px-1.5 py-2 font-medium sm:px-3">Ingot</th>
+                <th className="px-1.5 py-2 font-medium sm:px-3">Rock</th>
+                <th className="px-1.5 py-2 font-medium sm:px-3">
+                  Typical range
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -118,11 +120,21 @@ export function PrizeGuide({ ranking, config }: Props) {
                   key={s.saveAt}
                   className="border-t border-[color:var(--term-border-faint)]"
                 >
-                  <td className={cn("px-3 py-2.5", ink)}>{s.saveAt} picks</td>
-                  <td className={cn("px-3 py-2.5", inkMid)}>{s.treasure}</td>
-                  <td className={cn("px-3 py-2.5", inkMid)}>{s.ingot}</td>
-                  <td className={cn("px-3 py-2.5", inkMid)}>{s.rock}</td>
-                  <td className={cn("px-3 py-2.5", inkMid)}>{s.range}</td>
+                  <td className={cn("px-1.5 py-2.5 sm:px-3", ink)}>
+                    {s.saveAt} picks
+                  </td>
+                  <td className={cn("px-1.5 py-2.5 sm:px-3", inkMid)}>
+                    {s.treasure}
+                  </td>
+                  <td className={cn("px-1.5 py-2.5 sm:px-3", inkMid)}>
+                    {s.ingot}
+                  </td>
+                  <td className={cn("px-1.5 py-2.5 sm:px-3", inkMid)}>
+                    {s.rock}
+                  </td>
+                  <td className={cn("px-1.5 py-2.5 sm:px-3", inkMid)}>
+                    {s.range}
+                  </td>
                 </tr>
               ))}
             </tbody>
