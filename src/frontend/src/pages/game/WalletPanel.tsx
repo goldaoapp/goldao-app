@@ -32,7 +32,7 @@ export function WalletPanel({ dashboard, config }: Props) {
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
   const chipPrice = config ? Number(config.chipPriceE8s) / 1e8 : 1000;
-  const excPerChip = config ? Number(config.excavationsPerChip) : 10;
+  const excPerChip = config ? Number(config.excavationsPerChip) : 5;
   const fee = config ? Number(config.feeE8s) / 1e8 : 10;
   const cost = chips * chipPrice + fee;
   const balance = dashboard ? Number(dashboard.balance) / 1e8 : 0;
@@ -173,8 +173,9 @@ export function WalletPanel({ dashboard, config }: Props) {
                   {cost.toLocaleString("en-US")} GOLDAO
                 </span>{" "}
                 go to the treasury ({fee} fee included). Each chip competes on
-                its own: the lowest 20% ends in Rock and is not paid. This can't
-                be undone.
+                its own and 8 out of 10 chips win or get their price back. 100%
+                of the pot is shared out every week; 1% is withheld from
+                winnings to pay for cycles. This can't be undone.
               </p>
               <div className="flex shrink-0 gap-2">
                 <Button
