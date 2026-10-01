@@ -11,6 +11,7 @@ import {
   Users,
 } from "lucide-react";
 import { motion } from "motion/react";
+import { Spinner } from "../game/Spinner";
 import {
   DIAMOND_CELL,
   DIAMOND_IMG,
@@ -74,11 +75,11 @@ function GoldMineCard() {
             <span className={gold}># 1</span>
             <span className="flex items-center gap-1">
               <Users className="size-3.5" />
-              {players ?? "—"}
+              {players ?? <Spinner />}
             </span>
             <span className="flex items-center gap-1">
               <Coins className="size-3.5" />
-              {ranking ? fmtGoldao(ranking.pot) : "—"}
+              {ranking ? fmtGoldao(ranking.pot) : <Spinner />}
             </span>
           </span>
           <span className="flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border border-[color:var(--term-green)]/50 bg-[color:var(--term-green)]/10 px-2 py-0.5 text-[10px] text-[color:var(--term-green)]">
