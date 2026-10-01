@@ -126,13 +126,13 @@ export function PlayerDashboard({ dashboard }: Props) {
             </span>
           </div>
           <dl className="grid grid-cols-2 gap-y-4 p-5 font-mono text-sm">
-            <Row label="Paid" value={`${fmtGoldao(dashboard.paid)} GOLDAO`} />
+            <Row label="Spent" value={`${fmtGoldao(dashboard.paid)} GOLDAO`} />
             <Row
-              label="Receiving now"
+              label="Payout so far"
               value={`${fmtGoldao(dashboard.estimatedReceive)} GOLDAO`}
             />
             <Row
-              label="Result"
+              label="Net result"
               value={
                 <span
                   className={cn(
@@ -185,7 +185,7 @@ export function PlayerDashboard({ dashboard }: Props) {
               }
             />
             <Row
-              label="Purchases"
+              label="Chip purchases"
               value={String(Number(dashboard.stats.playTx))}
             />
           </dl>
@@ -290,7 +290,7 @@ export function PlayerDashboard({ dashboard }: Props) {
         </div>
         {dashboard.history.length === 0 ? (
           <p className={cn("p-5 text-sm", inkFaint)}>
-            Your closed weeks will show up here.
+            Your past weeks will show up here.
           </p>
         ) : (
           <>
@@ -316,7 +316,7 @@ export function PlayerDashboard({ dashboard }: Props) {
                     </div>
                     <TierSummary tiers={h.tiers} />
                     <div className="flex items-center justify-between gap-2">
-                      <span className={inkMid}>Paid {fmtGoldao(h.paid)}</span>
+                      <span className={inkMid}>Spent {fmtGoldao(h.paid)}</span>
                       <span
                         className={
                           diff >= 0
@@ -324,7 +324,7 @@ export function PlayerDashboard({ dashboard }: Props) {
                             : "text-destructive"
                         }
                       >
-                        Received {fmtGoldao(h.received)}
+                        Payout {fmtGoldao(h.received)}
                       </span>
                     </div>
                   </li>
@@ -339,10 +339,8 @@ export function PlayerDashboard({ dashboard }: Props) {
                     <th className="px-3 py-2 font-medium">Chips</th>
                     <th className="px-3 py-2 font-medium">Prizes</th>
                     <th className="px-3 py-2 font-medium">Diamonds</th>
-                    <th className="px-3 py-2 text-right font-medium">Paid</th>
-                    <th className="px-5 py-2 text-right font-medium">
-                      Received
-                    </th>
+                    <th className="px-3 py-2 text-right font-medium">Spent</th>
+                    <th className="px-5 py-2 text-right font-medium">Payout</th>
                   </tr>
                 </thead>
                 <tbody>
