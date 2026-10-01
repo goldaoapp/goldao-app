@@ -156,8 +156,8 @@
     --term-border: rgba(58, 53, 47, 0.15);
     --term-border-faint: rgba(58, 53, 47, 0.08);
     --term-ink: #2a2520;
-    --term-ink-mid: rgba(42, 37, 32, 0.55);
-    --term-ink-faint: rgba(42, 37, 32, 0.4);
+    --term-ink-mid: rgba(42, 37, 32, 0.72);
+    --term-ink-faint: rgba(42, 37, 32, 0.58);
     --term-gold: #b08830;
     --term-gold-soft: rgba(176, 136, 48, 0.12);
     --term-green: #2d8a5e;
@@ -179,8 +179,8 @@
     --term-border: rgba(199, 154, 59, 0.14);
     --term-border-faint: rgba(199, 154, 59, 0.08);
     --term-ink: #f0e6d6;
-    --term-ink-mid: rgba(240, 230, 214, 0.55);
-    --term-ink-faint: rgba(240, 230, 214, 0.35);
+    --term-ink-mid: rgba(240, 230, 214, 0.74);
+    --term-ink-faint: rgba(240, 230, 214, 0.55);
     --term-gold: #c79a3b;
     --term-gold-soft: rgba(199, 154, 59, 0.12);
     --term-green: #3dba78;
