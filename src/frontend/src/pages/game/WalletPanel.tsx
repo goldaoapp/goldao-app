@@ -16,7 +16,7 @@ import {
 } from "./game-utils";
 import { errorMessage, useGameAction } from "./useGame";
 
-const FAUCET_PRESETS = [1_000, 5_000, 10_000];
+const FAUCET_PRESETS = [1_000, 5_000, 10_000, 20_000];
 const CHIP_OPTIONS = [1, 2, 5, 10];
 
 interface Props {
@@ -37,6 +37,7 @@ export function WalletPanel({ dashboard, config }: Props) {
   const cost = chips * chipPrice + fee;
   const balance = dashboard ? Number(dashboard.balance) / 1e8 : 0;
   const faucetLeft = dashboard ? Number(dashboard.faucetRemaining) / 1e8 : 0;
+  const faucetCap = config ? Number(config.faucetCapE8s) / 1e8 : 20_000;
   const weekOpen = dashboard?.status === "open";
 
   const requestTokens = async (amount: number) => {
@@ -112,7 +113,8 @@ export function WalletPanel({ dashboard, config }: Props) {
           ))}
         </div>
         <span className={cn("font-mono text-[11px]", inkFaint)}>
-          {faucetLeft.toLocaleString("en-US")} left this week (max 10,000)
+          {faucetLeft.toLocaleString("en-US")} left this week (max{" "}
+          {faucetCap.toLocaleString("en-US")})
         </span>
       </div>
 
