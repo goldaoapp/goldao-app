@@ -1,0 +1,176 @@
+import { PageHeader } from "@/components/common";
+import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useAuth } from "@/context/AuthContext";
+import { cn } from "@/lib/utils";
+import {
+  BookOpen,
+  LayoutDashboard,
+  ListOrdered,
+  Pickaxe,
+  Shield,
+  Sparkles,
+} from "lucide-react";
+import { motion } from "motion/react";
+import type { ReactNode } from "react";
+import { AdminGamePanel } from "./AdminGamePanel";
+import { MineBoard } from "./MineBoard";
+import { PlayerDashboard } from "./PlayerDashboard";
+import { PrizeGuide } from "./PrizeGuide";
+import { RankingTable } from "./RankingTable";
+import { WalletPanel } from "./WalletPanel";
+import { gold, inkFaint, inkMid, panel } from "./game-utils";
+import {
+  useAdminView,
+  useDashboard,
+  useGameConfig,
+  useRanking,
+  useWeeks,
+} from "./useGame";
+
+/**
+ * Gold mine game — /game (simulated mode, test GOLDAO only).
+ * All randomness and accounting live in the backend; this page only displays.
+ */
+export default function GamePage() {
+  const { isAuthenticated, isLoading, login } = useAuth();
+  const { data: config } = useGameConfig();
+  const { data: dashboard } = useDashboard();
+  const { data: ranking } = useRanking();
+  const { data: weeks } = useWeeks();
+  const { data: adminView } = useAdminView(isAuthenticated);
+
+  const week = dashboard?.week ?? ranking?.week ?? config?.week;
+  const status = dashboard?.status ?? ranking?.status ?? config?.status;
+
+  return (
+    <section className="mx-auto flex max-w-6xl flex-col gap-6 px-4 py-10 sm:px-6 lg:px-10">
+      <PageHeader
+        tag="Game"
+        tagIcon={Pickaxe}
+        title="Gold Mine"
+        description="Dig, decide when to save, and compete every week for the treasure. Simulated mode with test GOLDAO."
+      >
+        {week !== undefined && (
+          <motion.span
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="inline-flex w-fit items-center gap-2 rounded-full border border-[color:var(--term-border)] bg-[var(--term-card)] px-3 py-1.5 font-mono text-[11px]"
+          >
+            <span
+              className={cn(
+                "size-2 rounded-full",
+                status === "open"
+                  ? "animate-pulse bg-[color:var(--term-green)]"
+                  : "bg-[color:var(--term-warn)]",
+              )}
+            />
+            <span className={inkMid}>Week #{Number(week)}</span>
+            <span className={gold}>
+              {status === "open"
+                ? "open"
+                : status === "closed"
+                  ? "closed"
+                  : "closing"}
+            </span>
+          </motion.span>
+        )}
+      </PageHeader>
+
+      {isAuthenticated ? (
+        <WalletPanel dashboard={dashboard} config={config} />
+      ) : (
+        <div
+          className={cn(
+            panel,
+            "flex flex-col items-start gap-4 p-6 sm:flex-row sm:items-center sm:justify-between",
+          )}
+        >
+          <p className={cn("text-sm", inkMid)}>
+            Sign in with Internet Identity to get test GOLDAO, buy chips and
+            start digging.
+          </p>
+          <Button
+            onClick={() => login()}
+            disabled={isLoading}
+            className="rounded-full gradient-primary text-primary-foreground"
+          >
+            <Sparkles className="size-4" />
+            Sign in
+          </Button>
+        </div>
+      )}
+
+      <Tabs defaultValue="mine" className="gap-4">
+        <TabsList className="h-10 w-full justify-start overflow-x-auto rounded-lg border border-[color:var(--term-border)] bg-[var(--term-header)] p-1 sm:w-fit">
+          <Tab value="mine" icon={<Pickaxe />} label="Mine" />
+          <Tab value="week" icon={<LayoutDashboard />} label="My week" />
+          <Tab value="ranking" icon={<ListOrdered />} label="Ranking" />
+          <Tab value="guide" icon={<BookOpen />} label="How it works" />
+          {adminView && <Tab value="admin" icon={<Shield />} label="Admin" />}
+        </TabsList>
+
+        <TabsContent value="mine">
+          <Fade>
+            <MineBoard dashboard={dashboard} config={config} />
+          </Fade>
+        </TabsContent>
+        <TabsContent value="week">
+          <Fade>
+            <PlayerDashboard dashboard={dashboard} />
+          </Fade>
+        </TabsContent>
+        <TabsContent value="ranking">
+          <Fade>
+            <RankingTable ranking={ranking} weeks={weeks} />
+          </Fade>
+        </TabsContent>
+        <TabsContent value="guide">
+          <Fade>
+            <PrizeGuide ranking={ranking} config={config} />
+          </Fade>
+        </TabsContent>
+        {adminView && (
+          <TabsContent value="admin">
+            <Fade>
+              <AdminGamePanel view={adminView} />
+            </Fade>
+          </TabsContent>
+        )}
+      </Tabs>
+
+      <p className={cn("text-center font-mono text-[11px]", inkFaint)}>
+        Every pick is resolved on chain with ICP randomness (raw_rand). The page
+        only shows the result.
+      </p>
+    </section>
+  );
+}
+
+function Tab({
+  value,
+  icon,
+  label,
+}: { value: string; icon: ReactNode; label: string }) {
+  return (
+    <TabsTrigger
+      value={value}
+      className="h-full gap-1.5 px-3 font-mono text-xs data-[state=active]:bg-primary data-[state=active]:text-primary-foreground dark:data-[state=active]:bg-primary dark:data-[state=active]:text-primary-foreground [&_svg]:size-3.5"
+    >
+      {icon}
+      {label}
+    </TabsTrigger>
+  );
+}
+
+function Fade({ children }: { children: ReactNode }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.35, ease: [0.4, 0, 0.2, 1] }}
+    >
+      {children}
+    </motion.div>
+  );
+}
