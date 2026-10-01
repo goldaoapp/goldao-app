@@ -126,9 +126,9 @@ export function PrizeGuide({ ranking, config }: Props) {
           {STRATEGY_GUIDE.map((s, row) => (
             <div
               key={s.saveAt}
-              className="grid grid-cols-[64px_minmax(0,1fr)_56px] items-center gap-3 sm:grid-cols-[80px_minmax(0,1fr)_96px]"
+              className="grid grid-cols-[64px_minmax(0,1fr)_56px] items-start gap-3 sm:grid-cols-[80px_minmax(0,1fr)_96px]"
             >
-              <span className={cn("font-mono text-xs", ink)}>
+              <span className={cn("font-mono text-xs leading-7", ink)}>
                 {s.saveAt} picks
               </span>
               <div className="flex flex-col gap-1">
@@ -152,19 +152,21 @@ export function PrizeGuide({ ranking, config }: Props) {
                     ) : null,
                   )}
                 </div>
-                {s.odds.some((pct) => pct > 0 && pct < 8) && (
-                  <span className={cn("font-mono text-[10px]", inkFaint)}>
-                    {s.odds
-                      .map((pct, t) =>
-                        pct > 0 && pct < 8 ? `${TIERS[t].name} ${pct}%` : null,
-                      )
-                      .filter(Boolean)
-                      .join(" · ")}
-                  </span>
-                )}
+                {/* Segments too narrow for a label; always rendered so rows keep the same height */}
+                <span className={cn("h-3.5 font-mono text-[10px]", inkFaint)}>
+                  {s.odds
+                    .map((pct, t) =>
+                      pct > 0 && pct < 8 ? `${TIERS[t].name} ${pct}%` : null,
+                    )
+                    .filter(Boolean)
+                    .join(" · ")}
+                </span>
               </div>
               <span
-                className={cn("text-right font-mono text-xs tabular-nums", ink)}
+                className={cn(
+                  "text-right font-mono text-xs leading-7 tabular-nums",
+                  ink,
+                )}
               >
                 {100 - s.odds[4]}%
               </span>
