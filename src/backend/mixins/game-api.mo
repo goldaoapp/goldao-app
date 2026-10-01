@@ -135,7 +135,7 @@ mixin (
     let amount = goldao * Game.E8S;
     let used = gFaucetUsed(caller);
     if (used + amount > Game.FAUCET_CAP) {
-      let left = if (Game.FAUCET_CAP > used) (Game.FAUCET_CAP - used) / Game.E8S else 0;
+      let left = Game.sub(Game.FAUCET_CAP, used) / Game.E8S;
       return #err("Weekly cap of 10,000 test GOLDAO reached. Remaining: " # Nat.toText(left) # ".");
     };
     gameState.faucet.add(caller, (gameState.week, used + amount));
@@ -152,7 +152,7 @@ mixin (
     let cost = n * Game.CHIP_PRICE + Game.FEE;
     let bal = gBalance(caller);
     if (bal < cost) return #err("Insufficient balance: you need " # Nat.toText(cost / Game.E8S) # " GOLDAO.");
-    gameState.balances.add(caller, bal - cost);
+    gameState.balances.add(caller, Game.sub(bal, cost));
     gameState.treasury += n * Game.CHIP_PRICE;
     gameState.burned += Game.FEE;
     var i = 0;
@@ -164,7 +164,7 @@ mixin (
     };
     let s = gStats(caller);
     gameState.stats.add(caller, { s with playTx = s.playTx + 1 });
-    #ok(bal - cost);
+    #ok(Game.sub(bal, cost));
   };
 
   public shared ({ caller }) func gameStartExcavation() : async Result.Result<Types.ExcavationView, Text> {
@@ -263,8 +263,8 @@ mixin (
       st.ranked,
       func((f, t, _)) {
         if (f.owner != caller) return null;
-        let gap : ?Nat = if (t == 0 or f.used == 0) null else switch (st.cutsX100[t - 1]) {
-          case (?c) { let a = Game.avgX100(f); ?(if (c > a) c - a + 1 else 1) };
+        let gap : ?Nat = if (t == 0 or f.used == 0) null else switch (st.cutsX100[Game.sub(t, 1)]) {
+          case (?c) { let a = Game.avgX100(f); ?(if (c > a) Game.sub(c, a) + 1 else 1) };
           case null null;
         };
         ?{ id = f.id; used = f.used; points = f.points; avgX100 = Game.avgX100(f); diamonds = f.diamonds; tier = t; gapToNextX100 = gap };
@@ -272,9 +272,9 @@ mixin (
     );
     let sorted = Array.sort(chips, func(a : Types.ChipView, b : Types.ChipView) : { #less; #equal; #greater } { Nat.compare(a.id, b.id) });
     var left = 0;
-    for (f in sorted.values()) left += Game.EXCAVATIONS_PER_CHIP - f.used;
+    for (f in sorted.values()) left += Game.sub(Game.EXCAVATIONS_PER_CHIP, f.used);
     let open = switch (gameState.open.get(caller)) { case (?e) ?gExcView(e); case null null };
-    if (open != null and left > 0) left -= 1;
+    if (open != null) left := Game.sub(left, 1);
     let history = switch (gameState.history.get(caller)) {
       case (?l) l.toArray();
       case null [];
@@ -283,7 +283,7 @@ mixin (
       week = gameState.week;
       status = gameState.status;
       balance = gBalance(caller);
-      faucetRemaining = if (Game.FAUCET_CAP > gFaucetUsed(caller)) Game.FAUCET_CAP - gFaucetUsed(caller) else 0;
+      faucetRemaining = Game.sub(Game.FAUCET_CAP, gFaucetUsed(caller));
       chips = sorted;
       excavationsLeft = left;
       open;
@@ -407,12 +407,12 @@ mixin (
       let net = Game.netFor(a, tx);
       if (net > 0) payouts.add({ to = p; amount = net; concept = #prize; tiers = a.tiers });
       let won = winner == ?p;
-      let drawNet = if (won and st.drawPrize > Game.FEE) st.drawPrize - Game.FEE else 0;
+      let drawNet = if (won) Game.sub(st.drawPrize, Game.FEE) else 0;
       let s = gStats(p);
       results.add((p, { week = gameState.week; chips = a.chips; tiers = a.tiers; diamonds = a.diamonds; paid = Game.paidFor(a, tx); received = net + drawNet; drawWon = won; best = s.best; deepest = s.deepest; collapses = s.collapses }));
     };
     switch (winner) {
-      case (?w) if (st.drawPrize > Game.FEE) payouts.add({ to = w; amount = st.drawPrize - Game.FEE; concept = #draw; tiers = [] });
+      case (?w) if (st.drawPrize > Game.FEE) payouts.add({ to = w; amount = Game.sub(st.drawPrize, Game.FEE); concept = #draw; tiers = [] });
       case null {};
     };
 
@@ -447,7 +447,7 @@ mixin (
       gameState.balances.add(po.to, gBalance(po.to) + po.amount);
       gameState.burned += Game.FEE;
       let cost = po.amount + Game.FEE;
-      gameState.treasury := if (gameState.treasury > cost) gameState.treasury - cost else 0;
+      gameState.treasury := Game.sub(gameState.treasury, cost);
       total += po.amount;
     };
     for ((p, r) in gameState.pendingResults.values()) {
