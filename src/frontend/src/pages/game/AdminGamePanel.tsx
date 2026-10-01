@@ -48,7 +48,7 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
         ok: true,
         text: s.drawWinner
           ? `Week ${Number(s.week)} closed. Draw ticket #${Number(s.drawTicket)} of ${Number(s.drawTickets)}.`
-          : `Week ${Number(s.week)} closed. No diamonds: the draw carries over.`,
+          : `Week ${Number(s.week)} closed. No diamonds: the draw rolls over.`,
       });
     } catch (e) {
       setMsg({ ok: false, text: errorMessage(e) });
@@ -95,7 +95,7 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
         />
         <Kpi
           icon={Landmark}
-          label="Treasury"
+          label="Game balance"
           value={view ? fmtGoldao(view.treasury) : "—"}
           sub="GOLDAO (simulated)"
         />
@@ -107,7 +107,7 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
         />
         <Kpi
           icon={Gem}
-          label="Draw carry"
+          label="Draw rollover"
           value={view ? fmtGoldao(view.drawCarry) : "—"}
           sub="GOLDAO"
           diamond
@@ -213,7 +213,7 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
             </span>
           </div>
           <dl className="grid grid-cols-2 gap-4 p-5 font-mono text-xs sm:grid-cols-4">
-            <Item label="Pot" value={fmtGoldao(last.pot)} />
+            <Item label="Prize pool" value={fmtGoldao(last.pot)} />
             <Item
               label="Chips · players"
               value={`${Number(last.chips)} · ${Number(last.players)}`}
@@ -222,14 +222,17 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
               label="Treasure per chip"
               value={fmtGoldao(last.treasurePerChip)}
             />
-            <Item label="Treasury keep" value={fmtGoldao(last.treasuryKeep)} />
+            <Item
+              label="Kept for cycles"
+              value={fmtGoldao(last.treasuryKeep)}
+            />
             <Item label="Draw prize" value={fmtGoldao(last.drawPrize)} />
             <Item
               label="Draw ticket"
               value={
                 last.drawWinner
                   ? `#${Number(last.drawTicket)} of ${Number(last.drawTickets)}`
-                  : "Carried over"
+                  : "Rolled over"
               }
             />
             <Item
