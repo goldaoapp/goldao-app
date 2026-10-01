@@ -24,12 +24,16 @@ import {
   panelHeader,
   tierOf,
 } from "./game-utils";
+import { useGameConfig } from "./useGame";
 
 interface Props {
   dashboard: Dashboard | undefined;
 }
 
 export function PlayerDashboard({ dashboard }: Props) {
+  const { data: config } = useGameConfig();
+  const excPerChip = config ? Number(config.excavationsPerChip) : 5;
+
   if (!dashboard) {
     return (
       <div className={cn(panel, "p-8 text-center text-sm", inkFaint)}>
@@ -211,7 +215,7 @@ export function PlayerDashboard({ dashboard }: Props) {
                 >
                   <div className="flex items-center justify-between">
                     <span className={cn("font-mono text-[11px]", inkFaint)}>
-                      Chip {i + 1} · {used}/10
+                      Chip {i + 1} · {used}/{excPerChip}
                     </span>
                     {Number(c.diamonds) > 0 && (
                       <span
@@ -249,7 +253,7 @@ export function PlayerDashboard({ dashboard }: Props) {
                     <motion.div
                       className="h-full rounded-full bg-primary"
                       initial={{ width: 0 }}
-                      animate={{ width: `${(used / 10) * 100}%` }}
+                      animate={{ width: `${(used / excPerChip) * 100}%` }}
                       transition={{ duration: 0.6 }}
                     />
                   </div>
