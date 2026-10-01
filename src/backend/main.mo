@@ -13,6 +13,8 @@ import Float "mo:core/Float";
 
 import TreasuryTypes "types/treasury";
 import TreasuryMixin "mixins/treasury-api";
+import GameTypes "types/game";
+import GameMixin "mixins/game-api";
 
 actor {
   let accessControlState : AccessControl.AccessControlState;
@@ -22,6 +24,11 @@ actor {
   let treasurySnapshots : Map.Map<Text, TreasuryTypes.TreasurySnapshot>;
 
   include TreasuryMixin(treasurySnapshots);
+
+  // Mina de oro (modo ficticio)
+  let gameState : GameTypes.GameState;
+
+  include GameMixin(gameState, accessControlState);
 
   // ── OQL (Data Intelligence) ────────────────────────────────────────────
   include Expose({
