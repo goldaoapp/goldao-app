@@ -5,8 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/context/AuthContext";
 import { Principal } from "@icp-sdk/core/principal";
-import { Check, Copy, Shield, ShieldAlert, UserCog } from "lucide-react";
-import { type ReactNode, useState } from "react";
+import { Check, Copy, Shield, ShieldAlert, UserCog, Users } from "lucide-react";
+import { type ReactNode, useCallback, useEffect, useState } from "react";
 
 const ROLES: UserRole[] = [UserRole.admin, UserRole.user, UserRole.guest];
 
@@ -31,6 +31,44 @@ export default function AdminPage() {
     msg: string;
   } | null>(null);
   const [copied, setCopied] = useState(false);
+  const [roles, setRoles] = useState<Array<[Principal, UserRole]>>([]);
+  const [rolesError, setRolesError] = useState<string | null>(null);
+
+  // Load every principal that has a role (admin only).
+  const loadRoles = useCallback(async () => {
+    if (!actor || !isAdmin) return;
+    try {
+      const res = await actor.adminListRoles();
+      if (res.__kind__ === "ok") {
+        setRoles(res.ok);
+        setRolesError(null);
+      } else {
+        setRolesError(res.err);
+      }
+    } catch (e) {
+      setRolesError(e instanceof Error ? e.message : "No se pudo cargar la lista.");
+    }
+  }, [actor, isAdmin]);
+
+  useEffect(() => {
+    void loadRoles();
+  }, [loadRoles]);
+
+  // The backend grants the admin role only if the caller is the hardcoded
+  // bootstrap principal. For anyone else it returns false and changes nothing.
+  useEffect(() => {
+    if (!actor || !isAuthenticated || roleLoading || isAdmin) return;
+    let cancelled = false;
+    void actor
+      .adminSyncBootstrap()
+      .then(async (granted) => {
+        if (granted && !cancelled) await refresh();
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [actor, isAuthenticated, roleLoading, isAdmin, refresh]);
 
   const copyPrincipal = () => {
     if (!principalId) return;
@@ -62,6 +100,7 @@ export default function AdminPage() {
       // Si me reasigné a mí mismo, refrescar el estado local.
       if (principalId && target.trim() === principalId) await refresh();
       setTarget("");
+      await loadRoles();
     } catch (e) {
       setStatus({
         type: "err",
@@ -118,6 +157,25 @@ export default function AdminPage() {
               Tu principal no tiene rol de administrador
               {role ? ` (rol actual: ${role})` : ""}.
             </p>
+            <div className="mt-3 flex items-center gap-2">
+              <code className="flex-1 truncate rounded-lg border border-border bg-muted/20 px-3 py-2 font-mono text-xs">
+                {principalId}
+              </code>
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                onClick={copyPrincipal}
+                aria-label="Copiar principal"
+              >
+                {copied ? (
+                  <Check className="size-4 text-primary" />
+                ) : (
+                  <Copy className="size-4" />
+                )}
+              </Button>
+            </div>
+
           </div>
         </CardContent>
       </Card>,
@@ -234,6 +292,34 @@ export default function AdminPage() {
             automáticamente. Desde acá podés promover otros principals o
             cambiarte el rol.
           </p>
+        </CardContent>
+      </Card>
+
+      {/* Principals with a role */}
+      <Card className="border-border/80 shadow-subtle">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-sm font-medium uppercase tracking-wider text-muted-foreground">
+            <Users className="size-4 text-primary" />
+            Principals con rol
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-2">
+          {rolesError && (
+            <span className="text-xs text-destructive">{rolesError}</span>
+          )}
+          {roles.length === 0 && !rolesError && (
+            <span className="text-xs text-muted-foreground">Sin roles asignados.</span>
+          )}
+          {roles.map(([p, r]) => (
+            <div key={p.toText()} className="flex items-center gap-2">
+              <code className="flex-1 truncate rounded-lg border border-border bg-muted/20 px-3 py-2 font-mono text-xs">
+                {p.toText()}
+              </code>
+              <span className="inline-flex items-center rounded-full border border-primary/30 px-2.5 py-0.5 text-xs font-medium text-primary">
+                {r}
+              </span>
+            </div>
+          ))}
         </CardContent>
       </Card>
     </div>,
