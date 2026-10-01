@@ -275,13 +275,7 @@ export function MineBoard({ dashboard, config }: Props) {
     return 4;
   };
   const tierNow = exc?.canSave ? tierFor(table[picks] ?? 0) : null;
-  const tierNext = exc ? tierFor(Number(exc.nextPoints)) : null;
-  const tierCollapse =
-    exc && picks >= safePicks ? tierFor(Number(exc.ifCollapse)) : null;
   const avgNow = exc ? chipAvgFor(table[picks] ?? 0) : null;
-  // Cutoff of the tier right above the current one
-  const upCut =
-    tierNow !== null && tierNow > 0 && cuts ? cuts[tierNow - 1] : null;
 
   // First pick at which saving would move the chip up a tier
   const nextUnlock = (() => {
@@ -444,39 +438,28 @@ export function MineBoard({ dashboard, config }: Props) {
             </div>
           </div>
 
-          <Stat label="If it collapses now">
-            <span className={cn("font-mono text-sm", inkMid)}>
-              {!exc
-                ? "—"
-                : picks < safePicks
-                  ? "Nothing at risk yet"
-                  : `You keep ${Number(exc.ifCollapse)} pts`}
-              {tierCollapse !== null && (
-                <span className={inkFaint}> · {tierOf(tierCollapse).name}</span>
-              )}
-            </span>
-          </Stat>
-
-          <Stat label="Next pick">
-            <span className={cn("font-mono text-sm", inkMid)}>
-              {!exc
-                ? "—"
-                : picks < safePicks
-                  ? `${Number(exc.nextPoints)} pts · safe`
-                  : `${Number(exc.nextPoints)} pts · ${fmtPct(exc.safePctX100)} safe`}
-            </span>
-          </Stat>
-
-          <Stat label="Chip prize if you save now">
-            <ChipPrize
-              active={!!exc}
-              canSave={!!exc?.canSave}
-              tierNow={tierNow}
-              tierNext={tierNext}
-              avgNow={avgNow}
-              upCut={upCut == null ? null : Number(upCut)}
-            />
-          </Stat>
+          <ChipTrack
+            cuts={(cuts ?? []).map((c) => (c == null ? null : Number(c)))}
+            used={Number(currentChip?.used ?? 0)}
+            excPerChip={excPerChip}
+            digging={!!exc}
+            canSave={!!exc?.canSave}
+            avgNow={
+              exc
+                ? avgNow
+                : currentChip
+                  ? Number(currentChip.projectedX100)
+                  : null
+            }
+            avgNext={exc ? chipAvgFor(Number(exc.nextPoints)) : null}
+            avgCollapse={
+              exc && picks >= safePicks
+                ? chipAvgFor(Number(exc.ifCollapse))
+                : null
+            }
+            nextGain={exc ? Number(exc.nextPoints) - (table[picks] ?? 0) : null}
+            safePct={exc ? Number(exc.safePctX100) / 100 : null}
+          />
 
           <div className="grid grid-cols-2 gap-2">
             <MiniStat
@@ -705,18 +688,6 @@ function BoardMessage({
   );
 }
 
-function Stat({
-  label,
-  children,
-}: { label: string; children: React.ReactNode }) {
-  return (
-    <div className="flex flex-col gap-1 border-b border-[color:var(--term-border-faint)] pb-3">
-      <span className={cn(eyebrow, inkFaint)}>{label}</span>
-      <div className="flex items-baseline">{children}</div>
-    </div>
-  );
-}
-
 function MiniStat({
   label,
   value,
@@ -888,74 +859,208 @@ function RollingNumber({
   return <motion.span className={className}>{text}</motion.span>;
 }
 
-/** Prize this chip would get if the excavation were saved now, and after one more safe pick. */
-function ChipPrize({
-  active,
-  canSave,
-  tierNow,
-  tierNext,
-  avgNow,
-  upCut,
-}: {
-  active: boolean;
-  canSave: boolean;
-  tierNow: number | null;
-  tierNext: number | null;
-  avgNow: number | null;
-  upCut: number | null;
-}) {
-  if (!active)
-    return <span className={cn("font-mono text-sm", inkMid)}>—</span>;
-  if (tierNext === null) {
-    return (
-      <span className={cn("font-mono text-xs", inkFaint)}>
-        Shown once the week has more chips
-      </span>
-    );
+const ZONES = [4, 3, 2, 1, 0]; // tier index for each zone, left (Rock) to right (Treasure)
+
+/** Horizontal position (0-100) of a chip average on the prize track. */
+function trackPos(avg: number, bounds: number[]): number {
+  for (let z = 0; z < 5; z++) {
+    const lo = bounds[z];
+    const hi = bounds[z + 1];
+    if (avg < hi || z === 4) {
+      const f = hi > lo ? (avg - lo) / (hi - lo) : 0.5;
+      return ((z + Math.min(1, Math.max(0, f))) / 5) * 100;
+    }
   }
-  const next = tierOf(tierNext);
-  const improves = tierNow !== null && tierNext < tierNow;
+  return 100;
+}
+
+/**
+ * Visual summary of the chip: its 5 excavations and where its average lands
+ * on the prize track (save now, one more safe pick, collapse).
+ */
+function ChipTrack({
+  cuts,
+  used,
+  excPerChip,
+  digging,
+  canSave,
+  avgNow,
+  avgNext,
+  avgCollapse,
+  nextGain,
+  safePct,
+}: {
+  cuts: (number | null)[];
+  used: number;
+  excPerChip: number;
+  digging: boolean;
+  canSave: boolean;
+  avgNow: number | null;
+  avgNext: number | null;
+  avgCollapse: number | null;
+  nextGain: number | null;
+  safePct: number | null;
+}) {
+  const ready = cuts.length === 4 && cuts.every((c) => c != null);
+  // Zone bounds left to right: Rock | Gold dust | Nugget | Ingot | Treasure
+  const c = cuts as number[];
+  const bounds = ready
+    ? [
+        Math.max(0, c[3] - (c[2] - c[3]) * 2),
+        c[3],
+        c[2],
+        c[1],
+        c[0],
+        c[0] + Math.max(c[0] - c[1], 10_00),
+      ]
+    : [];
+  const tierAt = (avg: number) => {
+    for (let t = 0; t < 4; t++) if (avg >= c[t]) return t;
+    return 4;
+  };
+  const current = digging ? used : Math.min(used, excPerChip);
+
   return (
-    <div className="flex flex-col gap-1.5">
-      {canSave && tierNow !== null ? (
-        <motion.span
-          key={tierNow}
-          initial={{ opacity: 0, scale: 0.85 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ type: "spring", stiffness: 320, damping: 18 }}
-          className={cn(
-            "inline-flex w-fit items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium",
-            tierOf(tierNow).pill,
-          )}
-        >
-          {(() => {
-            const Icon = tierOf(tierNow).icon;
-            return <Icon className="size-3" />;
-          })()}
-          {tierOf(tierNow).name}
-        </motion.span>
+    <div className="flex flex-col gap-3 border-b border-[color:var(--term-border-faint)] pb-4">
+      <div className="flex items-center justify-between">
+        <span className={cn(eyebrow, inkFaint)}>Your chip</span>
+        <span className={cn("font-mono text-[10px]", inkFaint)}>
+          Prize = average of {excPerChip}
+        </span>
+      </div>
+
+      {/* Excavations of this chip */}
+      <div className="flex gap-1.5">
+        {Array.from({ length: excPerChip }, (_, i) => {
+          const done = i < used;
+          const now = digging && i === current;
+          return (
+            <motion.div
+              // biome-ignore lint/suspicious/noArrayIndexKey: fixed slots
+              key={i}
+              animate={now ? { scale: [1, 1.08, 1] } : { scale: 1 }}
+              transition={
+                now
+                  ? { duration: 1.2, repeat: Number.POSITIVE_INFINITY }
+                  : undefined
+              }
+              className={cn(
+                "flex h-7 flex-1 items-center justify-center rounded-md border font-mono text-[10px]",
+                done
+                  ? "border-primary/60 bg-primary/80 text-primary-foreground"
+                  : now
+                    ? "border-primary bg-primary/15 text-[color:var(--term-gold)]"
+                    : "border-dashed border-[color:var(--term-border)] text-[color:var(--term-ink-faint)]",
+              )}
+              title={
+                done
+                  ? "Played"
+                  : now
+                    ? "Digging now"
+                    : "Not played yet (counts as 100)"
+              }
+            >
+              {done ? "✓" : i + 1}
+            </motion.div>
+          );
+        })}
+      </div>
+
+      {/* Prize track */}
+      {!ready || avgNow === null ? (
+        <span className={cn("font-mono text-[11px]", inkFaint)}>
+          {avgNow === null
+            ? "Buy a chip to see where it lands."
+            : "The prize track shows up once the week has more chips."}
+        </span>
       ) : (
-        <span className={cn("font-mono text-xs", inkMid)}>
-          You can save from pick 3
-        </span>
+        <div className="flex flex-col gap-2">
+          <div className="relative pt-7">
+            {/* Save-now marker with the tier name */}
+            <motion.div
+              className="absolute top-0 flex -translate-x-1/2 flex-col items-center"
+              animate={{ left: `${trackPos(avgNow, bounds)}%` }}
+              transition={{ type: "spring", stiffness: 200, damping: 22 }}
+            >
+              <span
+                className={cn(
+                  "whitespace-nowrap rounded-full border px-2 py-0.5 text-[10px] font-semibold shadow-sm",
+                  tierOf(tierAt(avgNow)).pill,
+                )}
+              >
+                {tierOf(tierAt(avgNow)).name}
+              </span>
+              <span className="h-2 w-0.5 bg-[color:var(--term-ink)]" />
+            </motion.div>
+
+            <div className="relative flex h-4 overflow-hidden rounded-full border border-[color:var(--term-border-faint)]">
+              {ZONES.map((t) => (
+                <div
+                  key={t}
+                  className={cn("h-full flex-1", tierOf(t).pill)}
+                  title={tierOf(t).name}
+                />
+              ))}
+            </div>
+
+            {/* Ghost markers: next safe pick and collapse */}
+            {avgNext !== null && (
+              <motion.span
+                aria-hidden
+                className="absolute bottom-0 h-4 w-0.5 -translate-x-1/2 bg-[color:var(--term-green)]"
+                animate={{ left: `${trackPos(avgNext, bounds)}%` }}
+                transition={{ type: "spring", stiffness: 200, damping: 22 }}
+              />
+            )}
+            {avgCollapse !== null && (
+              <motion.span
+                aria-hidden
+                className="absolute bottom-0 h-4 w-0.5 -translate-x-1/2 bg-destructive"
+                animate={{ left: `${trackPos(avgCollapse, bounds)}%` }}
+                transition={{ type: "spring", stiffness: 200, damping: 22 }}
+              />
+            )}
+            <motion.span
+              aria-hidden
+              className="absolute bottom-0 size-4 -translate-x-1/2 rounded-full border-2 border-[color:var(--term-ink)] bg-white shadow"
+              animate={{ left: `${trackPos(avgNow, bounds)}%` }}
+              transition={{ type: "spring", stiffness: 200, damping: 22 }}
+            />
+          </div>
+
+          <div className="flex justify-between font-mono text-[9px] uppercase text-[color:var(--term-ink-faint)]">
+            <span>Rock</span>
+            <span>Treasure</span>
+          </div>
+
+          {/* Legend */}
+          <div className="flex flex-col gap-1 font-mono text-[11px]">
+            <span className={cn("flex items-center gap-1.5", ink)}>
+              <span className="size-2.5 rounded-full border-2 border-[color:var(--term-ink)] bg-white" />
+              {digging
+                ? canSave
+                  ? "Save now"
+                  : "Save from pick 3"
+                : "Right now"}
+              : {tierOf(tierAt(avgNow)).name}
+              <span className={inkFaint}>· avg {fmtAvg(avgNow)}</span>
+            </span>
+            {avgNext !== null && nextGain !== null && safePct !== null && (
+              <span className={cn("flex items-center gap-1.5", inkMid)}>
+                <span className="h-2.5 w-0.5 bg-[color:var(--term-green)]" />
+                Next pick (+{nextGain} pts, {Math.round(safePct)}% safe):{" "}
+                {tierOf(tierAt(avgNext)).name}
+              </span>
+            )}
+            {avgCollapse !== null && (
+              <span className={cn("flex items-center gap-1.5", inkMid)}>
+                <span className="h-2.5 w-0.5 bg-destructive" />
+                If it collapses: {tierOf(tierAt(avgCollapse)).name}
+              </span>
+            )}
+          </div>
+        </div>
       )}
-      {canSave && avgNow !== null && (
-        <span className={cn("font-mono text-[11px]", inkMid)}>
-          Chip average {fmtAvg(avgNow)}
-          {tierNow !== null && tierNow > 0 && upCut !== null
-            ? ` · ${tierOf(tierNow - 1).name} needs ${fmtAvg(upCut)}`
-            : ""}
-        </span>
-      )}
-      <span
-        className={cn(
-          "font-mono text-[11px]",
-          improves ? "text-[color:var(--term-gold)]" : inkFaint,
-        )}
-      >
-        One more safe pick: {next.name}
-        {improves ? " ↑" : ""}
-      </span>
     </div>
   );
 }
