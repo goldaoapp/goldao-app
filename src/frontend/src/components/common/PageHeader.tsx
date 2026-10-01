@@ -17,7 +17,7 @@ export default function PageHeader({
   children,
 }: PageHeaderProps) {
   return (
-    <header className="flex flex-col gap-6 pb-8 pr-20 sm:flex-row sm:items-end sm:justify-between md:pr-0">
+    <header className="flex flex-col gap-6 pb-8 sm:flex-row sm:items-end sm:justify-between md:pr-20">
       <div className="flex flex-col gap-2">
         <span className="inline-flex w-fit items-center gap-1.5 font-mono text-[11px] font-semibold uppercase tracking-[0.2em] text-[color:var(--term-gold)]">
           {Icon && <Icon className="size-3.5" aria-hidden="true" />}
