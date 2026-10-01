@@ -5,6 +5,7 @@ import { Gem, ListOrdered, ShieldCheck } from "lucide-react";
 import { motion } from "motion/react";
 import { useMemo, useState } from "react";
 import { TierSummary } from "./PlayerDashboard";
+import { Spinner } from "./Spinner";
 import {
   DIAMOND_TEXT,
   eyebrow,
@@ -127,7 +128,9 @@ export function RankingTable({ ranking, weeks }: Props) {
         </div>
 
         {!ranking ? (
-          <p className={cn("p-5 text-sm", inkFaint)}>Loading ranking…</p>
+          <p className={cn("flex items-center gap-2 p-5 text-sm", inkFaint)}>
+            <Spinner /> Loading ranking
+          </p>
         ) : rows.length === 0 ? (
           <p className={cn("p-5 text-sm", inkFaint)}>
             No chips played this week yet.
@@ -330,7 +333,11 @@ export function RankingTable({ ranking, weeks }: Props) {
             <ShieldCheck className="size-3.5" /> Past weeks
           </span>
         </div>
-        {!weeks || weeks.length === 0 ? (
+        {!weeks ? (
+          <p className={cn("flex items-center gap-2 p-5 text-sm", inkFaint)}>
+            <Spinner /> Loading past weeks
+          </p>
+        ) : weeks.length === 0 ? (
           <p className={cn("p-5 text-sm", inkFaint)}>No past weeks yet.</p>
         ) : (
           <>
@@ -416,7 +423,12 @@ function Kpi({
   value,
   unit,
   diamond,
-}: { label: string; value: string; unit?: string; diamond?: boolean }) {
+}: {
+  label: string;
+  value: React.ReactNode;
+  unit?: string;
+  diamond?: boolean;
+}) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 8 }}
