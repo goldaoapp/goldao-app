@@ -160,8 +160,8 @@ export function MineBoard({ dashboard, config }: Props) {
     }
     setError(null);
 
-    let current = exc;
-    if (!current) {
+    // The first pick opens the excavation in the backend: a single call.
+    if (!exc) {
       if (!weekOpen) {
         setError("The week is closed. Wait for the next one to open.");
         return;
@@ -180,14 +180,6 @@ export function MineBoard({ dashboard, config }: Props) {
             depthShown: false,
           }
         : null;
-      try {
-        current = await run("start", () => actor.gameStartExcavation());
-        setExc(current);
-      } catch (e) {
-        setDigging(null);
-        setError(errorMessage(e));
-        return;
-      }
     }
 
     setDigging(index);
