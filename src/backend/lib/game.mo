@@ -16,7 +16,7 @@ module {
   public let E8S : Nat = 100_000_000;
   public let FEE : Nat = 1_000_000_000; // 10 GOLDAO
   public let CHIP_PRICE : Nat = 100_000_000_000; // 1,000 GOLDAO
-  public let EXCAVATIONS_PER_CHIP : Nat = 10;
+  public let EXCAVATIONS_PER_CHIP : Nat = 5; // 200 GOLDAO per excavation
   public let CELLS : Nat = 25;
   public let MINES : Nat = 5;
   public let SAFE : Nat = 2;
@@ -33,8 +33,8 @@ module {
 
   // Principals that are always admin. Paste Internet Identity principals here before deploying.
   public let BOOTSTRAP_ADMINS : [Text] = [
-    "o4k5k-q4hdh-hmf4x-qnqbw-m53ao-c4u6t-6vyft-ejkie-iepjy-ziitc-3ae",
-    "nxdvu-ipwv3-xgadl-ws3fw-ply6m-vf5st-nd5mq-4hv5c-nzvgc-o6swr-oae",
+    "PASTE-FIRST-PRINCIPAL-HERE",
+    "PASTE-SECOND-PRINCIPAL-HERE",
   ];
 
   public func isBootstrapAdmin(p : Principal) : Bool {
