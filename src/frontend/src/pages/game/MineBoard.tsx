@@ -1092,8 +1092,11 @@ function TierPop({
           "relative flex flex-col items-center gap-2 overflow-hidden rounded-2xl border-2 px-8 py-6 text-center shadow-2xl",
           t.pill,
         )}
+        style={{ backgroundColor: "oklch(var(--background))" }}
       >
+        <span aria-hidden className={cn("absolute inset-0 border-0", t.pill)} />
         <motion.span
+          className="relative"
           initial={{ rotate: -20, scale: 0.5 }}
           animate={{ rotate: 0, scale: 1 }}
           transition={{
@@ -1105,21 +1108,25 @@ function TierPop({
         >
           <Icon className="size-10" />
         </motion.span>
-        <span className="font-mono text-[10px] uppercase tracking-[0.2em] opacity-80">
+        <span className="relative font-mono text-[10px] uppercase tracking-[0.2em] opacity-80">
           Save now for
         </span>
-        <span className="font-display text-3xl font-bold">{t.name}</span>
+        <span className="relative font-display text-3xl font-bold">
+          {t.name}
+        </span>
         {next ? (
           <motion.span
             initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.35 }}
-            className="font-mono text-[11px] opacity-90"
+            className="relative font-mono text-[11px] opacity-90"
           >
             Next: {tierOf(next.tier).name} at pick {next.pick} ({next.pts} pts)
           </motion.span>
         ) : tier === 0 ? (
-          <span className="font-mono text-[11px] opacity-90">Top prize</span>
+          <span className="relative font-mono text-[11px] opacity-90">
+            Top prize
+          </span>
         ) : null}
         {/* Light sweep */}
         <motion.span
