@@ -11,6 +11,7 @@ import {
   Lock,
   LogOut,
   type LucideIcon,
+  Pickaxe,
   Scale,
   Shield,
   Wallet,
@@ -36,6 +37,7 @@ const ALL_NAV_ITEMS: NavItem[] = [
   { label: "Proposals", to: "/proposals", icon: Gavel, ocid: "nav.proposals" },
   { label: "Rewards", to: "/rewards", icon: Gift, ocid: "nav.rewards" },
   { label: "Events", to: "/events", icon: Activity, ocid: "nav.events" },
+  { label: "Mine", to: "/game", icon: Pickaxe, ocid: "nav.game" },
   {
     label: "Fair Value",
     to: "/fair-value",
