@@ -25,16 +25,19 @@ module {
   public let TREASURY_BPS : Nat = 100; // 1%
   public let DRAW_BPS : Nat = 240; // 2.4%
   public let MIN_CHIPS : Nat = 20;
+  public let MIN_PLAYERS : Nat = 5;
   public let FAUCET_CAP : Nat = 1_000_000_000_000; // 10,000 GOLDAO
   // Total test GOLDAO the faucet gives per week across all players (limits cycle abuse with many principals).
   public let FAUCET_GLOBAL_CAP : Nat = 200_000_000_000_000; // 2,000,000 GOLDAO
   public let MAX_CHIPS_PER_BUY : Nat = 10;
   public let AUTO_SAVE_AT : Nat = 3;
+  // Expected points of an auto-played excavation saving at 3: (18 * 114 + 5 * 50) / 23 = 100.
+  public let AUTO_EV : Nat = 100;
 
   // Principals that are always admin. Paste Internet Identity principals here before deploying.
   public let BOOTSTRAP_ADMINS : [Text] = [
-  "o4k5k-q4hdh-hmf4x-qnqbw-m53ao-c4u6t-6vyft-ejkie-iepjy-ziitc-3ae",
-  "nxdvu-ipwv3-xgadl-ws3fw-ply6m-vf5st-nd5mq-4hv5c-nzvgc-o6swr-oae",
+    "PASTE-FIRST-PRINCIPAL-HERE",
+    "PASTE-SECOND-PRINCIPAL-HERE",
   ];
 
   public func isBootstrapAdmin(p : Principal) : Bool {
@@ -128,12 +131,21 @@ module {
     if (f.used == 0) 0 else f.points * 100 / f.used;
   };
 
-  // Ranking order: average desc, then who finished first, then id
+  // Points the chip is expected to end with: each unplayed excavation counts as an
+  // auto-played one (what happens at close). Equals f.points once the chip is complete.
+  public func projectedPoints(f : Chip) : Nat {
+    f.points + AUTO_EV * sub(EXCAVATIONS_PER_CHIP, f.used);
+  };
+
+  public func projectedX100(f : Chip) : Nat {
+    projectedPoints(f) * 100 / EXCAVATIONS_PER_CHIP;
+  };
+
+  // Ranking order: projected points desc, then who finished first, then id.
+  // At close every chip is complete, so this is the real average.
   public func compareChip(a : Chip, b : Chip) : Order.Order {
-    let ua = Nat.max(a.used, 1);
-    let ub = Nat.max(b.used, 1);
-    let left = a.points * ub;
-    let right = b.points * ua;
+    let left = projectedPoints(a);
+    let right = projectedPoints(b);
     if (left > right) return #less;
     if (left < right) return #greater;
     let fa : Int = if (a.finishedAt == 0) 9_223_372_036_854_775_807 else a.finishedAt;
@@ -184,12 +196,12 @@ module {
     let pot = k * CHIP_PRICE;
     let tiers = Array.tabulate<Nat>(k, func i = tierAt(i, k));
 
-    // Current minimum average per tier (to show cutoffs)
+    // Current minimum projected average per tier (to show cutoffs)
     let cuts = VarArray.repeat<?Nat>(null, 4);
     for (i in sorted.keys()) {
       let t = tiers[i];
-      if (t < 4 and sorted[i].used > 0) {
-        let a = avgX100(sorted[i]);
+      if (t < 4) {
+        let a = projectedX100(sorted[i]);
         cuts[t] := switch (cuts[t]) { case null ?a; case (?c) ?Nat.min(c, a) };
       };
     };
