@@ -25,7 +25,7 @@ actor {
 
   include TreasuryMixin(treasurySnapshots);
 
-  // Mina de oro (modo ficticio)
+  // Gold mine game (simulated mode)
   let gameState : GameTypes.GameState;
 
   include GameMixin(gameState, accessControlState);
