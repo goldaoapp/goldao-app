@@ -20,7 +20,7 @@ export const eyebrow =
   "font-mono text-[11px] font-semibold uppercase tracking-[0.18em]";
 
 /** Set to an image path (e.g. "/assets/images/diamond.png") once the diamond artwork is added. */
-export const DIAMOND_IMG: string | null = "/assets/images/diamond.png";
+export const DIAMOND_IMG: string | null = null;
 
 const E8S = 100_000_000;
 
@@ -147,10 +147,11 @@ export function tokenForPick(pick: number): TokenKey {
 }
 
 /** Strategy guide: simulated odds per chip with a mixed public. */
-export const STRATEGY_GUIDE = [
-  { saveAt: 3, treasure: "0%", ingot: "4%", rock: "7%", range: "76 – 114" },
-  { saveAt: 4, treasure: "0%", ingot: "28%", rock: "12%", range: "69 – 131" },
-  { saveAt: 5, treasure: "3%", ingot: "17%", rock: "23%", range: "70 – 134" },
-  { saveAt: 6, treasure: "6%", ingot: "17%", rock: "24%", range: "60 – 151" },
-  { saveAt: 8, treasure: "16%", ingot: "10%", rock: "35%", range: "59 – 153" },
+/** Simulated share of chips (%) ending in each tier: Treasure, Ingot, Nugget, Gold dust, Rock. Each row sums to 100. */
+export const STRATEGY_GUIDE: { saveAt: number; odds: number[] }[] = [
+  { saveAt: 3, odds: [0, 4, 38, 51, 7] },
+  { saveAt: 4, odds: [0, 28, 12, 48, 12] },
+  { saveAt: 5, odds: [3, 17, 23, 34, 23] },
+  { saveAt: 6, odds: [6, 17, 31, 22, 24] },
+  { saveAt: 8, odds: [16, 9, 21, 19, 35] },
 ];
