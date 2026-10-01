@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 import { Coins, Droplets, Pickaxe, Wallet } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useState } from "react";
+import { Spinner } from "./Spinner";
 import {
   eyebrow,
   fmtGoldao,
@@ -85,7 +86,7 @@ export function WalletPanel({ dashboard, config }: Props) {
             ink,
           )}
         >
-          {dashboard ? fmtGoldao(dashboard.balance) : "—"}
+          {dashboard ? fmtGoldao(dashboard.balance) : <Spinner />}
           <span className={cn("ml-2 font-mono text-xs", gold)}>GOLDAO</span>
         </motion.span>
         <span className={cn("font-mono text-[11px]", inkFaint)}>
@@ -113,8 +114,8 @@ export function WalletPanel({ dashboard, config }: Props) {
           ))}
         </div>
         <span className={cn("font-mono text-[11px]", inkFaint)}>
-          {faucetLeft.toLocaleString("en-US")} left this week (max{" "}
-          {faucetCap.toLocaleString("en-US")})
+          {dashboard ? faucetLeft.toLocaleString("en-US") : <Spinner />} left
+          this week (max {faucetCap.toLocaleString("en-US")})
         </span>
       </div>
 
