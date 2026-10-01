@@ -101,44 +101,78 @@ export function PrizeGuide({ ranking, config }: Props) {
           Saving early protects you from Rock. To fight for the Treasure you
           have to keep digging.
         </p>
-        <div className="p-1 sm:p-3">
-          <table className="w-full font-mono text-[11px] sm:text-xs">
-            <thead>
-              <tr className={cn("text-left", inkFaint)}>
-                <th className="px-1.5 py-2 font-medium sm:px-3">Save at</th>
-                <th className="px-1.5 py-2 font-medium sm:px-3">Treasure</th>
-                <th className="px-1.5 py-2 font-medium sm:px-3">Ingot</th>
-                <th className="px-1.5 py-2 font-medium sm:px-3">Rock</th>
-                <th className="px-1.5 py-2 font-medium sm:px-3">
-                  Typical range
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {STRATEGY_GUIDE.map((s) => (
-                <tr
-                  key={s.saveAt}
-                  className="border-t border-[color:var(--term-border-faint)]"
-                >
-                  <td className={cn("px-1.5 py-2.5 sm:px-3", ink)}>
-                    {s.saveAt} picks
-                  </td>
-                  <td className={cn("px-1.5 py-2.5 sm:px-3", inkMid)}>
-                    {s.treasure}
-                  </td>
-                  <td className={cn("px-1.5 py-2.5 sm:px-3", inkMid)}>
-                    {s.ingot}
-                  </td>
-                  <td className={cn("px-1.5 py-2.5 sm:px-3", inkMid)}>
-                    {s.rock}
-                  </td>
-                  <td className={cn("px-1.5 py-2.5 sm:px-3", inkMid)}>
-                    {s.range}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="flex flex-col gap-3 px-5 py-4">
+          <div
+            className={cn(
+              "grid grid-cols-[64px_minmax(0,1fr)_56px] items-end gap-3 font-mono text-[10px] uppercase sm:grid-cols-[80px_minmax(0,1fr)_96px]",
+              inkFaint,
+            )}
+          >
+            <span>Save at</span>
+            <span>Where the chip ends</span>
+            <span className="text-right">Win or recover</span>
+          </div>
+          {STRATEGY_GUIDE.map((s, row) => (
+            <div
+              key={s.saveAt}
+              className="grid grid-cols-[64px_minmax(0,1fr)_56px] items-center gap-3 sm:grid-cols-[80px_minmax(0,1fr)_96px]"
+            >
+              <span className={cn("font-mono text-xs", ink)}>
+                {s.saveAt} picks
+              </span>
+              <div className="flex flex-col gap-1">
+                <div className="flex h-7 w-full divide-x divide-white/40 overflow-hidden rounded-md border border-[color:var(--term-border-faint)]">
+                  {s.odds.map((pct, t) =>
+                    pct > 0 ? (
+                      <motion.div
+                        key={TIERS[t].name}
+                        title={`${TIERS[t].name}: ${pct}%`}
+                        initial={{ width: 0 }}
+                        whileInView={{ width: `${pct}%` }}
+                        viewport={{ once: true }}
+                        transition={{ duration: 0.6, delay: row * 0.06 }}
+                        className={cn(
+                          "flex items-center justify-center overflow-hidden font-mono text-[10px] font-medium",
+                          TIERS[t].pill,
+                        )}
+                      >
+                        {pct >= 8 ? `${pct}%` : ""}
+                      </motion.div>
+                    ) : null,
+                  )}
+                </div>
+                {s.odds.some((pct) => pct > 0 && pct < 8) && (
+                  <span className={cn("font-mono text-[10px]", inkFaint)}>
+                    {s.odds
+                      .map((pct, t) =>
+                        pct > 0 && pct < 8 ? `${TIERS[t].name} ${pct}%` : null,
+                      )
+                      .filter(Boolean)
+                      .join(" · ")}
+                  </span>
+                )}
+              </div>
+              <span
+                className={cn("text-right font-mono text-xs tabular-nums", ink)}
+              >
+                {100 - s.odds[4]}%
+              </span>
+            </div>
+          ))}
+          <div className="flex flex-wrap gap-1.5 pt-1">
+            {TIERS.map((t) => (
+              <span
+                key={t.name}
+                className={cn(
+                  "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-medium",
+                  t.pill,
+                )}
+              >
+                <t.icon className="size-2.5" />
+                {t.name}
+              </span>
+            ))}
+          </div>
         </div>
         <p
           className={cn(
@@ -146,7 +180,9 @@ export function PrizeGuide({ ranking, config }: Props) {
             inkFaint,
           )}
         >
-          Approximate odds per chip, simulated with a mixed set of players.
+          Share of chips ending in each prize, simulated with a mixed set of
+          players. Every row adds up to 100%. Hover a segment to see its exact
+          value.
         </p>
       </div>
 
