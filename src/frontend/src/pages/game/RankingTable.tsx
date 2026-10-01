@@ -66,9 +66,13 @@ export function RankingTable({ ranking, weeks }: Props) {
     <div className="flex flex-col gap-6">
       {ranking && (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <Kpi label="Pot" value={`${fmtGoldao(ranking.pot)}`} unit="GOLDAO" />
           <Kpi
-            label="Treasure pays"
+            label="Prize pool"
+            value={`${fmtGoldao(ranking.pot)}`}
+            unit="GOLDAO"
+          />
+          <Kpi
+            label="Treasure prize"
             value={
               ranking.treasurePerChip > 0n
                 ? fmtGoldao(ranking.treasurePerChip)
@@ -101,7 +105,7 @@ export function RankingTable({ ranking, weeks }: Props) {
           <div className="inline-flex rounded-md border border-[color:var(--term-border)] p-0.5">
             {(
               [
-                ["result", "Result"],
+                ["result", "Return"],
                 ["avg", "Average"],
                 ["diamonds", "Diamonds"],
               ] as [SortKey, string][]
@@ -177,7 +181,7 @@ export function RankingTable({ ranking, weeks }: Props) {
                         <Gem className="size-3" /> {Number(r.diamonds)}
                       </span>
                       <span className="tabular-nums">
-                        <span className={inkFaint}>Receives </span>
+                        <span className={inkFaint}>Payout </span>
                         <span className={ink}>
                           {fmtGoldao(r.estimatedReceive)}
                         </span>
@@ -208,15 +212,11 @@ export function RankingTable({ ranking, weeks }: Props) {
                     <th className="px-5 py-2 font-medium">#</th>
                     <th className="px-3 py-2 font-medium">Player</th>
                     <th className="px-3 py-2 text-right font-medium">Avg</th>
-                    <th className="px-3 py-2 font-medium">
-                      Prize of their chips
-                    </th>
+                    <th className="px-3 py-2 font-medium">Chip prizes</th>
                     <th className="px-3 py-2 text-right font-medium">
                       <Gem className={cn("ml-auto size-3.5", DIAMOND_TEXT)} />
                     </th>
-                    <th className="px-5 py-2 text-right font-medium">
-                      Receives
-                    </th>
+                    <th className="px-5 py-2 text-right font-medium">Payout</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -316,10 +316,10 @@ export function RankingTable({ ranking, weeks }: Props) {
             inkFaint,
           )}
         >
-          Sorted by result (receives ÷ paid). Prizes are decided chip by chip,
-          so a good average can still lose if a chip ends in Rock. Unfinished
-          chips count each missing excavation as 100 points (what the weekly
-          close auto-plays). Everything is provisional until the close.
+          Sorted by return (payout ÷ spent). Prizes are decided chip by chip, so
+          a good average can still lose if a chip ends in Rock. Unfinished chips
+          count each missing excavation as 100 points (what the weekly close
+          auto-plays). Everything is provisional until the close.
         </p>
       </div>
 
@@ -327,11 +327,11 @@ export function RankingTable({ ranking, weeks }: Props) {
       <div className={panel}>
         <div className={panelHeader}>
           <span className={cn(eyebrow, gold, "flex items-center gap-2")}>
-            <ShieldCheck className="size-3.5" /> Closed weeks
+            <ShieldCheck className="size-3.5" /> Past weeks
           </span>
         </div>
         {!weeks || weeks.length === 0 ? (
-          <p className={cn("p-5 text-sm", inkFaint)}>No closed weeks yet.</p>
+          <p className={cn("p-5 text-sm", inkFaint)}>No past weeks yet.</p>
         ) : (
           <>
             {/* Mobile: one card per week */}
@@ -343,7 +343,7 @@ export function RankingTable({ ranking, weeks }: Props) {
                 >
                   <span className={ink}>Week #{Number(w.week)}</span>
                   <span className={cn("text-right", inkMid)}>
-                    Pot {fmtGoldao(w.pot)}
+                    Pool {fmtGoldao(w.pot)}
                   </span>
                   <span className={inkMid}>
                     Treasure {fmtGoldao(w.treasurePerChip)}
@@ -357,7 +357,7 @@ export function RankingTable({ ranking, weeks }: Props) {
                   >
                     {w.drawWinner
                       ? `Winner ${shortPrincipal(w.drawWinner.toText())} · ticket #${Number(w.drawTicket)} of ${Number(w.drawTickets)}`
-                      : "No diamonds · carried over"}
+                      : "No diamonds · rolled over"}
                   </span>
                 </li>
               ))}
@@ -367,9 +367,9 @@ export function RankingTable({ ranking, weeks }: Props) {
                 <thead>
                   <tr className={cn("text-left", inkFaint)}>
                     <th className="px-5 py-2 font-medium">Week</th>
-                    <th className="px-3 py-2 font-medium">Pot</th>
+                    <th className="px-3 py-2 font-medium">Prize pool</th>
                     <th className="px-3 py-2 font-medium">Treasure / chip</th>
-                    <th className="px-3 py-2 font-medium">Draw</th>
+                    <th className="px-3 py-2 font-medium">Diamond draw</th>
                     <th className="px-5 py-2 font-medium">Winner · ticket</th>
                   </tr>
                 </thead>
@@ -397,7 +397,7 @@ export function RankingTable({ ranking, weeks }: Props) {
                       >
                         {w.drawWinner
                           ? `${shortPrincipal(w.drawWinner.toText())} · #${Number(w.drawTicket)} of ${Number(w.drawTickets)}`
-                          : "No diamonds · carried over"}
+                          : "No diamonds · rolled over"}
                       </td>
                     </tr>
                   ))}
