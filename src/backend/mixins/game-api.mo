@@ -110,6 +110,16 @@ mixin (
     Game.settle(gameState.chips, gPlayTx, gameState.drawCarry);
   };
 
+  // Opens an excavation on the player's oldest chip that still has excavations left.
+  func gOpenExcavation(p : Principal) : ?Types.Excavation {
+    let mine = gameState.chips.values().filter(func(f : Types.Chip) : Bool { f.owner == p and f.used < Game.EXCAVATIONS_PER_CHIP }).toArray();
+    if (mine.size() == 0) return null;
+    let f = Array.sort(mine, func(a : Types.Chip, b : Types.Chip) : { #less; #equal; #greater } { Nat.compare(a.id, b.id) })[0];
+    let e : Types.Excavation = { chipId = f.id; picks = 0; diamonds = 0; busy = false };
+    gameState.open.add(p, e);
+    ?e;
+  };
+
   func gRequireUser(caller : Principal) : ?Text {
     if (Principal.isAnonymous(caller)) ?"Sign in with Internet Identity." else null;
   };
@@ -184,21 +194,23 @@ mixin (
     switch (gRequireUser(caller)) { case (?e) return #err(e); case null {} };
     if (gameState.status != #open) return #err("The week is closed.");
     if (gameState.open.get(caller) != null) return #err("Finish your open excavation first: save or keep digging.");
-    let mine = gameState.chips.values().filter(func(f : Types.Chip) : Bool { f.owner == caller and f.used < Game.EXCAVATIONS_PER_CHIP }).toArray();
-    if (mine.size() == 0) return #err("No excavations left. Buy a chip first.");
-    let f = Array.sort(mine, func(a : Types.Chip, b : Types.Chip) : { #less; #equal; #greater } { Nat.compare(a.id, b.id) })[0];
-    let e : Types.Excavation = { chipId = f.id; picks = 0; diamonds = 0; busy = false };
-    gameState.open.add(caller, e);
-    #ok(gExcView(e));
+    switch (gOpenExcavation(caller)) {
+      case (?e) #ok(gExcView(e));
+      case null #err("No excavations left. Buy a chip first.");
+    };
   };
 
-  /// One pick. Calls raw_rand to resolve collapse (from the 3rd pick) and diamond.
+  /// One pick (opens a new excavation when none is open). Calls raw_rand to resolve collapse (from the 3rd pick) and diamond.
   public shared ({ caller }) func gamePick() : async Result.Result<Types.PickResult, Text> {
     switch (gRequireUser(caller)) { case (?e) return #err(e); case null {} };
     if (gameState.status != #open) return #err("The week is closed.");
+    // The first pick opens the excavation itself, so the player needs a single call.
     let ex = switch (gameState.open.get(caller)) {
       case (?e) e;
-      case null return #err("Start a new excavation.");
+      case null switch (gOpenExcavation(caller)) {
+        case (?e) e;
+        case null return #err("No excavations left. Buy a chip first.");
+      };
     };
     if (ex.busy) return #err("Wait for the previous pick to finish.");
     if (ex.picks >= Game.MAX_PICKS) return #err("The mine is empty: save.");
