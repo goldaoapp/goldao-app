@@ -272,7 +272,7 @@ mixin (
 
   public shared query ({ caller }) func gameMyDashboard() : async Types.Dashboard {
     let st = gSettlement();
-    var tiers = [0, 0, 0, 0, 0];
+    var tiers = Array.repeat<Nat>(0, Game.TIERS);
     var diamonds = 0;
     var paid = 0;
     var est = 0;
