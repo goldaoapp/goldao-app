@@ -23,6 +23,17 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Spinner } from "./Spinner";
 import {
+  type Cell,
+  type RunResult,
+  clearBoardCells,
+  getBoard,
+  loadBoardCells,
+  resetBoard,
+  saveBoardCells,
+  setBoard,
+  useBoard,
+} from "./board-store";
+import {
   AUTO_SAVE_EV,
   DIAMOND_CELL,
   DIAMOND_IMG,
@@ -47,12 +58,19 @@ import {
 import { playSound, preloadSounds, useSoundToggle } from "./sounds";
 import { errorMessage, useGameAction, useRanking } from "./useGame";
 
-type Cell =
-  | { kind: "token"; token: TokenKey }
-  | { kind: "diamond" }
-  | { kind: "rock" };
-
-type RunResult = { kind: "saved" | "collapse" | "emptied"; points: number };
+// Board state setters. The state lives in board-store so it survives unmounts.
+const setExc = (exc: ExcavationView | null) => setBoard({ exc });
+const setDigging = (digging: number | null) => setBoard({ digging });
+const setResult = (result: RunResult | null) => setBoard({ result });
+const setError = (error: string | null) => setBoard({ error });
+const setCells = (
+  next:
+    | Record<number, Cell>
+    | ((c: Record<number, Cell>) => Record<number, Cell>),
+) =>
+  setBoard((s) => ({
+    cells: typeof next === "function" ? next(s.cells) : next,
+  }));
 
 /** Personal records at the start of the current excavation. */
 type RecordBase = { best: number; deepest: number; depthShown: boolean };
@@ -70,16 +88,17 @@ interface Props {
 }
 
 export function MineBoard({ dashboard, config }: Props) {
-  const { actor, isAuthenticated, login } = useAuth();
-  const { run, refreshAll } = useGameAction();
+  const { actor, isAuthenticated, login, principalId } = useAuth();
+  const { run, refreshAll, setOpenExcavation } = useGameAction();
   const [scope, animate] = useAnimate<HTMLDivElement>();
 
-  const [exc, setExc] = useState<ExcavationView | null>(null);
-  const [cells, setCells] = useState<Record<number, Cell>>({});
-  const [digging, setDigging] = useState<number | null>(null);
-  const [result, setResult] = useState<RunResult | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const skipRestoreUntil = useRef(0);
+  const board = useBoard();
+  const { exc, cells, digging, result, error } = board;
+
+  // A different principal (or sign out) starts from an empty board.
+  useEffect(() => {
+    if (getBoard().owner !== principalId) resetBoard(principalId);
+  }, [principalId]);
   const { muted, toggleMuted } = useSoundToggle();
   const { data: ranking } = useRanking();
   const [record, setRecord] = useState<string | null>(null);
@@ -113,12 +132,29 @@ export function MineBoard({ dashboard, config }: Props) {
   // Restore an excavation left open (reload, another tab) from the backend.
   const open = dashboard?.open;
   useEffect(() => {
-    if (!open || exc || busy || Date.now() < skipRestoreUntil.current) return;
+    if (!open || exc || busy || !principalId || !dashboard) return;
+    if (board.owner !== principalId) return;
+    if (Date.now() < board.skipRestoreUntil) return;
     const picks = Number(open.picks);
-    const restored: Record<number, Cell> = {};
-    RESTORE_ORDER.slice(0, picks).forEach((idx, i) => {
-      restored[idx] = { kind: "token", token: tokenForPick(i + 1) };
-    });
+    const chip = dashboard.chips.find((c) => c.id === open.chipId);
+    // Same cells as before the reload when the browser still has them.
+    const saved =
+      loadBoardCells(principalId, open.chipId, Number(chip?.used ?? 0)) ?? {};
+    const savedCount = Object.keys(saved).length;
+    if (savedCount > picks) {
+      // The cached dashboard is behind the board: ask the backend again.
+      void refreshAll();
+      return;
+    }
+    const restored: Record<number, Cell> = { ...saved };
+    // Picks made elsewhere (other device) go to free cells.
+    let n = savedCount;
+    for (const idx of RESTORE_ORDER) {
+      if (n >= picks) break;
+      if (restored[idx]) continue;
+      n += 1;
+      restored[idx] = { kind: "token", token: tokenForPick(n) };
+    }
     recordBase.current = dashboard
       ? {
           best: Number(dashboard.stats.best),
@@ -129,11 +165,22 @@ export function MineBoard({ dashboard, config }: Props) {
     setExc(open);
     setCells(restored);
     setResult(null);
-  }, [open, exc, busy, dashboard]);
+  }, [
+    open,
+    exc,
+    busy,
+    dashboard,
+    principalId,
+    board.owner,
+    board.skipRestoreUntil,
+    refreshAll,
+  ]);
 
   const endRun = useCallback(
     (r: RunResult) => {
-      skipRestoreUntil.current = Date.now() + 8000;
+      setBoard({ skipRestoreUntil: Date.now() + 8000 });
+      clearBoardCells();
+      setOpenExcavation(null);
       const base = recordBase.current;
       if (base && base.best > 0 && r.points > base.best) {
         showRecord(`New record: ${r.points} pts in one excavation`);
@@ -143,7 +190,7 @@ export function MineBoard({ dashboard, config }: Props) {
       setResult(r);
       void refreshAll();
     },
-    [refreshAll, showRecord],
+    [refreshAll, showRecord, setOpenExcavation],
   );
 
   const shake = useCallback(() => {
@@ -198,6 +245,19 @@ export function MineBoard({ dashboard, config }: Props) {
         ? { kind: "diamond" }
         : { kind: "token", token: tokenForPick(Number(r.picks)) };
       setCells((c) => ({ ...c, [index]: cell }));
+      // Keep the positions in the browser and the cached dashboard in step with the backend.
+      if (principalId && r.excavation) {
+        const chip = dashboard?.chips.find(
+          (c) => c.id === r.excavation?.chipId,
+        );
+        saveBoardCells(
+          principalId,
+          r.excavation.chipId,
+          Number(chip?.used ?? 0),
+          getBoard().cells,
+        );
+        setOpenExcavation(r.excavation);
+      }
       playSound(r.diamond ? "diamond" : "success");
       const base = recordBase.current;
       if (
