@@ -25,6 +25,7 @@ import {
   panel,
   panelHeader,
   tierOf,
+  tiersFor,
 } from "./game-utils";
 import { useGameConfig } from "./useGame";
 
@@ -68,7 +69,7 @@ export function PlayerDashboard({ dashboard }: Props) {
   return (
     <div className="flex flex-col gap-6">
       {/* Prize counters */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
         {TIERS.map((t, i) => (
           <motion.div
             key={t.name}
@@ -422,7 +423,8 @@ export function TierSummary({ tiers }: { tiers: bigint[] }) {
     <span className="flex flex-wrap gap-1">
       {tiers.map((n, i) => {
         if (Number(n) === 0) return null;
-        const t = TIERS[i];
+        const t = tiersFor(tiers.length)[i];
+        if (!t) return null;
         return (
           <span
             key={t.name}
