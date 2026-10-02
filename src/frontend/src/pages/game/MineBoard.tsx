@@ -39,6 +39,8 @@ import {
   DIAMOND_IMG,
   DIAMOND_TEXT,
   ROCK_CELL,
+  ROCK_TIER,
+  TIERS,
   TOKENS,
   TYPICAL_CUTS_X100,
   type TokenKey,
@@ -321,7 +323,9 @@ export function MineBoard({ dashboard, config }: Props) {
   // week has no full set of cutoffs: fall back to typical ones, shown as estimated.
   const liveCuts = ranking?.cutsX100;
   const estimated =
-    !liveCuts || liveCuts.length !== 4 || liveCuts.some((c) => c == null);
+    !liveCuts ||
+    liveCuts.length !== ROCK_TIER ||
+    liveCuts.some((c) => c == null);
   const cuts: (bigint | number | null)[] | undefined = ranking
     ? estimated
       ? TYPICAL_CUTS_X100
@@ -341,11 +345,11 @@ export function MineBoard({ dashboard, config }: Props) {
   const tierFor = (pts: number): number | null => {
     const avgX100 = chipAvgFor(pts);
     if (avgX100 === null || !cuts || !hasCuts) return null;
-    for (let t = 0; t < 4; t++) {
+    for (let t = 0; t < ROCK_TIER; t++) {
       const c = cuts[t];
       if (c != null && avgX100 >= Number(c)) return t;
     }
-    return 4;
+    return ROCK_TIER;
   };
   const tierNow = exc?.canSave ? tierFor(table[picks] ?? 0) : null;
   const avgNow = exc ? chipAvgFor(table[picks] ?? 0) : null;
@@ -377,7 +381,7 @@ export function MineBoard({ dashboard, config }: Props) {
       lastTier.current = null;
       return;
     }
-    if (tierNow === null || tierNow >= 4) return;
+    if (tierNow === null || tierNow >= ROCK_TIER) return;
     if (lastTier.current === null || tierNow < lastTier.current) {
       lastTier.current = tierNow;
       setTierPop({ tier: tierNow, next: nextUnlock });
@@ -946,16 +950,18 @@ function RollingNumber({
   return <motion.span className={className}>{text}</motion.span>;
 }
 
-const ZONES = [4, 3, 2, 1, 0]; // tier index for each zone, left (Rock) to right (Treasure)
+// Tier index for each zone of the track, left (Rock) to right (Treasure)
+const ZONES = TIERS.map((_, i) => ROCK_TIER - i);
+const ZONE_COUNT = ZONES.length;
 
 /** Horizontal position (0-100) of a chip average on the prize track. */
 function trackPos(avg: number, bounds: number[]): number {
-  for (let z = 0; z < 5; z++) {
+  for (let z = 0; z < ZONE_COUNT; z++) {
     const lo = bounds[z];
     const hi = bounds[z + 1];
-    if (avg < hi || z === 4) {
+    if (avg < hi || z === ZONE_COUNT - 1) {
       const f = hi > lo ? (avg - lo) / (hi - lo) : 0.5;
-      return ((z + Math.min(1, Math.max(0, f))) / 5) * 100;
+      return ((z + Math.min(1, Math.max(0, f))) / ZONE_COUNT) * 100;
     }
   }
   return 100;
@@ -992,13 +998,12 @@ function ChipTrack({
   nextGain: number | null;
   safePct: number | null;
 }) {
-  const ready = cuts.length === 4 && cuts.every((c) => c != null);
-  // Zone bounds left to right: Rock | Gold dust | Nugget | Ingot | Treasure
+  const ready = cuts.length === ROCK_TIER && cuts.every((c) => c != null);
+  // Zone bounds left to right: Rock | Gold dust | Ingot | Treasure
   const c = cuts as number[];
   const bounds = ready
     ? [
-        Math.max(0, c[3] - (c[2] - c[3]) * 2),
-        c[3],
+        Math.max(0, c[2] - (c[1] - c[2]) / 2),
         c[2],
         c[1],
         c[0],
@@ -1006,8 +1011,8 @@ function ChipTrack({
       ]
     : [];
   const tierAt = (avg: number) => {
-    for (let t = 0; t < 4; t++) if (avg >= c[t]) return t;
-    return 4;
+    for (let t = 0; t < ROCK_TIER; t++) if (avg >= c[t]) return t;
+    return ROCK_TIER;
   };
   const current = digging ? used : Math.min(used, excPerChip);
 
