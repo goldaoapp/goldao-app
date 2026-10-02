@@ -5,6 +5,7 @@ import { motion } from "motion/react";
 import { Spinner } from "./Spinner";
 import {
   DIAMOND_TEXT,
+  ROCK_TIER,
   STRATEGY_GUIDE,
   TIERS,
   TYPICAL_CUTS_X100,
@@ -27,14 +28,15 @@ export function PrizeGuide({ ranking, config }: Props) {
   // With few chips the week's own cutoffs are distorted (a tier may hold a single
   // chip, and Treasure needs 11 chips): show typical ones until every tier exists.
   const liveCuts = ranking?.cutsX100 ?? [];
-  const estimated = liveCuts.length !== 4 || liveCuts.some((c) => c == null);
+  const estimated =
+    liveCuts.length !== ROCK_TIER || liveCuts.some((c) => c == null);
   const cuts: (bigint | number | null)[] = estimated
     ? TYPICAL_CUTS_X100
     : liveCuts;
   const chipPrice = config ? Number(config.chipPriceE8s) / 1e8 : 1000;
   const excPerChip = config ? Number(config.excavationsPerChip) : 5;
   const mines = config ? Number(config.mines) : 5;
-  const drawPct = config ? Number(config.drawBps) / 100 : 2.4;
+  const drawPct = config ? Number(config.drawBps) / 100 : 4.4;
   const treasuryPct = config ? Number(config.treasuryBps) / 100 : 1;
   // Ring while the ranking loads; a dash only when the value does not exist.
   const missing = ranking ? "—" : <Spinner />;
@@ -50,10 +52,10 @@ export function PrizeGuide({ ranking, config }: Props) {
             <Compass className="size-3.5" /> How to reach each prize
           </span>
         </div>
-        <div className="grid grid-cols-1 gap-3 p-4 sm:grid-cols-5 sm:p-5">
+        <div className="grid grid-cols-1 gap-3 p-4 sm:grid-cols-2 sm:p-5 lg:grid-cols-4">
           {TIERS.map((t, i) => {
             const cut = cuts[i];
-            const nextUp = i === 4 ? cuts[3] : null;
+            const nextUp = i === ROCK_TIER ? cuts[ROCK_TIER - 1] : null;
             return (
               <motion.div
                 key={t.name}
@@ -77,7 +79,7 @@ export function PrizeGuide({ ranking, config }: Props) {
                     ink,
                   )}
                 >
-                  {i === 4
+                  {i === ROCK_TIER
                     ? nextUp != null
                       ? `< ${fmtAvg(nextUp)}`
                       : missing
@@ -171,7 +173,7 @@ export function PrizeGuide({ ranking, config }: Props) {
                   ink,
                 )}
               >
-                {100 - s.odds[4]}%
+                {100 - s.odds[ROCK_TIER]}%
               </span>
             </div>
           ))}
