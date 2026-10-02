@@ -1,3 +1,4 @@
+import type { Dashboard, ExcavationView } from "@/backend";
 import { useAuth } from "@/context/AuthContext";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useState } from "react";
@@ -108,7 +109,19 @@ export function useGameAction() {
 
   const refreshAll = useCallback(() => refresh("live"), [refresh]);
 
-  return { run, pending, refreshAll };
+  // Writes the player's open excavation into the cached dashboard, so the cache
+  // matches the backend between polls (picks do not refetch the dashboard).
+  const setOpenExcavation = useCallback(
+    (open: ExcavationView | null) => {
+      queryClient.setQueriesData<Dashboard>(
+        { queryKey: [KEY, "dashboard"] },
+        (old) => (old ? { ...old, open: open ?? undefined } : old),
+      );
+    },
+    [queryClient],
+  );
+
+  return { run, pending, refreshAll, setOpenExcavation };
 }
 
 export function errorMessage(e: unknown): string {
