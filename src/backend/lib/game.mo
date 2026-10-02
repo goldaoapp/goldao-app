@@ -23,7 +23,7 @@ module {
   public let MAX_PICKS : Nat = 20; // CELLS - MINES
   public let DIAMOND_BPS : Nat = 200; // 2% per safe pick
   public let TREASURY_BPS : Nat = 100; // 1%
-  public let DRAW_BPS : Nat = 240; // 2.4%
+  public let DRAW_BPS : Nat = 440; // 4.4%
   public let MIN_CHIPS : Nat = 20;
   public let MIN_PLAYERS : Nat = 5;
   public let FAUCET_CAP : Nat = 2_000_000_000_000; // 20,000 GOLDAO
@@ -48,13 +48,14 @@ module {
     false;
   };
 
-  // % per tier: Treasure, Ingot, Nugget, Gold dust, Rock
-  public let CUTS_PCT : [Nat] = [5, 15, 25, 35, 20];
-  let CUM_PCT : [Nat] = [5, 20, 45, 80, 100];
+  // % per tier: Treasure, Ingot, Gold dust, Rock
+  public let CUTS_PCT : [Nat] = [5, 15, 60, 20];
+  let CUM_PCT : [Nat] = [5, 20, 80, 100];
   // Multiplier per chip in bps (Treasure gets whatever is left)
-  public let MULT_BPS : [Nat] = [0, 12_500, 11_500, 10_000, 0];
+  public let MULT_BPS : [Nat] = [0, 12_000, 10_000, 0];
   public let TREASURE : Nat = 0;
-  public let ROCK : Nat = 4;
+  public let ROCK : Nat = 3;
+  public let TIERS : Nat = 4;
 
   // Points when saving after k safe picks (k = 2 are the free ones).
   // Built so that any strategy is worth 100 on average with 5 mines
@@ -158,7 +159,7 @@ module {
   // Tier for a position (0 = first) among k chips
   public func tierAt(pos : Nat, k : Nat) : Nat {
     var t = 0;
-    while (t < 4 and (2 * pos + 1) * 50 >= CUM_PCT[t] * k) { t += 1 };
+    while (t < ROCK and (2 * pos + 1) * 50 >= CUM_PCT[t] * k) { t += 1 };
     t;
   };
 
@@ -197,10 +198,10 @@ module {
     let tiers = Array.tabulate<Nat>(k, func i = tierAt(i, k));
 
     // Current minimum projected average per tier (to show cutoffs)
-    let cuts = VarArray.repeat<?Nat>(null, 4);
+    let cuts = VarArray.repeat<?Nat>(null, ROCK);
     for (i in sorted.keys()) {
       let t = tiers[i];
-      if (t < 4) {
+      if (t < ROCK) {
         let a = projectedX100(sorted[i]);
         cuts[t] := switch (cuts[t]) { case null ?a; case (?c) ?Nat.min(c, a) };
       };
@@ -214,14 +215,14 @@ module {
       let prev : PlayerAgg = switch (agg.get(f.owner)) {
         case (?p) p;
         case null {
-          { chips = 0; tiers = [0, 0, 0, 0, 0]; gross = 0; anyPaid = false; diamonds = 0; points = 0; used = 0; playing = false };
+          { chips = 0; tiers = Array.repeat<Nat>(0, TIERS); gross = 0; anyPaid = false; diamonds = 0; points = 0; used = 0; playing = false };
         };
       };
       agg.add(
         f.owner,
         {
           chips = prev.chips + 1;
-          tiers = Array.tabulate<Nat>(5, func j = if (j == t) prev.tiers[j] + 1 else prev.tiers[j]);
+          tiers = Array.tabulate<Nat>(TIERS, func j = if (j == t) prev.tiers[j] + 1 else prev.tiers[j]);
           gross = prev.gross;
           anyPaid = prev.anyPaid or t != ROCK;
           diamonds = prev.diamonds + f.diamonds;
