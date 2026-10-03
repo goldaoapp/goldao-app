@@ -50,6 +50,10 @@ module {
 
   public func treasury() : Principal { Principal.fromText(TREASURY) };
 
+  public let BREAKER_MAX : Nat = 3;
+  public let BREAKER_WINDOW_NS : Int = 1_800_000_000_000;
+  public let LEDGER_FAIL_MAX : Nat = 5;
+
   public func isBootstrapAdmin(p : Principal) : Bool {
     let t = Principal.toText(p);
     for (a in BOOTSTRAP_ADMINS.values()) {
