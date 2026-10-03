@@ -11,40 +11,70 @@ import type { IDL } from '@icp-sdk/core/candid';
 import type { Principal } from '@icp-sdk/core/principal';
 
 export interface AdminView {
-  'status' : WeekStatus,
-  'drawCarry' : bigint,
-  'week' : bigint,
-  'lastClose' : [] | [WeekSummary],
+  'durationDays' : bigint,
+  'staked' : bigint,
+  'stakes' : Array<bigint>,
+  'bankAccount' : [] | [Principal],
+  'bank' : bigint,
+  'fund' : bigint,
+  'owed' : bigint,
+  'pool' : bigint,
+  'tournament' : bigint,
+  'reserve' : bigint,
+  'selfId' : [] | [Principal],
+  'cycles' : bigint,
+  'lastClose' : [] | [TournamentSummary],
+  'withdrawable' : bigint,
+  'bankAllowance' : bigint,
   'burned' : bigint,
+  'realLedger' : boolean,
   'payouts' : Array<Payout>,
-  'treasury' : bigint,
+  'paused' : boolean,
+  'endsAt' : bigint,
+}
+export interface AutoResult {
+  'end' : EndResult,
+  'pool' : bigint,
+  'steps' : Array<AutoStep>,
+}
+export interface AutoStep {
+  'collapsed' : boolean,
+  'pick' : bigint,
+  'diamond' : DiamondResult,
 }
 export interface Cell { 'value' : Value, 'name' : string }
-export interface ChipView {
-  'id' : bigint,
-  'diamonds' : bigint,
-  'tier' : TierIndex,
-  'used' : bigint,
-  'avgX100' : bigint,
-  'projectedX100' : bigint,
-  'gapToNextX100' : [] | [bigint],
-  'points' : bigint,
-}
 export interface Dashboard {
-  'status' : WeekStatus,
-  'tiers' : Array<bigint>,
+  'stakes' : Array<bigint>,
   'balance' : bigint,
-  'diamonds' : bigint,
-  'chips' : Array<ChipView>,
+  'blocked' : boolean,
   'open' : [] | [ExcavationView],
-  'paid' : bigint,
-  'week' : bigint,
-  'history' : Array<PlayerWeekResult>,
-  'totalDiamonds' : bigint,
-  'stats' : WeekStats,
-  'excavationsLeft' : bigint,
+  'pool' : bigint,
+  'tournament' : bigint,
+  'history' : Array<PlayerTournamentResult>,
+  'credit' : bigint,
+  'stats' : TournamentStats,
+  'allowance' : bigint,
   'faucetRemaining' : bigint,
-  'estimatedReceive' : bigint,
+  'pendingPayout' : bigint,
+  'paused' : boolean,
+  'endsAt' : bigint,
+}
+export interface DiamondResult { 'won' : bigint, 'stage' : bigint }
+export type EndKind = { 'maxed' : null } |
+  { 'collapsed' : null } |
+  { 'saved' : null };
+export interface EndResult {
+  'won' : bigint,
+  'jackpotWon' : bigint,
+  'balance' : bigint,
+  'kind' : EndKind,
+  'lost' : bigint,
+  'credit' : bigint,
+  'stake' : bigint,
+  'gross' : bigint,
+  'picks' : bigint,
+  'charged' : bigint,
+  'points' : bigint,
 }
 export type Error = { 'FrontendOriginsNotConfigured' : null } |
   {
@@ -62,102 +92,129 @@ export type Error = { 'FrontendOriginsNotConfigured' : null } |
   { 'MissingField' : string } |
   { 'FrontendOriginMismatch' : { 'got' : string, 'expected' : Array<string> } };
 export interface ExcavationView {
+  'jackpotWon' : bigint,
   'runPoints' : bigint,
+  'collapseGross' : bigint,
   'diamonds' : bigint,
+  'nextGross' : bigint,
+  'held' : bigint,
   'canSave' : boolean,
-  'ifCollapse' : bigint,
-  'nextPoints' : bigint,
-  'chipId' : bigint,
+  'stake' : bigint,
+  'runGross' : bigint,
   'picks' : bigint,
   'safePctX100' : bigint,
 }
+export type GResult = { 'ok' : bigint } |
+  { 'err' : string };
+export type GResult_1 = { 'ok' : EndResult } |
+  { 'err' : string };
+export type GResult_2 = { 'ok' : PickResult } |
+  { 'err' : string };
+export type GResult_3 = { 'ok' : AutoResult } |
+  { 'err' : string };
+export type GResult_4 = { 'ok' : AdminView } |
+  { 'err' : string };
+export type GResult_5 = { 'ok' : null } |
+  { 'err' : string };
+export type GResult_6 = {
+    'ok' : { 'paid' : bigint, 'remaining' : bigint, 'failed' : bigint }
+  } |
+  { 'err' : string };
+export type GResult_7 = { 'ok' : Array<[Principal, UserRole]> } |
+  { 'err' : string };
 export interface GameConfig {
-  'status' : WeekStatus,
   'mines' : bigint,
+  'ledgerId' : string,
+  'stakeCapE8s' : bigint,
   'feeE8s' : bigint,
-  'minChips' : bigint,
+  'diamond1Bps' : bigint,
+  'diamond2Bps' : bigint,
   'cells' : bigint,
   'pointsTable' : Array<bigint>,
-  'week' : bigint,
-  'minPlayers' : bigint,
-  'treasuryBps' : bigint,
-  'chipPriceE8s' : bigint,
-  'tierCutsPct' : Array<bigint>,
+  'maxPicks' : bigint,
+  'payoutBps' : bigint,
   'safePicks' : bigint,
-  'tierMultBps' : Array<bigint>,
+  'stakeMinE8s' : bigint,
   'faucetCapE8s' : bigint,
-  'excavationsPerChip' : bigint,
-  'drawBps' : bigint,
-  'diamondBps' : bigint,
+  'realLedger' : boolean,
+  'diamond3PerGoldao' : bigint,
 }
-export interface Payout {
-  'to' : Principal,
-  'concept' : PayoutConcept,
-  'tiers' : Array<bigint>,
+export interface JackpotWin {
+  'at' : bigint,
+  'player' : Principal,
+  'tournament' : bigint,
+  'stake' : bigint,
   'amount' : bigint,
 }
-export type PayoutConcept = { 'draw' : null } |
-  { 'prize' : null };
+export interface Payout {
+  'id' : bigint,
+  'to' : Principal,
+  'paid' : boolean,
+  'tournament' : bigint,
+  'stamp' : bigint,
+  'amount' : bigint,
+}
 export interface PickResult {
+  'end' : [] | [EndResult],
   'collapsed' : boolean,
-  'diamond' : boolean,
-  'ended' : boolean,
-  'pointsSaved' : bigint,
+  'pool' : bigint,
+  'diamond' : DiamondResult,
+  'credit' : bigint,
   'picks' : bigint,
   'excavation' : [] | [ExcavationView],
 }
 export interface PlayerRow {
-  'tiers' : Array<bigint>,
-  'player' : Principal,
-  'diamonds' : bigint,
-  'chips' : bigint,
-  'paid' : bigint,
-  'avgX100' : bigint,
-  'playing' : boolean,
-  'estimatedReceive' : bigint,
-}
-export interface PlayerWeekResult {
-  'tiers' : Array<bigint>,
+  'staked' : bigint,
+  'jackpotWon' : bigint,
   'deepest' : bigint,
-  'diamonds' : bigint,
-  'collapses' : bigint,
-  'best' : bigint,
-  'chips' : bigint,
-  'paid' : bigint,
-  'week' : bigint,
-  'received' : bigint,
-  'drawWon' : boolean,
+  'player' : Principal,
+  'excavations' : bigint,
+  'bestPoints' : bigint,
+  'returned' : bigint,
+}
+export interface PlayerTournamentResult {
+  'tournament' : bigint,
+  'credit' : bigint,
+  'stats' : TournamentStats,
+  'payout' : bigint,
 }
 export interface Ranking {
-  'pot' : bigint,
-  'status' : WeekStatus,
-  'treasurePerChip' : bigint,
-  'treasuryKeep' : bigint,
-  'chips' : bigint,
-  'week' : bigint,
-  'totalDiamonds' : bigint,
+  'staked' : bigint,
+  'pool' : bigint,
+  'tournament' : bigint,
   'players' : Array<PlayerRow>,
-  'drawPrize' : bigint,
-  'cutsX100' : Array<[] | [bigint]>,
+  'jackpots' : Array<JackpotWin>,
+  'endsAt' : bigint,
 }
-export type Result = { 'ok' : ExcavationView } |
-  { 'err' : string };
-export type Result_1 = { 'ok' : bigint } |
-  { 'err' : string };
-export type Result_2 = { 'ok' : PickResult } |
-  { 'err' : string };
-export type Result_3 = { 'ok' : AdminView } |
-  { 'err' : string };
-export type Result_4 = { 'ok' : null } |
-  { 'err' : string };
-export type Result_5 = { 'ok' : WeekSummary } |
-  { 'err' : string };
-export type Result_6 = { 'ok' : Array<[Principal, UserRole]> } |
-  { 'err' : string };
 export type Result_7 = { 'ok' : null } |
   { 'err' : Error };
 export interface Result__1 { 'hasMore' : boolean, 'rows' : Array<Array<Cell>> }
-export type TierIndex = bigint;
+export type StakeOption = { 'max' : null } |
+  { 'mid' : null } |
+  { 'min' : null };
+export interface TournamentStats {
+  'staked' : bigint,
+  'jackpotWon' : bigint,
+  'deepest' : bigint,
+  'excavations' : bigint,
+  'collapses' : bigint,
+  'bestPoints' : bigint,
+  'charged' : bigint,
+  'returned' : bigint,
+  'jackpots' : bigint,
+}
+export interface TournamentSummary {
+  'staked' : bigint,
+  'excavations' : bigint,
+  'jackpotPaid' : bigint,
+  'tournament' : bigint,
+  'closedAt' : bigint,
+  'players' : bigint,
+  'forfeited' : bigint,
+  'payoutTotal' : bigint,
+  'returned' : bigint,
+  'jackpots' : bigint,
+}
 export interface TreasurySnapshot {
   'ogy_usd' : number,
   'date' : string,
@@ -178,77 +235,38 @@ export type Value = { 'int' : bigint } |
   { 'bool' : boolean } |
   { 'null' : null } |
   { 'text' : string };
-export interface WeekStats {
-  'deepest' : bigint,
-  'playTx' : bigint,
-  'collapses' : bigint,
-  'best' : bigint,
-}
-export type WeekStatus = { 'closed' : null } |
-  { 'open' : null } |
-  { 'closing' : null };
-export interface WeekSummary {
-  'pot' : bigint,
-  'treasurePerChip' : bigint,
-  'treasuryKeep' : bigint,
-  'chips' : bigint,
-  'week' : bigint,
-  'drawTicket' : bigint,
-  'drawTickets' : bigint,
-  'closedAt' : bigint,
-  'players' : bigint,
-  'drawPrize' : bigint,
-  'drawWinner' : [] | [Principal],
-  'drawRandom' : bigint,
-}
 export interface _SERVICE {
   '_initialize_access_control' : ActorMethod<[], undefined>,
   '_internet_identity_sign_in_finish' : ActorMethod<[], Result_7>,
   '_internet_identity_sign_in_start' : ActorMethod<[], Uint8Array>,
-  /**
-   * / Lists every principal that has a role. Admin only.
-   */
-  'adminListRoles' : ActorMethod<[], Result_6>,
-  /**
-   * / Syncs the app-wide admin role for the hardcoded bootstrap principals (Game.BOOTSTRAP_ADMINS).
-   * / Returns true only when the caller is one of them; does nothing otherwise.
-   */
+  'adminListRoles' : ActorMethod<[], GResult_7>,
   'adminSyncBootstrap' : ActorMethod<[], boolean>,
   'assignCallerUserRole' : ActorMethod<[Principal, UserRole], undefined>,
   'execute' : ActorMethod<[string], Result__1>,
-  /**
-   * / Closes the week: saves open excavations, auto-plays the remaining ones
-   * / saving at 3, ranks chips, computes payouts and runs the diamond draw.
-   */
-  'gameAdminCloseWeek' : ActorMethod<[], Result_5>,
-  /**
-   * / Credits all payouts (simulated), archives the week and opens the next one.
-   */
-  'gameAdminPayAndOpenNext' : ActorMethod<[], Result_1>,
-  /**
-   * / Recovery: if a close was interrupted (status stuck in #closing), reopens the week
-   * / so the admin can run the close again. Open excavations were already saved.
-   */
-  'gameAdminRecoverClosing' : ActorMethod<[], Result_4>,
-  'gameAdminView' : ActorMethod<[], Result_3>,
-  /**
-   * / Buys chips: sends n x 1,000 to the treasury + 10 fee.
-   */
-  'gameBuyChips' : ActorMethod<[bigint], Result_1>,
+  'gameAdminCloseTournament' : ActorMethod<[], GResult_5>,
+  'gameAdminLedgerAllowance' : ActorMethod<[Principal, Principal], GResult>,
+  'gameAdminLedgerBalance' : ActorMethod<[Principal], GResult>,
+  'gameAdminPay' : ActorMethod<[], GResult_6>,
+  'gameAdminRecordWithdrawal' : ActorMethod<[bigint], GResult>,
+  'gameAdminRefreshBank' : ActorMethod<[], GResult>,
+  'gameAdminReleaseBusy' : ActorMethod<[Principal], GResult_5>,
+  'gameAdminSeedPool' : ActorMethod<[bigint], GResult>,
+  'gameAdminSetDuration' : ActorMethod<[bigint], GResult_5>,
+  'gameAdminSetRealLedger' : ActorMethod<[Principal], GResult>,
+  'gameAdminTestApprove' : ActorMethod<[bigint], GResult>,
+  'gameAdminTestDeposit' : ActorMethod<[bigint], GResult>,
+  'gameAdminUnblock' : ActorMethod<[Principal], GResult_5>,
+  'gameAdminView' : ActorMethod<[], GResult_4>,
+  'gameAdminWithdraw' : ActorMethod<[bigint], GResult>,
+  'gameAuto' : ActorMethod<[StakeOption, bigint], GResult_3>,
   'gameConfig' : ActorMethod<[], GameConfig>,
   'gameMyDashboard' : ActorMethod<[], Dashboard>,
-  /**
-   * / One pick. Calls raw_rand to resolve collapse (from the 3rd pick) and diamond.
-   */
-  'gamePick' : ActorMethod<[], Result_2>,
+  'gamePick' : ActorMethod<[[] | [StakeOption]], GResult_2>,
   'gameRanking' : ActorMethod<[], Ranking>,
-  /**
-   * / Test GOLDAO: up to FAUCET_CAP per principal per week.
-   */
-  'gameRequestTestTokens' : ActorMethod<[bigint], Result_1>,
-  'gameSave' : ActorMethod<[], Result_1>,
-  'gameStartExcavation' : ActorMethod<[], Result>,
-  'gameWeeks' : ActorMethod<[], Array<WeekSummary>>,
+  'gameRequestTestTokens' : ActorMethod<[bigint], GResult>,
+  'gameSave' : ActorMethod<[], GResult_1>,
+  'gameTestApprove' : ActorMethod<[bigint], GResult>,
+  'gameTournaments' : ActorMethod<[], Array<TournamentSummary>>,
   'getCallerUserRole' : ActorMethod<[], UserRole>,
   /**
    * / Full history sorted by date ascending.
@@ -264,9 +282,6 @@ export interface _SERVICE {
    */
   'saveTreasurySnapshot' : ActorMethod<[TreasurySnapshot], boolean>,
   'schema' : ActorMethod<[], string>,
-  /**
-   * / Returns the caller's principal as text.
-   */
   'whoAmI' : ActorMethod<[], string>,
 }
 export declare const idlService: IDL.ServiceClass;
