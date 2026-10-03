@@ -124,7 +124,7 @@ export function PlayerDashboard({ dashboard }: Props) {
           </span>
           <span className={cn("font-mono text-[10px]", inkFaint)}>
             {drawChance > 0
-              ? `${drawChance.toFixed(1)}% draw chance`
+              ? `${drawChance.toFixed(1)}% jackpot chance`
               : "No tickets yet"}
           </span>
         </motion.div>
@@ -327,7 +327,7 @@ export function PlayerDashboard({ dashboard }: Props) {
                         className={cn("flex items-center gap-1", DIAMOND_TEXT)}
                       >
                         <Gem className="size-3" /> {Number(h.diamonds)}
-                        {h.drawWon && " · draw won"}
+                        {h.drawWon && " · jackpot won"}
                       </span>
                     </div>
                     <TierSummary tiers={h.tiers} />
@@ -378,7 +378,7 @@ export function PlayerDashboard({ dashboard }: Props) {
                         </td>
                         <td className={cn("px-3 py-2.5", DIAMOND_TEXT)}>
                           {Number(h.diamonds)}
-                          {h.drawWon && " · draw won"}
+                          {h.drawWon && " · jackpot won"}
                         </td>
                         <td className={cn("px-3 py-2.5 text-right", inkMid)}>
                           {fmtGoldao(h.paid)}
