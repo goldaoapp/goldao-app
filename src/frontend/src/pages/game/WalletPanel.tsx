@@ -8,9 +8,9 @@ import { useState } from "react";
 import { Spinner } from "./Spinner";
 import { eyebrow, fmtGoldao, gold, ink, inkFaint, panel } from "./game-utils";
 import { errorMessage, useGameAction } from "./useGame";
+import { useWallet } from "./useWallet";
 
 const FAUCET_PRESETS = [1_000, 5_000, 10_000, 20_000];
-const APPROVE_PRESETS = [1_000, 10_000, 100_000];
 
 interface Props {
   dashboard: Dashboard | undefined;
@@ -22,7 +22,7 @@ export function WalletPanel({ dashboard, config }: Props) {
   const { run, pending } = useGameAction();
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
-  const real = config?.realLedger ?? false;
+  const { balance, real } = useWallet(dashboard, config);
   const faucetLeft = dashboard ? Number(dashboard.faucetRemaining) / 1e8 : 0;
 
   const act = async (
@@ -48,7 +48,7 @@ export function WalletPanel({ dashboard, config }: Props) {
           <Wallet className="size-3.5" /> Wallet
         </span>
         <motion.span
-          key={String(dashboard?.balance)}
+          key={String(balance)}
           initial={{ opacity: 0.4, y: 4 }}
           animate={{ opacity: 1, y: 0 }}
           className={cn(
@@ -56,19 +56,17 @@ export function WalletPanel({ dashboard, config }: Props) {
             ink,
           )}
         >
-          {dashboard ? fmtGoldao(dashboard.balance) : <Spinner />}
+          {dashboard ? fmtGoldao(balance) : <Spinner />}
           <span className={cn("ml-2 font-mono text-xs", gold)}>GOLDAO</span>
         </motion.span>
         <span className={cn("font-mono text-[11px]", inkFaint)}>
-          Approved to the game:{" "}
-          {dashboard ? fmtGoldao(dashboard.allowance) : <Spinner />}
-          {real ? "" : " · test tokens"}
+          {real ? "GOLDAO ledger" : "Test tokens"}
         </span>
       </div>
 
       <div className="flex flex-col gap-3 border-b border-[color:var(--term-border-faint)] p-5 md:border-b-0 md:border-r">
         <span className={cn(eyebrow, inkFaint, "flex items-center gap-1.5")}>
-          <Coins className="size-3.5" /> Game credit
+          <Coins className="size-3.5" /> To collect
         </span>
         <span
           className={cn(
@@ -80,8 +78,9 @@ export function WalletPanel({ dashboard, config }: Props) {
           <span className={cn("ml-2 font-mono text-xs", gold)}>GOLDAO</span>
         </span>
         <span className={cn("font-mono text-[11px]", inkFaint)}>
-          Pending payout:{" "}
-          {dashboard ? fmtGoldao(dashboard.pendingPayout) : <Spinner />}
+          {dashboard && dashboard.pendingPayout > 0n
+            ? `Pending payout from last tournament: ${fmtGoldao(dashboard.pendingPayout)}`
+            : "Paid when the tournament closes"}
         </span>
       </div>
 
@@ -91,10 +90,10 @@ export function WalletPanel({ dashboard, config }: Props) {
             <span
               className={cn(eyebrow, inkFaint, "flex items-center gap-1.5")}
             >
-              <ShieldCheck className="size-3.5" /> Allowance
+              <ShieldCheck className="size-3.5" /> Wallet play
             </span>
             <span className={cn("text-xs", inkFaint)}>
-              Approve the game on the GOLDAO ledger to play from your wallet.
+              The game authorizes itself when you play and only charges losses.
             </span>
           </>
         ) : (
@@ -121,29 +120,6 @@ export function WalletPanel({ dashboard, config }: Props) {
                   className="font-mono text-xs"
                 >
                   +{a.toLocaleString("en-US")}
-                </Button>
-              ))}
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <span className={cn("font-mono text-[11px]", inkFaint)}>
-                Approve
-              </span>
-              {APPROVE_PRESETS.map((a) => (
-                <Button
-                  key={a}
-                  size="sm"
-                  variant="outline"
-                  disabled={!!pending}
-                  onClick={() =>
-                    void act(
-                      "approve",
-                      () => actor!.gameTestApprove(BigInt(a)),
-                      `Approved ${a.toLocaleString("en-US")} GOLDAO.`,
-                    )
-                  }
-                  className="font-mono text-xs"
-                >
-                  {a.toLocaleString("en-US")}
                 </Button>
               ))}
             </div>
