@@ -17,6 +17,32 @@ mixin (
   accessControlState : Types.AccessControlState,
 ) {
 
+  transient var gSat : Nat = 0;
+
+  func gSub(a : Nat, b : Nat) : Nat {
+    if (b > a) {
+      gSat += 1;
+      return 0;
+    };
+    a - b;
+  };
+
+  func gUnpaidTotal() : Nat {
+    var t = 0;
+    for ((_, po) in gameState.payouts.entries()) {
+      if (not po.paid) t += po.amount + Game.FEE;
+    };
+    t;
+  };
+
+  func gAccountingOk() : Bool {
+    var credits = 0;
+    for ((_, c) in gameState.credits.entries()) { credits += c };
+    var held = 0;
+    for ((_, e) in gameState.open.entries()) { held += e.held };
+    gameState.owed == credits + held + gUnpaidTotal();
+  };
+
   func gIsAdmin(p : Principal) : Bool {
     if (Game.isBootstrapAdmin(p)) return true;
     switch (accessControlState.userRoles.get(p)) {
@@ -206,8 +232,8 @@ mixin (
     if (not gameState.realLedger) {
       let need = amount + Game.FEE;
       if (gAllowance(p) < need or gBalance(p) < need) return #funds;
-      gameState.balances.add(p, Game.sub(gBalance(p), need));
-      gameState.allowances.add(p, Game.sub(gAllowance(p), need));
+      gameState.balances.add(p, gSub(gBalance(p), need));
+      gameState.allowances.add(p, gSub(gAllowance(p), need));
       gameState.bank += amount;
       gameState.burned += Game.FEE;
       gameState.movSeq += 1;
@@ -252,8 +278,8 @@ mixin (
     if (not gameState.realLedger) {
       if (gameState.bank < need) return #err("The bank wallet does not cover the payout.");
       if (gameState.bankAllowance < need) return #err("The payout authorization is too low.");
-      gameState.bank := Game.sub(gameState.bank, need);
-      gameState.bankAllowance := Game.sub(gameState.bankAllowance, need);
+      gameState.bank := gSub(gameState.bank, need);
+      gameState.bankAllowance := gSub(gameState.bankAllowance, need);
       gameState.balances.add(to, gBalance(to) + amount);
       gameState.burned += Game.FEE;
       gameState.movSeq += 1;
@@ -273,11 +299,11 @@ mixin (
       gameState.movSeq += 1;
       switch (res) {
         case (#Ok _) {
-          gameState.bank := Game.sub(gameState.bank, need);
+          gameState.bank := gSub(gameState.bank, need);
           #ok;
         };
         case (#Err(#Duplicate _)) {
-          gameState.bank := Game.sub(gameState.bank, need);
+          gameState.bank := gSub(gameState.bank, need);
           #ok;
         };
         case (#Err(#TooOld)) {
@@ -302,7 +328,7 @@ mixin (
   func gReleaseHeld(e : Types.Excavation) {
     if (e.held > 0) {
       gameState.pool += e.held;
-      gameState.owed := Game.sub(gameState.owed, e.held);
+      gameState.owed := gSub(gameState.owed, e.held);
     };
   };
 
@@ -345,7 +371,7 @@ mixin (
     let won = gameState.pool;
     if (won == 0) return ({ stage = 2; won = 0 }, e);
     let seed = Nat.min(Game.POOL_SEED, gameState.reserve);
-    gameState.reserve := Game.sub(gameState.reserve, seed);
+    gameState.reserve := gSub(gameState.reserve, seed);
     gameState.pool := seed;
     gameState.owed += won;
     ({ stage = 3; won }, { e with held = e.held + won; jackpotWon = e.jackpotWon + won });
@@ -386,7 +412,7 @@ mixin (
       let c = gCredit(p);
       let fromCredit = Nat.min(c, lost);
       gameState.credits.add(p, c - fromCredit);
-      gameState.owed := Game.sub(gameState.owed, fromCredit);
+      gameState.owed := gSub(gameState.owed, fromCredit);
       let need = lost - fromCredit;
       taken := Nat.min(charged, need);
       if (charged > need) gRecoverCharge(p, charged - need);
@@ -451,7 +477,7 @@ mixin (
         gameState.payouts.add(id, { id; tournament = t; to = p; amount = c - Game.FEE; paid = false; stamp = Nat.toNat64(Int.abs(Time.now())) });
         payoutTotal += c - Game.FEE;
       } else {
-        gameState.owed := Game.sub(gameState.owed, c);
+        gameState.owed := gSub(gameState.owed, c);
         forfeited += c;
       };
     };
@@ -1062,7 +1088,7 @@ mixin (
     if (gameState.realLedger) return #err("Authorize from the admin wallet.");
     if (goldao > Game.MAX_APPROVE / Game.E8S) return #err("Amount too large.");
     if (gameState.bank < Game.FEE) return #err("The bank wallet cannot pay the fee.");
-    gameState.bank := Game.sub(gameState.bank, Game.FEE);
+    gameState.bank := gSub(gameState.bank, Game.FEE);
     gameState.burned += Game.FEE;
     gameState.bankAllowance := goldao * Game.E8S;
     #ok(gameState.bankAllowance);
@@ -1074,7 +1100,16 @@ mixin (
     if (gameState.payingSince != 0 and now - gameState.payingSince < Game.BUSY_STALE_NS) {
       return #err("A payment run is in progress.");
     };
+    if (gSat > 0 or not gAccountingOk()) return #err("Accounting check failed. Payments are blocked.");
     gameState.payingSince := now;
+    if (gameState.realLedger and not (await lBankRefresh())) {
+      gameState.payingSince := 0;
+      return #err("The ledger is unavailable.");
+    };
+    if (gSat > 0 or not gAccountingOk() or gUnpaidTotal() > gameState.bank) {
+      gameState.payingSince := 0;
+      return #err("Accounting check failed. Payments are blocked.");
+    };
     let pending = Array.sort(
       gameState.payouts.values().filter(func(po : Types.Payout) : Bool { not po.paid }).toArray(),
       func(a : Types.Payout, b : Types.Payout) : { #less; #equal; #greater } { Nat.compare(a.id, b.id) },
@@ -1096,7 +1131,7 @@ mixin (
                     case (?now2) {
                       if (not now2.paid) {
                         gameState.payouts.add(cur.id, { now2 with paid = true });
-                        gameState.owed := Game.sub(gameState.owed, now2.amount + Game.FEE);
+                        gameState.owed := gSub(gameState.owed, now2.amount + Game.FEE);
                         paid += 1;
                       };
                     };
@@ -1173,8 +1208,17 @@ mixin (
       breakerMax = gameState.breakerMax;
       breakerWindowMin = Int.abs(gameState.breakerWindowNs / 60_000_000_000);
       ledgerFails = gameState.ledgerFails;
+      saturations = gSat;
+      accountingOk = gAccountingOk();
       flagged;
     });
+  };
+
+  public shared ({ caller }) func gameAdminAckAccounting() : async Result.Result<(), Text> {
+    if (not gIsAdmin(caller)) return #err("Admin only.");
+    if (not gAccountingOk()) return #err("The accounting check still fails.");
+    gSat := 0;
+    #ok(());
   };
 
   public shared ({ caller }) func gameAdminHalt() : async Result.Result<(), Text> {
@@ -1229,7 +1273,7 @@ mixin (
       and gameState.payouts.values().filter(func(po : Types.Payout) : Bool { not po.paid }).toArray().size() == 0;
     };
     if (not idle()) return #err("The game must be empty: close the tournament and pay everything first.");
-    let bankAccount = Game.treasury();
+    let bankAccount = caller;
     let balance = try {
       let fee = await Ledger.ledger().icrc1_fee();
       if (fee != Game.FEE) return #err("The ledger fee differs from the game fee.");
