@@ -21,7 +21,7 @@ import { PlayerDashboard } from "./PlayerDashboard";
 import { PrizeGuide } from "./PrizeGuide";
 import { RankingTable } from "./RankingTable";
 import { WalletPanel } from "./WalletPanel";
-import { fmtTimeLeft, gold, inkFaint, inkMid, panel } from "./game-utils";
+import { fmtCountdown, gold, inkFaint, inkMid, panel } from "./game-utils";
 import {
   useAdminView,
   useDashboard,
@@ -81,7 +81,7 @@ export default function GamePage() {
               {paused
                 ? "paused"
                 : dashboard
-                  ? `ends in ${fmtTimeLeft(dashboard.endsAt)}`
+                  ? `ends in ${fmtCountdown(dashboard.endsAt)}`
                   : "open"}
             </span>
           </motion.span>
@@ -147,7 +147,7 @@ export default function GamePage() {
         </TabsContent>
         <TabsContent value="guide">
           <Fade>
-            <PrizeGuide config={config} />
+            <PrizeGuide config={config} stakes={dashboard?.stakes} />
           </Fade>
         </TabsContent>
         {adminView && (
