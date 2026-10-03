@@ -2,198 +2,247 @@ import Map "mo:core/Map";
 import List "mo:core/List";
 
 module {
-  // Same shape as AccessControl.AccessControlState, used to check admin without depending on the package.
   public type UserRole = { #admin; #user; #guest };
   public type AccessControlState = {
     var adminAssigned : Bool;
     userRoles : Map.Map<Principal, UserRole>;
   };
 
-  // 0 Treasure, 1 Ingot, 2 Nugget, 3 Gold dust, 4 Rock
-  public type TierIndex = Nat;
+  public type StakeOption = { #min; #mid; #max };
 
-  public type Chip = {
-    id : Nat;
-    owner : Principal;
-    used : Nat; // finished excavations (0..10)
-    points : Nat;
-    diamonds : Nat;
-    finishedAt : Int; // 0 = not finished
-  };
+  public type Check = { #ok; #balance : Nat; #allowance : Nat; #down };
+  public type Charge = { #ok; #funds; #down };
 
   public type Excavation = {
-    chipId : Nat;
-    picks : Nat; // safe picks done
+    tournament : Nat;
+    stake : Nat;
+    picks : Nat;
     diamonds : Nat;
-    busy : Bool; // a pick is waiting for raw_rand
+    jackpotWon : Nat;
+    held : Nat;
+    busy : Bool;
+    token : Nat;
+    busyAt : Int;
   };
 
-  public type WeekStats = {
-    playTx : Nat; // times the player bought chips (fees to refund)
+  public type TournamentStats = {
+    excavations : Nat;
+    staked : Nat;
+    returned : Nat;
+    jackpotWon : Nat;
+    jackpots : Nat;
+    charged : Nat;
     collapses : Nat;
-    best : Nat; // best excavation (points)
-    deepest : Nat; // deepest pick reached
-  };
-
-  public type PlayerWeekResult = {
-    week : Nat;
-    chips : Nat;
-    tiers : [Nat]; // chips per tier, indexed by TierIndex
-    diamonds : Nat;
-    paid : Nat; // e8s paid (chips + fees)
-    received : Nat; // e8s received (prizes + draw)
-    drawWon : Bool;
-    best : Nat;
+    bestPoints : Nat;
     deepest : Nat;
-    collapses : Nat;
   };
-
-  public type PayoutConcept = { #prize; #draw };
 
   public type Payout = {
+    id : Nat;
+    tournament : Nat;
     to : Principal;
-    amount : Nat; // net credited (e8s), fee already deducted
-    concept : PayoutConcept;
-    tiers : [Nat];
+    amount : Nat;
+    paid : Bool;
+    stamp : Nat64;
   };
 
-  public type WeekSummary = {
-    week : Nat;
-    chips : Nat;
+  public type JackpotWin = {
+    tournament : Nat;
+    player : Principal;
+    amount : Nat;
+    stake : Nat;
+    at : Int;
+  };
+
+  public type PlayerTournamentResult = {
+    tournament : Nat;
+    stats : TournamentStats;
+    credit : Nat;
+    payout : Nat;
+  };
+
+  public type TournamentSummary = {
+    tournament : Nat;
     players : Nat;
-    pot : Nat;
-    treasurePerChip : Nat;
-    treasuryKeep : Nat;
-    drawPrize : Nat;
-    drawTickets : Nat;
-    drawTicket : Nat; // 0 = no draw (prize carries over)
-    drawWinner : ?Principal;
-    drawRandom : Nat; // raw_rand value used, for verification
+    excavations : Nat;
+    staked : Nat;
+    returned : Nat;
+    jackpots : Nat;
+    jackpotPaid : Nat;
+    payoutTotal : Nat;
+    forfeited : Nat;
     closedAt : Int;
   };
 
-  public type WeekStatus = { #open; #closing; #closed };
-
   public type GameState = {
-    var week : Nat;
-    var status : WeekStatus;
-    var nextChipId : Nat;
-    var treasury : Nat; // simulated treasury balance (e8s)
-    var burned : Nat; // burned fees (e8s)
-    var drawCarry : Nat; // draw prize carried over from weeks without diamonds
+    var tournament : Nat;
+    var endsAt : Int;
+    var durationDays : Nat;
+    var bank : Nat;
+    var owed : Nat;
+    var pool : Nat;
+    var reserve : Nat;
+    var cycles : Nat;
+    var burned : Nat;
+    var realLedger : Bool;
+    var bankAccount : ?Principal;
+    var selfId : ?Principal;
+    var bankAllowance : Nat;
+    var seq : Nat;
+    var movSeq : Nat;
+    var payingSince : Int;
+    var nextPayoutId : Nat;
     balances : Map.Map<Principal, Nat>;
-    faucet : Map.Map<Principal, (Nat, Nat)>; // (week, e8s requested)
-    chips : Map.Map<Nat, Chip>;
+    allowances : Map.Map<Principal, Nat>;
+    faucet : Map.Map<Principal, (Nat, Nat)>;
+    credits : Map.Map<Principal, Nat>;
     open : Map.Map<Principal, Excavation>;
-    stats : Map.Map<Principal, WeekStats>;
-    history : Map.Map<Principal, List.List<PlayerWeekResult>>;
-    weeks : List.List<WeekSummary>;
-    var payouts : [Payout];
-    var pendingResults : [(Principal, PlayerWeekResult)];
-    var lastClose : ?WeekSummary;
+    stats : Map.Map<Principal, TournamentStats>;
+    history : Map.Map<Principal, List.List<PlayerTournamentResult>>;
+    blocked : Map.Map<Principal, Nat>;
+    tournaments : List.List<TournamentSummary>;
+    payouts : Map.Map<Nat, Payout>;
+    var jackpots : [JackpotWin];
+    var halted : Bool;
+    var haltCode : Nat;
+    var haltedAt : Int;
+    var resumedAt : Int;
+    var breakerMax : Nat;
+    var breakerWindowNs : Int;
+    var ledgerFails : Nat;
   };
 
-  // Views for the frontend (no var fields)
+  public type FlagEntry = { player : Principal; at : Int };
+
+  public type SecurityView = {
+    halted : Bool;
+    haltCode : Nat;
+    haltedAt : Int;
+    breakerMax : Nat;
+    breakerWindowMin : Nat;
+    ledgerFails : Nat;
+    flagged : [FlagEntry];
+  };
 
   public type ExcavationView = {
-    chipId : Nat;
+    stake : Nat;
     picks : Nat;
     diamonds : Nat;
+    jackpotWon : Nat;
+    held : Nat;
     runPoints : Nat;
-    ifCollapse : Nat;
-    nextPoints : Nat;
-    safePctX100 : Nat; // chance that the next pick is safe, x100
+    runGross : Nat;
+    collapseGross : Nat;
+    nextGross : Nat;
+    safePctX100 : Nat;
     canSave : Bool;
   };
 
+  public type EndKind = { #saved; #collapsed; #maxed };
+
+  public type EndResult = {
+    kind : EndKind;
+    picks : Nat;
+    points : Nat;
+    stake : Nat;
+    gross : Nat;
+    won : Nat;
+    lost : Nat;
+    charged : Nat;
+    jackpotWon : Nat;
+    credit : Nat;
+    balance : Nat;
+  };
+
+  public type DiamondResult = { stage : Nat; won : Nat };
+
   public type PickResult = {
     collapsed : Bool;
-    diamond : Bool;
     picks : Nat;
-    ended : Bool;
-    pointsSaved : Nat; // points added to the chip if the excavation ended
+    diamond : DiamondResult;
     excavation : ?ExcavationView;
+    end : ?EndResult;
+    credit : Nat;
+    pool : Nat;
   };
 
-  public type ChipView = {
-    id : Nat;
-    used : Nat;
-    points : Nat;
-    avgX100 : Nat;
-    projectedX100 : Nat; // average counting each unplayed excavation as AUTO_EV points
-    diamonds : Nat;
-    tier : TierIndex; // provisional
-    gapToNextX100 : ?Nat; // average points missing to reach the next tier
-  };
+  public type AutoStep = { pick : Nat; collapsed : Bool; diamond : DiamondResult };
+  public type AutoResult = { steps : [AutoStep]; end : EndResult; pool : Nat };
 
   public type Dashboard = {
-    week : Nat;
-    status : WeekStatus;
+    tournament : Nat;
+    endsAt : Int;
+    paused : Bool;
+    blocked : Bool;
+    stakes : [Nat];
     balance : Nat;
+    allowance : Nat;
+    credit : Nat;
+    pendingPayout : Nat;
+    pool : Nat;
     faucetRemaining : Nat;
-    chips : [ChipView];
-    excavationsLeft : Nat;
     open : ?ExcavationView;
-    tiers : [Nat];
-    diamonds : Nat;
-    totalDiamonds : Nat;
-    stats : WeekStats;
-    paid : Nat;
-    estimatedReceive : Nat;
-    history : [PlayerWeekResult];
+    stats : TournamentStats;
+    history : [PlayerTournamentResult];
   };
 
   public type PlayerRow = {
     player : Principal;
-    avgX100 : Nat;
-    chips : Nat;
-    tiers : [Nat];
-    diamonds : Nat;
-    paid : Nat;
-    estimatedReceive : Nat;
-    playing : Bool;
+    excavations : Nat;
+    staked : Nat;
+    returned : Nat;
+    jackpotWon : Nat;
+    bestPoints : Nat;
+    deepest : Nat;
   };
 
   public type Ranking = {
-    week : Nat;
-    status : WeekStatus;
-    chips : Nat;
-    pot : Nat;
-    treasurePerChip : Nat;
-    drawPrize : Nat;
-    treasuryKeep : Nat;
-    totalDiamonds : Nat;
-    cutsX100 : [?Nat]; // current minimum average for Treasure, Ingot, Nugget, Gold dust
+    tournament : Nat;
+    endsAt : Int;
+    pool : Nat;
+    staked : Nat;
     players : [PlayerRow];
+    jackpots : [JackpotWin];
   };
 
   public type GameConfig = {
-    chipPriceE8s : Nat;
     feeE8s : Nat;
-    excavationsPerChip : Nat;
     cells : Nat;
     mines : Nat;
     safePicks : Nat;
-    diamondBps : Nat;
-    tierCutsPct : [Nat];
-    tierMultBps : [Nat]; // Treasure = 0, computed at close
-    treasuryBps : Nat;
-    drawBps : Nat;
-    minChips : Nat;
-    minPlayers : Nat;
-    faucetCapE8s : Nat;
+    maxPicks : Nat;
     pointsTable : [Nat];
-    week : Nat;
-    status : WeekStatus;
+    payoutBps : Nat;
+    stakeMinE8s : Nat;
+    stakeCapE8s : Nat;
+    diamond1Bps : Nat;
+    diamond2Bps : Nat;
+    diamond3PerGoldao : Nat;
+    faucetCapE8s : Nat;
+    realLedger : Bool;
+    ledgerId : Text;
   };
 
   public type AdminView = {
-    week : Nat;
-    status : WeekStatus;
-    treasury : Nat;
+    tournament : Nat;
+    endsAt : Int;
+    durationDays : Nat;
+    realLedger : Bool;
+    bank : Nat;
+    owed : Nat;
+    pool : Nat;
+    reserve : Nat;
+    cycles : Nat;
     burned : Nat;
-    drawCarry : Nat;
+    fund : Int;
+    withdrawable : Nat;
+    stakes : [Nat];
+    paused : Bool;
+    staked : Nat;
+    bankAllowance : Nat;
+    bankAccount : ?Principal;
+    selfId : ?Principal;
     payouts : [Payout];
-    lastClose : ?WeekSummary;
+    lastClose : ?TournamentSummary;
   };
 };
