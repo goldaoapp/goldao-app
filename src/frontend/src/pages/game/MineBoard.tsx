@@ -74,6 +74,18 @@ const setCells = (
     cells: typeof next === "function" ? next(s.cells) : next,
   }));
 
+/** Next better prize the current excavation could reach. */
+type NextUnlock = {
+  tier: number;
+  pick: number;
+  pts: number;
+  near: boolean;
+  cutX100: number;
+};
+
+/** A prize counts as within reach when it is at most this many picks away. */
+const NEAR_PICKS = 3;
+
 /** Personal records at the start of the current excavation. */
 type RecordBase = { best: number; deepest: number; depthShown: boolean };
 
@@ -359,7 +371,16 @@ export function MineBoard({ dashboard, config }: Props) {
     if (!exc || tierNow === null || tierNow === 0) return null;
     for (let k = picks + 1; k < table.length; k++) {
       const t = tierFor(table[k] ?? 0);
-      if (t !== null && t < tierNow) return { tier: t, pick: k, pts: table[k] };
+      if (t !== null && t < tierNow) {
+        return {
+          tier: t,
+          pick: k,
+          pts: table[k],
+          // Within reach in this excavation: a few picks away
+          near: k - picks <= NEAR_PICKS,
+          cutX100: Number(cuts?.[t] ?? 0),
+        };
+      }
     }
     return null;
   })();
@@ -367,7 +388,7 @@ export function MineBoard({ dashboard, config }: Props) {
   // Big celebration on the board when saving now reaches a better tier
   const [tierPop, setTierPop] = useState<{
     tier: number;
-    next: { tier: number; pick: number; pts: number } | null;
+    next: NextUnlock | null;
   } | null>(null);
   const lastTier = useRef<number | null>(null);
   const popTimer = useRef<number | undefined>(undefined);
@@ -1181,7 +1202,7 @@ function TierPop({
   next,
 }: {
   tier: number;
-  next: { tier: number; pick: number; pts: number } | null;
+  next: NextUnlock | null;
 }) {
   const t = tierOf(tier);
   const Icon = t.icon;
@@ -1231,7 +1252,9 @@ function TierPop({
             transition={{ delay: 0.35 }}
             className="relative font-mono text-[11px] opacity-90"
           >
-            Next: {tierOf(next.tier).name} at pick {next.pick} ({next.pts} pts)
+            {next.near
+              ? `Next: ${tierOf(next.tier).name} at pick ${next.pick} (${next.pts} pts)`
+              : `Next: ${tierOf(next.tier).name} needs a chip average of ${fmtAvg(next.cutX100)}`}
           </motion.span>
         ) : tier === 0 ? (
           <span className="relative font-mono text-[11px] opacity-90">
