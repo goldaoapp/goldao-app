@@ -1,8 +1,11 @@
 import type { AdminView } from "@/backend";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/context/AuthContext";
+import { GOLDAO_FEE_E8S, approveSpender } from "@/lib/goldao-ledger";
+import { useInternetIdentity } from "@/lib/internet-identity";
 import { cn } from "@/lib/utils";
 import { Principal } from "@icp-sdk/core/principal";
+import { useQuery } from "@tanstack/react-query";
 import { Gem, Landmark, Shield } from "lucide-react";
 import { useState } from "react";
 import { Spinner } from "./Spinner";
@@ -41,7 +44,25 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
   const [confirm, setConfirm] = useState<string | null>(null);
   const [flags, setFlags] = useState("");
   const [windowMin, setWindowMin] = useState("");
+  const [authorizing, setAuthorizing] = useState(false);
   const { data: security } = useSecurityView(!!view);
+  const { identity } = useInternetIdentity();
+  const bankText = view?.bankAccount?.toText();
+  const selfText = view?.selfId?.toText();
+  const allowanceQuery = useQuery({
+    queryKey: ["game", "admin-allowance", bankText, selfText],
+    queryFn: async () => {
+      const res = await actor!.gameAdminLedgerAllowance(
+        Principal.fromText(bankText!),
+        Principal.fromText(selfText!),
+      );
+      if (res.__kind__ === "err") throw new Error(res.err);
+      return res.ok;
+    },
+    enabled: !!actor && !!view?.realLedger && !!bankText && !!selfText,
+    refetchInterval: 30_000,
+    retry: false,
+  });
 
   const act = async <T,>(
     name: string,
@@ -74,6 +95,27 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
   };
 
   const unpaid = view?.payouts.filter((p) => !p.paid) ?? [];
+  const needed = unpaid.reduce((t, p) => t + p.amount + GOLDAO_FEE_E8S, 0n);
+  const isBank =
+    !!identity && !!bankText && identity.getPrincipal().toText() === bankText;
+
+  const authorizeExact = async () => {
+    if (!identity || !selfText) return;
+    setMsg(null);
+    setAuthorizing(true);
+    try {
+      await approveSpender(identity, selfText, needed);
+      await allowanceQuery.refetch();
+      setMsg({
+        ok: true,
+        text: `Payout authorization set to ${fmtGoldao(needed)}.`,
+      });
+    } catch (e) {
+      setMsg({ ok: false, text: errorMessage(e) });
+    } finally {
+      setAuthorizing(false);
+    }
+  };
 
   return (
     <div className="flex flex-col gap-6">
@@ -232,6 +274,25 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
               Refresh bank
             </Button>
           </div>
+          {view?.realLedger && (
+            <div className="flex flex-wrap items-center gap-3 rounded-lg border border-[color:var(--term-border)] bg-[var(--term-header)] p-3">
+              <span className={cn("font-mono text-xs", inkMid)}>
+                Authorized{" "}
+                {allowanceQuery.data !== undefined
+                  ? fmtGoldao(allowanceQuery.data)
+                  : "-"}{" "}
+                · Needed {fmtGoldao(needed)}
+              </span>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={!!pending || authorizing || needed === 0n || !isBank}
+                onClick={() => void authorizeExact()}
+              >
+                Authorize exact amount
+              </Button>
+            </div>
+          )}
           {confirm === "withdraw" && (
             <div className="flex flex-wrap items-center gap-3 rounded-lg border border-[color:var(--term-border)] bg-[var(--term-header)] p-3">
               <span className={cn("text-sm", inkMid)}>
@@ -467,6 +528,34 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
               <span className={cn("font-mono text-[11px]", inkFaint)}>
                 Ledger failures in a row: {Number(security.ledgerFails)}
               </span>
+              <span
+                className={cn(
+                  "font-mono text-[11px]",
+                  security.accountingOk && security.saturations === 0n
+                    ? inkFaint
+                    : "text-destructive",
+                )}
+              >
+                {security.accountingOk && security.saturations === 0n
+                  ? "Accounting OK"
+                  : `Accounting check failed (${Number(security.saturations)}). Payments blocked.`}
+              </span>
+              {security.accountingOk && security.saturations > 0n && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={!!pending}
+                  onClick={() =>
+                    void act(
+                      "ack",
+                      () => actor!.gameAdminAckAccounting(),
+                      () => "Accounting alert cleared.",
+                    )
+                  }
+                >
+                  Clear alert
+                </Button>
+              )}
             </div>
             <div className="flex flex-wrap items-center gap-3">
               <input
