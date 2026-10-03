@@ -1,3 +1,5 @@
+import { Box, type LucideIcon, Sparkles, Trophy } from "lucide-react";
+
 /* Terminal tokens (index.css --term-*), same as the rest of the app */
 export const ink = "text-[color:var(--term-ink)]";
 export const inkMid = "text-[color:var(--term-ink-mid)]";
@@ -38,9 +40,9 @@ export function fmtPct(x100: bigint): string {
   return `${Math.round(Number(x100) / 100)}%`;
 }
 
-export function fmtTimeLeft(endsAtNs: bigint): string {
+export function fmtCountdown(endsAtNs: bigint): string {
   const ms = Number(endsAtNs / 1_000_000n) - Date.now();
-  if (ms <= 0) return "closing";
+  if (ms <= 0) return "Closing";
   const m = Math.floor(ms / 60_000);
   const d = Math.floor(m / 1440);
   const h = Math.floor((m % 1440) / 60);
@@ -56,11 +58,73 @@ export function fmtDate(ns: bigint): string {
   });
 }
 
-export const STAKE_LABEL: Record<string, string> = {
-  min: "Min",
-  mid: "Mid",
-  max: "Max",
+export const STAKE_LABELS = ["Min", "Mid", "Max"];
+
+export const PAYOUT_BPS = 9_200;
+
+/** Net multiplier text for a points value, e.g. 114 -> "1.05x". */
+export function fmtMult(points: number): string {
+  return `${((points * PAYOUT_BPS) / 1_000_000).toFixed(2)}x`;
+}
+
+/** Gross payout (e8s) for a stake and points, same integer math as the backend. */
+export function grossOf(stake: bigint, points: number): bigint {
+  return (stake * BigInt(points) * BigInt(PAYOUT_BPS)) / 1_000_000n;
+}
+
+export interface PrizeMeta {
+  name: string;
+  icon: LucideIcon;
+  pill: string;
+}
+
+const GOLD_DUST: PrizeMeta = {
+  name: "Gold dust",
+  icon: Sparkles,
+  pill: "bg-[oklch(0.85_0.1_85)] text-[oklch(0.36_0.07_70)] border-[oklch(0.78_0.1_82)]",
 };
+const INGOT: PrizeMeta = {
+  name: "Ingot",
+  icon: Box,
+  pill: "bg-[oklch(0.74_0.14_80)] text-[oklch(0.25_0.05_70)] border-[oklch(0.68_0.14_78)]",
+};
+const TREASURE: PrizeMeta = {
+  name: "Treasure",
+  icon: Trophy,
+  pill: "bg-[oklch(0.6_0.13_70)] text-[oklch(0.98_0.02_85)] border-[oklch(0.55_0.13_70)]",
+};
+
+/** Prize name for a saved depth: 3 Gold dust, 4-5 Ingot, 6-10 Treasure. */
+export function prizeName(picks: number): PrizeMeta {
+  if (picks >= 6) return TREASURE;
+  if (picks >= 4) return INGOT;
+  return GOLD_DUST;
+}
+
+/** Depth (picks) that corresponds to a points value of the table. */
+export function picksForPoints(table: number[], points: number): number {
+  let best = 0;
+  for (let i = 0; i < table.length; i++) if (table[i] <= points) best = i;
+  return best;
+}
+
+/** Net result of a ranking row: returned + jackpots - staked, in e8s. */
+export function netOf(row: {
+  returned: bigint;
+  jackpotWon: bigint;
+  staked: bigint;
+}): bigint {
+  return row.returned + row.jackpotWon - row.staked;
+}
+
+export function fmtSigned(e8s: bigint, digits = 0): string {
+  const sign = e8s > 0n ? "+" : e8s < 0n ? "-" : "";
+  const abs = e8s < 0n ? -e8s : e8s;
+  return `${sign}${fmtGoldao(abs, digits)}`;
+}
+
+/** Amount authorized to the game in one step (whole GOLDAO). */
+export const AUTHORIZE_GOLDAO = 10_000;
 
 export function shortPrincipal(p: string): string {
   return p.length > 14 ? `${p.slice(0, 5)}…${p.slice(-5)}` : p;
