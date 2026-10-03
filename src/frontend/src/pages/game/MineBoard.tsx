@@ -1,486 +1,479 @@
 import { EndKind, type EndResult, StakeOption } from "@/backend";
 import type { Dashboard, GameConfig } from "@/backend";
-import { Button } from "@/components/ui/button";
 import { useAuth } from "@/context/AuthContext";
 import { cn } from "@/lib/utils";
+import { Pickaxe, Volume2, VolumeX } from "lucide-react";
+import { AnimatePresence, motion, useAnimate } from "motion/react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { JackpotOverlay } from "./JackpotOverlay";
+import { CoinRain } from "./JackpotOverlay";
 import {
-  Bot,
-  Gem,
-  Hand,
-  Mountain,
-  Pickaxe,
-  Volume2,
-  VolumeX,
-} from "lucide-react";
-import { AnimatePresence, motion } from "motion/react";
-import { useEffect, useRef, useState } from "react";
-import { Spinner } from "./Spinner";
-import { resetBoard, setBoard, useBoard } from "./board-store";
-import type { Cell, RunResult } from "./board-store";
+  AutoPicker,
+  BoardMessage,
+  CreditBar,
+  JackpotCard,
+  Legend,
+  MineCell,
+  MiniStat,
+  PayoutStep,
+  ResultCard,
+  RollingNumber,
+  SaveButton,
+  StakeSelector,
+} from "./MineParts";
 import {
-  DIAMOND_CELL,
-  DIAMOND_IMG,
-  DIAMOND_TEXT,
-  ROCK_CELL,
-  STAKE_LABEL,
-  TOKENS,
+  type Cell,
+  clearBoardCells,
+  getBoard,
+  loadBoardCells,
+  resetBoard,
+  saveBoardCells,
+  setBoard,
+  useBoard,
+} from "./board-store";
+import {
   eyebrow,
-  fmtGoldao,
+  fmtCountdown,
   gold,
-  ink,
   inkFaint,
-  inkMid,
   panel,
   panelHeader,
   tokenForPick,
 } from "./game-utils";
 import { playSound, preloadSounds, useSoundToggle } from "./sounds";
 import { errorMessage, useGameAction } from "./useGame";
+import { useWallet } from "./useWallet";
 
 const CELLS = 25;
-const STAKE_KEYS: StakeOption[] = [
-  StakeOption.min,
-  StakeOption.mid,
-  StakeOption.max,
+const STAKE_KEYS = [StakeOption.min, StakeOption.mid, StakeOption.max];
+const AUTO_STEP_MS = 450;
+const RESTORE_ORDER = [
+  12, 6, 18, 8, 16, 2, 22, 10, 14, 0, 24, 4, 20, 7, 17, 11, 13, 1, 23, 3,
 ];
-const AUTO_STOPS = [3, 4, 5, 6, 7, 8];
 
 interface Props {
   dashboard: Dashboard | undefined;
   config: GameConfig | undefined;
 }
 
-function toRun(e: EndResult): RunResult {
-  return {
-    kind:
-      e.kind === EndKind.collapsed
-        ? "collapse"
-        : e.kind === EndKind.maxed
-          ? "maxed"
-          : "saved",
-    points: Number(e.points),
-    won: e.won,
-    lost: e.lost,
-    jackpotWon: e.jackpotWon,
-  };
-}
-
 export function MineBoard({ dashboard, config }: Props) {
-  const { actor, principalId } = useAuth();
-  const { run, pending, setOpenExcavation } = useGameAction();
+  const { actor, isAuthenticated, login, principalId } = useAuth();
+  const { run, refreshAll, setOpenExcavation, setCredit } = useGameAction();
+  const wallet = useWallet(dashboard, config);
+  const [scope, animate] = useAnimate<HTMLDivElement>();
   const board = useBoard();
+  const { exc, cells, digging, result, error, notice, jackpot } = board;
   const { muted, toggleMuted } = useSoundToggle();
-  const [stake, setStake] = useState<StakeOption>(StakeOption.min);
   const [autoStop, setAutoStop] = useState(3);
-  const busy = useRef(false);
+  const [autoBusy, setAutoBusy] = useState(false);
+  const busyRef = useRef(false);
+  const timers = useRef<number[]>([]);
+
+  const table = useMemo(
+    () => (config ? config.pointsTable.map(Number) : []),
+    [config],
+  );
+  const fee = config?.feeE8s ?? 1_000_000_000n;
+  const stakes = dashboard?.stakes ?? [];
+  const paused = !!dashboard?.paused;
+  const blocked = !!dashboard?.blocked;
+  const credit = dashboard?.credit ?? 0n;
+  const excNo = dashboard ? Number(dashboard.stats.excavations) : 0;
+  const busy = digging !== null || autoBusy || busyRef.current;
+  const locked = busy || jackpot !== null;
 
   useEffect(() => {
     preloadSounds();
+    return () => {
+      for (const t of timers.current) window.clearTimeout(t);
+    };
   }, []);
 
   useEffect(() => {
-    if (board.owner !== (principalId ?? null)) resetBoard(principalId ?? null);
-  }, [board.owner, principalId]);
+    if (getBoard().owner !== principalId) resetBoard(principalId);
+  }, [principalId]);
 
-  // Restore the backend's open excavation after a reload.
+  // Restore an excavation left open (reload, another tab) from the backend.
+  const open = dashboard?.open;
   useEffect(() => {
-    if (!dashboard || busy.current) return;
+    if (!dashboard || busyRef.current || autoBusy) return;
+    if (board.owner !== principalId || !principalId) return;
     if (Date.now() < board.skipRestoreUntil) return;
-    if (dashboard.open && !board.exc) setBoard({ exc: dashboard.open });
-    if (!dashboard.open && board.exc && board.digging === null) {
-      setBoard({ exc: null });
+    if (open && !exc) {
+      const picks = Number(open.picks);
+      const saved =
+        loadBoardCells(principalId, dashboard.tournament, excNo) ?? {};
+      const restored: Record<number, Cell> = { ...saved };
+      let n = Object.keys(saved).length;
+      for (const idx of RESTORE_ORDER) {
+        if (n >= picks) break;
+        if (restored[idx]) continue;
+        n += 1;
+        restored[idx] = { kind: "token", token: tokenForPick(n) };
+      }
+      setBoard({ exc: open, cells: restored, result: null });
     }
-  }, [dashboard, board.exc, board.digging, board.skipRestoreUntil]);
+    if (!open && exc && digging === null) setBoard({ exc: null });
+  }, [
+    dashboard,
+    open,
+    exc,
+    digging,
+    excNo,
+    principalId,
+    board.owner,
+    board.skipRestoreUntil,
+    autoBusy,
+  ]);
 
-  const exc = board.exc;
-  const stakes = dashboard?.stakes ?? [];
-  const stakeIdx = STAKE_KEYS.indexOf(stake);
-  const stakeAmount = exc ? exc.stake : (stakes[stakeIdx] ?? 0n);
-  const credit = dashboard?.credit ?? 0n;
-  const wallet = dashboard?.balance ?? 0n;
-  const canAfford = credit >= stakeAmount || wallet >= stakeAmount;
-  const locked = !!pending || busy.current || board.digging !== null;
-  const unavailable = !!dashboard?.paused || !!dashboard?.blocked;
+  const shake = useCallback(() => {
+    if (!scope.current) return;
+    void animate(
+      scope.current,
+      { x: [0, -10, 10, -7, 7, -3, 3, 0] },
+      { duration: 0.55 },
+    );
+  }, [animate, scope]);
 
-  const finish = (end: EndResult) => {
-    const r = toRun(end);
+  // Authorizes the game when the wallet has to back this excavation.
+  const authorize = async (stake: bigint): Promise<boolean> => {
+    if (credit >= stake) return true;
+    const need = stake - credit + fee;
+    setBoard({ notice: "Preparing your wallet…" });
+    try {
+      await wallet.ensureAllowance(need);
+      return true;
+    } catch (e) {
+      setBoard({ error: errorMessage(e) });
+      return false;
+    } finally {
+      setBoard({ notice: null });
+    }
+  };
+
+  const finish = (end: EndResult, stake: bigint) => {
     setBoard({
       exc: null,
       digging: null,
-      result: r,
-      skipRestoreUntil: Date.now() + 4000,
+      result: end,
+      skipRestoreUntil: Date.now() + 6000,
     });
+    clearBoardCells();
     setOpenExcavation(null);
-    if (r.kind !== "collapse") playSound("success");
+    if (end.kind === EndKind.collapsed) shake();
+    else if (end.won > 0n) playSound("success");
+    if (end.gross >= stake * 2n) setBoard((s) => ({ rain: s.rain + 1 }));
+    void refreshAll();
   };
 
   const dig = async (index: number) => {
-    if (!actor || busy.current || board.cells[index]) return;
-    if (unavailable) return;
-    busy.current = true;
-    setBoard((s) => ({
-      digging: index,
-      error: null,
-      result: s.exc ? s.result : null,
-    }));
+    if (!actor || busyRef.current || locked || cells[index]) return;
+    if (!isAuthenticated) {
+      login();
+      return;
+    }
+    if (paused || blocked) return;
+    busyRef.current = true;
+    setBoard({ error: null });
     try {
-      const res = await run("pick", () => actor.gamePick(exc ? null : stake));
+      const starting = !exc;
+      const stakeAmount = exc ? exc.stake : (stakes[board.stake] ?? 0n);
+      if (stakeAmount === 0n) {
+        setBoard({ error: "Bets are paused. Try again later." });
+        return;
+      }
+      if (!(await authorize(stakeAmount))) return;
+      setBoard((s) => ({
+        digging: index,
+        cells: starting ? {} : s.cells,
+        result: null,
+      }));
+      const res = await run(
+        "pick",
+        () => actor.gamePick(starting ? STAKE_KEYS[board.stake] : null),
+        false,
+      );
       const picks = Number(res.picks);
-      let cell: Cell;
-      if (res.collapsed) cell = { kind: "rock" };
-      else if (Number(res.diamond.stage) > 0) cell = { kind: "diamond" };
-      else cell = { kind: "token", token: tokenForPick(picks) };
-      if (Number(res.diamond.stage) > 0) playSound("diamond");
+      const stage = Number(res.diamond.stage);
+      const cell: Cell = res.collapsed
+        ? { kind: "rock" }
+        : stage > 0
+          ? { kind: "diamond" }
+          : { kind: "token", token: tokenForPick(picks) };
+      setBoard((s) => ({ cells: { ...s.cells, [index]: cell } }));
+      setCredit(res.credit, res.pool);
+      if (stage > 0) {
+        setBoard({
+          jackpot: {
+            stage,
+            won: res.diamond.won,
+            held: (res.excavation?.held ?? 0n) > 0n,
+          },
+        });
+        if (stage >= 3 && res.diamond.won > 0n) {
+          setBoard((s) => ({ rain: s.rain + 1 }));
+        }
+      }
       if (res.end) {
-        setBoard((s) => ({ cells: { ...s.cells, [index]: cell } }));
-        finish(res.end);
+        finish(res.end, stakeAmount);
       } else {
-        setBoard((s) => ({
-          cells: { ...s.cells, [index]: cell },
-          exc: res.excavation ?? null,
-          digging: null,
-        }));
+        setBoard({ exc: res.excavation ?? null });
         if (res.excavation) setOpenExcavation(res.excavation);
+        if (principalId && dashboard) {
+          saveBoardCells(
+            principalId,
+            dashboard.tournament,
+            starting ? excNo : excNo,
+            getBoard().cells,
+          );
+        }
       }
     } catch (e) {
-      setBoard({ digging: null, error: errorMessage(e) });
+      setBoard({ error: errorMessage(e) });
+      void refreshAll();
     } finally {
-      busy.current = false;
+      busyRef.current = false;
       setBoard({ digging: null });
     }
   };
 
   const save = async () => {
-    if (!actor || busy.current) return;
-    busy.current = true;
+    if (!actor || !exc?.canSave || busyRef.current) return;
+    busyRef.current = true;
     setBoard({ error: null });
     try {
-      const end = await run("save", () => actor.gameSave());
-      finish(end);
+      const end = await run("save", () => actor.gameSave(), false);
+      setCredit(end.credit, dashboard?.pool ?? 0n);
+      finish(end, exc.stake);
     } catch (e) {
       setBoard({ error: errorMessage(e) });
     } finally {
-      busy.current = false;
+      busyRef.current = false;
     }
   };
 
-  const auto = async () => {
-    if (!actor || busy.current) return;
-    busy.current = true;
+  const runAuto = async () => {
+    if (!actor || busyRef.current || locked || exc) return;
+    if (!isAuthenticated) {
+      login();
+      return;
+    }
+    const stakeAmount = stakes[board.stake] ?? 0n;
+    if (stakeAmount === 0n || paused || blocked) return;
+    busyRef.current = true;
+    setAutoBusy(true);
     setBoard({ error: null, result: null, cells: {} });
     try {
-      const out = await run("auto", () =>
-        actor.gameAuto(stake, BigInt(autoStop)),
+      if (!(await authorize(stakeAmount))) return;
+      const out = await run(
+        "auto",
+        () => actor.gameAuto(STAKE_KEYS[board.stake], BigInt(autoStop)),
+        false,
       );
-      const cells: Record<number, Cell> = {};
-      out.steps.forEach((s, i) => {
-        cells[i] = s.collapsed
-          ? { kind: "rock" }
-          : Number(s.diamond.stage) > 0
-            ? { kind: "diamond" }
-            : { kind: "token", token: tokenForPick(Number(s.pick)) };
+      const free = Array.from({ length: CELLS }, (_, i) => i).sort(
+        () => Math.random() - 0.5,
+      );
+      await new Promise<void>((resolve) => {
+        out.steps.forEach((step, i) => {
+          timers.current.push(
+            window.setTimeout(
+              () => {
+                const stage = Number(step.diamond.stage);
+                const cell: Cell = step.collapsed
+                  ? { kind: "rock" }
+                  : stage > 0
+                    ? { kind: "diamond" }
+                    : { kind: "token", token: tokenForPick(Number(step.pick)) };
+                setBoard((s) => ({ cells: { ...s.cells, [free[i]]: cell } }));
+                if (step.collapsed) shake();
+                else if (stage > 0) playSound("diamond");
+                if (i === out.steps.length - 1) resolve();
+              },
+              (i + 1) * AUTO_STEP_MS,
+            ),
+          );
+        });
+        if (out.steps.length === 0) resolve();
       });
-      setBoard({ cells, exc: null, result: toRun(out.end) });
-      setOpenExcavation(null);
-      if (out.steps.some((s) => Number(s.diamond.stage) > 0)) {
-        playSound("diamond");
-      } else if (out.end.kind !== EndKind.collapsed) playSound("success");
+      const hit = out.steps.find(
+        (s) => Number(s.diamond.stage) >= 3 && s.diamond.won > 0n,
+      );
+      setCredit(out.end.credit, out.pool);
+      finish(out.end, stakeAmount);
+      if (hit) {
+        setBoard((s) => ({
+          jackpot: { stage: 3, won: hit.diamond.won, held: false },
+          rain: s.rain + 1,
+        }));
+      }
     } catch (e) {
       setBoard({ error: errorMessage(e) });
+      void refreshAll();
     } finally {
-      busy.current = false;
+      busyRef.current = false;
+      setAutoBusy(false);
     }
   };
 
-  const newRun = () => setBoard({ cells: {}, result: null, error: null });
+  const newGame = () => setBoard({ cells: {}, result: null, error: null });
+  const closeJackpot = useCallback(() => setBoard({ jackpot: null }), []);
 
-  const ended = !!board.result && !exc;
-  const stateText = unavailable
-    ? dashboard?.blocked
-      ? "Your account is under review. Contact the admins."
-      : "The game is paused."
-    : exc
-      ? "Keep digging or save your points."
-      : ended
-        ? "Start a new excavation."
-        : "Choose a stake and dig any cell.";
+  const message = (() => {
+    if (error) return { text: error, tone: "err" as const };
+    if (notice) return { text: notice, tone: "mid" as const };
+    if (!isAuthenticated)
+      return { text: "Sign in to start digging.", tone: "mid" as const };
+    if (blocked)
+      return {
+        text: "Your account is under review. Contact the admins.",
+        tone: "err" as const,
+      };
+    if (paused)
+      return {
+        text: "Bets are paused. Try again later.",
+        tone: "err" as const,
+      };
+    if (busy) return { text: "Digging…", tone: "mid" as const };
+    if (exc && Number(exc.picks) < 2)
+      return {
+        text: "The first two picks are always safe.",
+        tone: "mid" as const,
+      };
+    if (exc)
+      return {
+        text: "Keep digging or save your points.",
+        tone: "mid" as const,
+      };
+    return {
+      text: "Pick any cell to start an excavation.",
+      tone: "mid" as const,
+    };
+  })();
+
+  const picks = exc ? Number(exc.picks) : 0;
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
-      <div className={panel}>
+    <div className="flex flex-col gap-4">
+      <div className={cn(panel, "relative overflow-hidden")}>
         <div className={panelHeader}>
-          <span className={cn(eyebrow, gold, "flex items-center gap-2")}>
-            <Pickaxe className="size-3.5" /> Excavation
-          </span>
-          <button
-            type="button"
-            onClick={toggleMuted}
-            className={cn("rounded p-1", inkMid)}
-            aria-label={muted ? "Unmute" : "Mute"}
-          >
-            {muted ? (
-              <VolumeX className="size-4" />
-            ) : (
-              <Volume2 className="size-4" />
+          <span
+            className={cn(
+              eyebrow,
+              gold,
+              "flex shrink-0 items-center gap-2 whitespace-nowrap",
             )}
-          </button>
+          >
+            <Pickaxe className="size-3.5" /> Gold mine
+          </span>
+          <div className="flex items-center gap-3">
+            <span
+              className={cn(
+                "whitespace-nowrap font-mono text-[11px]",
+                inkFaint,
+              )}
+            >
+              {dashboard
+                ? `Tournament #${Number(dashboard.tournament)} · ${fmtCountdown(dashboard.endsAt)}`
+                : ""}
+            </span>
+            <button
+              type="button"
+              onClick={toggleMuted}
+              aria-label={muted ? "Turn sound on" : "Turn sound off"}
+              className={cn(
+                "rounded-md p-1 transition-smooth hover:text-[color:var(--term-ink)]",
+                muted ? inkFaint : gold,
+              )}
+            >
+              {muted ? (
+                <VolumeX className="size-4" />
+              ) : (
+                <Volume2 className="size-4" />
+              )}
+            </button>
+          </div>
         </div>
 
-        <div className="flex flex-col gap-4 p-4 sm:p-5">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="inline-flex rounded-md border border-[color:var(--term-border)] p-0.5">
-              {STAKE_KEYS.map((k, i) => (
-                <button
-                  key={k}
-                  type="button"
-                  disabled={!!exc || locked}
-                  onClick={() => setStake(k)}
-                  className={cn(
-                    "rounded px-3 py-1 font-mono text-xs transition-smooth disabled:opacity-60",
-                    (exc ? exc.stake === stakes[i] : stake === k)
-                      ? "bg-primary text-primary-foreground"
-                      : inkMid,
-                  )}
-                >
-                  {STAKE_LABEL[k]}{" "}
-                  {stakes[i] !== undefined ? fmtGoldao(stakes[i]) : ""}
-                </button>
-              ))}
-            </div>
-            <span className={cn("font-mono text-xs", inkFaint)}>
-              Credit <span className={ink}>{fmtGoldao(credit)}</span> GOLDAO
-            </span>
-          </div>
-
-          <p className={cn("font-mono text-xs", inkMid)}>{stateText}</p>
-
-          <div className="mx-auto grid w-full max-w-[420px] grid-cols-5 gap-2">
-            {Array.from({ length: CELLS }, (_, i) => {
-              const c = board.cells[i];
-              const disabled =
-                !!c ||
-                locked ||
-                unavailable ||
-                !dashboard ||
-                (!exc && !canAfford);
-              return (
-                <button
-                  // biome-ignore lint/suspicious/noArrayIndexKey: fixed grid
-                  key={i}
-                  type="button"
-                  disabled={disabled}
-                  onClick={() => void dig(i)}
-                  className={cn(
-                    "flex aspect-square items-center justify-center rounded-md border transition-smooth",
-                    !c &&
-                      "border-[color:var(--term-border)] bg-[var(--term-header)] hover:border-[color:var(--term-gold)] disabled:opacity-60",
-                    c?.kind === "rock" && ROCK_CELL,
-                    c?.kind === "diamond" && DIAMOND_CELL,
-                    c?.kind === "token" && TOKENS[c.token].cell,
-                  )}
-                >
-                  {board.digging === i ? (
-                    <Spinner />
-                  ) : c?.kind === "rock" ? (
-                    <Mountain className={cn("size-5", inkMid)} />
-                  ) : c?.kind === "diamond" ? (
-                    DIAMOND_IMG ? (
-                      <img
-                        src={DIAMOND_IMG}
-                        alt=""
-                        className="size-6 object-contain"
-                      />
-                    ) : (
-                      <Gem className={cn("size-5", DIAMOND_TEXT)} />
-                    )
-                  ) : c?.kind === "token" ? (
-                    <img
-                      src={TOKENS[c.token].logo}
-                      alt=""
-                      className="size-6 rounded-full object-contain"
-                    />
-                  ) : null}
-                </button>
-              );
-            })}
-          </div>
-
-          <div className="flex flex-wrap items-center justify-center gap-3">
-            <Button
-              disabled={!exc || !exc.canSave || locked}
-              onClick={() => void save()}
-              className="gradient-primary text-primary-foreground"
-            >
-              <Hand className="size-4" />
-              Save{exc ? ` ${Number(exc.runPoints)} pts` : ""}
-            </Button>
-            {ended && (
-              <Button variant="outline" onClick={newRun}>
-                New excavation
-              </Button>
-            )}
-          </div>
-
-          {board.error && (
-            <p className="font-mono text-xs text-destructive">{board.error}</p>
-          )}
-
+        <div className="relative grid gap-6 p-4 sm:p-6 lg:grid-cols-[minmax(0,1fr)_300px]">
+          <JackpotOverlay view={jackpot} onClose={closeJackpot} />
           <AnimatePresence>
-            {board.result && (
+            {board.rain > 0 && !jackpot && (
               <motion.div
-                initial={{ opacity: 0, y: 6 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0 }}
-                className="rounded-lg border border-[color:var(--term-border)] bg-[var(--term-header)] p-4 font-mono text-xs"
+                key={board.rain}
+                className="pointer-events-none absolute inset-0 z-20"
+                initial={{ opacity: 1 }}
+                animate={{ opacity: 0 }}
+                transition={{ duration: 3.4 }}
               >
-                <ResultCard r={board.result} />
+                <CoinRain seed={board.rain} />
               </motion.div>
             )}
           </AnimatePresence>
-        </div>
-      </div>
 
-      <div className="flex flex-col gap-6">
-        <div className={panel}>
-          <div className={panelHeader}>
-            <span className={cn(eyebrow, gold)}>Current run</span>
-          </div>
-          <dl className="grid grid-cols-2 gap-3 p-4 font-mono text-xs">
-            <Stat label="Stake" value={fmtGoldao(stakeAmount)} />
-            <Stat label="Picks" value={exc ? String(Number(exc.picks)) : "0"} />
-            <Stat
-              label="Points"
-              value={exc ? String(Number(exc.runPoints)) : "0"}
-            />
-            <Stat label="Value" value={exc ? fmtGoldao(exc.runGross) : "0"} />
-            <Stat
-              label="If it collapses"
-              value={exc ? fmtGoldao(exc.collapseGross) : "0"}
-            />
-            <Stat
-              label="Next pick"
-              value={exc ? fmtGoldao(exc.nextGross) : "0"}
-            />
-            <Stat
-              label="Safe chance"
-              value={
-                exc ? `${Math.round(Number(exc.safePctX100) / 100)}%` : "-"
-              }
-            />
-            <Stat
-              label="Diamonds"
-              value={exc ? String(Number(exc.diamonds)) : "0"}
-            />
-          </dl>
-          {exc && exc.held > 0n && (
-            <p
-              className={cn(
-                "border-t border-[color:var(--term-border-faint)] px-4 py-3 font-mono text-[11px]",
-                DIAMOND_TEXT,
-              )}
+          <div className="flex flex-col items-center gap-4">
+            <div
+              ref={scope}
+              className="grid w-full max-w-[420px] grid-cols-5 gap-2 sm:gap-2.5"
             >
-              Jackpot on hold: {fmtGoldao(exc.held)} GOLDAO. It is confirmed
-              from the third pick.
-            </p>
-          )}
-          {exc && exc.jackpotWon > 0n && (
-            <p
-              className={cn(
-                "border-t border-[color:var(--term-border-faint)] px-4 py-3 font-mono text-[11px]",
-                DIAMOND_TEXT,
-              )}
-            >
-              Jackpot won: {fmtGoldao(exc.jackpotWon)} GOLDAO
-            </p>
-          )}
-        </div>
-
-        <div className={panel}>
-          <div className={panelHeader}>
-            <span className={cn(eyebrow, gold, "flex items-center gap-2")}>
-              <Bot className="size-3.5" /> Auto dig
-            </span>
-          </div>
-          <div className="flex flex-col gap-3 p-4">
-            <div className="flex items-center gap-2 font-mono text-xs">
-              <span className={inkMid}>Save at</span>
-              <div className="inline-flex rounded-md border border-[color:var(--term-border)] p-0.5">
-                {AUTO_STOPS.map((n) => (
-                  <button
-                    key={n}
-                    type="button"
-                    disabled={locked || !!exc}
-                    onClick={() => setAutoStop(n)}
-                    className={cn(
-                      "rounded px-2 py-1 transition-smooth disabled:opacity-60",
-                      autoStop === n
-                        ? "bg-primary text-primary-foreground"
-                        : inkMid,
-                    )}
-                  >
-                    {n}
-                  </button>
-                ))}
-              </div>
+              {Array.from({ length: CELLS }, (_, i) => (
+                <MineCell
+                  // biome-ignore lint/suspicious/noArrayIndexKey: fixed 5x5 board
+                  key={i}
+                  cell={cells[i]}
+                  digging={digging === i}
+                  disabled={locked || paused || blocked || !dashboard}
+                  idle={!exc && !result}
+                  onClick={() => void dig(i)}
+                />
+              ))}
             </div>
-            <Button
-              variant="outline"
-              disabled={
-                locked || !!exc || unavailable || !dashboard || !canAfford
-              }
-              onClick={() => void auto()}
-            >
-              {pending === "auto" ? "Digging…" : "Run auto dig"}
-            </Button>
+            <BoardMessage text={message.text} tone={message.tone} />
+            <SaveButton
+              canSave={!!exc?.canSave && !locked}
+              onSave={() => void save()}
+            />
+          </div>
+
+          <div className="flex flex-col gap-4">
+            <StakeSelector
+              stakes={stakes}
+              value={board.stake}
+              locked={!!exc || locked}
+              paused={paused}
+              table={table}
+              onChange={(v) => setBoard({ stake: v })}
+            />
+            <PayoutStep exc={exc} />
+            <div className="grid grid-cols-2 gap-2">
+              <MiniStat label="Picks" value={<RollingNumber value={picks} />} />
+              <MiniStat
+                label="Diamonds"
+                value={<RollingNumber value={exc ? Number(exc.diamonds) : 0} />}
+                accent
+              />
+            </div>
+            <JackpotCard pool={dashboard?.pool} />
+            <AutoPicker
+              value={autoStop}
+              disabled={locked || !!exc || paused || blocked || !dashboard}
+              busy={autoBusy}
+              onChange={setAutoStop}
+              onRun={() => void runAuto()}
+            />
           </div>
         </div>
-        {config && (
-          <p className={cn("font-mono text-[11px]", inkFaint)}>
-            {Number(config.cells)} cells · {Number(config.mines)} rocks ·{" "}
-            {Number(config.maxPicks)} picks max
-          </p>
-        )}
+
+        <div className="border-t border-[color:var(--term-border-faint)] px-4 py-4 sm:px-6">
+          <Legend />
+        </div>
       </div>
-    </div>
-  );
-}
 
-function ResultCard({ r }: { r: RunResult }) {
-  return (
-    <div className="flex flex-col gap-1">
-      <span className={cn("text-sm font-semibold", ink)}>
-        {r.kind === "collapse"
-          ? "Collapse"
-          : r.kind === "maxed"
-            ? "Mine emptied"
-            : "Saved"}
-        {" · "}
-        {r.points} pts
-      </span>
-      {r.won > 0n && (
-        <span className="text-[color:var(--term-green)]">
-          +{fmtGoldao(r.won, 2)} GOLDAO to your credit
-        </span>
-      )}
-      {r.lost > 0n && (
-        <span className="text-destructive">-{fmtGoldao(r.lost, 2)} GOLDAO</span>
-      )}
-      {r.jackpotWon > 0n && (
-        <span className={DIAMOND_TEXT}>
-          Jackpot {fmtGoldao(r.jackpotWon, 2)} GOLDAO
-        </span>
-      )}
-    </div>
-  );
-}
-
-function Stat({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex flex-col gap-0.5">
-      <dt className={cn("text-[10px] uppercase tracking-wider", inkFaint)}>
-        {label}
-      </dt>
-      <dd className={cn("tabular-nums", ink)}>{value}</dd>
+      {result && !exc && <ResultCard result={result} onNew={newGame} />}
+      <CreditBar dashboard={dashboard} />
+      <p className={cn("text-center font-mono text-[11px]", inkFaint)}>
+        Playing authorizes the game to charge only your losses from your wallet.
+        You can revoke it at any time from your wallet.
+      </p>
     </div>
   );
 }
