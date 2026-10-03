@@ -2,23 +2,16 @@ import type { AdminView } from "@/backend";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/context/AuthContext";
 import { cn } from "@/lib/utils";
-import {
-  CalendarCheck,
-  Flame,
-  Gem,
-  Landmark,
-  Lock,
-  Send,
-  Shield,
-} from "lucide-react";
-import { AnimatePresence, motion } from "motion/react";
+import { Principal } from "@icp-sdk/core/principal";
+import { Gem, Landmark, Shield } from "lucide-react";
 import { useState } from "react";
-import { TierSummary } from "./PlayerDashboard";
 import { Spinner } from "./Spinner";
 import {
   DIAMOND_TEXT,
   eyebrow,
+  fmtDate,
   fmtGoldao,
+  fmtTimeLeft,
   gold,
   ink,
   inkFaint,
@@ -29,28 +22,28 @@ import {
 } from "./game-utils";
 import { errorMessage, useGameAction } from "./useGame";
 
-type Step = "close" | "pay" | null;
+type Res<T> = { __kind__: "ok"; ok: T } | { __kind__: "err"; err: string };
 
 export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
   const { actor } = useAuth();
   const { run, pending } = useGameAction();
-  const [confirm, setConfirm] = useState<Step>(null);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const [amount, setAmount] = useState("100000");
+  const [days, setDays] = useState("7");
+  const [who, setWho] = useState("");
+  const [selfId, setSelfId] = useState("");
+  const [confirm, setConfirm] = useState<string | null>(null);
 
-  const status = view?.status;
-  const last = view?.lastClose;
-
-  const closeWeek = async () => {
+  const act = async <T,>(
+    name: string,
+    call: () => Promise<Res<T>>,
+    text: (v: T) => string,
+  ) => {
     if (!actor) return;
     setMsg(null);
     try {
-      const s = await run("close", () => actor.gameAdminCloseWeek(), "all");
-      setMsg({
-        ok: true,
-        text: s.drawWinner
-          ? `Week ${Number(s.week)} closed. Jackpot ticket #${Number(s.drawTicket)} of ${Number(s.drawTickets)}.`
-          : `Week ${Number(s.week)} closed. No diamonds: the jackpot rolls over.`,
-      });
+      const v = await run(name, call, "all");
+      setMsg({ ok: true, text: text(v) });
     } catch (e) {
       setMsg({ ok: false, text: errorMessage(e) });
     } finally {
@@ -58,144 +51,323 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
     }
   };
 
-  const recover = async () => {
-    if (!actor) return;
-    setMsg(null);
+  const n = () => {
+    const v = Number.parseInt(amount, 10);
+    return Number.isFinite(v) && v > 0 ? BigInt(v) : 0n;
+  };
+
+  const parsePrincipal = (t: string): Principal | null => {
     try {
-      await run("recover", () => actor.gameAdminRecoverClosing(), "all");
-      setMsg({ ok: true, text: "Week reopened. Run the close again." });
-    } catch (e) {
-      setMsg({ ok: false, text: errorMessage(e) });
+      return Principal.fromText(t.trim());
+    } catch {
+      return null;
     }
   };
 
-  const payAndOpen = async () => {
-    if (!actor) return;
-    setMsg(null);
-    try {
-      const total = await run(
-        "pay",
-        () => actor.gameAdminPayAndOpenNext(),
-        "all",
-      );
-      setMsg({
-        ok: true,
-        text: `Paid ${fmtGoldao(total)} GOLDAO. Next week is open.`,
-      });
-    } catch (e) {
-      setMsg({ ok: false, text: errorMessage(e) });
-    } finally {
-      setConfirm(null);
-    }
-  };
+  const unpaid = view?.payouts.filter((p) => !p.paid) ?? [];
 
   return (
     <div className="flex flex-col gap-6">
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <Kpi
-          icon={CalendarCheck}
-          label="Week"
-          value={view ? `#${Number(view.week)}` : <Spinner />}
-          sub={status ?? ""}
+          label="Tournament"
+          value={view ? `#${Number(view.tournament)}` : <Spinner />}
+          sub={view ? `ends in ${fmtTimeLeft(view.endsAt)}` : ""}
         />
         <Kpi
-          icon={Landmark}
-          label="Game balance"
-          value={view ? fmtGoldao(view.treasury) : <Spinner />}
-          sub="GOLDAO (simulated)"
+          label="Bank"
+          value={view ? fmtGoldao(view.bank) : <Spinner />}
+          sub={view?.realLedger ? "GOLDAO (ledger)" : "GOLDAO (test)"}
         />
         <Kpi
-          icon={Flame}
+          label="Owed"
+          value={view ? fmtGoldao(view.owed) : <Spinner />}
+          sub="player credits"
+        />
+        <Kpi
+          label="Fund"
+          value={
+            view ? fmtGoldao(view.fund < 0n ? 0n : view.fund) : <Spinner />
+          }
+          sub={view ? `withdrawable ${fmtGoldao(view.withdrawable)}` : ""}
+        />
+        <Kpi
+          label="Jackpot pool"
+          value={view ? fmtGoldao(view.pool) : <Spinner />}
+          sub="GOLDAO"
+          diamond
+        />
+        <Kpi
+          label="Reserve"
+          value={view ? fmtGoldao(view.reserve) : <Spinner />}
+          sub="GOLDAO"
+        />
+        <Kpi
+          label="Cycles"
+          value={view ? fmtGoldao(view.cycles) : <Spinner />}
+          sub="GOLDAO"
+        />
+        <Kpi
           label="Burned fees"
           value={view ? fmtGoldao(view.burned) : <Spinner />}
           sub="GOLDAO"
-        />
-        <Kpi
-          icon={Gem}
-          label="Jackpot rollover"
-          value={view ? fmtGoldao(view.drawCarry) : <Spinner />}
-          sub="GOLDAO"
-          diamond
         />
       </div>
 
       <div className={panel}>
         <div className={panelHeader}>
           <span className={cn(eyebrow, gold, "flex items-center gap-2")}>
-            <Shield className="size-3.5" /> Weekly close
+            <Landmark className="size-3.5" /> Funds
+          </span>
+          <span className={cn("font-mono text-[11px]", inkFaint)}>
+            Whole GOLDAO
           </span>
         </div>
         <div className="flex flex-col gap-4 p-5">
-          <p className={cn("text-sm", inkMid)}>
-            1. Close the week: open excavations are saved, unused ones
-            auto-played, chips ranked and the diamond jackpot is drawn. 2.
-            Review the payouts. 3. Pay and open the next week.
-          </p>
+          <input
+            value={amount}
+            onChange={(e) => setAmount(e.target.value.replace(/\D/g, ""))}
+            inputMode="numeric"
+            className="w-48 rounded-md border border-[color:var(--term-border)] bg-transparent px-3 py-1.5 font-mono text-sm"
+          />
           <div className="flex flex-wrap gap-3">
-            <Button
-              variant="outline"
-              disabled={status !== "open" || !!pending}
-              onClick={() => setConfirm("close")}
-            >
-              <Lock className="size-4" />
-              Close week
-            </Button>
-            <Button
-              disabled={status !== "closed" || !!pending}
-              onClick={() => setConfirm("pay")}
-              className="gradient-primary text-primary-foreground"
-            >
-              <Send className="size-4" />
-              Pay and open next week
-            </Button>
-            {status === "closing" && (
+            {view && !view.realLedger && (
               <Button
                 variant="outline"
-                disabled={!!pending}
-                onClick={() => void recover()}
+                disabled={!!pending || n() === 0n}
+                onClick={() =>
+                  void act(
+                    "deposit",
+                    () => actor!.gameAdminTestDeposit(n()),
+                    (v) => `Bank is now ${fmtGoldao(v)}.`,
+                  )
+                }
               >
-                Recover interrupted close
+                Add test GOLDAO to the bank
               </Button>
             )}
+            {view && !view.realLedger && (
+              <Button
+                variant="outline"
+                disabled={!!pending || n() === 0n}
+                onClick={() =>
+                  void act(
+                    "tapprove",
+                    () => actor!.gameAdminTestApprove(n()),
+                    (v) => `Bank allowance is now ${fmtGoldao(v)}.`,
+                  )
+                }
+              >
+                Set bank allowance
+              </Button>
+            )}
+            <Button
+              variant="outline"
+              disabled={!!pending || n() === 0n}
+              onClick={() =>
+                void act(
+                  "seed",
+                  () => actor!.gameAdminSeedPool(n()),
+                  (v) => `Pool is now ${fmtGoldao(v)}.`,
+                )
+              }
+            >
+              Seed jackpot pool
+            </Button>
+            <Button
+              variant="outline"
+              disabled={!!pending || n() === 0n}
+              onClick={() => setConfirm("withdraw")}
+            >
+              Withdraw
+            </Button>
+            <Button
+              variant="outline"
+              disabled={!!pending}
+              onClick={() =>
+                void act(
+                  "refresh",
+                  () => actor!.gameAdminRefreshBank(),
+                  (v) => `Bank is ${fmtGoldao(v)}.`,
+                )
+              }
+            >
+              Refresh bank
+            </Button>
+          </div>
+          {confirm === "withdraw" && (
+            <div className="flex flex-wrap items-center gap-3 rounded-lg border border-[color:var(--term-border)] bg-[var(--term-header)] p-3">
+              <span className={cn("text-sm", inkMid)}>
+                Withdraw {n().toString()} GOLDAO from the fund?
+              </span>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setConfirm(null)}
+              >
+                Cancel
+              </Button>
+              <Button
+                size="sm"
+                disabled={!!pending}
+                className="gradient-primary text-primary-foreground"
+                onClick={() =>
+                  void act(
+                    "withdraw",
+                    () => actor!.gameAdminWithdraw(n()),
+                    (v) => `Bank is now ${fmtGoldao(v)}.`,
+                  )
+                }
+              >
+                Confirm
+              </Button>
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className={panel}>
+        <div className={panelHeader}>
+          <span className={cn(eyebrow, gold, "flex items-center gap-2")}>
+            <Shield className="size-3.5" /> Tournament
+          </span>
+        </div>
+        <div className="flex flex-col gap-4 p-5">
+          <div className="flex flex-wrap items-center gap-3">
+            <input
+              value={days}
+              onChange={(e) => setDays(e.target.value.replace(/\D/g, ""))}
+              inputMode="numeric"
+              className="w-20 rounded-md border border-[color:var(--term-border)] bg-transparent px-3 py-1.5 font-mono text-sm"
+            />
+            <Button
+              variant="outline"
+              disabled={!!pending || !days}
+              onClick={() =>
+                void act(
+                  "duration",
+                  () => actor!.gameAdminSetDuration(BigInt(days)),
+                  () => `Duration set to ${days} days.`,
+                )
+              }
+            >
+              Set duration (days)
+            </Button>
+            <Button
+              variant="outline"
+              disabled={!!pending}
+              onClick={() => setConfirm("close")}
+            >
+              Close now
+            </Button>
+            <Button
+              disabled={!!pending || unpaid.length === 0}
+              className="gradient-primary text-primary-foreground"
+              onClick={() =>
+                void act(
+                  "pay",
+                  () => actor!.gameAdminPay(),
+                  (v) =>
+                    `Paid ${Number(v.paid)}, failed ${Number(v.failed)}, remaining ${Number(v.remaining)}.`,
+                )
+              }
+            >
+              Pay pending ({unpaid.length})
+            </Button>
+          </div>
+          {confirm === "close" && (
+            <div className="flex flex-wrap items-center gap-3 rounded-lg border border-[color:var(--term-border)] bg-[var(--term-header)] p-3">
+              <span className={cn("text-sm", inkMid)}>
+                Close the current tournament now?
+              </span>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setConfirm(null)}
+              >
+                Cancel
+              </Button>
+              <Button
+                size="sm"
+                disabled={!!pending}
+                className="gradient-primary text-primary-foreground"
+                onClick={() =>
+                  void act(
+                    "close",
+                    () => actor!.gameAdminCloseTournament(),
+                    () => "Close requested.",
+                  )
+                }
+              >
+                Confirm
+              </Button>
+            </div>
+          )}
+
+          <div className="flex flex-wrap items-center gap-3">
+            <input
+              value={who}
+              onChange={(e) => setWho(e.target.value)}
+              placeholder="Player principal"
+              className="w-80 max-w-full rounded-md border border-[color:var(--term-border)] bg-transparent px-3 py-1.5 font-mono text-xs"
+            />
+            <Button
+              variant="outline"
+              disabled={!!pending || !parsePrincipal(who)}
+              onClick={() =>
+                void act(
+                  "release",
+                  () => actor!.gameAdminReleaseBusy(parsePrincipal(who)!),
+                  () => "Excavation released.",
+                )
+              }
+            >
+              Release busy
+            </Button>
+            <Button
+              variant="outline"
+              disabled={!!pending || !parsePrincipal(who)}
+              onClick={() =>
+                void act(
+                  "unblock",
+                  () => actor!.gameAdminUnblock(parsePrincipal(who)!),
+                  () => "Player unblocked.",
+                )
+              }
+            >
+              Unblock
+            </Button>
           </div>
 
-          <AnimatePresence>
-            {confirm && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: "auto" }}
-                exit={{ opacity: 0, height: 0 }}
-                className="overflow-hidden rounded-lg border border-[color:var(--term-border)] bg-[var(--term-header)]"
-              >
-                <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
-                  <p className={cn("text-sm", inkMid)}>
-                    {confirm === "close"
-                      ? "Close the current week? Players can't dig until the next one opens."
-                      : `Credit ${view?.payouts.length ?? 0} payouts and open the next week?`}
-                  </p>
-                  <div className="flex shrink-0 gap-2">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => setConfirm(null)}
-                    >
-                      Cancel
-                    </Button>
-                    <Button
-                      size="sm"
-                      disabled={!!pending}
-                      onClick={() =>
-                        void (confirm === "close" ? closeWeek() : payAndOpen())
-                      }
-                      className="gradient-primary text-primary-foreground"
-                    >
-                      {pending ? "Working…" : "Confirm"}
-                    </Button>
-                  </div>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
+          {view && !view.realLedger && (
+            <div className="flex flex-col gap-2 border-t border-[color:var(--term-border-faint)] pt-4">
+              <span className={cn("font-mono text-[11px]", inkFaint)}>
+                Switch to the real ledger (needs no pending payouts)
+              </span>
+              <div className="flex flex-wrap gap-3">
+                <input
+                  value={selfId}
+                  onChange={(e) => setSelfId(e.target.value)}
+                  placeholder="Canister principal"
+                  className="w-80 max-w-full rounded-md border border-[color:var(--term-border)] bg-transparent px-3 py-1.5 font-mono text-xs"
+                />
+                <Button
+                  variant="outline"
+                  disabled={!!pending || !parsePrincipal(selfId)}
+                  onClick={() =>
+                    void act(
+                      "real",
+                      () =>
+                        actor!.gameAdminSetRealLedger(parsePrincipal(selfId)!),
+                      (v) => `Real ledger enabled. Bank is ${fmtGoldao(v)}.`,
+                    )
+                  }
+                >
+                  Enable
+                </Button>
+              </div>
+            </div>
+          )}
 
           {msg && (
             <p
@@ -210,45 +382,42 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
         </div>
       </div>
 
-      {last && (
+      {view?.lastClose && (
         <div className={panel}>
           <div className={panelHeader}>
             <span className={cn(eyebrow, gold)}>
-              Last close · week #{Number(last.week)}
+              Last close · #{Number(view.lastClose.tournament)}
+            </span>
+            <span className={cn("font-mono text-[11px]", inkFaint)}>
+              {fmtDate(view.lastClose.closedAt)}
             </span>
           </div>
           <dl className="grid grid-cols-2 gap-4 p-5 font-mono text-xs sm:grid-cols-4">
-            <Item label="Prize pool" value={fmtGoldao(last.pot)} />
             <Item
-              label="Chips · players"
-              value={`${Number(last.chips)} · ${Number(last.players)}`}
+              label="Players"
+              value={String(Number(view.lastClose.players))}
             />
             <Item
-              label="Treasure per chip"
-              value={fmtGoldao(last.treasurePerChip)}
+              label="Excavations"
+              value={String(Number(view.lastClose.excavations))}
+            />
+            <Item label="Staked" value={fmtGoldao(view.lastClose.staked)} />
+            <Item label="Returned" value={fmtGoldao(view.lastClose.returned)} />
+            <Item
+              label="Jackpots"
+              value={String(Number(view.lastClose.jackpots))}
             />
             <Item
-              label="Kept for cycles"
-              value={fmtGoldao(last.treasuryKeep)}
-            />
-            <Item label="Jackpot" value={fmtGoldao(last.drawPrize)} />
-            <Item
-              label="Winning ticket"
-              value={
-                last.drawWinner
-                  ? `#${Number(last.drawTicket)} of ${Number(last.drawTickets)}`
-                  : "Rolled over"
-              }
+              label="Jackpot paid"
+              value={fmtGoldao(view.lastClose.jackpotPaid)}
             />
             <Item
-              label="Winner"
-              value={
-                last.drawWinner ? shortPrincipal(last.drawWinner.toText()) : "—"
-              }
+              label="Payouts"
+              value={fmtGoldao(view.lastClose.payoutTotal)}
             />
             <Item
-              label="raw_rand"
-              value={String(last.drawRandom).slice(0, 12)}
+              label="Forfeited"
+              value={fmtGoldao(view.lastClose.forfeited)}
             />
           </dl>
         </div>
@@ -257,9 +426,9 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
       {view && view.payouts.length > 0 && (
         <div className={panel}>
           <div className={panelHeader}>
-            <span className={cn(eyebrow, gold)}>Pending payouts</span>
+            <span className={cn(eyebrow, gold)}>Payouts</span>
             <span className={cn("font-mono text-[11px]", inkFaint)}>
-              {view.payouts.length} transfers · net of the 10 fee
+              {unpaid.length} pending
             </span>
           </div>
           <div className="max-h-[420px] overflow-auto">
@@ -267,14 +436,15 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
               <thead>
                 <tr className={cn("text-left", inkFaint)}>
                   <th className="px-5 py-2 font-medium">Principal</th>
-                  <th className="px-3 py-2 font-medium">Concept</th>
-                  <th className="px-5 py-2 text-right font-medium">Net</th>
+                  <th className="px-3 py-2 font-medium">Tournament</th>
+                  <th className="px-3 py-2 font-medium">Status</th>
+                  <th className="px-5 py-2 text-right font-medium">Amount</th>
                 </tr>
               </thead>
               <tbody>
-                {view.payouts.map((p, i) => (
+                {view.payouts.map((p) => (
                   <tr
-                    key={`${p.to.toText()}-${i}`}
+                    key={String(p.id)}
                     className="border-t border-[color:var(--term-border-faint)]"
                   >
                     <td
@@ -283,24 +453,14 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
                     >
                       {shortPrincipal(p.to.toText())}
                     </td>
+                    <td className="px-3 py-2.5">#{Number(p.tournament)}</td>
                     <td className="px-3 py-2.5">
-                      {p.concept === "draw" ? (
-                        <span
-                          className={cn(
-                            "flex items-center gap-1",
-                            DIAMOND_TEXT,
-                          )}
-                        >
-                          <Gem className="size-3" /> Diamond jackpot
-                        </span>
-                      ) : (
-                        <TierSummary tiers={p.tiers} />
-                      )}
+                      {p.paid ? "paid" : "pending"}
                     </td>
                     <td
                       className={cn("px-5 py-2.5 text-right tabular-nums", ink)}
                     >
-                      {fmtGoldao(p.amount)}
+                      {fmtGoldao(p.amount, 2)}
                     </td>
                   </tr>
                 ))}
@@ -314,13 +474,11 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
 }
 
 function Kpi({
-  icon: Icon,
   label,
   value,
   sub,
   diamond,
 }: {
-  icon: React.ComponentType<{ className?: string }>;
   label: string;
   value: React.ReactNode;
   sub: string;
@@ -329,7 +487,8 @@ function Kpi({
   return (
     <div className={cn(panel, "flex flex-col gap-1 p-4")}>
       <span className={cn(eyebrow, inkFaint, "flex items-center gap-1.5")}>
-        <Icon className="size-3.5" /> {label}
+        {diamond && <Gem className="size-3.5" />}
+        {label}
       </span>
       <span
         className={cn(
@@ -339,9 +498,7 @@ function Kpi({
       >
         {value}
       </span>
-      <span className={cn("font-mono text-[10px] capitalize", inkFaint)}>
-        {sub}
-      </span>
+      <span className={cn("font-mono text-[10px]", inkFaint)}>{sub}</span>
     </div>
   );
 }
