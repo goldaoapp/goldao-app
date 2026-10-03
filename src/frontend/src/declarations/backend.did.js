@@ -35,7 +35,7 @@ export const UserRole = IDL.Variant({
   'user' : IDL.Null,
   'guest' : IDL.Null,
 });
-export const GResult_7 = IDL.Variant({
+export const GResult_8 = IDL.Variant({
   'ok' : IDL.Vec(IDL.Tuple(IDL.Principal, UserRole)),
   'err' : IDL.Text,
 });
@@ -54,7 +54,7 @@ export const Result__1 = IDL.Record({
 });
 export const GResult_5 = IDL.Variant({ 'ok' : IDL.Null, 'err' : IDL.Text });
 export const GResult = IDL.Variant({ 'ok' : IDL.Nat, 'err' : IDL.Text });
-export const GResult_6 = IDL.Variant({
+export const GResult_7 = IDL.Variant({
   'ok' : IDL.Record({
     'paid' : IDL.Nat,
     'remaining' : IDL.Nat,
@@ -62,6 +62,20 @@ export const GResult_6 = IDL.Variant({
   }),
   'err' : IDL.Text,
 });
+export const FlagEntry = IDL.Record({
+  'at' : IDL.Int,
+  'player' : IDL.Principal,
+});
+export const SecurityView = IDL.Record({
+  'breakerWindowMin' : IDL.Nat,
+  'breakerMax' : IDL.Nat,
+  'haltCode' : IDL.Nat,
+  'ledgerFails' : IDL.Nat,
+  'haltedAt' : IDL.Int,
+  'halted' : IDL.Bool,
+  'flagged' : IDL.Vec(FlagEntry),
+});
+export const GResult_6 = IDL.Variant({ 'ok' : SecurityView, 'err' : IDL.Text });
 export const TournamentSummary = IDL.Record({
   'staked' : IDL.Nat,
   'excavations' : IDL.Nat,
@@ -254,28 +268,28 @@ export const idlService = IDL.Service({
   '_initialize_access_control' : IDL.Func([], [], []),
   '_internet_identity_sign_in_finish' : IDL.Func([], [Result_7], []),
   '_internet_identity_sign_in_start' : IDL.Func([], [IDL.Vec(IDL.Nat8)], []),
-  'adminListRoles' : IDL.Func([], [GResult_7], ['query']),
+  'adminListRoles' : IDL.Func([], [GResult_8], ['query']),
   'adminSyncBootstrap' : IDL.Func([], [IDL.Bool], []),
   'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
   'execute' : IDL.Func([IDL.Text], [Result__1], ['query']),
   'gameAdminCloseTournament' : IDL.Func([], [GResult_5], []),
+  'gameAdminHalt' : IDL.Func([], [GResult_5], []),
   'gameAdminLedgerAllowance' : IDL.Func(
       [IDL.Principal, IDL.Principal],
       [GResult],
       [],
     ),
   'gameAdminLedgerBalance' : IDL.Func([IDL.Principal], [GResult], []),
-  'gameAdminPay' : IDL.Func([], [GResult_6], []),
+  'gameAdminPay' : IDL.Func([], [GResult_7], []),
   'gameAdminRecordWithdrawal' : IDL.Func([IDL.Nat], [GResult], []),
   'gameAdminRefreshBank' : IDL.Func([], [GResult], []),
   'gameAdminReleaseBusy' : IDL.Func([IDL.Principal], [GResult_5], []),
+  'gameAdminResume' : IDL.Func([], [GResult_5], []),
+  'gameAdminSecurity' : IDL.Func([], [GResult_6], ['query']),
   'gameAdminSeedPool' : IDL.Func([IDL.Nat], [GResult], []),
+  'gameAdminSetBreaker' : IDL.Func([IDL.Nat, IDL.Nat], [GResult_5], []),
   'gameAdminSetDuration' : IDL.Func([IDL.Nat], [GResult_5], []),
-  'gameAdminSetRealLedger' : IDL.Func(
-      [IDL.Principal],
-      [GResult],
-      [],
-    ),
+  'gameAdminSetRealLedger' : IDL.Func([IDL.Principal], [GResult], []),
   'gameAdminTestApprove' : IDL.Func([IDL.Nat], [GResult], []),
   'gameAdminTestDeposit' : IDL.Func([IDL.Nat], [GResult], []),
   'gameAdminUnblock' : IDL.Func([IDL.Principal], [GResult_5], []),
@@ -329,7 +343,7 @@ export const idlFactory = ({ IDL }) => {
     'user' : IDL.Null,
     'guest' : IDL.Null,
   });
-  const GResult_7 = IDL.Variant({
+  const GResult_8 = IDL.Variant({
     'ok' : IDL.Vec(IDL.Tuple(IDL.Principal, UserRole)),
     'err' : IDL.Text,
   });
@@ -348,7 +362,7 @@ export const idlFactory = ({ IDL }) => {
   });
   const GResult_5 = IDL.Variant({ 'ok' : IDL.Null, 'err' : IDL.Text });
   const GResult = IDL.Variant({ 'ok' : IDL.Nat, 'err' : IDL.Text });
-  const GResult_6 = IDL.Variant({
+  const GResult_7 = IDL.Variant({
     'ok' : IDL.Record({
       'paid' : IDL.Nat,
       'remaining' : IDL.Nat,
@@ -356,6 +370,17 @@ export const idlFactory = ({ IDL }) => {
     }),
     'err' : IDL.Text,
   });
+  const FlagEntry = IDL.Record({ 'at' : IDL.Int, 'player' : IDL.Principal });
+  const SecurityView = IDL.Record({
+    'breakerWindowMin' : IDL.Nat,
+    'breakerMax' : IDL.Nat,
+    'haltCode' : IDL.Nat,
+    'ledgerFails' : IDL.Nat,
+    'haltedAt' : IDL.Int,
+    'halted' : IDL.Bool,
+    'flagged' : IDL.Vec(FlagEntry),
+  });
+  const GResult_6 = IDL.Variant({ 'ok' : SecurityView, 'err' : IDL.Text });
   const TournamentSummary = IDL.Record({
     'staked' : IDL.Nat,
     'excavations' : IDL.Nat,
@@ -548,28 +573,28 @@ export const idlFactory = ({ IDL }) => {
     '_initialize_access_control' : IDL.Func([], [], []),
     '_internet_identity_sign_in_finish' : IDL.Func([], [Result_7], []),
     '_internet_identity_sign_in_start' : IDL.Func([], [IDL.Vec(IDL.Nat8)], []),
-    'adminListRoles' : IDL.Func([], [GResult_7], ['query']),
+    'adminListRoles' : IDL.Func([], [GResult_8], ['query']),
     'adminSyncBootstrap' : IDL.Func([], [IDL.Bool], []),
     'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
     'execute' : IDL.Func([IDL.Text], [Result__1], ['query']),
     'gameAdminCloseTournament' : IDL.Func([], [GResult_5], []),
+    'gameAdminHalt' : IDL.Func([], [GResult_5], []),
     'gameAdminLedgerAllowance' : IDL.Func(
         [IDL.Principal, IDL.Principal],
         [GResult],
         [],
       ),
     'gameAdminLedgerBalance' : IDL.Func([IDL.Principal], [GResult], []),
-    'gameAdminPay' : IDL.Func([], [GResult_6], []),
+    'gameAdminPay' : IDL.Func([], [GResult_7], []),
     'gameAdminRecordWithdrawal' : IDL.Func([IDL.Nat], [GResult], []),
     'gameAdminRefreshBank' : IDL.Func([], [GResult], []),
     'gameAdminReleaseBusy' : IDL.Func([IDL.Principal], [GResult_5], []),
+    'gameAdminResume' : IDL.Func([], [GResult_5], []),
+    'gameAdminSecurity' : IDL.Func([], [GResult_6], ['query']),
     'gameAdminSeedPool' : IDL.Func([IDL.Nat], [GResult], []),
+    'gameAdminSetBreaker' : IDL.Func([IDL.Nat, IDL.Nat], [GResult_5], []),
     'gameAdminSetDuration' : IDL.Func([IDL.Nat], [GResult_5], []),
-    'gameAdminSetRealLedger' : IDL.Func(
-        [IDL.Principal],
-        [GResult],
-        [],
-      ),
+    'gameAdminSetRealLedger' : IDL.Func([IDL.Principal], [GResult], []),
     'gameAdminTestApprove' : IDL.Func([IDL.Nat], [GResult], []),
     'gameAdminTestDeposit' : IDL.Func([IDL.Nat], [GResult], []),
     'gameAdminUnblock' : IDL.Func([IDL.Principal], [GResult_5], []),
