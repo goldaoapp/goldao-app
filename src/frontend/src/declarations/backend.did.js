@@ -72,7 +72,9 @@ export const SecurityView = IDL.Record({
   'haltCode' : IDL.Nat,
   'ledgerFails' : IDL.Nat,
   'haltedAt' : IDL.Int,
+  'accountingOk' : IDL.Bool,
   'halted' : IDL.Bool,
+  'saturations' : IDL.Nat,
   'flagged' : IDL.Vec(FlagEntry),
 });
 export const GResult_6 = IDL.Variant({ 'ok' : SecurityView, 'err' : IDL.Text });
@@ -272,6 +274,7 @@ export const idlService = IDL.Service({
   'adminSyncBootstrap' : IDL.Func([], [IDL.Bool], []),
   'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
   'execute' : IDL.Func([IDL.Text], [Result__1], ['query']),
+  'gameAdminAckAccounting' : IDL.Func([], [GResult_5], []),
   'gameAdminCloseTournament' : IDL.Func([], [GResult_5], []),
   'gameAdminHalt' : IDL.Func([], [GResult_5], []),
   'gameAdminLedgerAllowance' : IDL.Func(
@@ -377,7 +380,9 @@ export const idlFactory = ({ IDL }) => {
     'haltCode' : IDL.Nat,
     'ledgerFails' : IDL.Nat,
     'haltedAt' : IDL.Int,
+    'accountingOk' : IDL.Bool,
     'halted' : IDL.Bool,
+    'saturations' : IDL.Nat,
     'flagged' : IDL.Vec(FlagEntry),
   });
   const GResult_6 = IDL.Variant({ 'ok' : SecurityView, 'err' : IDL.Text });
@@ -577,6 +582,7 @@ export const idlFactory = ({ IDL }) => {
     'adminSyncBootstrap' : IDL.Func([], [IDL.Bool], []),
     'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
     'execute' : IDL.Func([IDL.Text], [Result__1], ['query']),
+    'gameAdminAckAccounting' : IDL.Func([], [GResult_5], []),
     'gameAdminCloseTournament' : IDL.Func([], [GResult_5], []),
     'gameAdminHalt' : IDL.Func([], [GResult_5], []),
     'gameAdminLedgerAllowance' : IDL.Func(
