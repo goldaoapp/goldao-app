@@ -121,6 +121,8 @@ module {
     breakerMax : Nat;
     breakerWindowMin : Nat;
     ledgerFails : Nat;
+    saturations : Nat;
+    accountingOk : Bool;
     flagged : [FlagEntry];
   };
 
