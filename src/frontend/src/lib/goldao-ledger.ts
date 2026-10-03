@@ -8,6 +8,8 @@
 
 import { Actor, HttpAgent } from "@dfinity/agent";
 import type { IDL as IDLType } from "@dfinity/candid";
+import { HttpAgent as SignedAgent } from "@icp-sdk/core/agent";
+import { Principal } from "@icp-sdk/core/principal";
 
 export const GOLDAO_LEDGER = "tyyy3-4aaaa-aaaaq-aab7a-cai";
 export const GOLDAO_ORIGINAL_SUPPLY = 1_000_000_000;
@@ -77,7 +79,39 @@ const ledgerIdlFactory = (({ IDL }: { IDL: typeof IDLType }) => {
     start: IDL.Nat,
     length: IDL.Nat,
   });
+  const ApproveArgs = IDL.Record({
+    from_subaccount: IDL.Opt(IDL.Vec(IDL.Nat8)),
+    spender: Account,
+    amount: IDL.Nat,
+    expected_allowance: IDL.Opt(IDL.Nat),
+    expires_at: IDL.Opt(IDL.Nat64),
+    fee: IDL.Opt(IDL.Nat),
+    memo: IDL.Opt(IDL.Vec(IDL.Nat8)),
+    created_at_time: IDL.Opt(IDL.Nat64),
+  });
+  const ApproveError = IDL.Variant({
+    GenericError: IDL.Record({ message: IDL.Text, error_code: IDL.Nat }),
+    TemporarilyUnavailable: IDL.Null,
+    Duplicate: IDL.Record({ duplicate_of: IDL.Nat }),
+    BadFee: IDL.Record({ expected_fee: IDL.Nat }),
+    AllowanceChanged: IDL.Record({ current_allowance: IDL.Nat }),
+    CreatedInFuture: IDL.Record({ ledger_time: IDL.Nat64 }),
+    TooOld: IDL.Null,
+    Expired: IDL.Record({ ledger_time: IDL.Nat64 }),
+    InsufficientFunds: IDL.Record({ balance: IDL.Nat }),
+  });
   return IDL.Service({
+    icrc1_balance_of: IDL.Func([Account], [IDL.Nat], ["query"]),
+    icrc2_allowance: IDL.Func(
+      [IDL.Record({ account: Account, spender: Account })],
+      [IDL.Record({ allowance: IDL.Nat, expires_at: IDL.Opt(IDL.Nat64) })],
+      ["query"],
+    ),
+    icrc2_approve: IDL.Func(
+      [ApproveArgs],
+      [IDL.Variant({ Ok: IDL.Nat, Err: ApproveError })],
+      [],
+    ),
     icrc1_total_supply: IDL.Func([], [IDL.Nat], ["query"]),
     get_transactions: IDL.Func(
       [GetTransactionsRequest],
@@ -117,7 +151,27 @@ interface RawGetTransactions {
   archived_transactions: unknown[];
 }
 
+interface Icrc1Account {
+  owner: Principal;
+  subaccount: [] | [Uint8Array];
+}
+
 interface LedgerActor {
+  icrc1_balance_of: (a: Icrc1Account) => Promise<bigint>;
+  icrc2_allowance: (a: {
+    account: Icrc1Account;
+    spender: Icrc1Account;
+  }) => Promise<{ allowance: bigint }>;
+  icrc2_approve: (a: {
+    from_subaccount: [];
+    spender: Icrc1Account;
+    amount: bigint;
+    expected_allowance: [];
+    expires_at: [];
+    fee: [];
+    memo: [];
+    created_at_time: [];
+  }) => Promise<{ Ok: bigint } | { Err: Record<string, unknown> }>;
   icrc1_total_supply: () => Promise<bigint>;
   get_transactions: (req: {
     start: bigint;
@@ -251,5 +305,60 @@ export async function fetchLastBurn(): Promise<LastBurn | null> {
     };
   } catch {
     return null;
+  }
+}
+
+/* ── Game wallet (real ledger mode) ─────────────────────────────────────── */
+
+const acct = (p: string): Icrc1Account => ({
+  owner: Principal.fromText(p),
+  subaccount: [],
+});
+
+/** Wallet balance (e8s) of a principal. */
+export async function fetchWalletBalance(owner: string): Promise<bigint> {
+  const l = await getLedger();
+  return l.icrc1_balance_of(acct(owner));
+}
+
+/** Amount (e8s) the spender may still take from the owner. */
+export async function fetchAllowance(
+  owner: string,
+  spender: string,
+): Promise<bigint> {
+  const l = await getLedger();
+  const r = await l.icrc2_allowance({
+    account: acct(owner),
+    spender: acct(spender),
+  });
+  return r.allowance;
+}
+
+/** Signs an icrc2_approve with the player's identity. */
+export async function approveSpender(
+  identity: unknown,
+  spender: string,
+  amount: bigint,
+): Promise<void> {
+  const agent = await SignedAgent.create({
+    identity: identity as never,
+    host: "https://icp-api.io",
+  });
+  const l = Actor.createActor(ledgerIdlFactory, {
+    agent: agent as never,
+    canisterId: GOLDAO_LEDGER,
+  }) as unknown as LedgerActor;
+  const res = await l.icrc2_approve({
+    from_subaccount: [],
+    spender: acct(spender),
+    amount,
+    expected_allowance: [],
+    expires_at: [],
+    fee: [],
+    memo: [],
+    created_at_time: [],
+  });
+  if ("Err" in res) {
+    throw new Error("The authorization was rejected by the ledger.");
   }
 }
