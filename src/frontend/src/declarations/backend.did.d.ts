@@ -198,7 +198,9 @@ export interface SecurityView {
   'haltCode' : bigint,
   'ledgerFails' : bigint,
   'haltedAt' : bigint,
+  'accountingOk' : boolean,
   'halted' : boolean,
+  'saturations' : bigint,
   'flagged' : Array<FlagEntry>,
 }
 export type StakeOption = { 'max' : null } |
@@ -255,6 +257,7 @@ export interface _SERVICE {
   'adminSyncBootstrap' : ActorMethod<[], boolean>,
   'assignCallerUserRole' : ActorMethod<[Principal, UserRole], undefined>,
   'execute' : ActorMethod<[string], Result__1>,
+  'gameAdminAckAccounting' : ActorMethod<[], GResult_5>,
   'gameAdminCloseTournament' : ActorMethod<[], GResult_5>,
   'gameAdminHalt' : ActorMethod<[], GResult_5>,
   'gameAdminLedgerAllowance' : ActorMethod<[Principal, Principal], GResult>,
