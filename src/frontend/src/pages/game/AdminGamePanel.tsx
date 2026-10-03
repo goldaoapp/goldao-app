@@ -48,8 +48,8 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
       setMsg({
         ok: true,
         text: s.drawWinner
-          ? `Week ${Number(s.week)} closed. Draw ticket #${Number(s.drawTicket)} of ${Number(s.drawTickets)}.`
-          : `Week ${Number(s.week)} closed. No diamonds: the draw rolls over.`,
+          ? `Week ${Number(s.week)} closed. Jackpot ticket #${Number(s.drawTicket)} of ${Number(s.drawTickets)}.`
+          : `Week ${Number(s.week)} closed. No diamonds: the jackpot rolls over.`,
       });
     } catch (e) {
       setMsg({ ok: false, text: errorMessage(e) });
@@ -112,7 +112,7 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
         />
         <Kpi
           icon={Gem}
-          label="Draw rollover"
+          label="Jackpot rollover"
           value={view ? fmtGoldao(view.drawCarry) : <Spinner />}
           sub="GOLDAO"
           diamond
@@ -128,8 +128,8 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
         <div className="flex flex-col gap-4 p-5">
           <p className={cn("text-sm", inkMid)}>
             1. Close the week: open excavations are saved, unused ones
-            auto-played, chips ranked and the diamond draw is run. 2. Review the
-            payouts. 3. Pay and open the next week.
+            auto-played, chips ranked and the diamond jackpot is drawn. 2.
+            Review the payouts. 3. Pay and open the next week.
           </p>
           <div className="flex flex-wrap gap-3">
             <Button
@@ -231,9 +231,9 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
               label="Kept for cycles"
               value={fmtGoldao(last.treasuryKeep)}
             />
-            <Item label="Draw prize" value={fmtGoldao(last.drawPrize)} />
+            <Item label="Jackpot" value={fmtGoldao(last.drawPrize)} />
             <Item
-              label="Draw ticket"
+              label="Winning ticket"
               value={
                 last.drawWinner
                   ? `#${Number(last.drawTicket)} of ${Number(last.drawTickets)}`
@@ -291,7 +291,7 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
                             DIAMOND_TEXT,
                           )}
                         >
-                          <Gem className="size-3" /> Diamond draw
+                          <Gem className="size-3" /> Diamond jackpot
                         </span>
                       ) : (
                         <TierSummary tiers={p.tiers} />
