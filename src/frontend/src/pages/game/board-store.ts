@@ -1,27 +1,45 @@
-import type { ExcavationView } from "@/backend";
+import type { AutoStep, EndResult, ExcavationView } from "@/backend";
 import { useSyncExternalStore } from "react";
 import type { TokenKey } from "./game-utils";
+
+/**
+ * Board state kept outside the component so it survives leaving the page and
+ * coming back, even with a pick in flight. Cell positions are also saved in the
+ * browser so a reload shows the same board; the backend only stores how many
+ * picks were made.
+ */
 
 export type Cell =
   | { kind: "token"; token: TokenKey }
   | { kind: "diamond" }
   | { kind: "rock" };
 
-export type RunResult = {
-  kind: "saved" | "collapse" | "maxed";
-  points: number;
+export interface JackpotView {
+  stage: number;
   won: bigint;
-  lost: bigint;
-  jackpotWon: bigint;
-};
+  held: boolean;
+}
+
+export interface AutoView {
+  steps: AutoStep[];
+  index: number;
+  end: EndResult;
+}
 
 export interface BoardState {
   owner: string | null;
   exc: ExcavationView | null;
   cells: Record<number, Cell>;
   digging: number | null;
-  result: RunResult | null;
+  result: EndResult | null;
   error: string | null;
+  notice: string | null;
+  /** Stake option remembered between excavations: 0 min, 1 mid, 2 max. */
+  stake: 0 | 1 | 2;
+  jackpot: JackpotView | null;
+  auto: AutoView | null;
+  rain: number;
+  /** Ignore the backend's open excavation until this time (ms), right after one ends. */
   skipRestoreUntil: number;
 }
 
@@ -32,6 +50,11 @@ const EMPTY: BoardState = {
   digging: null,
   result: null,
   error: null,
+  notice: null,
+  stake: 0,
+  jackpot: null,
+  auto: null,
+  rain: 0,
   skipRestoreUntil: 0,
 };
 
@@ -58,10 +81,68 @@ export function setBoard(
 }
 
 export function resetBoard(owner: string | null) {
-  state = { ...EMPTY, owner };
+  state = { ...EMPTY, owner, stake: state.stake };
   for (const l of listeners) l();
 }
 
 export function useBoard(): BoardState {
   return useSyncExternalStore(subscribe, getBoard, getBoard);
+}
+
+const STORAGE_KEY = "goldao.game.board";
+
+interface SavedBoard {
+  owner: string;
+  tournament: string;
+  excNo: number;
+  cells: Record<number, Cell>;
+}
+
+export function saveBoardCells(
+  owner: string,
+  tournament: bigint,
+  excNo: number,
+  cells: Record<number, Cell>,
+) {
+  try {
+    const data: SavedBoard = {
+      owner,
+      tournament: String(tournament),
+      excNo,
+      cells,
+    };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  } catch {
+    // Storage unavailable: the board is still kept in memory.
+  }
+}
+
+export function clearBoardCells() {
+  try {
+    localStorage.removeItem(STORAGE_KEY);
+  } catch {
+    // Nothing to clear.
+  }
+}
+
+export function loadBoardCells(
+  owner: string,
+  tournament: bigint,
+  excNo: number,
+): Record<number, Cell> | null {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return null;
+    const data = JSON.parse(raw) as SavedBoard;
+    if (
+      data.owner !== owner ||
+      data.tournament !== String(tournament) ||
+      data.excNo !== excNo
+    ) {
+      return null;
+    }
+    return data.cells ?? null;
+  } catch {
+    return null;
+  }
 }
