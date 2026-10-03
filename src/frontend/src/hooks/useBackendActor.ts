@@ -14,7 +14,7 @@ interface EnvConfig {
 
 let envPromise: Promise<EnvConfig> | null = null;
 
-async function loadEnv(): Promise<EnvConfig> {
+export async function loadEnv(): Promise<EnvConfig> {
   const canisterId = process.env.CANISTER_ID_BACKEND as string | undefined;
   const network = process.env.DFX_NETWORK as string | undefined;
   if (canisterId && canisterId !== "undefined")
