@@ -6,14 +6,19 @@ import { Spinner } from "./Spinner";
 import {
   DIAMOND_TEXT,
   eyebrow,
+  fmtCountdown,
   fmtGoldao,
-  fmtTimeLeft,
+  fmtSigned,
   gold,
   ink,
   inkFaint,
+  netOf,
   panel,
   panelHeader,
+  picksForPoints,
+  prizeName,
 } from "./game-utils";
+import { useGameConfig } from "./useGame";
 
 interface Props {
   dashboard: Dashboard | undefined;
@@ -21,6 +26,7 @@ interface Props {
 
 export function PlayerDashboard({ dashboard }: Props) {
   const { isAuthenticated } = useAuth();
+  const { data: config } = useGameConfig();
 
   if (!dashboard) {
     return (
@@ -43,15 +49,28 @@ export function PlayerDashboard({ dashboard }: Props) {
   }
 
   const s = dashboard.stats;
-  const net = Number(s.returned) + Number(s.jackpotWon) - Number(s.charged);
+  const net = netOf(s);
+  const table = config ? config.pointsTable.map(Number) : [];
+  const best = Number(s.bestPoints);
+  const bestPrize =
+    best > 0 ? prizeName(picksForPoints(table, best)).name : "None yet";
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         <Kpi label="Excavations" value={String(Number(s.excavations))} />
         <Kpi label="Staked" value={fmtGoldao(s.staked)} />
-        <Kpi label="Credit" value={fmtGoldao(dashboard.credit)} />
-        <Kpi label="Jackpots won" value={fmtGoldao(s.jackpotWon)} diamond />
+        <Kpi label="Returned" value={fmtGoldao(s.returned, 2)} />
+        <Kpi
+          label="Net result"
+          value={fmtSigned(net, 2)}
+          tone={net > 0n ? "up" : net < 0n ? "down" : undefined}
+        />
+        <Kpi label="Jackpots" value={fmtGoldao(s.jackpotWon, 2)} diamond />
+        <Kpi label="Collapses" value={String(Number(s.collapses))} />
+        <Kpi label="Best prize" value={bestPrize} />
+        <Kpi label="Deepest pick" value={String(Number(s.deepest))} />
+        <Kpi label="Charged from wallet" value={fmtGoldao(s.charged, 2)} />
       </div>
 
       <div className={panel}>
@@ -61,24 +80,16 @@ export function PlayerDashboard({ dashboard }: Props) {
             {Number(dashboard.tournament)}
           </span>
           <span className={cn("font-mono text-[11px]", inkFaint)}>
-            Ends in {fmtTimeLeft(dashboard.endsAt)}
+            {fmtCountdown(dashboard.endsAt)}
           </span>
         </div>
-        <dl className="grid grid-cols-2 gap-4 p-5 font-mono text-xs sm:grid-cols-4">
-          <Item label="Returned" value={fmtGoldao(s.returned, 2)} />
-          <Item label="Charged on collapse" value={fmtGoldao(s.charged, 2)} />
-          <Item
-            label="Net"
-            value={`${net >= 0 ? "+" : ""}${(net / 1e8).toLocaleString("en-US", { maximumFractionDigits: 2 })}`}
-          />
-          <Item label="Collapses" value={String(Number(s.collapses))} />
-          <Item label="Best points" value={String(Number(s.bestPoints))} />
-          <Item label="Deepest run" value={String(Number(s.deepest))} />
-          <Item label="Jackpots" value={String(Number(s.jackpots))} />
+        <dl className="grid grid-cols-2 gap-4 p-5 font-mono text-xs sm:grid-cols-3">
+          <Item label="To collect" value={fmtGoldao(dashboard.credit, 2)} />
           <Item
             label="Pending payout"
             value={fmtGoldao(dashboard.pendingPayout, 2)}
           />
+          <Item label="Jackpot pool" value={fmtGoldao(dashboard.pool)} />
         </dl>
       </div>
 
@@ -98,7 +109,8 @@ export function PlayerDashboard({ dashboard }: Props) {
                   <th className="px-5 py-2 font-medium">Tournament</th>
                   <th className="px-3 py-2 font-medium">Excavations</th>
                   <th className="px-3 py-2 font-medium">Staked</th>
-                  <th className="px-5 py-2 text-right font-medium">Payout</th>
+                  <th className="px-3 py-2 font-medium">Net result</th>
+                  <th className="px-5 py-2 text-right font-medium">Paid out</th>
                 </tr>
               </thead>
               <tbody>
@@ -114,6 +126,9 @@ export function PlayerDashboard({ dashboard }: Props) {
                       {Number(h.stats.excavations)}
                     </td>
                     <td className="px-3 py-2.5">{fmtGoldao(h.stats.staked)}</td>
+                    <td className="px-3 py-2.5 tabular-nums">
+                      {fmtSigned(netOf(h.stats), 2)}
+                    </td>
                     <td
                       className={cn("px-5 py-2.5 text-right tabular-nums", ink)}
                     >
@@ -134,7 +149,13 @@ function Kpi({
   label,
   value,
   diamond,
-}: { label: string; value: string; diamond?: boolean }) {
+  tone,
+}: {
+  label: string;
+  value: string;
+  diamond?: boolean;
+  tone?: "up" | "down";
+}) {
   return (
     <div className={cn(panel, "flex flex-col gap-1 p-4")}>
       <span
@@ -151,6 +172,8 @@ function Kpi({
         className={cn(
           "font-display text-2xl font-semibold tabular-nums",
           diamond ? DIAMOND_TEXT : ink,
+          tone === "up" && "text-[color:var(--term-green)]",
+          tone === "down" && "text-destructive",
         )}
       >
         {value}
