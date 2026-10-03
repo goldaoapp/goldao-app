@@ -7,18 +7,23 @@ import { Spinner } from "./Spinner";
 import {
   DIAMOND_TEXT,
   eyebrow,
+  fmtCountdown,
   fmtDate,
   fmtGoldao,
-  fmtTimeLeft,
+  fmtSigned,
   gold,
   ink,
   inkFaint,
+  netOf,
   panel,
   panelHeader,
+  picksForPoints,
+  prizeName,
   shortPrincipal,
 } from "./game-utils";
+import { useGameConfig } from "./useGame";
 
-type SortKey = "returned" | "points" | "jackpot";
+type SortKey = "net" | "points" | "jackpot";
 
 const TOP = 20;
 
@@ -29,7 +34,9 @@ interface Props {
 
 export function RankingTable({ ranking, tournaments }: Props) {
   const { principalId } = useAuth();
-  const [sort, setSort] = useState<SortKey>("returned");
+  const { data: config } = useGameConfig();
+  const table = config ? config.pointsTable.map(Number) : [];
+  const [sort, setSort] = useState<SortKey>("net");
   const [showAll, setShowAll] = useState(false);
 
   const rows = useMemo(() => {
@@ -40,7 +47,7 @@ export function RankingTable({ ranking, tournaments }: Props) {
         ? Number(p.bestPoints)
         : sort === "jackpot"
           ? Number(p.jackpotWon)
-          : Number(p.returned) + Number(p.jackpotWon);
+          : Number(netOf(p));
     return base
       .sort((a, b) => key(b) - key(a))
       .map((p, i) => ({ ...p, pos: i + 1 }));
@@ -60,7 +67,7 @@ export function RankingTable({ ranking, tournaments }: Props) {
           <Kpi label="Jackpot pool" value={fmtGoldao(ranking.pool)} diamond />
           <Kpi label="Staked" value={fmtGoldao(ranking.staked)} />
           <Kpi label="Players" value={String(ranking.players.length)} />
-          <Kpi label="Ends in" value={fmtTimeLeft(ranking.endsAt)} />
+          <Kpi label="Ends in" value={fmtCountdown(ranking.endsAt)} />
         </div>
       )}
 
@@ -72,8 +79,8 @@ export function RankingTable({ ranking, tournaments }: Props) {
           <div className="inline-flex rounded-md border border-[color:var(--term-border)] p-0.5 font-mono text-[11px]">
             {(
               [
-                ["returned", "Returned"],
-                ["points", "Best"],
+                ["net", "Net"],
+                ["points", "Best prize"],
                 ["jackpot", "Jackpot"],
               ] as const
             ).map(([k, l]) => (
@@ -104,10 +111,16 @@ export function RankingTable({ ranking, tournaments }: Props) {
                 <tr className={cn("text-left", inkFaint)}>
                   <th className="px-5 py-2 font-medium">#</th>
                   <th className="px-3 py-2 font-medium">Player</th>
-                  <th className="px-3 py-2 font-medium">Exc.</th>
-                  <th className="px-3 py-2 font-medium">Staked</th>
-                  <th className="px-3 py-2 font-medium">Returned</th>
-                  <th className="px-3 py-2 font-medium">Best</th>
+                  <th className="hidden px-3 py-2 font-medium sm:table-cell">
+                    Excavations
+                  </th>
+                  <th className="hidden px-3 py-2 font-medium sm:table-cell">
+                    Staked
+                  </th>
+                  <th className="px-3 py-2 font-medium">Net result</th>
+                  <th className="hidden px-3 py-2 font-medium sm:table-cell">
+                    Best prize
+                  </th>
                   <th className="px-5 py-2 text-right font-medium">Jackpot</th>
                 </tr>
               </thead>
@@ -126,10 +139,27 @@ export function RankingTable({ ranking, tournaments }: Props) {
                       <td className={cn("px-3 py-2.5", ink)}>
                         {shortPrincipal(p.player.toText())}
                       </td>
-                      <td className="px-3 py-2.5">{Number(p.excavations)}</td>
-                      <td className="px-3 py-2.5">{fmtGoldao(p.staked)}</td>
-                      <td className="px-3 py-2.5">{fmtGoldao(p.returned)}</td>
-                      <td className="px-3 py-2.5">{Number(p.bestPoints)}</td>
+                      <td className="hidden px-3 py-2.5 sm:table-cell">
+                        {Number(p.excavations)}
+                      </td>
+                      <td className="hidden px-3 py-2.5 sm:table-cell">
+                        {fmtGoldao(p.staked)}
+                      </td>
+                      <td
+                        className={cn(
+                          "px-3 py-2.5 tabular-nums",
+                          netOf(p) >= 0 ? "text-emerald-400" : "text-red-400",
+                        )}
+                      >
+                        {fmtSigned(netOf(p), 2)}
+                      </td>
+                      <td className="hidden px-3 py-2.5 sm:table-cell">
+                        {Number(p.bestPoints) > 0
+                          ? prizeName(
+                              picksForPoints(table, Number(p.bestPoints)),
+                            ).name
+                          : "-"}
+                      </td>
                       <td
                         className={cn(
                           "px-5 py-2.5 text-right tabular-nums",
