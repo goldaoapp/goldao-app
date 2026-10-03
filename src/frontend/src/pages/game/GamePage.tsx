@@ -21,29 +21,28 @@ import { PlayerDashboard } from "./PlayerDashboard";
 import { PrizeGuide } from "./PrizeGuide";
 import { RankingTable } from "./RankingTable";
 import { WalletPanel } from "./WalletPanel";
-import { gold, inkFaint, inkMid, panel } from "./game-utils";
+import { fmtTimeLeft, gold, inkFaint, inkMid, panel } from "./game-utils";
 import {
   useAdminView,
   useDashboard,
   useGameConfig,
   useRanking,
-  useWeeks,
+  useTournaments,
 } from "./useGame";
 
 /**
- * Gold mine game — /gamefi/mine (simulated mode, test GOLDAO only).
- * All randomness and accounting live in the backend; this page only displays.
+ * Gold mine game — /gamefi/mine.
  */
 export default function GamePage() {
   const { isAuthenticated, isLoading, login } = useAuth();
   const { data: config } = useGameConfig();
   const { data: dashboard } = useDashboard();
   const { data: ranking } = useRanking();
-  const { data: weeks } = useWeeks();
+  const { data: tournaments } = useTournaments();
   const { data: adminView } = useAdminView(isAuthenticated);
 
-  const week = dashboard?.week ?? ranking?.week ?? config?.week;
-  const status = dashboard?.status ?? ranking?.status ?? config?.status;
+  const tournament = dashboard?.tournament ?? ranking?.tournament;
+  const paused = dashboard?.paused ?? false;
 
   return (
     <section className="mx-auto flex max-w-6xl flex-col gap-6 px-4 py-10 sm:px-6 lg:px-10">
@@ -61,9 +60,9 @@ export default function GamePage() {
         tag="Game"
         tagIcon={Pickaxe}
         title="Gold Mine"
-        description="Dig, decide when to save, and compete every week for the treasure. Simulated mode with test GOLDAO."
+        description="Dig, decide when to save and chase the diamond jackpot. Tournaments run on a fixed schedule."
       >
-        {week !== undefined && (
+        {tournament !== undefined && (
           <motion.span
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -72,18 +71,18 @@ export default function GamePage() {
             <span
               className={cn(
                 "size-2 rounded-full",
-                status === "open"
-                  ? "animate-pulse bg-[color:var(--term-green)]"
-                  : "bg-[color:var(--term-warn)]",
+                paused
+                  ? "bg-[color:var(--term-warn)]"
+                  : "animate-pulse bg-[color:var(--term-green)]",
               )}
             />
-            <span className={inkMid}>Week #{Number(week)}</span>
+            <span className={inkMid}>Tournament #{Number(tournament)}</span>
             <span className={gold}>
-              {status === "open"
-                ? "open"
-                : status === "closed"
-                  ? "closed"
-                  : "closing"}
+              {paused
+                ? "paused"
+                : dashboard
+                  ? `ends in ${fmtTimeLeft(dashboard.endsAt)}`
+                  : "open"}
             </span>
           </motion.span>
         )}
@@ -99,8 +98,7 @@ export default function GamePage() {
           )}
         >
           <p className={cn("text-sm", inkMid)}>
-            Sign in with Internet Identity to get test GOLDAO, buy chips and
-            start digging.
+            Sign in with Internet Identity to start digging.
           </p>
           <Button
             onClick={() => login()}
@@ -117,10 +115,10 @@ export default function GamePage() {
         <TabsList className="grid h-auto w-full auto-cols-fr grid-flow-col rounded-lg border border-[color:var(--term-border)] bg-[var(--term-header)] p-1 sm:flex sm:h-10 sm:w-fit sm:justify-start">
           <Tab value="mine" icon={<Pickaxe />} label="Mine" />
           <Tab
-            value="week"
+            value="stats"
             icon={<LayoutDashboard />}
-            label="My week"
-            short="Week"
+            label="My stats"
+            short="Stats"
           />
           <Tab value="ranking" icon={<ListOrdered />} label="Ranking" />
           <Tab
@@ -137,19 +135,19 @@ export default function GamePage() {
             <MineBoard dashboard={dashboard} config={config} />
           </Fade>
         </TabsContent>
-        <TabsContent value="week">
+        <TabsContent value="stats">
           <Fade>
             <PlayerDashboard dashboard={dashboard} />
           </Fade>
         </TabsContent>
         <TabsContent value="ranking">
           <Fade>
-            <RankingTable ranking={ranking} weeks={weeks} />
+            <RankingTable ranking={ranking} tournaments={tournaments} />
           </Fade>
         </TabsContent>
         <TabsContent value="guide">
           <Fade>
-            <PrizeGuide ranking={ranking} config={config} />
+            <PrizeGuide config={config} />
           </Fade>
         </TabsContent>
         {adminView && (
