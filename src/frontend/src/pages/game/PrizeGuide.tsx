@@ -1,24 +1,35 @@
 import type { GameConfig } from "@/backend";
 import { cn } from "@/lib/utils";
-import { BookOpen, Gem } from "lucide-react";
+import { BookOpen, Gem, Mountain } from "lucide-react";
 import { Spinner } from "./Spinner";
 import {
   DIAMOND_TEXT,
+  STAKE_LABELS,
   eyebrow,
   fmtGoldao,
+  fmtMult,
   gold,
   ink,
   inkFaint,
   inkMid,
   panel,
   panelHeader,
+  prizeName,
 } from "./game-utils";
 
 interface Props {
   config: GameConfig | undefined;
+  stakes: bigint[] | undefined;
 }
 
-export function PrizeGuide({ config }: Props) {
+/** Chance (%) of reaching `picks` safe picks: the first two are free. */
+function reachPct(picks: number, cells: number, mines: number, safe: number) {
+  let p = 1;
+  for (let n = safe; n < picks; n++) p *= 1 - mines / (cells - n);
+  return p * 100;
+}
+
+export function PrizeGuide({ config, stakes }: Props) {
   if (!config) {
     return (
       <div className={cn(panel, "flex justify-center p-8")}>
@@ -26,7 +37,21 @@ export function PrizeGuide({ config }: Props) {
       </div>
     );
   }
+  const cells = Number(config.cells);
+  const mines = Number(config.mines);
+  const safe = Number(config.safePicks);
   const pts = config.pointsTable.map(Number);
+  const payout = Number(config.payoutBps) / 100;
+  const d1 = Number(config.diamond1Bps) / 10_000;
+  const d2 = Number(config.diamond2Bps) / 10_000;
+  const perGoldao = Number(config.diamond3PerGoldao) / Number(1e8);
+  const jackpotChance = (stake: bigint) =>
+    d1 * d2 * (Number(stake / 100_000_000n) * perGoldao);
+
+  const rows = pts
+    .map((p, picks) => ({ picks, p }))
+    .filter((r) => r.picks > safe);
+
   return (
     <div className="flex flex-col gap-6">
       <div className={panel}>
@@ -37,30 +62,23 @@ export function PrizeGuide({ config }: Props) {
         </div>
         <div className={cn("flex flex-col gap-3 p-5 text-sm", inkMid)}>
           <p>
-            Pick a stake and dig. The board has {Number(config.cells)} cells and{" "}
-            {Number(config.mines)} of them collapse the mine. Each safe pick
-            adds points. Save at any time after {Number(config.safePicks)} safe
-            picks to take{" "}
-            <span className={ink}>
-              {Number(config.payoutBps) / 100}% of stake x points
-            </span>
-            .
+            Choose a stake and dig. The board has {cells} cells and {mines} of
+            them collapse the mine. The first {safe} picks are always safe. From
+            the third pick you can save: you receive{" "}
+            <span className={ink}>{payout}% of stake x points</span>, shown as a
+            multiplier.
           </p>
           <p>
-            If the mine collapses you keep half of the points reached, so the
-            loss is the rest of the stake. The stake is only taken from your
-            wallet when it collapses; wins are added to your game credit and
-            paid out when the tournament closes.
-          </p>
-          <p className={DIAMOND_TEXT}>
-            <Gem className="mr-1 inline size-3.5" />
-            Diamonds can appear on safe picks and grow the jackpot prize.
-            Jackpots found on the first two picks are confirmed from the third
-            pick on.
+            Winnings are added to your balance to collect and paid out when the
+            tournament closes. If the mine collapses you keep half of the points
+            reached, so you lose the rest of the stake. Losses are first taken
+            from your balance to collect; if it does not cover them, they are
+            charged from your wallet.
           </p>
           <p>
-            Stakes: {fmtGoldao(config.stakeMinE8s)} minimum, up to{" "}
-            {fmtGoldao(config.stakeCapE8s)}. Payout transfers pay a{" "}
+            The game authorizes itself the first time it needs your wallet, and
+            it only ever charges losses. You can revoke it at any time from your
+            wallet. Each authorization and each charge pays the{" "}
             {fmtGoldao(config.feeE8s)} GOLDAO network fee.
           </p>
         </div>
@@ -68,19 +86,91 @@ export function PrizeGuide({ config }: Props) {
 
       <div className={panel}>
         <div className={panelHeader}>
-          <span className={cn(eyebrow, gold)}>Points per safe pick</span>
+          <span className={cn(eyebrow, gold)}>Prize per pick</span>
         </div>
-        <div className="flex flex-wrap gap-2 p-5 font-mono text-xs">
-          {pts.slice(1).map((p, i) => (
-            <span
-              // biome-ignore lint/suspicious/noArrayIndexKey: static table
-              key={i}
-              className="flex flex-col items-center rounded-md border border-[color:var(--term-border)] px-3 py-1.5"
-            >
-              <span className={inkFaint}>{i + 1}</span>
-              <span className={ink}>{p}</span>
-            </span>
-          ))}
+        <div className="overflow-auto">
+          <table className="w-full font-mono text-xs">
+            <thead>
+              <tr className={cn("text-left", inkFaint)}>
+                <th className="px-5 py-2 font-medium">Save at pick</th>
+                <th className="px-3 py-2 font-medium">Prize</th>
+                <th className="px-3 py-2 font-medium">Multiplier</th>
+                <th className="px-3 py-2 font-medium">If it collapses</th>
+                <th className="px-5 py-2 text-right font-medium">
+                  Chance to reach
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map(({ picks, p }) => {
+                const prize = prizeName(picks);
+                const Icon = prize.icon;
+                return (
+                  <tr
+                    key={picks}
+                    className="border-t border-[color:var(--term-border-faint)]"
+                  >
+                    <td className={cn("px-5 py-2.5", ink)}>{picks}</td>
+                    <td className="px-3 py-2.5">
+                      <span
+                        className={cn(
+                          "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px]",
+                          prize.pill,
+                        )}
+                      >
+                        <Icon className="size-3" />
+                        {prize.name}
+                      </span>
+                    </td>
+                    <td className={cn("px-3 py-2.5 tabular-nums", ink)}>
+                      {fmtMult(p)}
+                    </td>
+                    <td className="px-3 py-2.5 tabular-nums">
+                      <Mountain className="mr-1 inline size-3" />
+                      {fmtMult(Math.ceil(p / 2))}
+                    </td>
+                    <td className="px-5 py-2.5 text-right tabular-nums">
+                      {reachPct(picks, cells, mines, safe).toFixed(0)}%
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div className={panel}>
+        <div className={panelHeader}>
+          <span
+            className={cn(eyebrow, DIAMOND_TEXT, "flex items-center gap-2")}
+          >
+            <Gem className="size-3.5" /> Diamond jackpot
+          </span>
+        </div>
+        <div className={cn("flex flex-col gap-3 p-5 text-sm", inkMid)}>
+          <p>
+            Any safe pick can reveal a diamond. Three diamonds in a row win the
+            whole jackpot. A jackpot found on the first two picks is confirmed
+            from the third pick on. The bigger the stake, the better the chance.
+          </p>
+          {stakes && stakes.length === 3 && (
+            <div className="flex flex-wrap gap-3 font-mono text-xs">
+              {stakes.map((s, i) => (
+                <span
+                  key={STAKE_LABELS[i]}
+                  className="rounded-md border border-[color:var(--term-border)] px-3 py-1.5"
+                >
+                  {STAKE_LABELS[i]} {fmtGoldao(s)}:{" "}
+                  <span className={ink}>
+                    1 in{" "}
+                    {Math.round(1 / jackpotChance(s)).toLocaleString("en-US")}
+                  </span>{" "}
+                  per safe pick
+                </span>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </div>
