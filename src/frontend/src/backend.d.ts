@@ -133,6 +133,10 @@ export interface ExcavationView {
     picks: bigint;
     safePctX100: bigint;
 }
+export interface FlagEntry {
+    at: bigint;
+    player: Principal;
+}
 export type GResult = {
     __kind__: "ok";
     ok: bigint;
@@ -177,6 +181,13 @@ export type GResult_5 = {
 };
 export type GResult_6 = {
     __kind__: "ok";
+    ok: SecurityView;
+} | {
+    __kind__: "err";
+    err: string;
+};
+export type GResult_7 = {
+    __kind__: "ok";
     ok: {
         paid: bigint;
         remaining: bigint;
@@ -186,7 +197,7 @@ export type GResult_6 = {
     __kind__: "err";
     err: string;
 };
-export type GResult_7 = {
+export type GResult_8 = {
     __kind__: "ok";
     ok: Array<[Principal, UserRole]>;
 } | {
@@ -268,6 +279,15 @@ export interface Result__1 {
     hasMore: boolean;
     rows: Array<Array<Cell>>;
 }
+export interface SecurityView {
+    breakerWindowMin: bigint;
+    breakerMax: bigint;
+    haltCode: bigint;
+    ledgerFails: bigint;
+    haltedAt: bigint;
+    halted: boolean;
+    flagged: Array<FlagEntry>;
+}
 export interface TournamentStats {
     staked: bigint;
     jackpotWon: bigint;
@@ -337,18 +357,22 @@ export enum UserRole {
     guest = "guest"
 }
 export interface backendInterface {
-    adminListRoles(): Promise<GResult_7>;
+    adminListRoles(): Promise<GResult_8>;
     adminSyncBootstrap(): Promise<boolean>;
     assignCallerUserRole(user: Principal, role: UserRole): Promise<void>;
     execute(qJson: string): Promise<Result__1>;
     gameAdminCloseTournament(): Promise<GResult_5>;
+    gameAdminHalt(): Promise<GResult_5>;
     gameAdminLedgerAllowance(who: Principal, spender: Principal): Promise<GResult>;
     gameAdminLedgerBalance(who: Principal): Promise<GResult>;
-    gameAdminPay(): Promise<GResult_6>;
+    gameAdminPay(): Promise<GResult_7>;
     gameAdminRecordWithdrawal(goldao: bigint): Promise<GResult>;
     gameAdminRefreshBank(): Promise<GResult>;
     gameAdminReleaseBusy(player: Principal): Promise<GResult_5>;
+    gameAdminResume(): Promise<GResult_5>;
+    gameAdminSecurity(): Promise<GResult_6>;
     gameAdminSeedPool(goldao: bigint): Promise<GResult>;
+    gameAdminSetBreaker(max: bigint, windowMinutes: bigint): Promise<GResult_5>;
     gameAdminSetDuration(days: bigint): Promise<GResult_5>;
     gameAdminSetRealLedger(selfId: Principal): Promise<GResult>;
     gameAdminTestApprove(goldao: bigint): Promise<GResult>;
