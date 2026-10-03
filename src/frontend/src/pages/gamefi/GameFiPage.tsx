@@ -79,7 +79,7 @@ function GoldMineCard() {
             </span>
             <span className="flex items-center gap-1">
               <Coins className="size-3.5" />
-              {ranking ? fmtGoldao(ranking.pot) : <Spinner />}
+              {ranking ? fmtGoldao(ranking.pool) : <Spinner />}
             </span>
           </span>
           <span className="flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border border-[color:var(--term-green)]/50 bg-[color:var(--term-green)]/10 px-2 py-0.5 text-[10px] text-[color:var(--term-green)]">
@@ -95,7 +95,7 @@ function GoldMineCard() {
             Gold Mine
           </h3>
           <div className="flex flex-wrap gap-1.5">
-            {["Strategy", "Weekly tournament"].map((t) => (
+            {["Strategy", "Tournaments"].map((t) => (
               <span
                 key={t}
                 className="rounded-full border border-primary/50 bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-[color:var(--term-gold)]"
@@ -105,8 +105,8 @@ function GoldMineCard() {
             ))}
           </div>
           <p className={cn("text-sm leading-relaxed", inkMid)}>
-            Dig the mine, save before it collapses and compete every week for
-            the treasure.
+            Dig the mine, save before it collapses and chase the diamond
+            jackpot.
           </p>
           <span className="mt-auto flex items-center gap-1.5 font-mono text-xs font-semibold text-[color:var(--term-gold)]">
             Play now
