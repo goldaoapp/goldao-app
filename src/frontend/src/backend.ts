@@ -331,7 +331,9 @@ export interface SecurityView {
     haltCode: bigint;
     ledgerFails: bigint;
     haltedAt: bigint;
+    accountingOk: boolean;
     halted: boolean;
+    saturations: bigint;
     flagged: Array<FlagEntry>;
 }
 export interface TournamentStats {
@@ -410,6 +412,7 @@ export interface backendInterface {
     adminSyncBootstrap(): Promise<boolean>;
     assignCallerUserRole(user: Principal, role: UserRole): Promise<void>;
     execute(qJson: string): Promise<Result__1>;
+    gameAdminAckAccounting(): Promise<GResult_5>;
     gameAdminCloseTournament(): Promise<GResult_5>;
     gameAdminHalt(): Promise<GResult_5>;
     gameAdminLedgerAllowance(who: Principal, spender: Principal): Promise<GResult>;
@@ -554,6 +557,20 @@ export class Backend implements backendInterface {
         } else {
             const result = await this.actor.execute(arg0);
             return from_candid_Result__1_n11(this._uploadFile, this._downloadFile, result);
+        }
+    }
+    async gameAdminAckAccounting(): Promise<GResult_5> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.gameAdminAckAccounting();
+                return from_candid_GResult_5_n19(this._uploadFile, this._downloadFile, result);
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.gameAdminAckAccounting();
+            return from_candid_GResult_5_n19(this._uploadFile, this._downloadFile, result);
         }
     }
     async gameAdminCloseTournament(): Promise<GResult_5> {
