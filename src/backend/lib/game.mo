@@ -1,44 +1,54 @@
-import Types "../types/game";
-import Map "mo:core/Map";
-import Array "mo:core/Array";
-import VarArray "mo:core/VarArray";
 import Nat "mo:core/Nat";
 import Nat8 "mo:core/Nat8";
-import Order "mo:core/Order";
 import Nat64 "mo:core/Nat64";
 import Int "mo:core/Int";
 import Principal "mo:core/Principal";
 
 module {
-  public type Chip = Types.Chip;
-
-  // Fixed rules (amounts in e8s)
   public let E8S : Nat = 100_000_000;
-  public let FEE : Nat = 1_000_000_000; // 10 GOLDAO
-  public let CHIP_PRICE : Nat = 100_000_000_000; // 1,000 GOLDAO
-  public let EXCAVATIONS_PER_CHIP : Nat = 5; // 200 GOLDAO per excavation
+  public let FEE : Nat = 1_000_000_000;
   public let CELLS : Nat = 25;
   public let MINES : Nat = 5;
   public let SAFE : Nat = 2;
-  public let MAX_PICKS : Nat = 20; // CELLS - MINES
-  public let DIAMOND_BPS : Nat = 200; // 2% per safe pick
-  public let TREASURY_BPS : Nat = 100; // 1%
-  public let DRAW_BPS : Nat = 440; // 4.4%
-  public let MIN_CHIPS : Nat = 20;
-  public let MIN_PLAYERS : Nat = 5;
-  public let FAUCET_CAP : Nat = 2_000_000_000_000; // 20,000 GOLDAO
-  // Total test GOLDAO the faucet gives per week across all players (limits cycle abuse with many principals).
-  public let FAUCET_GLOBAL_CAP : Nat = 200_000_000_000_000; // 2,000,000 GOLDAO
-  public let MAX_CHIPS_PER_BUY : Nat = 10;
-  public let AUTO_SAVE_AT : Nat = 3;
-  // Expected points of an auto-played excavation saving at 3: (18 * 114 + 5 * 50) / 23 = 100.
-  public let AUTO_EV : Nat = 100;
+  public let MAX_PICKS : Nat = 10;
+  public let POINTS : [Nat] = [0, 50, 100, 114, 131, 151, 176, 208, 248, 299, 367];
+
+  public let STAKE_MIN : Nat = 10_000_000_000;
+  public let STAKE_CAP : Nat = 100_000_000_000;
+  public let STAKE_STEP : Nat = 10_000_000_000;
+  public let MID_STEP : Nat = 1_000_000_000;
+  public let MAX_STAKE_BPS : Nat = 50;
+  public let PAYOUT_BPS : Nat = 9_200;
+  public let POOL_BPS : Nat = 250;
+  public let RESERVE_BPS : Nat = 250;
+  public let CYCLES_BPS : Nat = 100;
+  public let POOL_SEED : Nat = 500_000_000_000;
+  public let RESERVE_CAP : Nat = 2_000_000_000_000;
+  public let FUND_FLOOR : Nat = 2_000_000_000_000;
+  public let FUND_TARGET : Nat = 20_000_000_000_000;
+  public let DIAMOND1_BPS : Nat = 200;
+  public let DIAMOND2_BPS : Nat = 2_000;
+  public let DIAMOND3_PER_GOLDAO : Nat = 15_625;
+  public let DIAMOND3_BASE : Nat = 100_000_000;
+  public let DEFAULT_DURATION_DAYS : Nat = 7;
+  public let MAX_DURATION_DAYS : Nat = 60;
+  public let JACKPOT_LOG : Nat = 50;
+  public let DAY_NS : Int = 86_400_000_000_000;
+  public let BUSY_STALE_NS : Int = 600_000_000_000;
+  public let PAY_BATCH : Nat = 20;
+  public let FAUCET_CAP : Nat = 2_000_000_000_000;
+  public let FAUCET_GLOBAL_CAP : Nat = 200_000_000_000_000;
+  public let MAX_APPROVE : Nat = 1_000_000_000_000_000;
 
   // Principals that are always admin. Paste Internet Identity principals here before deploying.
   public let BOOTSTRAP_ADMINS : [Text] = [
   "o4k5k-q4hdh-hmf4x-qnqbw-m53ao-c4u6t-6vyft-ejkie-iepjy-ziitc-3ae",
   "nxdvu-ipwv3-xgadl-ws3fw-ply6m-vf5st-nd5mq-4hv5c-nzvgc-o6swr-oae",
   ];
+
+  public let TREASURY : Text = "mkbc4-kaq3u-voc2z-j7yut-xgc3h-2gcgd-hfuzl-ss6uo-4q5q7-egfp4-qqe";
+
+  public func treasury() : Principal { Principal.fromText(TREASURY) };
 
   public func isBootstrapAdmin(p : Principal) : Bool {
     let t = Principal.toText(p);
@@ -48,39 +58,38 @@ module {
     false;
   };
 
-  // % per tier: Treasure, Ingot, Gold dust, Rock
-  public let CUTS_PCT : [Nat] = [5, 15, 60, 20];
-  let CUM_PCT : [Nat] = [5, 20, 80, 100];
-  // Multiplier per chip in bps (Treasure gets whatever is left)
-  public let MULT_BPS : [Nat] = [0, 12_000, 10_000, 0];
-  public let TREASURE : Nat = 0;
-  public let ROCK : Nat = 3;
-  public let TIERS : Nat = 4;
-
-  // Points when saving after k safe picks (k = 2 are the free ones).
-  // Built so that any strategy is worth 100 on average with 5 mines
-  // and a collapse keeping 50%.
-  public let POINTS : [Nat] = [
-    0, 50, 100, 114, 131, 151, 176, 208, 248, 299, 367,
-    459, 587, 770, 1045, 1480, 2220, 3608, 6614, 14882, 52087,
-  ];
-
-  // Saturating subtraction: returns 0 instead of trapping when b > a.
   public func sub(a : Nat, b : Nat) : Nat {
     let d : Int = a - b;
     if (d > 0) Int.abs(d) else 0;
   };
 
-  public func pointsAt(k : Nat) : Nat { POINTS[k] };
+  public func pointsAt(k : Nat) : Nat {
+    if (k < POINTS.size()) POINTS[k] else POINTS[MAX_PICKS];
+  };
 
-  // Collapse after k safe picks: keeps half (rounded up)
-  public func collapsePoints(k : Nat) : Nat { (POINTS[k] + 1) / 2 };
+  public func collapsePoints(k : Nat) : Nat { (pointsAt(k) + 1) / 2 };
 
   public func canSave(picks : Nat) : Bool { picks > SAFE };
 
-  // Chance (x100) that the next pick is safe
   public func safePctX100(picks : Nat) : Nat {
     if (picks < SAFE) 10_000 else if (picks >= MAX_PICKS) 0 else sub(sub(CELLS, MINES), picks) * 10_000 / sub(CELLS, picks);
+  };
+
+  public func gross(stake : Nat, points : Nat) : Nat {
+    stake * points * PAYOUT_BPS / 1_000_000;
+  };
+
+  public func fund(bank : Nat, owed : Nat, pool : Nat, reserve : Nat, cycles : Nat) : Int {
+    let b : Int = bank;
+    b - owed - pool - reserve - cycles;
+  };
+
+  public func stakes(f : Int) : [Nat] {
+    if (f < FUND_FLOOR) return [];
+    let raw = Int.abs(f) * MAX_STAKE_BPS / 10_000;
+    let max = Nat.min(STAKE_CAP, Nat.max(STAKE_MIN, raw / STAKE_STEP * STAKE_STEP));
+    let mid = ((STAKE_MIN + max) / 2 + MID_STEP / 2) / MID_STEP * MID_STEP;
+    [STAKE_MIN, mid, max];
   };
 
   public func bytesToNat(bytes : [Nat8], from : Nat, len : Nat) : Nat {
@@ -93,17 +102,16 @@ module {
     n;
   };
 
-  // Resolves a pick with raw_rand bytes: collapse (only from the 3rd pick) and diamond
-  public func decidePick(picks : Nat, bytes : [Nat8]) : { collapsed : Bool; diamond : Bool } {
-    let r1 = bytesToNat(bytes, 0, 4);
-    let r2 = bytesToNat(bytes, 4, 4);
-    let collapsed = picks >= SAFE and (r1 % sub(CELLS, picks)) < MINES;
-    let diamond = not collapsed and (r2 % 10_000) < DIAMOND_BPS;
-    { collapsed; diamond };
+  public func collapseHit(picks : Nat, r : Nat) : Bool {
+    picks >= SAFE and (r % sub(CELLS, picks)) < MINES;
   };
 
-  // Deterministic PRNG (splitmix64) seeded with raw_rand, used to auto-play
-  // unused excavations at close. No player decisions are involved.
+  public func diamond1Hit(r : Nat) : Bool { r % 10_000 < DIAMOND1_BPS };
+  public func diamond2Hit(r : Nat) : Bool { r % 10_000 < DIAMOND2_BPS };
+  public func diamond3Hit(r : Nat, stake : Nat) : Bool {
+    r % DIAMOND3_BASE < stake / E8S * DIAMOND3_PER_GOLDAO;
+  };
+
   public class Prng(seed : Nat64) {
     var s : Nat64 = seed;
     public func next() : Nat64 {
@@ -116,177 +124,21 @@ module {
     public func below(n : Nat) : Nat { Nat64.toNat(next()) % n };
   };
 
-  // One automatic excavation saving at `stopAt` picks. Returns (points, diamonds).
-  public func autoExcavation(rng : Prng, stopAt : Nat) : (Nat, Nat) {
-    var picks = 0;
-    var diamonds = 0;
-    loop {
-      if (picks >= SAFE and rng.below(sub(CELLS, picks)) < MINES) return (collapsePoints(picks), diamonds);
-      picks += 1;
-      if (rng.below(10_000) < DIAMOND_BPS) diamonds += 1;
-      if (picks == stopAt or picks == MAX_PICKS) return (pointsAt(picks), diamonds);
-    };
-  };
-
-  public func avgX100(f : Chip) : Nat {
-    if (f.used == 0) 0 else f.points * 100 / f.used;
-  };
-
-  // Points the chip is expected to end with: each unplayed excavation counts as an
-  // auto-played one (what happens at close). Equals f.points once the chip is complete.
-  public func projectedPoints(f : Chip) : Nat {
-    f.points + AUTO_EV * sub(EXCAVATIONS_PER_CHIP, f.used);
-  };
-
-  public func projectedX100(f : Chip) : Nat {
-    projectedPoints(f) * 100 / EXCAVATIONS_PER_CHIP;
-  };
-
-  // Ranking order: projected points desc, then who finished first, then id.
-  // At close every chip is complete, so this is the real average.
-  public func compareChip(a : Chip, b : Chip) : Order.Order {
-    let left = projectedPoints(a);
-    let right = projectedPoints(b);
-    if (left > right) return #less;
-    if (left < right) return #greater;
-    let fa : Int = if (a.finishedAt == 0) 9_223_372_036_854_775_807 else a.finishedAt;
-    let fb : Int = if (b.finishedAt == 0) 9_223_372_036_854_775_807 else b.finishedAt;
-    if (fa < fb) return #less;
-    if (fa > fb) return #greater;
-    Nat.compare(a.id, b.id);
-  };
-
-  // Tier for a position (0 = first) among k chips
-  public func tierAt(pos : Nat, k : Nat) : Nat {
-    var t = 0;
-    while (t < ROCK and (2 * pos + 1) * 50 >= CUM_PCT[t] * k) { t += 1 };
-    t;
-  };
-
-  public type PlayerAgg = {
-    chips : Nat;
-    tiers : [Nat];
-    gross : Nat; // chip prizes, without fees
-    anyPaid : Bool;
-    diamonds : Nat;
-    points : Nat;
-    used : Nat;
-    playing : Bool;
-  };
-
-  public type Settlement = {
-    ranked : [(Chip, Nat, Nat)]; // chip, tier, gross
-    pot : Nat;
-    treasurePerChip : Nat;
-    treasuryKeep : Nat;
-    drawPrize : Nat;
-    totalDiamonds : Nat;
-    cutsX100 : [?Nat];
-    players : [(Principal, PlayerAgg)];
-  };
-
-  // Ranks every chip of the week and computes what each player would receive.
-  // playTx: how many times each player bought chips (to refund fees).
-  public func settle(
-    chips : Map.Map<Nat, Chip>,
-    playTx : Principal -> Nat,
-    drawCarry : Nat,
-  ) : Settlement {
-    let sorted = Array.sort(chips.values().toArray(), compareChip);
-    let k = sorted.size();
-    let pot = k * CHIP_PRICE;
-    let tiers = Array.tabulate<Nat>(k, func i = tierAt(i, k));
-
-    // Current minimum projected average per tier (to show cutoffs)
-    let cuts = VarArray.repeat<?Nat>(null, ROCK);
-    for (i in sorted.keys()) {
-      let t = tiers[i];
-      if (t < ROCK) {
-        let a = projectedX100(sorted[i]);
-        cuts[t] := switch (cuts[t]) { case null ?a; case (?c) ?Nat.min(c, a) };
+  public func seedFrom(bytes : [Nat8]) : Nat64 {
+    var s : Nat64 = 0;
+    var i = 0;
+    while (i < 4) {
+      var w : Nat64 = 0;
+      var j = 0;
+      while (j < 8) {
+        let idx = i * 8 + j;
+        let b : Nat8 = if (idx < bytes.size()) bytes[idx] else 0;
+        w := (w << 8) | Nat.toNat64(Nat8.toNat(b));
+        j += 1;
       };
+      s := s ^ w;
+      i += 1;
     };
-
-    // Per-player aggregate
-    let agg = Map.empty<Principal, PlayerAgg>();
-    for (i in sorted.keys()) {
-      let f = sorted[i];
-      let t = tiers[i];
-      let prev : PlayerAgg = switch (agg.get(f.owner)) {
-        case (?p) p;
-        case null {
-          { chips = 0; tiers = Array.repeat<Nat>(0, TIERS); gross = 0; anyPaid = false; diamonds = 0; points = 0; used = 0; playing = false };
-        };
-      };
-      agg.add(
-        f.owner,
-        {
-          chips = prev.chips + 1;
-          tiers = Array.tabulate<Nat>(TIERS, func j = if (j == t) prev.tiers[j] + 1 else prev.tiers[j]);
-          gross = prev.gross;
-          anyPaid = prev.anyPaid or t != ROCK;
-          diamonds = prev.diamonds + f.diamonds;
-          points = prev.points + f.points;
-          used = prev.used + f.used;
-          playing = prev.playing or f.used < EXCAVATIONS_PER_CHIP;
-        },
-      );
-    };
-
-    var reimb = 0;
-    var totalDiamonds = 0;
-    for ((p, a) in agg.entries()) {
-      if (a.anyPaid) reimb += FEE * playTx(p) + FEE;
-      totalDiamonds += a.diamonds;
-    };
-
-    let treasuryKeep = pot * TREASURY_BPS / 10_000;
-    let drawPrize = pot * DRAW_BPS / 10_000 + drawCarry;
-    let budgetBase = sub(sub(pot, treasuryKeep), pot * DRAW_BPS / 10_000);
-    let budget = sub(budgetBase, reimb);
-
-    var spent = 0;
-    var ng = 0;
-    for (t in tiers.values()) {
-      if (t == TREASURE) ng += 1 else spent += CHIP_PRICE * MULT_BPS[t] / 10_000;
-    };
-    let treasurePerChip = if (ng > 0) sub(budget, spent) / ng else 0;
-
-    let ranked = Array.tabulate<(Chip, Nat, Nat)>(
-      k,
-      func i {
-        let t = tiers[i];
-        let g = if (t == TREASURE) treasurePerChip else CHIP_PRICE * MULT_BPS[t] / 10_000;
-        (sorted[i], t, g);
-      },
-    );
-
-    for ((f, _, g) in ranked.values()) {
-      switch (agg.get(f.owner)) {
-        case (?a) agg.add(f.owner, { a with gross = a.gross + g });
-        case null {};
-      };
-    };
-
-    {
-      ranked;
-      pot;
-      treasurePerChip;
-      treasuryKeep;
-      drawPrize;
-      totalDiamonds;
-      cutsX100 = VarArray.toArray(cuts);
-      players = agg.entries().toArray();
-    };
-  };
-
-  // Amount credited to a player: chip prizes + refunded buy fees.
-  // (The payout fee is burned: gross + fee*playTx + fee - fee)
-  public func netFor(a : PlayerAgg, playTx : Nat) : Nat {
-    if (a.anyPaid) a.gross + FEE * playTx else 0;
-  };
-
-  public func paidFor(a : PlayerAgg, playTx : Nat) : Nat {
-    a.chips * CHIP_PRICE + FEE * playTx;
+    s;
   };
 };
