@@ -86,7 +86,7 @@ export function RankingTable({ ranking, weeks }: Props) {
             }
           />
           <Kpi
-            label="Diamond draw"
+            label="Diamond jackpot"
             value={`${fmtGoldao(ranking.drawPrize)}`}
             unit="GOLDAO"
             diamond
@@ -356,7 +356,7 @@ export function RankingTable({ ranking, weeks }: Props) {
                     Treasure {fmtGoldao(w.treasurePerChip)}
                   </span>
                   <span className={cn("text-right", DIAMOND_TEXT)}>
-                    Draw {fmtGoldao(w.drawPrize)}
+                    Jackpot {fmtGoldao(w.drawPrize)}
                   </span>
                   <span
                     className={cn("col-span-2", inkFaint)}
@@ -376,7 +376,7 @@ export function RankingTable({ ranking, weeks }: Props) {
                     <th className="px-5 py-2 font-medium">Week</th>
                     <th className="px-3 py-2 font-medium">Prize pool</th>
                     <th className="px-3 py-2 font-medium">Treasure / chip</th>
-                    <th className="px-3 py-2 font-medium">Diamond draw</th>
+                    <th className="px-3 py-2 font-medium">Diamond jackpot</th>
                     <th className="px-5 py-2 font-medium">Winner · ticket</th>
                   </tr>
                 </thead>
