@@ -77,7 +77,39 @@ mixin (
   };
 
   func gBlocked(p : Principal) : Bool {
-    switch (gameState.blocked.get(p)) { case (?t) t == gameState.tournament; case null false };
+    switch (gameState.blocked.get(p)) { case (?_) true; case null false };
+  };
+
+  func gPaused() : Bool {
+    gameState.halted or gStakes().size() == 0;
+  };
+
+  func gHalt(code : Nat) {
+    if (gameState.halted) return;
+    gameState.halted := true;
+    gameState.haltCode := code;
+    gameState.haltedAt := Time.now();
+  };
+
+  func gFlagsSince(from : Int) : Nat {
+    var n = 0;
+    for ((_, at) in gameState.blocked.entries()) {
+      if (Nat.toInt(at) >= from and Nat.toInt(at) >= gameState.resumedAt) n += 1;
+    };
+    n;
+  };
+
+  func gBreakerCheck() {
+    let now = Time.now();
+    if (gFlagsSince(now - gameState.breakerWindowNs) >= gameState.breakerMax) gHalt(1);
+    if (gFlagsSince(now - Game.DAY_NS) >= gameState.breakerMax * 4) gHalt(1);
+  };
+
+  func gLedgerOk() { gameState.ledgerFails := 0 };
+
+  func gLedgerFail() {
+    gameState.ledgerFails += 1;
+    if (gameState.ledgerFails >= Game.LEDGER_FAIL_MAX) gHalt(2);
   };
 
   func gNextToken() : Nat {
@@ -130,12 +162,16 @@ mixin (
       let bal = try { ?(await Ledger.ledger().icrc1_balance_of(Ledger.account(acct))) } catch (_) { null };
       switch (bal) {
         case (?b) {
+          gLedgerOk();
           if (gameState.movSeq == before) {
             gameState.bank := b;
             return true;
           };
         };
-        case null return false;
+        case null {
+          gLedgerFail();
+          return false;
+        };
       };
       tries += 1;
     };
@@ -155,9 +191,13 @@ mixin (
       let al = await Ledger.ledger().icrc2_allowance({ account = Ledger.account(p); spender = Ledger.account(spender) });
       if (al.allowance < need) return #allowance(al.allowance);
       let b = await Ledger.ledger().icrc1_balance_of(Ledger.account(p));
+      gLedgerOk();
       if (b < need) return #balance(b);
       #ok;
-    } catch (_) { #down };
+    } catch (_) {
+      gLedgerFail();
+      #down;
+    };
   };
 
   func lCharge(p : Principal, amount : Nat) : async Types.Charge {
@@ -188,15 +228,20 @@ mixin (
       gameState.movSeq += 1;
       switch (res) {
         case (#Ok _) {
+          gLedgerOk();
           gameState.bank += amount;
           #ok;
         };
         case (#Err(#InsufficientFunds _)) #funds;
         case (#Err(#InsufficientAllowance _)) #funds;
-        case (#Err _) #down;
+        case (#Err _) {
+          gLedgerFail();
+          #down;
+        };
       };
     } catch (_) {
       gameState.movSeq += 1;
+      gLedgerFail();
       #down;
     };
   };
@@ -379,7 +424,8 @@ mixin (
   };
 
   func gNote(p : Principal) {
-    gameState.blocked.add(p, gameState.tournament);
+    gameState.blocked.add(p, Int.abs(Time.now()));
+    gBreakerCheck();
   };
 
   // Tournament lifecycle
@@ -468,14 +514,14 @@ mixin (
   };
 
   func gOpen(p : Principal, option : ?Types.StakeOption) : Result.Result<(Types.Excavation, Nat), Text> {
-    if (gBlocked(p)) return #err("New excavations are blocked until the next tournament.");
+    if (gBlocked(p)) return #err("Your account is under review. Contact the admins.");
     let idx = switch (option) {
       case (?#min) 0;
       case (?#mid) 1;
       case (?#max) 2;
       case null return #err("Choose a stake.");
     };
-    if (gStakes().size() == 0) return #err("Bets are paused. Try again later.");
+    if (gPaused()) return #err("Bets are paused. Try again later.");
     let placeholder : Types.Excavation = {
       tournament = gameState.tournament;
       stake = 0;
@@ -498,7 +544,7 @@ mixin (
       return #err("The ledger is unavailable. Try again later.");
     };
     let options = gStakes();
-    if (options.size() != 3) {
+    if (options.size() != 3 or gameState.halted) {
       gDrop(p, token);
       return #err("Bets are paused. Try again later.");
     };
@@ -591,6 +637,7 @@ mixin (
   public shared ({ caller }) func gamePick(stake : ?Types.StakeOption) : async Result.Result<Types.PickResult, Text> {
     switch (gRequireUser(caller)) { case (?e) return #err(e); case null {} };
     gMaybeClose();
+    if (gameState.halted) return #err("Bets are paused. Try again later.");
 
     var ex : Types.Excavation = switch (gameState.open.get(caller)) {
       case (?e) {
@@ -750,6 +797,7 @@ mixin (
   public shared ({ caller }) func gameAuto(stake : Types.StakeOption, stopAt : Nat) : async Result.Result<Types.AutoResult, Text> {
     switch (gRequireUser(caller)) { case (?e) return #err(e); case null {} };
     gMaybeClose();
+    if (gameState.halted) return #err("Bets are paused. Try again later.");
     if (stopAt <= Game.SAFE or stopAt > Game.MAX_PICKS) return #err("Choose a pick between 3 and 10.");
     if (gClosing()) return #err("The tournament is closing. Try again in a few seconds.");
     switch (gameState.open.get(caller)) {
@@ -888,7 +936,7 @@ mixin (
     {
       tournament = gameState.tournament;
       endsAt = gameState.endsAt;
-      paused = stakes.size() == 0;
+      paused = gPaused();
       blocked = gBlocked(caller);
       stakes;
       balance = gBalance(caller);
@@ -967,7 +1015,7 @@ mixin (
       fund = gFund();
       withdrawable = gWithdrawable();
       stakes;
-      paused = stakes.size() == 0;
+      paused = gPaused();
       staked;
       bankAllowance = gameState.bankAllowance;
       bankAccount = gameState.bankAccount;
@@ -1113,6 +1161,44 @@ mixin (
       };
       case null #err("No open excavation.");
     };
+  };
+
+  public shared query ({ caller }) func gameAdminSecurity() : async Result.Result<Types.SecurityView, Text> {
+    if (not gIsAdmin(caller)) return #err("Admin only.");
+    let flagged = gameState.blocked.entries().map(func((p, at) : (Principal, Nat)) : Types.FlagEntry { { player = p; at = Nat.toInt(at) } }).toArray();
+    #ok({
+      halted = gameState.halted;
+      haltCode = gameState.haltCode;
+      haltedAt = gameState.haltedAt;
+      breakerMax = gameState.breakerMax;
+      breakerWindowMin = Int.abs(gameState.breakerWindowNs / 60_000_000_000);
+      ledgerFails = gameState.ledgerFails;
+      flagged;
+    });
+  };
+
+  public shared ({ caller }) func gameAdminHalt() : async Result.Result<(), Text> {
+    if (not gIsAdmin(caller)) return #err("Admin only.");
+    gHalt(3);
+    #ok(());
+  };
+
+  public shared ({ caller }) func gameAdminResume() : async Result.Result<(), Text> {
+    if (not gIsAdmin(caller)) return #err("Admin only.");
+    gameState.halted := false;
+    gameState.haltCode := 0;
+    gameState.resumedAt := Time.now();
+    gameState.ledgerFails := 0;
+    #ok(());
+  };
+
+  public shared ({ caller }) func gameAdminSetBreaker(max : Nat, windowMinutes : Nat) : async Result.Result<(), Text> {
+    if (not gIsAdmin(caller)) return #err("Admin only.");
+    if (max == 0 or max > 50) return #err("Flags must be between 1 and 50.");
+    if (windowMinutes == 0 or windowMinutes > 1_440) return #err("Window must be between 1 and 1440 minutes.");
+    gameState.breakerMax := max;
+    gameState.breakerWindowNs := windowMinutes * 60_000_000_000;
+    #ok(());
   };
 
   public shared ({ caller }) func gameAdminUnblock(player : Principal) : async Result.Result<(), Text> {
