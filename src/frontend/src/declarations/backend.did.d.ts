@@ -104,6 +104,7 @@ export interface ExcavationView {
   'picks' : bigint,
   'safePctX100' : bigint,
 }
+export interface FlagEntry { 'at' : bigint, 'player' : Principal }
 export type GResult = { 'ok' : bigint } |
   { 'err' : string };
 export type GResult_1 = { 'ok' : EndResult } |
@@ -116,11 +117,13 @@ export type GResult_4 = { 'ok' : AdminView } |
   { 'err' : string };
 export type GResult_5 = { 'ok' : null } |
   { 'err' : string };
-export type GResult_6 = {
+export type GResult_6 = { 'ok' : SecurityView } |
+  { 'err' : string };
+export type GResult_7 = {
     'ok' : { 'paid' : bigint, 'remaining' : bigint, 'failed' : bigint }
   } |
   { 'err' : string };
-export type GResult_7 = { 'ok' : Array<[Principal, UserRole]> } |
+export type GResult_8 = { 'ok' : Array<[Principal, UserRole]> } |
   { 'err' : string };
 export interface GameConfig {
   'mines' : bigint,
@@ -189,6 +192,15 @@ export interface Ranking {
 export type Result_7 = { 'ok' : null } |
   { 'err' : Error };
 export interface Result__1 { 'hasMore' : boolean, 'rows' : Array<Array<Cell>> }
+export interface SecurityView {
+  'breakerWindowMin' : bigint,
+  'breakerMax' : bigint,
+  'haltCode' : bigint,
+  'ledgerFails' : bigint,
+  'haltedAt' : bigint,
+  'halted' : boolean,
+  'flagged' : Array<FlagEntry>,
+}
 export type StakeOption = { 'max' : null } |
   { 'mid' : null } |
   { 'min' : null };
@@ -239,18 +251,22 @@ export interface _SERVICE {
   '_initialize_access_control' : ActorMethod<[], undefined>,
   '_internet_identity_sign_in_finish' : ActorMethod<[], Result_7>,
   '_internet_identity_sign_in_start' : ActorMethod<[], Uint8Array>,
-  'adminListRoles' : ActorMethod<[], GResult_7>,
+  'adminListRoles' : ActorMethod<[], GResult_8>,
   'adminSyncBootstrap' : ActorMethod<[], boolean>,
   'assignCallerUserRole' : ActorMethod<[Principal, UserRole], undefined>,
   'execute' : ActorMethod<[string], Result__1>,
   'gameAdminCloseTournament' : ActorMethod<[], GResult_5>,
+  'gameAdminHalt' : ActorMethod<[], GResult_5>,
   'gameAdminLedgerAllowance' : ActorMethod<[Principal, Principal], GResult>,
   'gameAdminLedgerBalance' : ActorMethod<[Principal], GResult>,
-  'gameAdminPay' : ActorMethod<[], GResult_6>,
+  'gameAdminPay' : ActorMethod<[], GResult_7>,
   'gameAdminRecordWithdrawal' : ActorMethod<[bigint], GResult>,
   'gameAdminRefreshBank' : ActorMethod<[], GResult>,
   'gameAdminReleaseBusy' : ActorMethod<[Principal], GResult_5>,
+  'gameAdminResume' : ActorMethod<[], GResult_5>,
+  'gameAdminSecurity' : ActorMethod<[], GResult_6>,
   'gameAdminSeedPool' : ActorMethod<[bigint], GResult>,
+  'gameAdminSetBreaker' : ActorMethod<[bigint, bigint], GResult_5>,
   'gameAdminSetDuration' : ActorMethod<[bigint], GResult_5>,
   'gameAdminSetRealLedger' : ActorMethod<[Principal], GResult>,
   'gameAdminTestApprove' : ActorMethod<[bigint], GResult>,
