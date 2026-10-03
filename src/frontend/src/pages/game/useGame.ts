@@ -1,4 +1,4 @@
-import type { Dashboard, ExcavationView } from "@/backend";
+import type { Dashboard, ExcavationView, Ranking } from "@/backend";
 import { useAuth } from "@/context/AuthContext";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useState } from "react";
@@ -136,7 +136,21 @@ export function useGameAction() {
     [queryClient],
   );
 
-  return { run, pending, refreshAll, setOpenExcavation };
+  const setCredit = useCallback(
+    (credit: bigint, pool: bigint) => {
+      queryClient.setQueriesData<Dashboard>(
+        { queryKey: [KEY, "dashboard"] },
+        (old) => (old ? { ...old, credit, pool } : old),
+      );
+      queryClient.setQueriesData<Ranking>(
+        { queryKey: [KEY, "ranking"] },
+        (old) => (old ? { ...old, pool } : old),
+      );
+    },
+    [queryClient],
+  );
+
+  return { run, pending, refreshAll, setOpenExcavation, setCredit };
 }
 
 export function errorMessage(e: unknown): string {
