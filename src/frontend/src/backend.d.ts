@@ -285,7 +285,9 @@ export interface SecurityView {
     haltCode: bigint;
     ledgerFails: bigint;
     haltedAt: bigint;
+    accountingOk: boolean;
     halted: boolean;
+    saturations: bigint;
     flagged: Array<FlagEntry>;
 }
 export interface TournamentStats {
@@ -361,6 +363,7 @@ export interface backendInterface {
     adminSyncBootstrap(): Promise<boolean>;
     assignCallerUserRole(user: Principal, role: UserRole): Promise<void>;
     execute(qJson: string): Promise<Result__1>;
+    gameAdminAckAccounting(): Promise<GResult_5>;
     gameAdminCloseTournament(): Promise<GResult_5>;
     gameAdminHalt(): Promise<GResult_5>;
     gameAdminLedgerAllowance(who: Principal, spender: Principal): Promise<GResult>;
