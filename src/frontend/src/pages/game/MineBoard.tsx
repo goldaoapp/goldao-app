@@ -1274,7 +1274,7 @@ function TierPop({
   );
 }
 
-/** Diamond draw jackpot with the player's current odds. */
+/** Diamond jackpot with the player's current odds. */
 function DrawCard({
   prize,
   mine,
@@ -1289,7 +1289,7 @@ function DrawCard({
           DIAMOND_TEXT,
         )}
       >
-        <Gem className="size-3" /> Diamond draw
+        <Gem className="size-3" /> Diamond jackpot
       </div>
       <div className="flex items-baseline gap-1.5">
         <motion.span
@@ -1309,7 +1309,7 @@ function DrawCard({
       <div className={cn("font-mono text-[10px]", inkFaint)}>
         {mine > 0
           ? `Your chance ${chance.toFixed(1)}% · ${mine} of ${total} tickets`
-          : "Find a diamond to enter the draw"}
+          : "Find a diamond to enter the jackpot"}
       </div>
     </div>
   );
