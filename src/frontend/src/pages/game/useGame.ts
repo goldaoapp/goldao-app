@@ -37,11 +37,11 @@ export function useRanking() {
   });
 }
 
-export function useWeeks() {
+export function useTournaments() {
   const { actor } = useAuth();
   return useQuery({
-    queryKey: [KEY, "weeks"],
-    queryFn: () => actor!.gameWeeks(),
+    queryKey: [KEY, "tournaments"],
+    queryFn: () => actor!.gameTournaments(),
     enabled: !!actor,
     staleTime: 60_000,
   });
@@ -63,6 +63,21 @@ export function useAdminView(enabled: boolean) {
   });
 }
 
+export function useSecurityView(enabled: boolean) {
+  const { actor, principalId } = useAuth();
+  return useQuery({
+    queryKey: [KEY, "security", principalId],
+    queryFn: async () => {
+      const res = await actor!.gameAdminSecurity();
+      if (res.__kind__ === "err") throw new Error(res.err);
+      return res.ok;
+    },
+    enabled: !!actor && enabled,
+    refetchInterval: (q) => (q.state.status === "error" ? false : 15_000),
+    retry: false,
+  });
+}
+
 type Res<T> = { __kind__: "ok"; ok: T } | { __kind__: "err"; err: string };
 
 /**
@@ -74,7 +89,7 @@ export function useGameAction() {
   const [pending, setPending] = useState<string | null>(null);
 
   // "live": only what changes while playing (dashboard and ranking).
-  // "all": every game query, for admin actions that change the week.
+  // "all": every game query, for admin actions that change the tournament.
   const refresh = useCallback(
     (scope: "live" | "all") => {
       if (scope === "all") {
