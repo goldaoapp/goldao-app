@@ -20,7 +20,13 @@ import {
   panelHeader,
   shortPrincipal,
 } from "./game-utils";
-import { errorMessage, useGameAction } from "./useGame";
+import { errorMessage, useGameAction, useSecurityView } from "./useGame";
+
+const HALT_TEXT: Record<number, string> = {
+  1: "flagged accounts",
+  2: "ledger failures",
+  3: "manual",
+};
 
 type Res<T> = { __kind__: "ok"; ok: T } | { __kind__: "err"; err: string };
 
@@ -33,6 +39,9 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
   const [who, setWho] = useState("");
   const [selfId, setSelfId] = useState("");
   const [confirm, setConfirm] = useState<string | null>(null);
+  const [flags, setFlags] = useState("");
+  const [windowMin, setWindowMin] = useState("");
+  const { data: security } = useSecurityView(!!view);
 
   const act = async <T,>(
     name: string,
@@ -381,6 +390,145 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
           )}
         </div>
       </div>
+
+      {security && (
+        <div className={panel}>
+          <div className={panelHeader}>
+            <span className={cn(eyebrow, gold, "flex items-center gap-2")}>
+              <Shield className="size-3.5" /> Security
+            </span>
+            <span
+              className={cn(
+                "font-mono text-[11px]",
+                security.halted ? "text-destructive" : inkFaint,
+              )}
+            >
+              {security.halted
+                ? `Halted (${HALT_TEXT[Number(security.haltCode)] ?? "unknown"}) · ${fmtDate(security.haltedAt)}`
+                : "Running"}
+            </span>
+          </div>
+          <div className="flex flex-col gap-4 p-5">
+            <div className="flex flex-wrap items-center gap-3">
+              <Button
+                variant="outline"
+                disabled={!!pending || security.halted}
+                onClick={() =>
+                  void act(
+                    "halt",
+                    () => actor!.gameAdminHalt(),
+                    () => "New excavations are halted.",
+                  )
+                }
+              >
+                Halt new excavations
+              </Button>
+              <Button
+                disabled={!!pending || !security.halted}
+                className="gradient-primary text-primary-foreground"
+                onClick={() =>
+                  void act(
+                    "resume",
+                    () => actor!.gameAdminResume(),
+                    () => "Play resumed.",
+                  )
+                }
+              >
+                Resume
+              </Button>
+              <span className={cn("font-mono text-[11px]", inkFaint)}>
+                Ledger failures in a row: {Number(security.ledgerFails)}
+              </span>
+            </div>
+            <div className="flex flex-wrap items-center gap-3">
+              <input
+                value={flags}
+                onChange={(e) => setFlags(e.target.value.replace(/\D/g, ""))}
+                placeholder={`Flags (now ${Number(security.breakerMax)})`}
+                inputMode="numeric"
+                className="w-36 rounded-md border border-[color:var(--term-border)] bg-transparent px-3 py-1.5 font-mono text-xs"
+              />
+              <input
+                value={windowMin}
+                onChange={(e) =>
+                  setWindowMin(e.target.value.replace(/\D/g, ""))
+                }
+                placeholder={`Minutes (now ${Number(security.breakerWindowMin)})`}
+                inputMode="numeric"
+                className="w-40 rounded-md border border-[color:var(--term-border)] bg-transparent px-3 py-1.5 font-mono text-xs"
+              />
+              <Button
+                variant="outline"
+                disabled={!!pending || !flags || !windowMin}
+                onClick={() =>
+                  void act(
+                    "breaker",
+                    () =>
+                      actor!.gameAdminSetBreaker(
+                        BigInt(flags),
+                        BigInt(windowMin),
+                      ),
+                    () => "Limits updated.",
+                  )
+                }
+              >
+                Set limits
+              </Button>
+            </div>
+            <div className="max-h-64 overflow-auto">
+              {security.flagged.length === 0 ? (
+                <p className={cn("text-sm", inkFaint)}>
+                  No accounts under review.
+                </p>
+              ) : (
+                <table className="w-full font-mono text-xs">
+                  <thead>
+                    <tr className={cn("text-left", inkFaint)}>
+                      <th className="py-2 font-medium">Account</th>
+                      <th className="px-3 py-2 font-medium">Flagged</th>
+                      <th className="py-2 text-right font-medium" />
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {[...security.flagged]
+                      .sort((x, y) => Number(y.at - x.at))
+                      .map((f) => (
+                        <tr
+                          key={f.player.toText()}
+                          className="border-t border-[color:var(--term-border-faint)]"
+                        >
+                          <td
+                            className={cn("py-2.5", ink)}
+                            title={f.player.toText()}
+                          >
+                            {shortPrincipal(f.player.toText())}
+                          </td>
+                          <td className="px-3 py-2.5">{fmtDate(f.at)}</td>
+                          <td className="py-2.5 text-right">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              disabled={!!pending}
+                              onClick={() =>
+                                void act(
+                                  "clear",
+                                  () => actor!.gameAdminUnblock(f.player),
+                                  () => "Account cleared.",
+                                )
+                              }
+                            >
+                              Clear
+                            </Button>
+                          </td>
+                        </tr>
+                      ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {view?.lastClose && (
         <div className={panel}>
