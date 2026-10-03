@@ -9,9 +9,9 @@ import { Spinner } from "./Spinner";
 import {
   DIAMOND_TEXT,
   eyebrow,
+  fmtCountdown,
   fmtDate,
   fmtGoldao,
-  fmtTimeLeft,
   gold,
   ink,
   inkFaint,
@@ -77,28 +77,36 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
 
   return (
     <div className="flex flex-col gap-6">
+      {view?.paused && (
+        <div className="rounded-lg border border-destructive/50 bg-destructive/10 px-4 py-3 font-mono text-xs text-destructive">
+          Bets are paused:{" "}
+          {view.stakes.length === 0
+            ? "the bank fund is below its floor."
+            : "play was halted."}
+        </div>
+      )}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <Kpi
           label="Tournament"
           value={view ? `#${Number(view.tournament)}` : <Spinner />}
-          sub={view ? `ends in ${fmtTimeLeft(view.endsAt)}` : ""}
+          sub={view ? `ends in ${fmtCountdown(view.endsAt)}` : ""}
         />
         <Kpi
-          label="Bank"
+          label="Admin wallet"
           value={view ? fmtGoldao(view.bank) : <Spinner />}
           sub={view?.realLedger ? "GOLDAO (ledger)" : "GOLDAO (test)"}
         />
         <Kpi
-          label="Owed"
+          label="Owed to players"
           value={view ? fmtGoldao(view.owed) : <Spinner />}
-          sub="player credits"
+          sub="credits to collect"
         />
         <Kpi
-          label="Fund"
+          label="Bank fund"
           value={
             view ? fmtGoldao(view.fund < 0n ? 0n : view.fund) : <Spinner />
           }
-          sub={view ? `withdrawable ${fmtGoldao(view.withdrawable)}` : ""}
+          sub="drives the stakes"
         />
         <Kpi
           label="Jackpot pool"
@@ -107,14 +115,34 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
           diamond
         />
         <Kpi
-          label="Reserve"
+          label="Jackpot reserve"
           value={view ? fmtGoldao(view.reserve) : <Spinner />}
           sub="GOLDAO"
         />
         <Kpi
-          label="Cycles"
+          label="Cycles accrued"
           value={view ? fmtGoldao(view.cycles) : <Spinner />}
           sub="GOLDAO"
+        />
+        <Kpi
+          label="Available to withdraw"
+          value={view ? fmtGoldao(view.withdrawable) : <Spinner />}
+          sub="GOLDAO"
+        />
+        <Kpi
+          label="Stakes now"
+          value={
+            view ? (
+              view.stakes.length === 3 ? (
+                view.stakes.map((x) => fmtGoldao(x)).join(" / ")
+              ) : (
+                "Paused"
+              )
+            ) : (
+              <Spinner />
+            )
+          }
+          sub="min / mid / max"
         />
         <Kpi
           label="Burned fees"
@@ -152,7 +180,7 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
                   )
                 }
               >
-                Add test GOLDAO to the bank
+                Set test bank
               </Button>
             )}
             {view && !view.realLedger && (
