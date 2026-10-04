@@ -10,6 +10,7 @@ import Int "mo:core/Int";
 import Principal "mo:core/Principal";
 import Random "mo:core/Random";
 import Result "mo:core/Result";
+import Set "mo:core/Set";
 import Time "mo:core/Time";
 
 mixin (
@@ -18,6 +19,8 @@ mixin (
 ) {
 
   transient var gSat : Nat = 0;
+  // Players with a credit load in flight: one at a time.
+  transient let gLoading = Set.empty<Principal>();
 
   func gSub(a : Nat, b : Nat) : Nat {
     if (b > a) {
@@ -108,10 +111,6 @@ mixin (
     total;
   };
 
-  func gBlocked(p : Principal) : Bool {
-    switch (gameState.blocked.get(p)) { case (?_) true; case null false };
-  };
-
   func gPaused() : Bool {
     gameState.halted or gStakes().size() == 0;
   };
@@ -121,20 +120,6 @@ mixin (
     gameState.halted := true;
     gameState.haltCode := code;
     gameState.haltedAt := Time.now();
-  };
-
-  func gFlagsSince(from : Int) : Nat {
-    var n = 0;
-    for ((_, at) in gameState.blocked.entries()) {
-      if (Nat.toInt(at) >= from and Nat.toInt(at) >= gameState.resumedAt) n += 1;
-    };
-    n;
-  };
-
-  func gBreakerCheck() {
-    let now = Time.now();
-    if (gFlagsSince(now - gameState.breakerWindowNs) >= gameState.breakerMax) gHalt(1);
-    if (gFlagsSince(now - Game.DAY_NS) >= gameState.breakerMax * 4) gHalt(1);
   };
 
   func gLedgerOk() { gameState.ledgerFails := 0 };
@@ -158,11 +143,6 @@ mixin (
       if (gFresh(e)) return true;
     };
     false;
-  };
-
-  func gDue(p : Principal, stake : Nat, points : Nat) : Nat {
-    let g = Game.gross(stake, points);
-    if (g >= stake) 0 else Game.sub(Game.sub(stake, g), gCredit(p));
   };
 
   func gRandomBytes() : async [Nat8] {
@@ -210,34 +190,14 @@ mixin (
     false;
   };
 
-  func lPlayerCheck(p : Principal, need : Nat) : async Types.Check {
-    if (not gameState.realLedger) {
-      let a = gAllowance(p);
-      if (a < need) return #allowance(a);
-      let b = gBalance(p);
-      if (b < need) return #balance(b);
-      return #ok;
-    };
-    let spender = switch (gameState.selfId) { case (?s) s; case null return #down };
-    try {
-      let al = await Ledger.ledger().icrc2_allowance({ account = Ledger.account(p); spender = Ledger.account(spender) });
-      if (al.allowance < need) return #allowance(al.allowance);
-      let b = await Ledger.ledger().icrc1_balance_of(Ledger.account(p));
-      gLedgerOk();
-      if (b < need) return #balance(b);
-      #ok;
-    } catch (_) {
-      gLedgerFail();
-      #down;
-    };
-  };
-
-  func lCharge(p : Principal, amount : Nat) : async Types.Charge {
-    if (amount == 0) return #ok;
+  // Pulls the amount from the player's wallet into the bank. The caller grants
+  // the credit only after this returns #ok, i.e. after the ledger confirmed it.
+  func lLoad(p : Principal, amount : Nat) : async Types.Charge {
     gameState.movSeq += 1;
+    let need = amount + Game.FEE;
     if (not gameState.realLedger) {
-      let need = amount + Game.FEE;
-      if (gAllowance(p) < need or gBalance(p) < need) return #funds;
+      if (gAllowance(p) < need) return #allowance;
+      if (gBalance(p) < need) return #funds;
       gameState.balances.add(p, gSub(gBalance(p), need));
       gameState.allowances.add(p, gSub(gAllowance(p), need));
       gameState.bank += amount;
@@ -264,8 +224,8 @@ mixin (
           gameState.bank += amount;
           #ok;
         };
+        case (#Err(#InsufficientAllowance _)) #allowance;
         case (#Err(#InsufficientFunds _)) #funds;
-        case (#Err(#InsufficientAllowance _)) #funds;
         case (#Err _) {
           gLedgerFail();
           #down;
@@ -368,11 +328,6 @@ mixin (
     };
   };
 
-  func gRecoverCharge(p : Principal, amount : Nat) {
-    gameState.credits.add(p, gCredit(p) + amount);
-    gameState.owed += amount;
-  };
-
   func gAward(p : Principal, e : Types.Excavation) : (Types.DiamondResult, Types.Excavation) {
     let won = gameState.pool;
     if (won == 0) return ({ stage = 2; won = 0 }, e);
@@ -394,7 +349,7 @@ mixin (
     { e with held = 0 };
   };
 
-  func gSettle(p : Principal, e : Types.Excavation, points : Nat, kind : Types.EndKind, charged : Nat) : Types.EndResult {
+  func gSettle(p : Principal, e : Types.Excavation, points : Nat, kind : Types.EndKind) : Types.EndResult {
     let stake = e.stake;
     let g = Game.gross(stake, points);
     gameState.pool += stake * Game.POOL_BPS / 10_000;
@@ -407,21 +362,16 @@ mixin (
 
     var won = 0;
     var lost = 0;
-    var taken = 0;
     if (g >= stake) {
       won := g - stake;
       gameState.credits.add(p, gCredit(p) + won);
       gameState.owed += won;
-      if (charged > 0) gRecoverCharge(p, charged);
     } else {
       lost := stake - g;
       let c = gCredit(p);
       let fromCredit = Nat.min(c, lost);
       gameState.credits.add(p, c - fromCredit);
       gameState.owed := gSub(gameState.owed, fromCredit);
-      let need = lost - fromCredit;
-      taken := Nat.min(charged, need);
-      if (charged > need) gRecoverCharge(p, charged - need);
     };
 
     let s = gStats(p);
@@ -433,7 +383,7 @@ mixin (
         returned = s.returned + g;
         jackpotWon = s.jackpotWon;
         jackpots = s.jackpots;
-        charged = s.charged + taken;
+        charged = s.charged;
         collapses = s.collapses + (if (kind == #collapsed) 1 else 0);
         bestPoints = if (kind == #collapsed) s.bestPoints else Nat.max(s.bestPoints, points);
         deepest = Nat.max(s.deepest, e.picks);
@@ -448,43 +398,44 @@ mixin (
       gross = g;
       won;
       lost;
-      charged = taken;
       jackpotWon = e.jackpotWon;
       credit = gCredit(p);
       balance = gBalance(p);
     };
   };
 
-  func gNote(p : Principal) {
-    gameState.blocked.add(p, Int.abs(Time.now()));
-    gBreakerCheck();
-  };
-
   // Tournament lifecycle
 
-  func gCloseTournament() {
+  func gCloseTournament(payAll : Bool) {
     let t = gameState.tournament;
     for ((p, e) in gameState.open.entries().toArray().values()) {
-      if (Game.canSave(e.picks) and e.stake > 0 and gDue(p, e.stake, Game.pointsAt(e.picks)) == 0) {
+      if (Game.canSave(e.picks) and e.stake > 0) {
         let f = gFlush(p, e);
-        ignore gSettle(p, f, Game.pointsAt(f.picks), #saved, 0);
+        ignore gSettle(p, f, Game.pointsAt(f.picks), #saved);
       } else {
         gReleaseHeld(e);
         gameState.open.remove(p);
       };
     };
 
+    // Small balances stay in To collect for the next tournament. A full close
+    // (payAll) pays everything above the fee and forfeits the rest.
+    let pays = func(c : Nat) : Bool { c >= Game.MIN_PAYOUT or (payAll and c > Game.FEE) };
     var payoutTotal = 0;
     var forfeited = 0;
+    let settled = List.empty<(Principal, Nat)>();
     for ((p, c) in gameState.credits.entries().toArray().values()) {
-      if (c > Game.FEE) {
+      if (c == 0) {
+        settled.add((p, 0));
+      } else if (pays(c)) {
         let id = gameState.nextPayoutId;
         gameState.nextPayoutId += 1;
         gameState.payouts.add(id, { id; tournament = t; to = p; amount = c - Game.FEE; paid = false; stamp = Nat.toNat64(Int.abs(Time.now())) });
         payoutTotal += c - Game.FEE;
-      } else {
-        gameState.owed := gSub(gameState.owed, c);
+        settled.add((p, 0));
+      } else if (payAll) {
         forfeited += c;
+        settled.add((p, c));
       };
     };
 
@@ -500,7 +451,7 @@ mixin (
       jackpots += s.jackpots;
       jackpotPaid += s.jackpotWon;
       let credit = gCredit(p);
-      let result : Types.PlayerTournamentResult = { tournament = t; stats = s; credit; payout = if (credit > Game.FEE) credit - Game.FEE else 0 };
+      let result : Types.PlayerTournamentResult = { tournament = t; stats = s; credit; payout = if (pays(credit)) credit - Game.FEE else 0 };
       let l = switch (gameState.history.get(p)) {
         case (?l) l;
         case null {
@@ -527,7 +478,10 @@ mixin (
     for ((id, po) in gameState.payouts.entries().toArray().values()) {
       if (po.paid and po.tournament + 1 < t) gameState.payouts.remove(id);
     };
-    gameState.credits.clear();
+    for ((p, lost) in settled.values()) {
+      gameState.credits.remove(p);
+      if (lost > 0) gameState.owed := gSub(gameState.owed, lost);
+    };
     gameState.stats.clear();
     gameState.tournament := t + 1;
     gameState.endsAt := Time.now() + gameState.durationDays * Game.DAY_NS;
@@ -538,7 +492,7 @@ mixin (
       gameState.endsAt := Time.now() + gameState.durationDays * Game.DAY_NS;
       return;
     };
-    if (Time.now() >= gameState.endsAt and not gAnyBusy()) gCloseTournament();
+    if (Time.now() >= gameState.endsAt and not gAnyBusy()) gCloseTournament(false);
   };
 
   func gClosing() : Bool {
@@ -546,7 +500,6 @@ mixin (
   };
 
   func gOpen(p : Principal, option : ?Types.StakeOption) : Result.Result<(Types.Excavation, Nat), Text> {
-    if (gBlocked(p)) return #err("Your account is under review. Contact the admins.");
     let idx = switch (option) {
       case (?#min) 0;
       case (?#mid) 1;
@@ -585,29 +538,11 @@ mixin (
       case null return #err("Your excavation changed. Try again.");
     };
     gameState.open.add(p, started);
-    let credit = gCredit(p);
-    if (credit < started.stake) {
-      let need = Game.sub(started.stake, credit) + Game.FEE;
-      let chk = await lPlayerCheck(p, need);
-      if (chk != #ok) {
-        gDrop(p, token);
-        return #err(gCheckMessage(chk, need));
-      };
-      switch (gSame(p, token)) {
-        case (?e) return #ok(e);
-        case null return #err("Your excavation changed. Try again.");
-      };
+    if (gCredit(p) < started.stake) {
+      gDrop(p, token);
+      return #err("Load credit first: your To collect balance must cover the stake.");
     };
     #ok(started);
-  };
-
-  func gCheckMessage(c : Types.Check, need : Nat) : Text {
-    switch (c) {
-      case (#allowance _) "Authorize the game to charge up to " # Nat.toText(need / Game.E8S) # " GOLDAO.";
-      case (#balance _) "Insufficient balance: you need " # Nat.toText(need / Game.E8S) # " GOLDAO.";
-      case (#down) "The ledger is unavailable. Try again later.";
-      case (#ok) "";
-    };
   };
 
   // Test wallet and faucet
@@ -627,6 +562,10 @@ mixin (
       diamond2Bps = Game.DIAMOND2_BPS;
       diamond3PerGoldao = Game.DIAMOND3_PER_GOLDAO;
       faucetCapE8s = Game.FAUCET_CAP;
+      loadMin = Game.LOAD_MIN;
+      loadMax = Game.LOAD_MAX;
+      creditCapE8s = Game.CREDIT_CAP;
+      minPayoutE8s = Game.MIN_PAYOUT;
       realLedger = gameState.realLedger;
       ledgerId = Ledger.GOLDAO_LEDGER;
     };
@@ -662,6 +601,37 @@ mixin (
     gameState.burned += Game.FEE;
     gameState.allowances.add(caller, amount);
     #ok(amount);
+  };
+
+  // Credit: the player loads To collect from the wallet. It backs every stake.
+
+  public shared ({ caller }) func gameLoadCredit(goldao : Nat) : async Result.Result<Nat, Text> {
+    switch (gRequireUser(caller)) { case (?e) return #err(e); case null {} };
+    gMaybeClose();
+    if (gameState.halted) return #err("Bets are paused. Try again later.");
+    if (gClosing()) return #err("The tournament is closing. Try again in a few seconds.");
+    if (goldao < Game.LOAD_MIN or goldao > Game.LOAD_MAX) {
+      return #err("Choose between " # Nat.toText(Game.LOAD_MIN) # " and " # Nat.toText(Game.LOAD_MAX) # " GOLDAO.");
+    };
+    let amount = goldao * Game.E8S;
+    if (gCredit(caller) + amount > Game.CREDIT_CAP) {
+      return #err("To collect cannot go above " # Nat.toText(Game.CREDIT_CAP / Game.E8S) # " GOLDAO.");
+    };
+    if (gLoading.contains(caller)) return #err("A load is already in progress.");
+    gLoading.add(caller);
+    let res = await lLoad(caller, amount);
+    gLoading.remove(caller);
+    let need = amount + Game.FEE;
+    switch (res) {
+      case (#ok) {
+        gameState.credits.add(caller, gCredit(caller) + amount);
+        gameState.owed += amount;
+        #ok(gCredit(caller));
+      };
+      case (#allowance) #err("Authorize the game to charge up to " # Nat.toText(need / Game.E8S) # " GOLDAO.");
+      case (#funds) #err("Insufficient balance: you need " # Nat.toText(need / Game.E8S) # " GOLDAO (amount plus the network fee).");
+      case (#down) #err("The ledger is unavailable. Try again later.");
+    };
   };
 
   // Play
@@ -708,20 +678,6 @@ mixin (
       case null return #err("Your excavation changed. Try again.");
     };
 
-    let credit = gCredit(caller);
-    if (credit < ex.stake) {
-      let need = Game.sub(ex.stake, credit) + Game.FEE;
-      let chk = await lPlayerCheck(caller, need);
-      ex := switch (gSame(caller, token)) {
-        case (?e) e;
-        case null return #err("Your excavation changed. Try again.");
-      };
-      if (chk != #ok) {
-        gDrop(caller, token);
-        return #err(gCheckMessage(chk, need));
-      };
-    };
-
     let r1 = Game.bytesToNat(bytes, 0, 4);
     let r2 = Game.bytesToNat(bytes, 4, 4);
     let r3 = Game.bytesToNat(bytes, 8, 4);
@@ -729,32 +685,8 @@ mixin (
 
     if (Game.collapseHit(ex.picks, r1)) {
       let points = Game.collapsePoints(ex.picks);
-      let due = gDue(caller, ex.stake, points);
-      var charged = 0;
-      if (due > 0) {
-        let res = await lCharge(caller, due);
-        ex := switch (gSame(caller, token)) {
-          case (?e) e;
-          case null {
-            if (res == #ok) gRecoverCharge(caller, due);
-            return #err("Your excavation changed. Try again.");
-          };
-        };
-        switch (res) {
-          case (#ok) { charged := due };
-          case (#funds) {
-            gNote(caller);
-            gDrop(caller, token);
-            return #err("Excavation cancelled: the funds were not available.");
-          };
-          case (#down) {
-            gDrop(caller, token);
-            return #err("Excavation cancelled: the ledger is unavailable.");
-          };
-        };
-      };
       let f = gFlush(caller, ex);
-      let end = gSettle(caller, f, points, #collapsed, charged);
+      let end = gSettle(caller, f, points, #collapsed);
       gMaybeClose();
       return #ok({
         collapsed = true;
@@ -784,7 +716,7 @@ mixin (
 
     if (next.picks >= Game.MAX_PICKS) {
       let f = gFlush(caller, next);
-      let end = gSettle(caller, f, Game.pointsAt(next.picks), #maxed, 0);
+      let end = gSettle(caller, f, Game.pointsAt(next.picks), #maxed);
       gMaybeClose();
       return #ok({
         collapsed = false;
@@ -819,9 +751,8 @@ mixin (
     if (ex.busy and gFresh(ex)) return #err("Wait for the pick to finish.");
     if (ex.stake == 0 or not Game.canSave(ex.picks)) return #err("The first two picks are free: you can save from the third one.");
     let points = Game.pointsAt(ex.picks);
-    if (gDue(caller, ex.stake, points) > 0) return #err("Keep digging.");
     let f = gFlush(caller, ex);
-    let end = gSettle(caller, f, points, #saved, 0);
+    let end = gSettle(caller, f, points, #saved);
     gMaybeClose();
     #ok(end);
   };
@@ -859,20 +790,6 @@ mixin (
       case null return #err("Your excavation changed. Try again.");
     };
 
-    let credit = gCredit(caller);
-    if (credit < ex.stake) {
-      let need = Game.sub(ex.stake, credit) + Game.FEE;
-      let chk = await lPlayerCheck(caller, need);
-      ex := switch (gSame(caller, token)) {
-        case (?e) e;
-        case null return #err("Your excavation changed. Try again.");
-      };
-      if (chk != #ok) {
-        gDrop(caller, token);
-        return #err(gCheckMessage(chk, need));
-      };
-    };
-
     let rng = Game.Prng(Game.seedFrom(bytes));
     let plan = List.empty<(Nat, Bool, Nat)>();
     var picks = 0;
@@ -905,31 +822,6 @@ mixin (
       };
     };
 
-    let due = gDue(caller, ex.stake, points);
-    var charged = 0;
-    if (due > 0) {
-      let res = await lCharge(caller, due);
-      ex := switch (gSame(caller, token)) {
-        case (?e) e;
-        case null {
-          if (res == #ok) gRecoverCharge(caller, due);
-          return #err("Your excavation changed. Try again.");
-        };
-      };
-      switch (res) {
-        case (#ok) { charged := due };
-        case (#funds) {
-          gNote(caller);
-          gDrop(caller, token);
-          return #err("Excavation cancelled: the funds were not available.");
-        };
-        case (#down) {
-          gDrop(caller, token);
-          return #err("Excavation cancelled: the ledger is unavailable.");
-        };
-      };
-    };
-
     let steps = List.empty<Types.AutoStep>();
     var cur : Types.Excavation = ex;
     for ((pick, collapsed, stage) in plan.values()) {
@@ -948,7 +840,7 @@ mixin (
     };
     cur := { cur with picks };
     let f = gFlush(caller, cur);
-    let end = gSettle(caller, f, points, kind, charged);
+    let end = gSettle(caller, f, points, kind);
     gMaybeClose();
     #ok({ steps = steps.toArray(); end; pool = gameState.pool });
   };
@@ -969,7 +861,6 @@ mixin (
       tournament = gameState.tournament;
       endsAt = gameState.endsAt;
       paused = gPaused();
-      blocked = gBlocked(caller);
       stakes;
       balance = gBalance(caller);
       allowance = gAllowance(caller);
@@ -1030,6 +921,22 @@ mixin (
     if (not gIsAdmin(caller)) return #err("Admin only.");
     var staked = 0;
     for ((_, s) in gameState.stats.entries()) staked += s.staked;
+    var toCollect = 0;
+    var toCollectPlayers = 0;
+    var small = 0;
+    var smallPlayers = 0;
+    for ((_, c) in gameState.credits.entries()) {
+      if (c > 0) {
+        toCollect += c;
+        toCollectPlayers += 1;
+        if (c < Game.MIN_PAYOUT) {
+          small += c;
+          smallPlayers += 1;
+        };
+      };
+    };
+    var inPlay = 0;
+    for ((_, e) in gameState.open.entries()) { inPlay += e.held };
     let stakes = gStakes();
     let all = gameState.payouts.values().toArray();
     let tn = gameState.tournaments.size();
@@ -1040,6 +947,12 @@ mixin (
       realLedger = gameState.realLedger;
       bank = gameState.bank;
       owed = gameState.owed;
+      toCollect;
+      toCollectPlayers;
+      smallBalances = small;
+      smallPlayers;
+      heldJackpots = inPlay;
+      unpaidPayouts = gUnpaidTotal();
       pool = gameState.pool;
       reserve = gameState.reserve;
       cycles = gameState.cycles;
@@ -1060,7 +973,15 @@ mixin (
   public shared ({ caller }) func gameAdminCloseTournament() : async Result.Result<(), Text> {
     if (not gIsAdmin(caller)) return #err("Admin only.");
     if (gAnyBusy()) return #err("Excavations in progress. Try again in a few seconds.");
-    gCloseTournament();
+    gCloseTournament(false);
+    #ok(());
+  };
+
+  public shared ({ caller }) func gameAdminCloseAll() : async Result.Result<(), Text> {
+    if (not gIsAdmin(caller)) return #err("Admin only.");
+    if (not gameState.halted) return #err("Pause new excavations first.");
+    if (gAnyBusy()) return #err("Excavations in progress. Try again in a few seconds.");
+    gCloseTournament(true);
     #ok(());
   };
 
@@ -1284,17 +1205,13 @@ mixin (
 
   public shared query ({ caller }) func gameAdminSecurity() : async Result.Result<Types.SecurityView, Text> {
     if (not gIsAdmin(caller)) return #err("Admin only.");
-    let flagged = gameState.blocked.entries().map(func((p, at) : (Principal, Nat)) : Types.FlagEntry { { player = p; at = Nat.toInt(at) } }).toArray();
     #ok({
       halted = gameState.halted;
       haltCode = gameState.haltCode;
       haltedAt = gameState.haltedAt;
-      breakerMax = gameState.breakerMax;
-      breakerWindowMin = Int.abs(gameState.breakerWindowNs / 60_000_000_000);
       ledgerFails = gameState.ledgerFails;
       saturations = gSat;
       accountingOk = gAccountingOk();
-      flagged;
     });
   };
 
@@ -1317,21 +1234,6 @@ mixin (
     gameState.haltCode := 0;
     gameState.resumedAt := Time.now();
     gameState.ledgerFails := 0;
-    #ok(());
-  };
-
-  public shared ({ caller }) func gameAdminSetBreaker(max : Nat, windowMinutes : Nat) : async Result.Result<(), Text> {
-    if (not gIsAdmin(caller)) return #err("Admin only.");
-    if (max == 0 or max > 50) return #err("Flags must be between 1 and 50.");
-    if (windowMinutes == 0 or windowMinutes > 1_440) return #err("Window must be between 1 and 1440 minutes.");
-    gameState.breakerMax := max;
-    gameState.breakerWindowNs := windowMinutes * 60_000_000_000;
-    #ok(());
-  };
-
-  public shared ({ caller }) func gameAdminUnblock(player : Principal) : async Result.Result<(), Text> {
-    if (not gIsAdmin(caller)) return #err("Admin only.");
-    gameState.blocked.remove(player);
     #ok(());
   };
 
