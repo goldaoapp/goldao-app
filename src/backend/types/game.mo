@@ -12,8 +12,7 @@ module {
 
   public type WithdrawKind = { #available; #all };
 
-  public type Check = { #ok; #balance : Nat; #allowance : Nat; #down };
-  public type Charge = { #ok; #funds; #down };
+  public type Charge = { #ok; #allowance; #funds; #down };
 
   public type Excavation = {
     tournament : Nat;
@@ -114,18 +113,13 @@ module {
     var ledgerFails : Nat;
   };
 
-  public type FlagEntry = { player : Principal; at : Int };
-
   public type SecurityView = {
     halted : Bool;
     haltCode : Nat;
     haltedAt : Int;
-    breakerMax : Nat;
-    breakerWindowMin : Nat;
     ledgerFails : Nat;
     saturations : Nat;
     accountingOk : Bool;
-    flagged : [FlagEntry];
   };
 
   public type ExcavationView = {
@@ -152,7 +146,6 @@ module {
     gross : Nat;
     won : Nat;
     lost : Nat;
-    charged : Nat;
     jackpotWon : Nat;
     credit : Nat;
     balance : Nat;
@@ -177,7 +170,6 @@ module {
     tournament : Nat;
     endsAt : Int;
     paused : Bool;
-    blocked : Bool;
     stakes : [Nat];
     balance : Nat;
     allowance : Nat;
@@ -223,6 +215,10 @@ module {
     diamond2Bps : Nat;
     diamond3PerGoldao : Nat;
     faucetCapE8s : Nat;
+    loadMin : Nat;
+    loadMax : Nat;
+    creditCapE8s : Nat;
+    minPayoutE8s : Nat;
     realLedger : Bool;
     ledgerId : Text;
   };
@@ -234,6 +230,12 @@ module {
     realLedger : Bool;
     bank : Nat;
     owed : Nat;
+    toCollect : Nat;
+    toCollectPlayers : Nat;
+    smallBalances : Nat;
+    smallPlayers : Nat;
+    heldJackpots : Nat;
+    unpaidPayouts : Nat;
     pool : Nat;
     reserve : Nat;
     cycles : Nat;
