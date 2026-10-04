@@ -76,7 +76,7 @@ export function TreasureOverlay({
   onClose: () => void;
 }) {
   useEffect(() => {
-    if (view) playSound("success");
+    if (view) playSound("treasure");
   }, [view]);
 
   return (
