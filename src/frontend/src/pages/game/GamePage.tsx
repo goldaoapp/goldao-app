@@ -14,7 +14,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { motion } from "motion/react";
-import type { ReactNode } from "react";
+import { type ReactNode, useState } from "react";
 import { AdminGamePanel } from "./AdminGamePanel";
 import { MineBoard } from "./MineBoard";
 import { PlayerDashboard } from "./PlayerDashboard";
@@ -40,6 +40,11 @@ export default function GamePage() {
   const { data: ranking } = useRanking();
   const { data: tournaments } = useTournaments();
   const { data: adminView } = useAdminView(isAuthenticated);
+
+  const isAdmin = !!adminView;
+  // Admins land on the admin tab; an admin view that arrives late still wins.
+  const [picked, setPicked] = useState<string | null>(null);
+  const tab = picked ?? (isAdmin ? "admin" : "mine");
 
   const tournament = dashboard?.tournament ?? ranking?.tournament;
   const paused = dashboard?.paused ?? false;
@@ -89,7 +94,9 @@ export default function GamePage() {
       </PageHeader>
 
       {isAuthenticated ? (
-        <WalletPanel dashboard={dashboard} config={config} />
+        isAdmin ? null : (
+          <WalletPanel dashboard={dashboard} config={config} />
+        )
       ) : (
         <div
           className={cn(
@@ -111,15 +118,17 @@ export default function GamePage() {
         </div>
       )}
 
-      <Tabs defaultValue="mine" className="gap-4">
+      <Tabs value={tab} onValueChange={setPicked} className="gap-4">
         <TabsList className="grid h-auto w-full auto-cols-fr grid-flow-col rounded-lg border border-[color:var(--term-border)] bg-[var(--term-header)] p-1 sm:flex sm:h-10 sm:w-fit sm:justify-start">
-          <Tab value="mine" icon={<Pickaxe />} label="Mine" />
-          <Tab
-            value="stats"
-            icon={<LayoutDashboard />}
-            label="My stats"
-            short="Stats"
-          />
+          {!isAdmin && <Tab value="mine" icon={<Pickaxe />} label="Mine" />}
+          {!isAdmin && (
+            <Tab
+              value="stats"
+              icon={<LayoutDashboard />}
+              label="My stats"
+              short="Stats"
+            />
+          )}
           <Tab value="ranking" icon={<ListOrdered />} label="Ranking" />
           <Tab
             value="guide"
@@ -130,16 +139,20 @@ export default function GamePage() {
           {adminView && <Tab value="admin" icon={<Shield />} label="Admin" />}
         </TabsList>
 
-        <TabsContent value="mine">
-          <Fade>
-            <MineBoard dashboard={dashboard} config={config} />
-          </Fade>
-        </TabsContent>
-        <TabsContent value="stats">
-          <Fade>
-            <PlayerDashboard dashboard={dashboard} />
-          </Fade>
-        </TabsContent>
+        {!isAdmin && (
+          <TabsContent value="mine">
+            <Fade>
+              <MineBoard dashboard={dashboard} config={config} />
+            </Fade>
+          </TabsContent>
+        )}
+        {!isAdmin && (
+          <TabsContent value="stats">
+            <Fade>
+              <PlayerDashboard dashboard={dashboard} />
+            </Fade>
+          </TabsContent>
+        )}
         <TabsContent value="ranking">
           <Fade>
             <RankingTable ranking={ranking} tournaments={tournaments} />
