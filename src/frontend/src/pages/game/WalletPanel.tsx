@@ -11,6 +11,8 @@ import { errorMessage, useGameAction } from "./useGame";
 import { useWallet } from "./useWallet";
 
 const FAUCET_PRESETS = [1_000, 5_000, 10_000, 20_000];
+const LOAD_PRESETS = [200, 500, 1_000, 2_000, 5_000];
+const E8S = 100_000_000n;
 
 interface Props {
   dashboard: Dashboard | undefined;
@@ -22,7 +24,48 @@ export function WalletPanel({ dashboard, config }: Props) {
   const { run, pending } = useGameAction();
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
-  const { balance, real } = useWallet(dashboard, config);
+  const { balance, real, ensureAllowance } = useWallet(dashboard, config);
+  const [amount, setAmount] = useState(500);
+  const [loading, setLoading] = useState(false);
+  const fee = config?.feeE8s ?? 1_000_000_000n;
+  const credit = dashboard?.credit ?? 0n;
+  const presets = LOAD_PRESETS.filter(
+    (a) =>
+      !config || (a >= Number(config.loadMin) && a <= Number(config.loadMax)),
+  );
+  const need = BigInt(amount) * E8S + fee;
+  const room = config ? config.creditCapE8s - credit : 0n;
+  const loadBlock = !dashboard
+    ? "Loading"
+    : dashboard.paused
+      ? "Bets are paused."
+      : BigInt(amount) * E8S > room
+        ? "That would pass the To collect limit."
+        : balance < need
+          ? "Not enough GOLDAO in your wallet."
+          : null;
+
+  const loadCredit = async () => {
+    if (!actor || loading || loadBlock) return;
+    setMsg(null);
+    setLoading(true);
+    try {
+      await ensureAllowance(need);
+      const total = await run(
+        "load",
+        () => actor.gameLoadCredit(BigInt(amount)),
+        "live",
+      );
+      setMsg({
+        ok: true,
+        text: `To collect is now ${fmtGoldao(total)} GOLDAO.`,
+      });
+    } catch (e) {
+      setMsg({ ok: false, text: errorMessage(e) });
+    } finally {
+      setLoading(false);
+    }
+  };
   const faucetLeft = dashboard ? Number(dashboard.faucetRemaining) / 1e8 : 0;
 
   const act = async (
@@ -80,7 +123,35 @@ export function WalletPanel({ dashboard, config }: Props) {
         <span className={cn("font-mono text-[11px]", inkFaint)}>
           {dashboard && dashboard.pendingPayout > 0n
             ? `Pending payout from last tournament: ${fmtGoldao(dashboard.pendingPayout)}`
-            : "Paid when the tournament closes"}
+            : "Backs your stakes. Paid when the tournament closes"}
+        </span>
+        <div className="flex flex-wrap gap-2">
+          {presets.map((a) => (
+            <Button
+              key={a}
+              size="sm"
+              variant={a === amount ? "default" : "outline"}
+              disabled={loading || !!pending}
+              onClick={() => setAmount(a)}
+              className="font-mono text-xs"
+            >
+              {a.toLocaleString("en-US")}
+            </Button>
+          ))}
+        </div>
+        <Button
+          size="sm"
+          disabled={loading || !!pending || !!loadBlock}
+          onClick={() => void loadCredit()}
+          className="w-fit gradient-primary text-primary-foreground"
+        >
+          {loading ? <Spinner /> : null}
+          Load {amount.toLocaleString("en-US")} GOLDAO
+        </Button>
+        <span className={cn("font-mono text-[11px]", inkFaint)}>
+          {loadBlock && dashboard
+            ? loadBlock
+            : `Your wallet pays ${amount.toLocaleString("en-US")} + ${fmtGoldao(fee)} network fee.`}
         </span>
       </div>
 
@@ -93,7 +164,8 @@ export function WalletPanel({ dashboard, config }: Props) {
               <ShieldCheck className="size-3.5" /> Wallet play
             </span>
             <span className={cn("text-xs", inkFaint)}>
-              The game authorizes itself when you play and only charges losses.
+              The game authorizes itself the first time you load credit. Your
+              wallet is only charged when you load.
             </span>
           </>
         ) : (
