@@ -39,6 +39,7 @@ import {
   PAYOUT_BPS,
   eyebrow,
   fmtCountdown,
+  fmtGoldao,
   gold,
   inkFaint,
   panel,
@@ -47,7 +48,6 @@ import {
 } from "./game-utils";
 import { playSound, preloadSounds, useSoundToggle } from "./sounds";
 import { errorMessage, useGameAction } from "./useGame";
-import { useWallet } from "./useWallet";
 
 const CELLS = 25;
 /** The board splits after this many cells when a diamond opens the jackpot. */
@@ -67,10 +67,9 @@ interface Props {
   config: GameConfig | undefined;
 }
 
-export function MineBoard({ dashboard, config }: Props) {
+export function MineBoard({ dashboard }: Props) {
   const { actor, isAuthenticated, login, principalId } = useAuth();
   const { run, refreshAll, setOpenExcavation, setCredit } = useGameAction();
-  const wallet = useWallet(dashboard, config);
   const board = useBoard();
   const { exc, cells, digging, result, error, notice, jackpot } = board;
   const { muted, toggleMuted } = useSoundToggle();
@@ -81,10 +80,8 @@ export function MineBoard({ dashboard, config }: Props) {
   const jackpotResolve = useRef<(() => void) | null>(null);
   const [treasure, setTreasure] = useState<TreasureView | null>(null);
 
-  const fee = config?.feeE8s ?? 1_000_000_000n;
   const stakes = dashboard?.stakes ?? [];
   const paused = !!dashboard?.paused;
-  const blocked = !!dashboard?.blocked;
   const credit = dashboard?.credit ?? 0n;
   const excNo = dashboard ? Number(dashboard.stats.excavations) : 0;
   const busy = digging !== null || autoBusy || busyRef.current;
@@ -146,20 +143,13 @@ export function MineBoard({ dashboard, config }: Props) {
     return () => window.clearTimeout(t);
   }, [result, exc]);
 
-  // Authorizes the game when the wallet has to back this excavation.
-  const authorize = async (stake: bigint): Promise<boolean> => {
+  // The stake is always covered by To collect: the wallet is only used to load it.
+  const coversStake = (stake: bigint): boolean => {
     if (credit >= stake) return true;
-    const need = stake - credit + fee;
-    setBoard({ notice: "Preparing your wallet…" });
-    try {
-      await wallet.ensureAllowance(need);
-      return true;
-    } catch (e) {
-      setBoard({ error: errorMessage(e) });
-      return false;
-    } finally {
-      setBoard({ notice: null });
-    }
+    setBoard({
+      error: `Load at least ${fmtGoldao(stake - credit)} GOLDAO into To collect to start.`,
+    });
+    return false;
   };
 
   const finish = (end: EndResult, stake: bigint) => {
@@ -186,7 +176,7 @@ export function MineBoard({ dashboard, config }: Props) {
       login();
       return;
     }
-    if (paused || blocked) return;
+    if (paused) return;
     busyRef.current = true;
     setBoard({ error: null });
     try {
@@ -196,7 +186,7 @@ export function MineBoard({ dashboard, config }: Props) {
         setBoard({ error: "Bets are paused. Try again later." });
         return;
       }
-      if (!(await authorize(stakeAmount))) return;
+      if (!coversStake(stakeAmount)) return;
       setBoard((s) => ({
         digging: index,
         cells: starting ? {} : s.cells,
@@ -281,12 +271,12 @@ export function MineBoard({ dashboard, config }: Props) {
       return;
     }
     const stakeAmount = stakes[board.stake] ?? 0n;
-    if (stakeAmount === 0n || paused || blocked) return;
+    if (stakeAmount === 0n || paused) return;
     busyRef.current = true;
     setAutoBusy(true);
     setBoard({ error: null, result: null, cells: {} });
     try {
-      if (!(await authorize(stakeAmount))) return;
+      if (!coversStake(stakeAmount)) return;
       const out = await run(
         "auto",
         () => actor.gameAuto(STAKE_KEYS[board.stake], BigInt(autoStop)),
@@ -346,11 +336,6 @@ export function MineBoard({ dashboard, config }: Props) {
     if (notice) return { text: notice, tone: "mid" as const };
     if (!isAuthenticated)
       return { text: "Sign in to start digging.", tone: "mid" as const };
-    if (blocked)
-      return {
-        text: "Your account is under review. Contact the admins.",
-        tone: "err" as const,
-      };
     if (paused)
       return {
         text: "Bets are paused. Try again later.",
@@ -365,6 +350,11 @@ export function MineBoard({ dashboard, config }: Props) {
     if (exc)
       return {
         text: "Keep digging or save your points.",
+        tone: "mid" as const,
+      };
+    if (dashboard && credit < (stakes[board.stake] ?? 0n))
+      return {
+        text: "Load credit into To collect to start digging.",
         tone: "mid" as const,
       };
     return {
@@ -382,7 +372,7 @@ export function MineBoard({ dashboard, config }: Props) {
       key={i}
       cell={cells[i]}
       digging={digging === i}
-      disabled={locked || paused || blocked || !dashboard}
+      disabled={locked || paused || !dashboard}
       onClick={() => void dig(i)}
     />
   );
@@ -539,7 +529,7 @@ export function MineBoard({ dashboard, config }: Props) {
               <div className="col-span-2">
                 <AutoPicker
                   value={autoStop}
-                  disabled={locked || !!exc || paused || blocked || !dashboard}
+                  disabled={locked || !!exc || paused || !dashboard}
                   busy={autoBusy}
                   onChange={setAutoStop}
                   onRun={() => void runAuto()}
@@ -555,8 +545,8 @@ export function MineBoard({ dashboard, config }: Props) {
       </div>
 
       <p className={cn("text-center font-mono text-[11px]", inkFaint)}>
-        Playing authorizes the game to charge only your losses from your wallet.
-        You can revoke it at any time from your wallet.
+        Your stakes come out of To collect. Losses are deducted from it, wins
+        are added, and the balance is paid when the tournament closes.
       </p>
     </div>
   );
