@@ -69,17 +69,17 @@ export function PrizeGuide({ config, stakes }: Props) {
             multiplier.
           </p>
           <p>
-            Winnings are added to your balance to collect and paid out when the
-            tournament closes. If the mine collapses you keep half of the points
-            reached, so you lose the rest of the stake. Losses are first taken
-            from your balance to collect; if it does not cover them, they are
-            charged from your wallet.
+            Before digging, load credit into To collect from your wallet. Every
+            stake comes out of it: wins are added, and if the mine collapses you
+            keep half of the points reached, so the rest of the stake is
+            deducted. The wallet is only touched when you load credit, and each
+            load pays the {fmtGoldao(config.feeE8s)} GOLDAO network fee.
           </p>
           <p>
-            The game authorizes itself the first time it needs your wallet, and
-            it only ever charges losses. You can revoke it at any time from your
-            wallet. Each authorization and each charge pays the{" "}
-            {fmtGoldao(config.feeE8s)} GOLDAO network fee.
+            When the tournament closes, To collect is paid to your wallet if it
+            is at least {fmtGoldao(config.minPayoutE8s)} GOLDAO (the payment
+            costs the network fee). Smaller balances stay in To collect for the
+            next tournament.
           </p>
         </div>
       </div>
