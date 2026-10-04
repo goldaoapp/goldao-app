@@ -10,6 +10,8 @@ module {
 
   public type StakeOption = { #min; #mid; #max };
 
+  public type WithdrawKind = { #available; #all };
+
   public type Check = { #ok; #balance : Nat; #allowance : Nat; #down };
   public type Charge = { #ok; #funds; #down };
 
