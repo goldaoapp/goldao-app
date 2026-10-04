@@ -14,6 +14,8 @@ export interface AdminView {
   'durationDays' : bigint,
   'staked' : bigint,
   'stakes' : Array<bigint>,
+  'smallBalances' : bigint,
+  'toCollect' : bigint,
   'bankAccount' : [] | [Principal],
   'bank' : bigint,
   'fund' : bigint,
@@ -25,11 +27,15 @@ export interface AdminView {
   'cycles' : bigint,
   'lastClose' : [] | [TournamentSummary],
   'withdrawable' : bigint,
+  'smallPlayers' : bigint,
   'bankAllowance' : bigint,
   'burned' : bigint,
+  'heldJackpots' : bigint,
+  'toCollectPlayers' : bigint,
   'realLedger' : boolean,
   'payouts' : Array<Payout>,
   'paused' : boolean,
+  'unpaidPayouts' : bigint,
   'endsAt' : bigint,
 }
 export interface AutoResult {
@@ -46,7 +52,6 @@ export interface Cell { 'value' : Value, 'name' : string }
 export interface Dashboard {
   'stakes' : Array<bigint>,
   'balance' : bigint,
-  'blocked' : boolean,
   'open' : [] | [ExcavationView],
   'pool' : bigint,
   'tournament' : bigint,
@@ -73,7 +78,6 @@ export interface EndResult {
   'stake' : bigint,
   'gross' : bigint,
   'picks' : bigint,
-  'charged' : bigint,
   'points' : bigint,
 }
 export type Error = { 'FrontendOriginsNotConfigured' : null } |
@@ -104,7 +108,6 @@ export interface ExcavationView {
   'picks' : bigint,
   'safePctX100' : bigint,
 }
-export interface FlagEntry { 'at' : bigint, 'player' : Principal }
 export type GResult = { 'ok' : bigint } |
   { 'err' : string };
 export type GResult_1 = { 'ok' : EndResult } |
@@ -127,6 +130,8 @@ export type GResult_8 = { 'ok' : Array<[Principal, UserRole]> } |
   { 'err' : string };
 export interface GameConfig {
   'mines' : bigint,
+  'loadMax' : bigint,
+  'loadMin' : bigint,
   'ledgerId' : string,
   'stakeCapE8s' : bigint,
   'feeE8s' : bigint,
@@ -134,9 +139,11 @@ export interface GameConfig {
   'diamond2Bps' : bigint,
   'cells' : bigint,
   'pointsTable' : Array<bigint>,
+  'creditCapE8s' : bigint,
   'maxPicks' : bigint,
   'payoutBps' : bigint,
   'safePicks' : bigint,
+  'minPayoutE8s' : bigint,
   'stakeMinE8s' : bigint,
   'faucetCapE8s' : bigint,
   'realLedger' : boolean,
@@ -193,15 +200,12 @@ export type Result_7 = { 'ok' : null } |
   { 'err' : Error };
 export interface Result__1 { 'hasMore' : boolean, 'rows' : Array<Array<Cell>> }
 export interface SecurityView {
-  'breakerWindowMin' : bigint,
-  'breakerMax' : bigint,
   'haltCode' : bigint,
   'ledgerFails' : bigint,
   'haltedAt' : bigint,
   'accountingOk' : boolean,
   'halted' : boolean,
   'saturations' : bigint,
-  'flagged' : Array<FlagEntry>,
 }
 export type StakeOption = { 'max' : null } |
   { 'mid' : null } |
@@ -260,6 +264,7 @@ export interface _SERVICE {
   'assignCallerUserRole' : ActorMethod<[Principal, UserRole], undefined>,
   'execute' : ActorMethod<[string], Result__1>,
   'gameAdminAckAccounting' : ActorMethod<[], GResult_5>,
+  'gameAdminCloseAll' : ActorMethod<[], GResult_5>,
   'gameAdminCloseTournament' : ActorMethod<[], GResult_5>,
   'gameAdminHalt' : ActorMethod<[], GResult_5>,
   'gameAdminLedgerAllowance' : ActorMethod<[Principal, Principal], GResult>,
@@ -270,15 +275,14 @@ export interface _SERVICE {
   'gameAdminResume' : ActorMethod<[], GResult_5>,
   'gameAdminSecurity' : ActorMethod<[], GResult_6>,
   'gameAdminSeedPool' : ActorMethod<[], GResult>,
-  'gameAdminSetBreaker' : ActorMethod<[bigint, bigint], GResult_5>,
   'gameAdminSetDuration' : ActorMethod<[bigint], GResult_5>,
   'gameAdminSetRealLedger' : ActorMethod<[Principal], GResult>,
   'gameAdminTestDeposit' : ActorMethod<[bigint], GResult>,
-  'gameAdminUnblock' : ActorMethod<[Principal], GResult_5>,
   'gameAdminView' : ActorMethod<[], GResult_4>,
   'gameAdminWithdraw' : ActorMethod<[WithdrawKind], GResult>,
   'gameAuto' : ActorMethod<[StakeOption, bigint], GResult_3>,
   'gameConfig' : ActorMethod<[], GameConfig>,
+  'gameLoadCredit' : ActorMethod<[bigint], GResult>,
   'gameMyDashboard' : ActorMethod<[], Dashboard>,
   'gamePick' : ActorMethod<[[] | [StakeOption]], GResult_2>,
   'gameRanking' : ActorMethod<[], Ranking>,
