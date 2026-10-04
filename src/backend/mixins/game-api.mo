@@ -51,8 +51,14 @@ mixin (
     };
   };
 
+  func gIsBank(p : Principal) : Bool {
+    switch (gameState.bankAccount) { case (?b) b == p; case null false };
+  };
+
   func gRequireUser(caller : Principal) : ?Text {
-    if (Principal.isAnonymous(caller)) ?"Sign in with Internet Identity." else null;
+    if (Principal.isAnonymous(caller)) return ?"Sign in with Internet Identity.";
+    if (gIsAdmin(caller) or gIsBank(caller)) return ?"Admin accounts cannot play.";
+    null;
   };
 
   func gBalance(p : Principal) : Nat {
@@ -1065,10 +1071,10 @@ mixin (
     #ok(());
   };
 
-  public shared ({ caller }) func gameAdminSeedPool(goldao : Nat) : async Result.Result<Nat, Text> {
+  public shared ({ caller }) func gameAdminSeedPool() : async Result.Result<Nat, Text> {
     if (not gIsAdmin(caller)) return #err("Admin only.");
-    if (goldao == 0 or goldao > 10_000_000) return #err("Enter an amount.");
-    let amount = goldao * Game.E8S;
+    if (gameState.pool >= Game.POOL_SEED) return #err("The jackpot pool is already at its minimum.");
+    let amount = Game.POOL_SEED - gameState.pool;
     let after : Int = gFund() - amount;
     if (after < Game.FUND_FLOOR) return #err("The bank fund would fall below its floor.");
     gameState.pool += amount;
@@ -1078,20 +1084,9 @@ mixin (
   public shared ({ caller }) func gameAdminTestDeposit(goldao : Nat) : async Result.Result<Nat, Text> {
     if (not gIsAdmin(caller)) return #err("Admin only.");
     if (gameState.realLedger) return #err("Not available with the real ledger.");
-    if (goldao == 0 or goldao > 10_000_000) return #err("Enter an amount.");
+    if (Array.indexOf<Nat>(Game.TEST_DEPOSITS, Nat.equal, goldao) == null) return #err("Choose one of the listed amounts.");
     gameState.bank += goldao * Game.E8S;
     #ok(gameState.bank);
-  };
-
-  public shared ({ caller }) func gameAdminTestApprove(goldao : Nat) : async Result.Result<Nat, Text> {
-    if (not gIsAdmin(caller)) return #err("Admin only.");
-    if (gameState.realLedger) return #err("Authorize from the admin wallet.");
-    if (goldao > Game.MAX_APPROVE / Game.E8S) return #err("Amount too large.");
-    if (gameState.bank < Game.FEE) return #err("The bank wallet cannot pay the fee.");
-    gameState.bank := gSub(gameState.bank, Game.FEE);
-    gameState.burned += Game.FEE;
-    gameState.bankAllowance := goldao * Game.E8S;
-    #ok(gameState.bankAllowance);
   };
 
   public shared ({ caller }) func gameAdminPay() : async Result.Result<{ paid : Nat; failed : Nat; remaining : Nat }, Text> {
@@ -1109,6 +1104,18 @@ mixin (
     if (gSat > 0 or not gAccountingOk() or gUnpaidTotal() > gameState.bank) {
       gameState.payingSince := 0;
       return #err("Accounting check failed. Payments are blocked.");
+    };
+    if (not gameState.realLedger) {
+      let total = gUnpaidTotal();
+      if (gameState.bankAllowance < total) {
+        if (gameState.bank < total + Game.FEE) {
+          gameState.payingSince := 0;
+          return #err("The bank wallet does not cover the pending payouts.");
+        };
+        gameState.bank := gSub(gameState.bank, Game.FEE);
+        gameState.burned += Game.FEE;
+        gameState.bankAllowance := total;
+      };
     };
     let pending = Array.sort(
       gameState.payouts.values().filter(func(po : Types.Payout) : Bool { not po.paid }).toArray(),
@@ -1158,26 +1165,103 @@ mixin (
     #ok({ paid; failed; remaining });
   };
 
-  public shared ({ caller }) func gameAdminWithdraw(goldao : Nat) : async Result.Result<Nat, Text> {
-    if (not gIsAdmin(caller)) return #err("Admin only.");
-    if (gameState.realLedger) return #err("Not available with the real ledger.");
-    if (goldao == 0) return #err("Enter an amount.");
-    let amount = goldao * Game.E8S;
-    if (amount > gWithdrawable() or amount > gameState.bank) return #err("Above the available amount.");
-    gameState.bank := Game.sub(gameState.bank, amount);
-    gameState.cycles := Game.sub(gameState.cycles, amount);
-    #ok(gameState.bank);
+  func gWithdrawBlocked(kind : Types.WithdrawKind) : ?Text {
+    if (gSat > 0 or not gAccountingOk()) return ?"Accounting check failed. Withdrawals are blocked.";
+    switch (kind) {
+      case (#all) {
+        if (not gameState.halted) return ?"Pause new excavations first.";
+        if (gameState.owed != 0 or gameState.open.size() != 0 or gameState.credits.size() != 0 or gUnpaidTotal() != 0) {
+          return ?"Pay all debts and wait for open excavations to end first.";
+        };
+      };
+      case (#available) {};
+    };
+    null;
   };
 
-  public shared ({ caller }) func gameAdminRecordWithdrawal(goldao : Nat) : async Result.Result<Nat, Text> {
+  func lWithdraw(amount : Nat) : async Result.Result<(), Text> {
+    gameState.movSeq += 1;
+    if (not gameState.realLedger) {
+      let need = amount + Game.FEE;
+      if (gameState.bank < need) return #err("Above the available amount.");
+      gameState.bank := gSub(gameState.bank, need);
+      gameState.burned += Game.FEE;
+      gameState.movSeq += 1;
+      return #ok(());
+    };
+    let bankAcct = switch (gameState.bankAccount) { case (?a) a; case null return #err("Ledger mode is not configured.") };
+    try {
+      let res = await Ledger.ledger().icrc2_transfer_from({
+        spender_subaccount = null;
+        from = Ledger.account(bankAcct);
+        to = Ledger.account(Game.treasury());
+        amount;
+        fee = ?Game.FEE;
+        memo = null;
+        created_at_time = ?Nat.toNat64(Int.abs(Time.now()));
+      });
+      gameState.movSeq += 1;
+      switch (res) {
+        case (#Ok _) {
+          gameState.bank := gSub(gameState.bank, amount + Game.FEE);
+          #ok(());
+        };
+        case (#Err(#InsufficientAllowance _)) #err("The withdrawal authorization is too low.");
+        case (#Err(#InsufficientFunds _)) #err("The bank wallet does not cover the withdrawal.");
+        case (#Err _) #err("The ledger rejected the withdrawal.");
+      };
+    } catch (_) {
+      gameState.movSeq += 1;
+      #err("The ledger is unavailable. Refresh the bank before trying again.");
+    };
+  };
+
+  public shared ({ caller }) func gameAdminWithdraw(kind : Types.WithdrawKind) : async Result.Result<Nat, Text> {
     if (not gIsAdmin(caller)) return #err("Admin only.");
-    if (not gameState.realLedger) return #err("Only with the real ledger.");
-    if (goldao == 0) return #err("Enter an amount.");
-    let amount = goldao * Game.E8S;
-    if (amount > gWithdrawable()) return #err("Above the available amount.");
-    if (not (await lBankRefresh())) return #err("The ledger is unavailable. Try again later.");
-    gameState.cycles := Game.sub(gameState.cycles, amount);
-    #ok(gameState.bank);
+    let now = Time.now();
+    if (gameState.payingSince != 0 and now - gameState.payingSince < Game.BUSY_STALE_NS) {
+      return #err("A money movement is in progress.");
+    };
+    switch (gWithdrawBlocked(kind)) { case (?m) return #err(m); case null {} };
+    gameState.payingSince := now;
+    if (gameState.realLedger and not (await lBankRefresh())) {
+      gameState.payingSince := 0;
+      return #err("The ledger is unavailable.");
+    };
+    switch (gWithdrawBlocked(kind)) {
+      case (?m) {
+        gameState.payingSince := 0;
+        return #err(m);
+      };
+      case null {};
+    };
+    let spendable = Game.sub(gameState.bank, Game.FEE);
+    let amount = switch (kind) {
+      case (#all) spendable;
+      case (#available) Nat.min(gWithdrawable(), spendable);
+    };
+    if (amount == 0) {
+      gameState.payingSince := 0;
+      return #err("Nothing to withdraw.");
+    };
+    let res = await lWithdraw(amount);
+    gameState.payingSince := 0;
+    switch (res) {
+      case (#err m) return #err(m);
+      case (#ok) {};
+    };
+    switch (kind) {
+      case (#all) {
+        gameState.pool := 0;
+        gameState.reserve := 0;
+        gameState.cycles := 0;
+      };
+      case (#available) {
+        gameState.cycles := Game.sub(gameState.cycles, amount);
+      };
+    };
+    if (gameState.realLedger) { ignore await lBankRefresh() };
+    #ok(amount);
   };
 
   public shared ({ caller }) func gameAdminRefreshBank() : async Result.Result<Nat, Text> {
