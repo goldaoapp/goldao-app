@@ -13,13 +13,12 @@ import {
   JackpotCard,
   Legend,
   MineCell,
-  MiniStat,
   PayoutStep,
   ResultCard,
-  RollingNumber,
   RunCard,
   StakeSelector,
 } from "./MineParts";
+import { BoardLoader } from "./Spinner";
 import {
   TreasureOverlay,
   type TreasureView,
@@ -68,7 +67,7 @@ interface Props {
 }
 
 export function MineBoard({ dashboard }: Props) {
-  const { actor, isAuthenticated, login, principalId } = useAuth();
+  const { actor, isAuthenticated, isLoading, login, principalId } = useAuth();
   const { run, refreshAll, setOpenExcavation, setCredit } = useGameAction();
   const board = useBoard();
   const { exc, cells, digging, result, error, notice, jackpot } = board;
@@ -86,6 +85,7 @@ export function MineBoard({ dashboard }: Props) {
   const excNo = dashboard ? Number(dashboard.stats.excavations) : 0;
   const busy = digging !== null || autoBusy || busyRef.current;
   const locked = busy || jackpot !== null;
+  const booting = isLoading || (isAuthenticated && !dashboard);
 
   useEffect(() => {
     preloadSounds();
@@ -161,10 +161,11 @@ export function MineBoard({ dashboard }: Props) {
     });
     clearBoardCells();
     setOpenExcavation(null);
+    const treasureWin = end.won > 0n && isTreasure(Number(end.points));
     if (end.kind === EndKind.collapsed) playSound("collapse");
-    else if (end.won > 0n) playSound("success");
+    else if (end.won > 0n && !treasureWin) playSound("success");
     if (end.gross >= stake * 2n) setBoard((s) => ({ rain: s.rain + 1 }));
-    if (end.won > 0n && isTreasure(Number(end.points))) {
+    if (treasureWin) {
       setTreasure({ won: end.won, points: Number(end.points) });
     }
     void refreshAll();
@@ -205,7 +206,15 @@ export function MineBoard({ dashboard }: Props) {
           ? { kind: "diamond" }
           : { kind: "token", token: tokenForPick(picks) };
       setBoard((s) => ({ cells: { ...s.cells, [index]: cell } }));
-      setCredit(res.credit, res.pool);
+      // A jackpot is revealed slot by slot: keep the old balance on screen until it closes.
+      if (stage >= 3 && res.diamond.won > 0n) {
+        setBoard({
+          hold: true,
+          heldBalance: { credit: res.credit, pool: res.pool },
+        });
+      } else {
+        setCredit(res.credit, res.pool);
+      }
       if (!res.collapsed) playSound(stage > 0 ? "diamond" : "success");
       if (stage > 0) {
         setBoard({
@@ -274,7 +283,7 @@ export function MineBoard({ dashboard }: Props) {
     if (stakeAmount === 0n || paused) return;
     busyRef.current = true;
     setAutoBusy(true);
-    setBoard({ error: null, result: null, cells: {} });
+    setBoard({ error: null, result: null, cells: {}, hold: true });
     try {
       if (!coversStake(stakeAmount)) return;
       const out = await run(
@@ -320,15 +329,23 @@ export function MineBoard({ dashboard }: Props) {
     } finally {
       busyRef.current = false;
       setAutoBusy(false);
+      setBoard({ hold: false });
     }
   };
 
   const newGame = () => setBoard({ cells: {}, result: null, error: null });
   const closeJackpot = useCallback(() => {
+    const held = getBoard().heldBalance;
     setBoard({ jackpot: null });
+    if (held) {
+      // Now the new balance can roll up on screen.
+      setCredit(held.credit, held.pool);
+      setBoard({ hold: false, heldBalance: null });
+      void refreshAll();
+    }
     jackpotResolve.current?.();
     jackpotResolve.current = null;
-  }, []);
+  }, [setCredit, refreshAll]);
   const closeTreasure = useCallback(() => setTreasure(null), []);
 
   const message = (() => {
@@ -363,7 +380,6 @@ export function MineBoard({ dashboard }: Props) {
     };
   })();
 
-  const picks = exc ? Number(exc.picks) : 0;
   const idle = !exc && !result && !locked;
   const split = jackpot !== null;
 
@@ -448,7 +464,8 @@ export function MineBoard({ dashboard }: Props) {
           <div className="grid grid-cols-2 gap-x-5 gap-y-2.5 md:grid-cols-[minmax(0,460px)_minmax(0,1fr)] md:gap-y-10">
             {/* Board */}
             <div className="relative col-span-2 mx-auto w-full max-w-[460px] md:col-span-1 md:col-start-1 md:row-start-1 md:mx-0">
-              {idle && (
+              {booting && <BoardLoader />}
+              {idle && !booting && (
                 <motion.div
                   aria-hidden
                   className="pointer-events-none absolute inset-0 z-[3] rounded-lg bg-[linear-gradient(115deg,transparent_42%,oklch(0.74_0.14_80/0.2)_50%,transparent_58%)] bg-[length:250%_100%] bg-no-repeat"
@@ -503,19 +520,6 @@ export function MineBoard({ dashboard }: Props) {
             {/* Stake, progress and extras */}
             <div className="col-span-2 grid grid-cols-2 gap-2 md:col-span-1 md:col-start-2 md:row-start-1 md:flex md:flex-col md:justify-between md:gap-2.5">
               <PayoutStep exc={exc} />
-              <div className="grid grid-cols-1 gap-1.5 md:grid-cols-2 md:gap-2">
-                <MiniStat
-                  label="Picks"
-                  value={<RollingNumber value={picks} />}
-                />
-                <MiniStat
-                  label="Diamonds"
-                  value={
-                    <RollingNumber value={exc ? Number(exc.diamonds) : 0} />
-                  }
-                  accent
-                />
-              </div>
               <JackpotCard pool={dashboard?.pool} className="hidden md:flex" />
               <div className="col-span-2">
                 <StakeSelector
