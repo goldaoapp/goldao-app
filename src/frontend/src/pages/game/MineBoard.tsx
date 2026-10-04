@@ -21,6 +21,11 @@ import {
   StakeSelector,
 } from "./MineParts";
 import {
+  TreasureOverlay,
+  type TreasureView,
+  isTreasure,
+} from "./TreasureOverlay";
+import {
   type Cell,
   clearBoardCells,
   getBoard,
@@ -73,7 +78,8 @@ export function MineBoard({ dashboard, config }: Props) {
   const [autoBusy, setAutoBusy] = useState(false);
   const [bandHost, setBandHost] = useState<HTMLDivElement | null>(null);
   const busyRef = useRef(false);
-  const timers = useRef<number[]>([]);
+  const jackpotResolve = useRef<(() => void) | null>(null);
+  const [treasure, setTreasure] = useState<TreasureView | null>(null);
 
   const fee = config?.feeE8s ?? 1_000_000_000n;
   const stakes = dashboard?.stakes ?? [];
@@ -87,7 +93,8 @@ export function MineBoard({ dashboard, config }: Props) {
   useEffect(() => {
     preloadSounds();
     return () => {
-      for (const t of timers.current) window.clearTimeout(t);
+      jackpotResolve.current?.();
+      jackpotResolve.current = null;
     };
   }, []);
 
@@ -167,6 +174,9 @@ export function MineBoard({ dashboard, config }: Props) {
     if (end.kind === EndKind.collapsed) playSound("collapse");
     else if (end.won > 0n) playSound("success");
     if (end.gross >= stake * 2n) setBoard((s) => ({ rain: s.rain + 1 }));
+    if (end.won > 0n && isTreasure(Number(end.points))) {
+      setTreasure({ won: end.won, points: Number(end.points) });
+    }
     void refreshAll();
   };
 
@@ -285,39 +295,35 @@ export function MineBoard({ dashboard, config }: Props) {
       const free = Array.from({ length: CELLS }, (_, i) => i).sort(
         () => Math.random() - 0.5,
       );
-      await new Promise<void>((resolve) => {
-        out.steps.forEach((step, i) => {
-          timers.current.push(
-            window.setTimeout(
-              () => {
-                const stage = Number(step.diamond.stage);
-                const cell: Cell = step.collapsed
-                  ? { kind: "rock" }
-                  : stage > 0
-                    ? { kind: "diamond" }
-                    : { kind: "token", token: tokenForPick(Number(step.pick)) };
-                setBoard((s) => ({ cells: { ...s.cells, [free[i]]: cell } }));
-                if (step.collapsed) playSound("collapse");
-                else playSound(stage > 0 ? "diamond" : "success");
-                if (i === out.steps.length - 1) resolve();
-              },
-              (i + 1) * AUTO_STEP_MS,
-            ),
-          );
-        });
-        if (out.steps.length === 0) resolve();
-      });
-      const hit = out.steps.find(
-        (s) => Number(s.diamond.stage) >= 3 && s.diamond.won > 0n,
-      );
+      for (let i = 0; i < out.steps.length; i++) {
+        await new Promise<void>((resolve) =>
+          window.setTimeout(resolve, AUTO_STEP_MS),
+        );
+        const step = out.steps[i];
+        const stage = Number(step.diamond.stage);
+        const cell: Cell = step.collapsed
+          ? { kind: "rock" }
+          : stage > 0
+            ? { kind: "diamond" }
+            : { kind: "token", token: tokenForPick(Number(step.pick)) };
+        setBoard((s) => ({ cells: { ...s.cells, [free[i]]: cell } }));
+        if (step.collapsed) playSound("collapse");
+        else playSound(stage > 0 ? "diamond" : "success");
+        if (stage > 0) {
+          // The auto run waits here until the player opens the three slots.
+          await new Promise<void>((resolve) => {
+            jackpotResolve.current = resolve;
+            setBoard({
+              jackpot: { stage, won: step.diamond.won, held: false },
+            });
+            if (stage >= 3 && step.diamond.won > 0n) {
+              setBoard((s) => ({ rain: s.rain + 1 }));
+            }
+          });
+        }
+      }
       setCredit(out.end.credit, out.pool);
       finish(out.end, stakeAmount);
-      if (hit) {
-        setBoard((s) => ({
-          jackpot: { stage: 3, won: hit.diamond.won, held: false },
-          rain: s.rain + 1,
-        }));
-      }
     } catch (e) {
       setBoard({ error: errorMessage(e) });
       void refreshAll();
@@ -328,7 +334,12 @@ export function MineBoard({ dashboard, config }: Props) {
   };
 
   const newGame = () => setBoard({ cells: {}, result: null, error: null });
-  const closeJackpot = useCallback(() => setBoard({ jackpot: null }), []);
+  const closeJackpot = useCallback(() => {
+    setBoard({ jackpot: null });
+    jackpotResolve.current?.();
+    jackpotResolve.current = null;
+  }, []);
+  const closeTreasure = useCallback(() => setTreasure(null), []);
 
   const message = (() => {
     if (error) return { text: error, tone: "err" as const };
@@ -425,6 +436,10 @@ export function MineBoard({ dashboard, config }: Props) {
             onClose={closeJackpot}
             bandHost={bandHost}
             pool={dashboard?.pool}
+          />
+          <TreasureOverlay
+            view={jackpot ? null : treasure}
+            onClose={closeTreasure}
           />
           <AnimatePresence>
             {board.rain > 0 && !jackpot && (
