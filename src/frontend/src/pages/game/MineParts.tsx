@@ -193,28 +193,6 @@ export function RollingNumber({
   return <motion.span className={className}>{text}</motion.span>;
 }
 
-export function MiniStat({
-  label,
-  value,
-  accent,
-}: { label: string; value: React.ReactNode; accent?: boolean }) {
-  return (
-    <div className="rounded-md border border-[color:var(--term-border-faint)] bg-[var(--term-alt)] px-3 py-1.5">
-      <div className={cn("font-mono text-[10px] uppercase", inkFaint)}>
-        {label}
-      </div>
-      <div
-        className={cn(
-          "font-display text-lg font-semibold leading-tight tabular-nums",
-          accent ? DIAMOND_TEXT : ink,
-        )}
-      >
-        {value}
-      </div>
-    </div>
-  );
-}
-
 export function SaveButton({
   canSave,
   onSave,
@@ -617,9 +595,7 @@ export function ResultCard({
             fmtSigned(net, 2)
           )}
         </span>
-        <span className={cn("font-mono text-xs", inkMid)}>
-          GOLDAO · {Number(result.points)} pts
-        </span>
+        <span className={cn("font-mono text-xs", inkMid)}>GOLDAO</span>
         {result.jackpotWon > 0n && (
           <span className={cn("font-mono text-xs", DIAMOND_TEXT)}>
             Jackpot: +{fmtGoldao(result.jackpotWon, 2)} GOLDAO
