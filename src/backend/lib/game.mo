@@ -38,6 +38,7 @@ module {
   public let PAY_BATCH : Nat = 20;
   public let FAUCET_CAP : Nat = 2_000_000_000_000;
   public let FAUCET_GLOBAL_CAP : Nat = 200_000_000_000_000;
+  public let TEST_DEPOSITS : [Nat] = [10_000, 30_000, 100_000, 200_000];
   public let MAX_APPROVE : Nat = 1_000_000_000_000_000;
 
   // Principals that are always admin. Paste Internet Identity principals here before deploying.
