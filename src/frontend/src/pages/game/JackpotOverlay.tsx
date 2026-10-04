@@ -1,7 +1,7 @@
 import { cn } from "@/lib/utils";
 import { Gem } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { RollingNumber } from "./MineParts";
 import type { JackpotView } from "./board-store";
@@ -17,10 +17,10 @@ import {
 } from "./game-utils";
 import { playSound } from "./sounds";
 
-/** Each slot: suspense while it charges, then the reveal. */
-const SLOT_MS = 2100;
+/** Suspense while a tapped slot charges, then the reveal. */
 const CHARGE_MS = 1700;
-const OPEN_MS = 700;
+/** Pause after the last reveal before a miss closes by itself. */
+const CLOSE_MS = 1500;
 
 /** Falling coins; `seed` restarts the shower. */
 export function CoinRain({ seed }: { seed: number }) {
@@ -118,9 +118,24 @@ function DiamondIcon({
 
 type SlotState = "locked" | "charging" | "hit" | "miss";
 
-function Slot({ state }: { state: SlotState }) {
+function Slot({
+  state,
+  onTap,
+  ready,
+  label,
+}: {
+  state: SlotState;
+  onTap: () => void;
+  ready: boolean;
+  label: string;
+}) {
+  const tappable = state === "locked" && ready;
   return (
-    <motion.div
+    <motion.button
+      type="button"
+      onClick={onTap}
+      disabled={!tappable}
+      aria-label={label}
       animate={
         state === "charging"
           ? {
@@ -135,17 +150,29 @@ function Slot({ state }: { state: SlotState }) {
                 scale: [0.7, 1],
                 boxShadow: "0 0 28px oklch(0.7 0.14 350 / 0.5)",
               }
-            : { scale: 1, boxShadow: "0 0 0 0 transparent" }
+            : tappable
+              ? {
+                  scale: [1, 1.05, 1],
+                  boxShadow: [
+                    "0 0 0 0 oklch(0.74 0.14 80 / 0)",
+                    "0 0 18px 2px oklch(0.74 0.14 80 / 0.4)",
+                    "0 0 0 0 oklch(0.74 0.14 80 / 0)",
+                  ],
+                }
+              : { scale: 1, boxShadow: "0 0 0 0 transparent" }
       }
       transition={
         state === "charging"
           ? { duration: CHARGE_MS / 1000, ease: "easeInOut" }
-          : { type: "spring", stiffness: 300, damping: 18 }
+          : tappable
+            ? { duration: 1.4, repeat: Number.POSITIVE_INFINITY }
+            : { type: "spring", stiffness: 300, damping: 18 }
       }
       className={cn(
-        "flex size-20 items-center justify-center rounded-2xl border-2 sm:size-24",
+        "flex size-20 items-center justify-center rounded-2xl border-2 disabled:cursor-default sm:size-24",
         (state === "locked" || state === "charging") &&
           "border-primary bg-[color:var(--term-card)]",
+        tappable && "cursor-pointer hover:border-[color:var(--term-gold)]",
         state === "hit" &&
           "border-[oklch(0.68_0.16_350/0.85)] bg-[oklch(0.7_0.14_350/0.18)]",
         state === "miss" &&
@@ -159,14 +186,15 @@ function Slot({ state }: { state: SlotState }) {
       ) : (
         <span className={cn("font-display text-3xl font-bold", gold)}>?</span>
       )}
-    </motion.div>
+    </motion.button>
   );
 }
 
 /**
- * Three slots, each one built up with suspense and then revealed: diamond or
- * empty. Stage 3 is the jackpot. The board stays locked while it is open;
- * stages 1 and 2 close by themselves.
+ * Three slots the player taps one by one: each charges with suspense and then
+ * shows a diamond or an empty slot. Stage 3 is the jackpot. The board stays
+ * locked while it is open; stages 1 and 2 close by themselves once the three
+ * slots are open.
  *
  * The slots are drawn in `bandHost`, the gap that opens in the middle of the
  * split board. The jackpot celebration covers the whole panel.
@@ -182,59 +210,56 @@ export function JackpotOverlay({
   bandHost: HTMLElement | null;
   pool: bigint | undefined;
 }) {
-  const [shown, setShown] = useState(0);
-  const [charging, setCharging] = useState(0);
+  const [slots, setSlots] = useState<SlotState[]>([
+    "locked",
+    "locked",
+    "locked",
+  ]);
+  const timers = useRef<number[]>([]);
   const stage = view?.stage ?? 0;
   const won = view?.won ?? 0n;
   const jackpot = stage >= 3 && won > 0n;
+  const shown = slots.filter((x) => x === "hit" || x === "miss").length;
+  const charging = slots.includes("charging");
   const celebrating = jackpot && shown >= 3;
 
   useEffect(() => {
-    setShown(0);
-    setCharging(0);
-    if (!view) return;
-    const timers: number[] = [];
-    const visible = Math.min(3, view.stage + 1);
-    playSound("crack");
-    for (let i = 1; i <= visible; i++) {
-      const start = OPEN_MS + (i - 1) * SLOT_MS;
-      timers.push(
-        window.setTimeout(() => {
-          setCharging(i);
-          playSound("suspense");
-        }, start),
-        window.setTimeout(() => {
-          setCharging(0);
-          setShown(i);
-          playSound(i <= view.stage ? "diamond" : "miss");
-        }, start + CHARGE_MS),
-      );
-    }
-    if (view.stage >= 3 && view.won > 0n) {
-      timers.push(
-        window.setTimeout(
-          () => playSound("jackpot"),
-          OPEN_MS + 2 * SLOT_MS + CHARGE_MS + 300,
-        ),
-      );
-    } else {
-      timers.push(
-        window.setTimeout(
-          onClose,
-          OPEN_MS + (visible - 1) * SLOT_MS + CHARGE_MS + 1500,
-        ),
-      );
-    }
+    setSlots(["locked", "locked", "locked"]);
+    for (const t of timers.current) window.clearTimeout(t);
+    timers.current = [];
+    if (view) playSound("crack");
     return () => {
-      for (const t of timers) window.clearTimeout(t);
+      for (const t of timers.current) window.clearTimeout(t);
+      timers.current = [];
     };
-  }, [view, onClose]);
+  }, [view]);
 
-  const slotState = (slot: number): SlotState => {
-    if (shown >= slot) return slot <= stage ? "hit" : "miss";
-    return charging === slot ? "charging" : "locked";
+  const tap = (index: number) => {
+    if (!view || charging || slots[index] !== "locked") return;
+    const order = shown + 1;
+    setSlots((s) => s.map((x, i) => (i === index ? "charging" : x)));
+    playSound("suspense");
+    timers.current.push(
+      window.setTimeout(() => {
+        const hit = order <= view.stage;
+        setSlots((s) =>
+          s.map((x, i) => (i === index ? (hit ? "hit" : "miss") : x)),
+        );
+        playSound(hit ? "diamond" : "miss");
+        if (order < 3) return;
+        if (view.stage >= 3 && view.won > 0n) {
+          timers.current.push(
+            window.setTimeout(() => playSound("jackpot"), 300),
+          );
+        } else {
+          timers.current.push(window.setTimeout(onClose, CLOSE_MS));
+        }
+      }, CHARGE_MS),
+    );
   };
+
   const hits = Math.min(shown, stage);
+  const ready = view !== null && !charging;
 
   const band = (
     <AnimatePresence>
@@ -261,26 +286,35 @@ export function JackpotOverlay({
             >
               DIAMOND JACKPOT
             </motion.span>
-            {pool !== undefined && (
+            {(jackpot ? won : pool) !== undefined && (
               <span
                 className={cn(
                   "font-display text-xl font-semibold tabular-nums",
                   DIAMOND_TEXT,
                 )}
               >
-                {fmtGoldao(pool)}{" "}
+                {fmtGoldao(jackpot ? won : (pool ?? 0n))}{" "}
                 <span className={cn("font-mono text-xs", inkMid)}>GOLDAO</span>
               </span>
             )}
             <div className="flex items-center gap-3">
-              {[1, 2, 3].map((slot) => (
-                <Slot key={slot} state={slotState(slot)} />
+              {slots.map((state, i) => (
+                <Slot
+                  // biome-ignore lint/suspicious/noArrayIndexKey: fixed three slots
+                  key={i}
+                  state={state}
+                  ready={ready}
+                  onTap={() => tap(i)}
+                  label={`Reveal slot ${i + 1}`}
+                />
               ))}
             </div>
             <span className={cn("text-center font-mono text-xs", inkMid)}>
-              {shown >= Math.min(3, stage + 1) && !jackpot
+              {shown >= 3 && !jackpot
                 ? "So close"
-                : `${hits} / 3 diamonds`}
+                : shown === 0
+                  ? "Tap a slot to reveal it"
+                  : `${hits} / 3 diamonds`}
             </span>
           </div>
         </motion.div>
