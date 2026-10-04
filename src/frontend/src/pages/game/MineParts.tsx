@@ -285,7 +285,8 @@ export function StakeSelector({
 function pickHint(exc: ExcavationView | null, picks: number): string {
   if (!exc)
     return "Pick any cell to start. The first two picks are always safe.";
-  if (!exc.canSave) return "Free picks: nothing at risk.";
+  if (picks < 2) return "Free pick: nothing at risk.";
+  if (!exc.canSave) return "First risky pick. Surviving it unlocks Save.";
   if (picks < 4) return "One more pick for Ingot.";
   if (picks < 6) return "Treasure is within reach.";
   return "Treasure. Every pick pays more.";
@@ -305,7 +306,7 @@ export function PayoutStep({ exc }: { exc: ExcavationView | null }) {
           transition={{ type: "spring", stiffness: 340, damping: 24 }}
           className="flex flex-col gap-1.5"
         >
-          <span className={cn(eyebrow, gold)}>Pick {picks}</span>
+          <span className={cn(eyebrow, gold)}>Next pick {picks + 1}</span>
           <div
             className={cn("flex justify-between font-mono text-[11px]", inkMid)}
           >
