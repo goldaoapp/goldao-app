@@ -20,6 +20,12 @@ export interface JackpotView {
   held: boolean;
 }
 
+/** Credit and pool known to the backend but not shown yet (a jackpot is being revealed). */
+export interface HeldBalance {
+  credit: bigint;
+  pool: bigint;
+}
+
 export interface AutoView {
   steps: AutoStep[];
   index: number;
@@ -41,6 +47,10 @@ export interface BoardState {
   rain: number;
   /** Ignore the backend's open excavation until this time (ms), right after one ends. */
   skipRestoreUntil: number;
+  /** While true, refetches keep showing the credit and pool already on screen. */
+  hold: boolean;
+  /** Balance to show once the jackpot reveal is closed. */
+  heldBalance: HeldBalance | null;
 }
 
 const EMPTY: BoardState = {
@@ -56,6 +66,8 @@ const EMPTY: BoardState = {
   auto: null,
   rain: 0,
   skipRestoreUntil: 0,
+  hold: false,
+  heldBalance: null,
 };
 
 let state: BoardState = EMPTY;
