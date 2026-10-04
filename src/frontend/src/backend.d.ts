@@ -358,6 +358,10 @@ export enum UserRole {
     user = "user",
     guest = "guest"
 }
+export enum WithdrawKind {
+    all = "all",
+    available = "available"
+}
 export interface backendInterface {
     adminListRoles(): Promise<GResult_8>;
     adminSyncBootstrap(): Promise<boolean>;
@@ -369,20 +373,18 @@ export interface backendInterface {
     gameAdminLedgerAllowance(who: Principal, spender: Principal): Promise<GResult>;
     gameAdminLedgerBalance(who: Principal): Promise<GResult>;
     gameAdminPay(): Promise<GResult_7>;
-    gameAdminRecordWithdrawal(goldao: bigint): Promise<GResult>;
     gameAdminRefreshBank(): Promise<GResult>;
     gameAdminReleaseBusy(player: Principal): Promise<GResult_5>;
     gameAdminResume(): Promise<GResult_5>;
     gameAdminSecurity(): Promise<GResult_6>;
-    gameAdminSeedPool(goldao: bigint): Promise<GResult>;
+    gameAdminSeedPool(): Promise<GResult>;
     gameAdminSetBreaker(max: bigint, windowMinutes: bigint): Promise<GResult_5>;
     gameAdminSetDuration(days: bigint): Promise<GResult_5>;
     gameAdminSetRealLedger(selfId: Principal): Promise<GResult>;
-    gameAdminTestApprove(goldao: bigint): Promise<GResult>;
     gameAdminTestDeposit(goldao: bigint): Promise<GResult>;
     gameAdminUnblock(player: Principal): Promise<GResult_5>;
     gameAdminView(): Promise<GResult_4>;
-    gameAdminWithdraw(goldao: bigint): Promise<GResult>;
+    gameAdminWithdraw(kind: WithdrawKind): Promise<GResult>;
     gameAuto(stake: StakeOption, stopAt: bigint): Promise<GResult_3>;
     gameConfig(): Promise<GameConfig>;
     gameMyDashboard(): Promise<Dashboard>;
