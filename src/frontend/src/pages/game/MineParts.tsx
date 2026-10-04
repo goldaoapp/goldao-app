@@ -37,25 +37,24 @@ import {
   fmtMult,
   fmtSigned,
   gold,
-  grossOf,
   ink,
   inkFaint,
   inkMid,
   panel,
   prizeName,
+  toGoldao,
 } from "./game-utils";
+import { playSound } from "./sounds";
 
 export function MineCell({
   cell,
   digging,
   disabled,
-  idle,
   onClick,
 }: {
   cell: Cell | undefined;
   digging: boolean;
   disabled: boolean;
-  idle: boolean;
   onClick: () => void;
 }) {
   const style = !cell
@@ -73,7 +72,6 @@ export function MineCell({
       disabled={disabled || !!cell}
       whileHover={!cell && !disabled ? { y: -3 } : undefined}
       whileTap={!cell && !disabled ? { scale: 0.94 } : undefined}
-      animate={{ opacity: idle && !cell ? 0.85 : 1 }}
       className={cn(
         "relative flex aspect-square items-center justify-center overflow-hidden rounded-lg border transition-colors duration-300 disabled:cursor-default",
         style,
@@ -143,13 +141,29 @@ function Sparkle() {
   );
 }
 
-/** Number that rolls smoothly to its new value. */
+/**
+ * Number that rolls smoothly to its new value.
+ * `scaled`: the roll lasts up to 5 s for small gains and gets faster as the
+ * change grows. `tick`: plays a soft tick while the number moves.
+ * `from`: value to start from on mount (default: the value itself).
+ */
 export function RollingNumber({
   value,
   className,
   digits = 0,
-}: { value: number; className?: string; digits?: number }) {
-  const mv = useMotionValue(value);
+  scaled = false,
+  tick = false,
+  from,
+}: {
+  value: number;
+  className?: string;
+  digits?: number;
+  scaled?: boolean;
+  tick?: boolean;
+  from?: number;
+}) {
+  const mv = useMotionValue(from ?? value);
+  const prev = useRef(from ?? value);
   const text = useTransform(mv, (v) =>
     v.toLocaleString("en-US", {
       minimumFractionDigits: digits,
@@ -157,12 +171,27 @@ export function RollingNumber({
     }),
   );
   useEffect(() => {
-    const controls = animateValue(mv, value, {
-      duration: 0.7,
-      ease: "easeOut",
-    });
+    const delta = Math.abs(value - prev.current);
+    prev.current = value;
+    const duration = scaled
+      ? Math.min(5, Math.max(1.5, 5 * Math.sqrt(50 / Math.max(delta, 50))))
+      : 0.7;
+    const controls = animateValue(mv, value, { duration, ease: "easeOut" });
     return () => controls.stop();
-  }, [mv, value]);
+  }, [mv, value, scaled]);
+  useEffect(() => {
+    if (!tick) return;
+    let lastStep = Math.round(mv.get());
+    let lastAt = 0;
+    return mv.on("change", (v) => {
+      const step = Math.round(v);
+      const now = performance.now();
+      if (step === lastStep || now - lastAt < 60) return;
+      lastStep = step;
+      lastAt = now;
+      playSound("count");
+    });
+  }, [mv, tick]);
   return <motion.span className={className}>{text}</motion.span>;
 }
 
@@ -172,13 +201,13 @@ export function MiniStat({
   accent,
 }: { label: string; value: React.ReactNode; accent?: boolean }) {
   return (
-    <div className="rounded-md border border-[color:var(--term-border-faint)] bg-[var(--term-alt)] px-3 py-2">
+    <div className="rounded-md border border-[color:var(--term-border-faint)] bg-[var(--term-alt)] px-3 py-1.5">
       <div className={cn("font-mono text-[10px] uppercase", inkFaint)}>
         {label}
       </div>
       <div
         className={cn(
-          "font-display text-lg font-semibold tabular-nums",
+          "font-display text-lg font-semibold leading-tight tabular-nums",
           accent ? DIAMOND_TEXT : ink,
         )}
       >
@@ -191,7 +220,8 @@ export function MiniStat({
 export function SaveButton({
   canSave,
   onSave,
-}: { canSave: boolean; onSave: () => void }) {
+  amount,
+}: { canSave: boolean; onSave: () => void; amount?: string }) {
   return (
     <motion.button
       type="button"
@@ -203,19 +233,19 @@ export function SaveButton({
         canSave
           ? {
               boxShadow: [
-                "0 0 0 0 oklch(0.74 0.14 80 / 0.45)",
-                "0 0 0 8px oklch(0.74 0.14 80 / 0)",
+                "0 0 0 0 oklch(0.74 0.14 80 / 0.5)",
+                "0 0 0 12px oklch(0.74 0.14 80 / 0)",
               ],
             }
           : { boxShadow: "0 0 0 0 oklch(0.74 0.14 80 / 0)" }
       }
       transition={
         canSave
-          ? { boxShadow: { duration: 1.6, repeat: Number.POSITIVE_INFINITY } }
+          ? { boxShadow: { duration: 1.8, repeat: Number.POSITIVE_INFINITY } }
           : undefined
       }
       className={cn(
-        "flex shrink-0 items-center gap-2 rounded-full px-5 py-2 font-display text-sm font-semibold transition-opacity",
+        "flex min-w-[9.5rem] flex-1 items-center justify-center gap-2 rounded-full px-6 py-3 font-display text-base font-bold transition-opacity sm:flex-none",
         canSave
           ? "gradient-primary text-primary-foreground"
           : "cursor-not-allowed border border-[color:var(--term-border)] bg-[var(--term-alt)] text-[color:var(--term-ink-faint)]",
@@ -223,7 +253,7 @@ export function SaveButton({
       aria-label="Save points"
     >
       <Shield className="size-4" />
-      Save
+      Save{canSave && amount ? ` ${amount}` : ""}
     </motion.button>
   );
 }
@@ -233,14 +263,12 @@ export function StakeSelector({
   value,
   locked,
   paused,
-  table,
   onChange,
 }: {
   stakes: bigint[];
   value: 0 | 1 | 2;
   locked: boolean;
   paused: boolean;
-  table: number[];
   onChange: (v: 0 | 1 | 2) => void;
 }) {
   if (paused || stakes.length !== 3) {
@@ -250,89 +278,80 @@ export function StakeSelector({
       </div>
     );
   }
-  const stake = stakes[value];
-  const net = (pts: number) => grossOf(stake, pts) - stake;
   return (
-    <div className="flex flex-col gap-2">
-      <div className="inline-flex w-fit rounded-md border border-[color:var(--term-border)] p-0.5">
-        {stakes.map((s, i) => (
-          <button
-            key={STAKE_LABELS[i]}
-            type="button"
-            disabled={locked}
-            onClick={() => onChange(i as 0 | 1 | 2)}
-            className={cn(
-              "rounded px-3 py-1.5 font-mono text-xs transition-smooth disabled:cursor-not-allowed",
-              value === i
-                ? "bg-primary text-primary-foreground"
-                : cn(inkMid, "hover:text-[color:var(--term-ink)]"),
-              locked && value !== i && "opacity-50",
-            )}
-          >
-            {STAKE_LABELS[i]} {fmtGoldao(s)}
-          </button>
-        ))}
-      </div>
-      {table.length > 10 && (
-        <span className={cn("font-mono text-[11px]", inkFaint)}>
-          Save at 3: {fmtSigned(net(table[3]))} · Save at 10:{" "}
-          {fmtSigned(net(table[10]))} GOLDAO
-        </span>
+    <div
+      className={cn(
+        "flex w-full rounded-[10px] border border-[color:var(--term-border)] p-[3px] transition-opacity",
+        locked && "opacity-60",
       )}
+    >
+      {stakes.map((s, i) => (
+        <button
+          key={STAKE_LABELS[i]}
+          type="button"
+          disabled={locked}
+          onClick={() => onChange(i as 0 | 1 | 2)}
+          className={cn(
+            "flex-1 rounded-md px-2 py-2.5 font-mono text-sm font-semibold transition-smooth disabled:cursor-not-allowed sm:text-base",
+            value === i
+              ? "gradient-primary text-primary-foreground"
+              : cn(inkMid, "hover:text-[color:var(--term-ink)]"),
+          )}
+        >
+          {STAKE_LABELS[i]} {fmtGoldao(s)}
+        </button>
+      ))}
     </div>
   );
 }
 
+/** Hint under the safe bar, based on the prize tiers (3 / 4-5 / 6+ picks). */
+function pickHint(exc: ExcavationView | null, picks: number): string {
+  if (!exc)
+    return "Pick any cell to start. The first two picks are always safe.";
+  if (!exc.canSave) return "Free picks: nothing at risk.";
+  if (picks < 4) return "One more pick for Ingot.";
+  if (picks < 6) return "Treasure is within reach.";
+  return "Treasure. Every pick pays more.";
+}
+
 export function PayoutStep({ exc }: { exc: ExcavationView | null }) {
-  if (!exc) {
-    return (
-      <div className="rounded-xl border border-primary/50 bg-primary/10 px-5 py-4">
-        <span className={cn(eyebrow, gold)}>Ready to dig</span>
-        <p className={cn("mt-1 font-mono text-xs", inkMid)}>
-          Pick any cell to start. The first two picks are always safe.
-        </p>
-      </div>
-    );
-  }
-  const picks = Number(exc.picks);
-  const save = exc.runGross - exc.stake;
-  const collapse = exc.collapseGross - exc.stake;
+  const picks = exc ? Number(exc.picks) : 0;
+  const safe = exc ? Number(exc.safePctX100) / 100 : 100;
   return (
-    <div className="relative overflow-hidden rounded-xl border border-primary/50 bg-primary/10 px-5 py-4">
+    <div className="relative overflow-hidden rounded-xl border border-primary/50 bg-primary/10 px-3 py-2.5 sm:px-4">
       <AnimatePresence mode="popLayout" initial={false}>
         <motion.div
           key={picks}
-          initial={{ opacity: 0, y: 16, scale: 0.94 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          exit={{ opacity: 0, y: -16 }}
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -10 }}
           transition={{ type: "spring", stiffness: 340, damping: 24 }}
           className="flex flex-col gap-1.5"
         >
           <span className={cn(eyebrow, gold)}>Pick {picks}</span>
-          {exc.canSave ? (
-            <span className={cn("font-display text-2xl font-semibold", ink)}>
-              Save now: {fmtSigned(save, 2)} GOLDAO{" "}
-              <span className={cn("font-mono text-xs", inkFaint)}>
-                ({fmtMult(Number(exc.runPoints))})
-              </span>
-            </span>
-          ) : (
-            <span className={cn("font-display text-xl font-semibold", ink)}>
-              Free picks: nothing at risk
-            </span>
-          )}
-          {exc.nextGross > 0n && (
-            <span className={cn("font-mono text-xs", inkMid)}>
-              Next pick:{" "}
-              {(Number(exc.nextGross) / Number(exc.stake)).toFixed(2)}x
-            </span>
-          )}
-          {exc.canSave && (
-            <span className={cn("font-mono text-xs", inkFaint)}>
-              If it collapses: {fmtSigned(collapse, 2)} GOLDAO ·{" "}
-              {Number(exc.safePctX100) / 100}% safe
-            </span>
-          )}
+          <div
+            className={cn("flex justify-between font-mono text-[11px]", inkMid)}
+          >
+            <span>Safe</span>
+            <span>{safe}%</span>
+          </div>
+          <div className="h-1.5 overflow-hidden rounded-full bg-[color:var(--term-border)]">
+            <div
+              className={cn(
+                "h-full rounded-full transition-all duration-500",
+                safe > 75
+                  ? "bg-[color:var(--term-green)]"
+                  : safe > 60
+                    ? "bg-primary"
+                    : "bg-destructive",
+              )}
+              style={{ width: `${safe}%` }}
+            />
+          </div>
+          <span className={cn("hidden font-mono text-[11px] md:block", inkMid)}>
+            {pickHint(exc, picks)}
+          </span>
         </motion.div>
       </AnimatePresence>
       <motion.span
@@ -347,42 +366,154 @@ export function PayoutStep({ exc }: { exc: ExcavationView | null }) {
   );
 }
 
-export function CreditBar({ dashboard }: { dashboard: Dashboard | undefined }) {
+/**
+ * Winning now, multiplier, what the next pick could add and the Save button,
+ * all in one card.
+ */
+export function RunCard({
+  exc,
+  canSave,
+  onSave,
+  className,
+}: {
+  exc: ExcavationView | null;
+  canSave: boolean;
+  onSave: () => void;
+  className?: string;
+}) {
+  const picks = exc ? Number(exc.picks) : 0;
+  const active = !!exc?.canSave;
+  const win = exc && active ? exc.runGross - exc.stake : 0n;
+  const next = exc && exc.nextGross > 0n ? exc.nextGross - exc.stake : null;
+  return (
+    <div
+      className={cn(
+        "flex min-w-0 flex-col gap-3 rounded-xl border border-[color:var(--term-border)] bg-[var(--term-alt)] p-3 sm:p-4",
+        className,
+      )}
+    >
+      <div className="grid grid-cols-2 items-end gap-3">
+        <div className="flex min-w-0 flex-col gap-0.5">
+          <span className={cn(eyebrow, "text-[10px]", inkFaint)}>
+            Winning now
+          </span>
+          <span
+            className={cn(
+              "font-display text-[28px] font-bold leading-none tabular-nums transition-colors sm:text-[40px]",
+              win > 0n ? "text-[color:var(--term-green)]" : ink,
+            )}
+          >
+            {win > 0n && "+"}
+            <RollingNumber value={toGoldao(win)} digits={2} scaled tick />
+          </span>
+          <span className="min-h-3.5 font-mono text-[10px] text-destructive">
+            {exc && active
+              ? `If it collapses: ${fmtSigned(exc.collapseGross - exc.stake, 2)}`
+              : "No risk on the first 2 picks"}
+          </span>
+        </div>
+        <div className="flex min-w-0 flex-col items-start gap-1">
+          <span className={cn(eyebrow, "text-[10px]", inkFaint)}>
+            Multiplier
+          </span>
+          <motion.span
+            key={picks}
+            initial={{ scale: 1.18 }}
+            animate={{ scale: 1 }}
+            transition={{ type: "spring", stiffness: 300, damping: 14 }}
+            className="text-gradient-gold origin-left font-display text-[32px] font-bold leading-none tabular-nums sm:text-[44px]"
+          >
+            {exc && active ? fmtMult(Number(exc.runPoints)) : "0.00x"}
+          </motion.span>
+          <div className="h-1 w-full overflow-hidden rounded-full bg-[color:var(--term-border)]">
+            <motion.div
+              className="gradient-primary h-full rounded-full"
+              animate={{ width: `${Math.min(100, picks * 10)}%` }}
+              transition={{ duration: 0.5 }}
+            />
+          </div>
+        </div>
+      </div>
+      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2.5 rounded-xl border border-primary/50 bg-primary/10 px-3 py-2.5">
+        <div className="flex min-w-0 flex-col gap-0.5">
+          <span className={cn(eyebrow, "text-[10px]", gold)}>
+            You could win
+          </span>
+          <motion.span
+            key={`next-${picks}`}
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="font-display text-[26px] font-bold leading-none tabular-nums text-[color:var(--term-green)] sm:text-[32px]"
+          >
+            {next !== null ? fmtSigned(next, 2) : "-"}
+          </motion.span>
+          <span className={cn("font-mono text-[10px]", inkMid)}>
+            {exc && next !== null
+              ? `If the next pick is safe · ${(Number(exc.nextGross) / Number(exc.stake)).toFixed(2)}x`
+              : exc
+                ? "Maximum reached"
+                : "Saving unlocks at pick 3"}
+          </span>
+        </div>
+        <SaveButton
+          canSave={canSave}
+          onSave={onSave}
+          amount={exc ? fmtSigned(exc.runGross - exc.stake, 2) : undefined}
+        />
+      </div>
+    </div>
+  );
+}
+
+export function CreditBar({
+  dashboard,
+  className,
+}: { dashboard: Dashboard | undefined; className?: string }) {
   const credit = dashboard ? Number(dashboard.credit) / 1e8 : 0;
   const prev = useRef(credit);
+  const settled = useRef(false);
   const dir =
     credit > prev.current ? "up" : credit < prev.current ? "down" : "same";
   useEffect(() => {
     prev.current = credit;
   }, [credit]);
+  useEffect(() => {
+    if (dashboard) settled.current = true;
+  }, [dashboard]);
   return (
     <div
       className={cn(
         panel,
-        "flex flex-wrap items-center justify-between gap-3 px-5 py-4",
+        "flex min-w-0 flex-col justify-between gap-2 border-primary/50 bg-[var(--term-alt)] p-3 sm:p-6",
+        className,
       )}
     >
-      <div className="flex flex-col gap-0.5">
-        <span className={cn(eyebrow, inkFaint)}>To collect</span>
-        <motion.span
-          key={`${credit}-${dir}`}
-          initial={{
-            scale: dir === "same" ? 1 : 1.08,
-            color:
-              dir === "up"
-                ? "oklch(0.78 0.15 85)"
-                : dir === "down"
-                  ? "oklch(0.62 0.2 25)"
-                  : undefined,
-          }}
-          animate={{ scale: 1, color: "var(--term-ink)" }}
-          transition={{ duration: 1.1 }}
-          className="flex items-baseline gap-2 font-display text-3xl font-semibold tabular-nums"
-        >
-          <RollingNumber value={credit} digits={2} />
-          <span className={cn("font-mono text-xs", gold)}>GOLDAO</span>
-        </motion.span>
-      </div>
+      <span className={cn(eyebrow, inkFaint)}>To collect</span>
+      <motion.span
+        key={`${credit}-${dir}`}
+        initial={{
+          scale: dir === "same" ? 1 : 1.06,
+          color:
+            dir === "up"
+              ? "oklch(0.78 0.15 85)"
+              : dir === "down"
+                ? "oklch(0.62 0.2 25)"
+                : undefined,
+        }}
+        animate={{ scale: 1, color: "var(--term-ink)" }}
+        transition={{ duration: 1.1 }}
+        className="flex origin-left flex-wrap items-baseline gap-x-3 font-display text-[34px] font-bold leading-none tabular-nums md:text-[clamp(48px,6vw,84px)]"
+      >
+        <RollingNumber
+          value={credit}
+          digits={2}
+          scaled={settled.current}
+          tick={settled.current}
+        />
+        <span className={cn("font-mono text-xs font-semibold", gold)}>
+          GOLDAO
+        </span>
+      </motion.span>
       <span className={cn("font-mono text-[11px]", inkFaint)}>
         Paid when the tournament closes
         {dashboard ? ` · ${fmtCountdown(dashboard.endsAt)}` : ""}
@@ -391,15 +522,29 @@ export function CreditBar({ dashboard }: { dashboard: Dashboard | undefined }) {
   );
 }
 
-export function JackpotCard({ pool }: { pool: bigint | undefined }) {
+export function JackpotCard({
+  pool,
+  className,
+}: { pool: bigint | undefined; className?: string }) {
   return (
-    <div className="flex flex-col gap-1 rounded-xl border border-[oklch(0.68_0.16_350/0.45)] bg-[oklch(0.7_0.14_350/0.08)] px-4 py-3">
-      <span className={cn(eyebrow, DIAMOND_TEXT, "flex items-center gap-1.5")}>
+    <div
+      className={cn(
+        "flex min-w-0 flex-col gap-0.5 rounded-xl border border-[oklch(0.68_0.16_350/0.45)] bg-[oklch(0.7_0.14_350/0.08)] px-3 py-2.5 sm:px-4",
+        className,
+      )}
+    >
+      <span
+        className={cn(
+          eyebrow,
+          DIAMOND_TEXT,
+          "flex items-center gap-1.5 text-[10px] sm:text-xs",
+        )}
+      >
         <Gem className="size-3.5" /> Diamond jackpot
       </span>
       <span
         className={cn(
-          "font-display text-3xl font-semibold tabular-nums",
+          "font-display text-[30px] font-bold leading-tight tabular-nums sm:text-[clamp(34px,5vw,46px)]",
           DIAMOND_TEXT,
         )}
       >
@@ -413,56 +558,64 @@ export function JackpotCard({ pool }: { pool: bigint | undefined }) {
   );
 }
 
+/** End of the excavation, shown over the board. */
 export function ResultCard({
   result,
   onNew,
 }: { result: EndResult; onNew: () => void }) {
   const collapsed = result.kind === EndKind.collapsed;
   const prize = prizeName(Number(result.picks));
-  const Icon = collapsed ? Mountain : prize.icon;
   const net = result.won > 0n ? result.won : -result.lost;
+  const title = collapsed
+    ? result.won > 0n
+      ? "Collapse · you keep half"
+      : "Collapse"
+    : prize.name;
   return (
     <motion.div
-      initial={{ opacity: 0, y: 8, scale: 0.97 }}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
-      className={cn(
-        panel,
-        "flex flex-wrap items-center justify-between gap-4 px-5 py-4",
-      )}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-1.5 rounded-xl bg-[color:var(--term-card)]/95 p-3 text-center backdrop-blur-sm"
     >
-      <div className="flex flex-col gap-1">
-        <span className="flex items-center gap-2">
-          <Icon className={cn("size-5", collapsed ? inkMid : "text-primary")} />
-          <span className={cn("font-display text-lg font-semibold", ink)}>
-            {collapsed ? "Collapse" : prize.name}
-          </span>
-          <span className={cn("font-mono text-xs", inkFaint)}>
-            {Number(result.points)} pts
-          </span>
-        </span>
-        <span
-          className={cn(
-            "font-display text-3xl font-semibold tabular-nums",
-            net >= 0n ? "text-[color:var(--term-green)]" : "text-destructive",
-          )}
-        >
-          {fmtSigned(net, 2)} <span className="text-sm">GOLDAO</span>
-        </span>
-        {result.charged > 0n && (
-          <span className={cn("font-mono text-xs", inkMid)}>
-            Charged from wallet: {fmtGoldao(result.charged, 2)}
-          </span>
+      <span className={cn(eyebrow, gold)}>{title}</span>
+      <span
+        className={cn(
+          "font-display text-[clamp(56px,16vw,88px)] font-bold leading-none tabular-nums",
+          net > 0n ? "text-[color:var(--term-green)]" : "text-destructive",
         )}
-        {result.jackpotWon > 0n && (
-          <span className={cn("font-mono text-xs", DIAMOND_TEXT)}>
-            Jackpot: +{fmtGoldao(result.jackpotWon, 2)} GOLDAO
-          </span>
+      >
+        {net > 0n ? (
+          <>
+            +
+            <RollingNumber
+              value={toGoldao(net)}
+              digits={2}
+              from={0}
+              scaled
+              tick
+            />
+          </>
+        ) : (
+          fmtSigned(net, 2)
         )}
-      </div>
+      </span>
+      <span className={cn("font-mono text-xs", inkMid)}>
+        GOLDAO · {Number(result.points)} pts
+      </span>
+      {result.charged > 0n && (
+        <span className={cn("font-mono text-xs", inkMid)}>
+          Charged from wallet: {fmtGoldao(result.charged, 2)}
+        </span>
+      )}
+      {result.jackpotWon > 0n && (
+        <span className={cn("font-mono text-xs", DIAMOND_TEXT)}>
+          Jackpot: +{fmtGoldao(result.jackpotWon, 2)} GOLDAO
+        </span>
+      )}
       <button
         type="button"
         onClick={onNew}
-        className="flex items-center gap-1.5 rounded-full border border-primary/60 bg-primary/10 px-4 py-1.5 font-mono text-xs font-medium text-[color:var(--term-gold)] transition-colors hover:bg-primary/20"
+        className="mt-2 flex items-center gap-1.5 rounded-full border border-primary/60 bg-primary/10 px-4 py-1.5 font-mono text-xs font-medium text-[color:var(--term-gold)] transition-colors hover:bg-primary/20"
       >
         <RotateCcw className="size-3.5" />
         New excavation
@@ -515,10 +668,12 @@ export function BoardMessage({
   text,
   tone,
   icon,
+  className,
 }: {
   text: string;
   tone: "gold" | "rock" | "mid" | "err";
   icon?: "shield" | "rock";
+  className?: string;
 }) {
   const color = {
     gold: "text-[color:var(--term-gold)]",
@@ -527,7 +682,7 @@ export function BoardMessage({
     err: "text-destructive",
   }[tone];
   return (
-    <div className="flex min-h-8 items-center justify-center">
+    <div className={cn("flex min-h-8 items-center justify-center", className)}>
       <AnimatePresence mode="wait">
         <motion.p
           key={text}
@@ -560,32 +715,35 @@ export function AutoPicker({
   onRun: () => void;
 }) {
   return (
-    <div className={cn(panel, "flex flex-col gap-3 p-4")}>
+    <div
+      className={cn(
+        panel,
+        "flex flex-wrap items-center gap-2 bg-[var(--term-alt)] px-3 py-2",
+      )}
+    >
       <span className={cn(eyebrow, gold)}>Auto dig</span>
-      <div className="flex items-center gap-2 font-mono text-xs">
-        <span className={inkMid}>Save at pick</span>
-        <div className="inline-flex rounded-md border border-[color:var(--term-border)] p-0.5">
-          {[3, 4, 5, 6, 7, 8, 9, 10].map((n) => (
-            <button
-              key={n}
-              type="button"
-              disabled={disabled}
-              onClick={() => onChange(n)}
-              className={cn(
-                "rounded px-1.5 py-1 transition-smooth disabled:opacity-60",
-                value === n ? "bg-primary text-primary-foreground" : inkMid,
-              )}
-            >
-              {n}
-            </button>
-          ))}
-        </div>
+      <span className={cn("font-mono text-xs", inkMid)}>Save at pick</span>
+      <div className="inline-flex rounded-md border border-[color:var(--term-border)] p-0.5 font-mono text-xs">
+        {[3, 4, 5, 6, 7, 8, 9, 10].map((n) => (
+          <button
+            key={n}
+            type="button"
+            disabled={disabled}
+            onClick={() => onChange(n)}
+            className={cn(
+              "rounded px-1.5 py-1 transition-smooth disabled:opacity-60",
+              value === n ? "bg-primary text-primary-foreground" : inkMid,
+            )}
+          >
+            {n}
+          </button>
+        ))}
       </div>
       <button
         type="button"
         disabled={disabled}
         onClick={onRun}
-        className="rounded-md border border-[color:var(--term-border)] px-3 py-2 font-display text-sm transition-colors hover:border-primary/60 disabled:cursor-not-allowed disabled:opacity-50"
+        className="min-w-24 flex-1 rounded-md border border-[color:var(--term-border)] px-3 py-2 font-display text-sm transition-colors hover:border-primary/60 disabled:cursor-not-allowed disabled:opacity-50"
       >
         {busy ? "Digging…" : "Auto dig"}
       </button>
