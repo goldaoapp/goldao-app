@@ -14,12 +14,12 @@ export type SoundKey =
 const SOURCES: Record<SoundKey, string> = {
   success: "/sounds/success.mp3",
   diamond: "/sounds/diamond.mp3",
-  count: "/sounds/count.wav",
-  collapse: "/sounds/collapse.wav",
-  crack: "/sounds/crack.wav",
-  suspense: "/sounds/suspense.wav",
-  miss: "/sounds/miss.wav",
-  jackpot: "/sounds/jackpot.wav",
+  count: "/sounds/count.mp3",
+  collapse: "/sounds/collapse.mp3",
+  crack: "/sounds/crack.mp3",
+  suspense: "/sounds/suspense.mp3",
+  miss: "/sounds/miss.mp3",
+  jackpot: "/sounds/jackpot.mp3",
 };
 
 const VOLUME = 0.6;
