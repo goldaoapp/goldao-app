@@ -3,10 +3,9 @@ import type { Dashboard, GameConfig } from "@/backend";
 import { useAuth } from "@/context/AuthContext";
 import { cn } from "@/lib/utils";
 import { Pickaxe, Volume2, VolumeX } from "lucide-react";
-import { AnimatePresence, motion, useAnimate } from "motion/react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { JackpotOverlay } from "./JackpotOverlay";
-import { CoinRain } from "./JackpotOverlay";
+import { AnimatePresence, motion } from "motion/react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { CoinRain, JackpotOverlay } from "./JackpotOverlay";
 import {
   AutoPicker,
   BoardMessage,
@@ -18,7 +17,7 @@ import {
   PayoutStep,
   ResultCard,
   RollingNumber,
-  SaveButton,
+  RunCard,
   StakeSelector,
 } from "./MineParts";
 import {
@@ -32,6 +31,7 @@ import {
   useBoard,
 } from "./board-store";
 import {
+  PAYOUT_BPS,
   eyebrow,
   fmtCountdown,
   gold,
@@ -45,8 +45,14 @@ import { errorMessage, useGameAction } from "./useGame";
 import { useWallet } from "./useWallet";
 
 const CELLS = 25;
+/** The board splits after this many cells when a diamond opens the jackpot. */
+const SPLIT_AT = 15;
 const STAKE_KEYS = [StakeOption.min, StakeOption.mid, StakeOption.max];
 const AUTO_STEP_MS = 450;
+/** Coins fall from this multiplier up. */
+const COIN_MULT = 1.1;
+/** A collapse that still pays resets the board after this delay. */
+const AUTO_RESET_MS = 5000;
 const RESTORE_ORDER = [
   12, 6, 18, 8, 16, 2, 22, 10, 14, 0, 24, 4, 20, 7, 17, 11, 13, 1, 23, 3,
 ];
@@ -60,19 +66,15 @@ export function MineBoard({ dashboard, config }: Props) {
   const { actor, isAuthenticated, login, principalId } = useAuth();
   const { run, refreshAll, setOpenExcavation, setCredit } = useGameAction();
   const wallet = useWallet(dashboard, config);
-  const [scope, animate] = useAnimate<HTMLDivElement>();
   const board = useBoard();
   const { exc, cells, digging, result, error, notice, jackpot } = board;
   const { muted, toggleMuted } = useSoundToggle();
   const [autoStop, setAutoStop] = useState(3);
   const [autoBusy, setAutoBusy] = useState(false);
+  const [bandHost, setBandHost] = useState<HTMLDivElement | null>(null);
   const busyRef = useRef(false);
   const timers = useRef<number[]>([]);
 
-  const table = useMemo(
-    () => (config ? config.pointsTable.map(Number) : []),
-    [config],
-  );
   const fee = config?.feeE8s ?? 1_000_000_000n;
   const stakes = dashboard?.stakes ?? [];
   const paused = !!dashboard?.paused;
@@ -126,14 +128,16 @@ export function MineBoard({ dashboard, config }: Props) {
     autoBusy,
   ]);
 
-  const shake = useCallback(() => {
-    if (!scope.current) return;
-    void animate(
-      scope.current,
-      { x: [0, -10, 10, -7, 7, -3, 3, 0] },
-      { duration: 0.55 },
+  // A collapse that still pays shows the green result, then clears the board.
+  useEffect(() => {
+    if (!result || exc) return;
+    if (result.kind !== EndKind.collapsed || result.won <= 0n) return;
+    const t = window.setTimeout(
+      () => setBoard({ cells: {}, result: null, error: null }),
+      AUTO_RESET_MS,
     );
-  }, [animate, scope]);
+    return () => window.clearTimeout(t);
+  }, [result, exc]);
 
   // Authorizes the game when the wallet has to back this excavation.
   const authorize = async (stake: bigint): Promise<boolean> => {
@@ -160,7 +164,7 @@ export function MineBoard({ dashboard, config }: Props) {
     });
     clearBoardCells();
     setOpenExcavation(null);
-    if (end.kind === EndKind.collapsed) shake();
+    if (end.kind === EndKind.collapsed) playSound("collapse");
     else if (end.won > 0n) playSound("success");
     if (end.gross >= stake * 2n) setBoard((s) => ({ rain: s.rain + 1 }));
     void refreshAll();
@@ -202,6 +206,7 @@ export function MineBoard({ dashboard, config }: Props) {
           : { kind: "token", token: tokenForPick(picks) };
       setBoard((s) => ({ cells: { ...s.cells, [index]: cell } }));
       setCredit(res.credit, res.pool);
+      if (!res.collapsed) playSound(stage > 0 ? "diamond" : "success");
       if (stage > 0) {
         setBoard({
           jackpot: {
@@ -219,6 +224,13 @@ export function MineBoard({ dashboard, config }: Props) {
       } else {
         setBoard({ exc: res.excavation ?? null });
         if (res.excavation) setOpenExcavation(res.excavation);
+        if (
+          res.excavation &&
+          (Number(res.excavation.runPoints) * PAYOUT_BPS) / 1_000_000 >
+            COIN_MULT
+        ) {
+          setBoard((s) => ({ rain: s.rain + 1 }));
+        }
         if (principalId && dashboard) {
           saveBoardCells(
             principalId,
@@ -285,8 +297,8 @@ export function MineBoard({ dashboard, config }: Props) {
                     ? { kind: "diamond" }
                     : { kind: "token", token: tokenForPick(Number(step.pick)) };
                 setBoard((s) => ({ cells: { ...s.cells, [free[i]]: cell } }));
-                if (step.collapsed) shake();
-                else if (stage > 0) playSound("diamond");
+                if (step.collapsed) playSound("collapse");
+                else playSound(stage > 0 ? "diamond" : "success");
                 if (i === out.steps.length - 1) resolve();
               },
               (i + 1) * AUTO_STEP_MS,
@@ -351,6 +363,19 @@ export function MineBoard({ dashboard, config }: Props) {
   })();
 
   const picks = exc ? Number(exc.picks) : 0;
+  const idle = !exc && !result && !locked;
+  const split = jackpot !== null;
+
+  const renderCell = (i: number) => (
+    <MineCell
+      key={i}
+      cell={cells[i]}
+      digging={digging === i}
+      disabled={locked || paused || blocked || !dashboard}
+      onClick={() => void dig(i)}
+    />
+  );
+  const indexes = Array.from({ length: CELLS }, (_, i) => i);
 
   return (
     <div className="flex flex-col gap-4">
@@ -394,8 +419,13 @@ export function MineBoard({ dashboard, config }: Props) {
           </div>
         </div>
 
-        <div className="relative grid gap-6 p-4 sm:p-6 lg:grid-cols-[minmax(0,1fr)_300px]">
-          <JackpotOverlay view={jackpot} onClose={closeJackpot} />
+        <div className="relative p-2.5 sm:p-6">
+          <JackpotOverlay
+            view={jackpot}
+            onClose={closeJackpot}
+            bandHost={bandHost}
+            pool={dashboard?.pool}
+          />
           <AnimatePresence>
             {board.rain > 0 && !jackpot && (
               <motion.div
@@ -410,56 +440,97 @@ export function MineBoard({ dashboard, config }: Props) {
             )}
           </AnimatePresence>
 
-          <div className="flex flex-col items-center gap-4">
-            <div
-              ref={scope}
-              className="grid w-full max-w-[420px] grid-cols-5 gap-2 sm:gap-2.5"
-            >
-              {Array.from({ length: CELLS }, (_, i) => (
-                <MineCell
-                  // biome-ignore lint/suspicious/noArrayIndexKey: fixed 5x5 board
-                  key={i}
-                  cell={cells[i]}
-                  digging={digging === i}
-                  disabled={locked || paused || blocked || !dashboard}
-                  idle={!exc && !result}
-                  onClick={() => void dig(i)}
+          <div className="grid grid-cols-2 gap-x-5 gap-y-2.5 md:grid-cols-[minmax(0,460px)_minmax(0,1fr)] md:gap-y-10">
+            {/* Board */}
+            <div className="relative col-span-2 mx-auto w-full max-w-[460px] md:col-span-1 md:col-start-1 md:row-start-1 md:mx-0">
+              {idle && (
+                <motion.div
+                  aria-hidden
+                  className="pointer-events-none absolute inset-0 z-[3] rounded-lg bg-[linear-gradient(115deg,transparent_42%,oklch(0.74_0.14_80/0.2)_50%,transparent_58%)] bg-[length:250%_100%] bg-no-repeat"
+                  initial={{ backgroundPositionX: "130%" }}
+                  animate={{ backgroundPositionX: "-30%" }}
+                  transition={{
+                    duration: 4.5,
+                    ease: "linear",
+                    repeat: Number.POSITIVE_INFINITY,
+                  }}
                 />
-              ))}
-            </div>
-            <BoardMessage text={message.text} tone={message.tone} />
-            <SaveButton
-              canSave={!!exc?.canSave && !locked}
-              onSave={() => void save()}
-            />
-          </div>
-
-          <div className="flex flex-col gap-4">
-            <StakeSelector
-              stakes={stakes}
-              value={board.stake}
-              locked={!!exc || locked}
-              paused={paused}
-              table={table}
-              onChange={(v) => setBoard({ stake: v })}
-            />
-            <PayoutStep exc={exc} />
-            <div className="grid grid-cols-2 gap-2">
-              <MiniStat label="Picks" value={<RollingNumber value={picks} />} />
-              <MiniStat
-                label="Diamonds"
-                value={<RollingNumber value={exc ? Number(exc.diamonds) : 0} />}
-                accent
+              )}
+              <div
+                className={cn(
+                  "grid grid-cols-5 gap-1.5 transition-[transform,opacity] duration-700 sm:gap-2.5",
+                  split && "-translate-y-1.5 opacity-40",
+                )}
+              >
+                {indexes.slice(0, SPLIT_AT).map(renderCell)}
+              </div>
+              <div ref={setBandHost} />
+              <div
+                className={cn(
+                  "mt-1.5 grid grid-cols-5 gap-1.5 transition-[transform,opacity] duration-700 sm:mt-2.5 sm:gap-2.5",
+                  split && "translate-y-1.5 opacity-40",
+                )}
+              >
+                {indexes.slice(SPLIT_AT).map(renderCell)}
+              </div>
+              {result && !exc && <ResultCard result={result} onNew={newGame} />}
+              <BoardMessage
+                text={message.text}
+                tone={message.tone}
+                className="mt-1 md:absolute md:inset-x-0 md:top-[calc(100%+4px)] md:mt-0"
               />
             </div>
-            <JackpotCard pool={dashboard?.pool} />
-            <AutoPicker
-              value={autoStop}
-              disabled={locked || !!exc || paused || blocked || !dashboard}
-              busy={autoBusy}
-              onChange={setAutoStop}
-              onRun={() => void runAuto()}
+
+            {/* Winning now, multiplier, next pick and save */}
+            <RunCard
+              exc={exc}
+              canSave={!!exc?.canSave && !locked}
+              onSave={() => void save()}
+              className="col-span-2 md:col-span-1 md:col-start-1 md:row-start-2"
             />
+
+            <CreditBar
+              dashboard={dashboard}
+              className="col-span-1 md:col-start-2 md:row-start-2"
+            />
+            <JackpotCard pool={dashboard?.pool} className="md:hidden" />
+
+            {/* Stake, progress and extras */}
+            <div className="col-span-2 grid grid-cols-2 gap-2 md:col-span-1 md:col-start-2 md:row-start-1 md:flex md:flex-col md:justify-between md:gap-2.5">
+              <PayoutStep exc={exc} />
+              <div className="grid grid-cols-1 gap-1.5 md:grid-cols-2 md:gap-2">
+                <MiniStat
+                  label="Picks"
+                  value={<RollingNumber value={picks} />}
+                />
+                <MiniStat
+                  label="Diamonds"
+                  value={
+                    <RollingNumber value={exc ? Number(exc.diamonds) : 0} />
+                  }
+                  accent
+                />
+              </div>
+              <JackpotCard pool={dashboard?.pool} className="hidden md:flex" />
+              <div className="col-span-2">
+                <StakeSelector
+                  stakes={stakes}
+                  value={board.stake}
+                  locked={!!exc || locked}
+                  paused={paused}
+                  onChange={(v) => setBoard({ stake: v })}
+                />
+              </div>
+              <div className="col-span-2">
+                <AutoPicker
+                  value={autoStop}
+                  disabled={locked || !!exc || paused || blocked || !dashboard}
+                  busy={autoBusy}
+                  onChange={setAutoStop}
+                  onRun={() => void runAuto()}
+                />
+              </div>
+            </div>
           </div>
         </div>
 
@@ -468,8 +539,6 @@ export function MineBoard({ dashboard, config }: Props) {
         </div>
       </div>
 
-      {result && !exc && <ResultCard result={result} onNew={newGame} />}
-      <CreditBar dashboard={dashboard} />
       <p className={cn("text-center font-mono text-[11px]", inkFaint)}>
         Playing authorizes the game to charge only your losses from your wallet.
         You can revoke it at any time from your wallet.
