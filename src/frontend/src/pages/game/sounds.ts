@@ -24,7 +24,7 @@ const SOURCES: Record<SoundKey, string> = {
 
 const VOLUME = 0.6;
 /** Relative volume per sound (1 when missing). */
-const GAIN: Partial<Record<SoundKey, number>> = { count: 0.35 };
+const GAIN: Partial<Record<SoundKey, number>> = { count: 0.5 };
 /** Most voices of the same sound playing at once (the rest are skipped). */
 const MAX_VOICES: Partial<Record<SoundKey, number>> = { count: 3 };
 const DEFAULT_VOICES = 6;
@@ -98,15 +98,20 @@ function loadBuffer(key: SoundKey): Promise<void> {
   if (!ctx || failed[key]) return Promise.resolve();
   const job = fetch(SOURCES[key])
     .then((res) => {
-      if (!res.ok) throw new Error("missing");
+      // Some hosts answer a missing file with the app's HTML page.
+      const type = res.headers.get("content-type") ?? "";
+      if (!res.ok || type.includes("text/html")) {
+        throw new Error(`not found (${res.status})`);
+      }
       return res.arrayBuffer();
     })
     .then((data) => ctx.decodeAudioData(data))
     .then((buffer) => {
       buffers[key] = buffer;
     })
-    .catch(() => {
+    .catch((e: unknown) => {
       failed[key] = true;
+      console.warn(`[sounds] ${SOURCES[key]} could not be loaded:`, e);
     });
   pending[key] = job;
   return job;
