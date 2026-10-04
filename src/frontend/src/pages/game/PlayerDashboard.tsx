@@ -70,7 +70,6 @@ export function PlayerDashboard({ dashboard }: Props) {
         <Kpi label="Collapses" value={String(Number(s.collapses))} />
         <Kpi label="Best prize" value={bestPrize} />
         <Kpi label="Deepest pick" value={String(Number(s.deepest))} />
-        <Kpi label="Charged from wallet" value={fmtGoldao(s.charged, 2)} />
       </div>
 
       <div className={panel}>
