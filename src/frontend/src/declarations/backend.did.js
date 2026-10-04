@@ -62,20 +62,13 @@ export const GResult_7 = IDL.Variant({
   }),
   'err' : IDL.Text,
 });
-export const FlagEntry = IDL.Record({
-  'at' : IDL.Int,
-  'player' : IDL.Principal,
-});
 export const SecurityView = IDL.Record({
-  'breakerWindowMin' : IDL.Nat,
-  'breakerMax' : IDL.Nat,
   'haltCode' : IDL.Nat,
   'ledgerFails' : IDL.Nat,
   'haltedAt' : IDL.Int,
   'accountingOk' : IDL.Bool,
   'halted' : IDL.Bool,
   'saturations' : IDL.Nat,
-  'flagged' : IDL.Vec(FlagEntry),
 });
 export const GResult_6 = IDL.Variant({ 'ok' : SecurityView, 'err' : IDL.Text });
 export const TournamentSummary = IDL.Record({
@@ -102,6 +95,8 @@ export const AdminView = IDL.Record({
   'durationDays' : IDL.Nat,
   'staked' : IDL.Nat,
   'stakes' : IDL.Vec(IDL.Nat),
+  'smallBalances' : IDL.Nat,
+  'toCollect' : IDL.Nat,
   'bankAccount' : IDL.Opt(IDL.Principal),
   'bank' : IDL.Nat,
   'fund' : IDL.Int,
@@ -113,11 +108,15 @@ export const AdminView = IDL.Record({
   'cycles' : IDL.Nat,
   'lastClose' : IDL.Opt(TournamentSummary),
   'withdrawable' : IDL.Nat,
+  'smallPlayers' : IDL.Nat,
   'bankAllowance' : IDL.Nat,
   'burned' : IDL.Nat,
+  'heldJackpots' : IDL.Nat,
+  'toCollectPlayers' : IDL.Nat,
   'realLedger' : IDL.Bool,
   'payouts' : IDL.Vec(Payout),
   'paused' : IDL.Bool,
+  'unpaidPayouts' : IDL.Nat,
   'endsAt' : IDL.Int,
 });
 export const GResult_4 = IDL.Variant({ 'ok' : AdminView, 'err' : IDL.Text });
@@ -145,7 +144,6 @@ export const EndResult = IDL.Record({
   'stake' : IDL.Nat,
   'gross' : IDL.Nat,
   'picks' : IDL.Nat,
-  'charged' : IDL.Nat,
   'points' : IDL.Nat,
 });
 export const DiamondResult = IDL.Record({ 'won' : IDL.Nat, 'stage' : IDL.Nat });
@@ -162,6 +160,8 @@ export const AutoResult = IDL.Record({
 export const GResult_3 = IDL.Variant({ 'ok' : AutoResult, 'err' : IDL.Text });
 export const GameConfig = IDL.Record({
   'mines' : IDL.Nat,
+  'loadMax' : IDL.Nat,
+  'loadMin' : IDL.Nat,
   'ledgerId' : IDL.Text,
   'stakeCapE8s' : IDL.Nat,
   'feeE8s' : IDL.Nat,
@@ -169,9 +169,11 @@ export const GameConfig = IDL.Record({
   'diamond2Bps' : IDL.Nat,
   'cells' : IDL.Nat,
   'pointsTable' : IDL.Vec(IDL.Nat),
+  'creditCapE8s' : IDL.Nat,
   'maxPicks' : IDL.Nat,
   'payoutBps' : IDL.Nat,
   'safePicks' : IDL.Nat,
+  'minPayoutE8s' : IDL.Nat,
   'stakeMinE8s' : IDL.Nat,
   'faucetCapE8s' : IDL.Nat,
   'realLedger' : IDL.Bool,
@@ -210,7 +212,6 @@ export const PlayerTournamentResult = IDL.Record({
 export const Dashboard = IDL.Record({
   'stakes' : IDL.Vec(IDL.Nat),
   'balance' : IDL.Nat,
-  'blocked' : IDL.Bool,
   'open' : IDL.Opt(ExcavationView),
   'pool' : IDL.Nat,
   'tournament' : IDL.Nat,
@@ -279,6 +280,7 @@ export const idlService = IDL.Service({
   'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
   'execute' : IDL.Func([IDL.Text], [Result__1], ['query']),
   'gameAdminAckAccounting' : IDL.Func([], [GResult_5], []),
+  'gameAdminCloseAll' : IDL.Func([], [GResult_5], []),
   'gameAdminCloseTournament' : IDL.Func([], [GResult_5], []),
   'gameAdminHalt' : IDL.Func([], [GResult_5], []),
   'gameAdminLedgerAllowance' : IDL.Func(
@@ -293,15 +295,14 @@ export const idlService = IDL.Service({
   'gameAdminResume' : IDL.Func([], [GResult_5], []),
   'gameAdminSecurity' : IDL.Func([], [GResult_6], ['query']),
   'gameAdminSeedPool' : IDL.Func([], [GResult], []),
-  'gameAdminSetBreaker' : IDL.Func([IDL.Nat, IDL.Nat], [GResult_5], []),
   'gameAdminSetDuration' : IDL.Func([IDL.Nat], [GResult_5], []),
   'gameAdminSetRealLedger' : IDL.Func([IDL.Principal], [GResult], []),
   'gameAdminTestDeposit' : IDL.Func([IDL.Nat], [GResult], []),
-  'gameAdminUnblock' : IDL.Func([IDL.Principal], [GResult_5], []),
   'gameAdminView' : IDL.Func([], [GResult_4], ['query']),
   'gameAdminWithdraw' : IDL.Func([WithdrawKind], [GResult], []),
   'gameAuto' : IDL.Func([StakeOption, IDL.Nat], [GResult_3], []),
   'gameConfig' : IDL.Func([], [GameConfig], ['query']),
+  'gameLoadCredit' : IDL.Func([IDL.Nat], [GResult], []),
   'gameMyDashboard' : IDL.Func([], [Dashboard], ['query']),
   'gamePick' : IDL.Func([IDL.Opt(StakeOption)], [GResult_2], []),
   'gameRanking' : IDL.Func([], [Ranking], ['query']),
@@ -375,17 +376,13 @@ export const idlFactory = ({ IDL }) => {
     }),
     'err' : IDL.Text,
   });
-  const FlagEntry = IDL.Record({ 'at' : IDL.Int, 'player' : IDL.Principal });
   const SecurityView = IDL.Record({
-    'breakerWindowMin' : IDL.Nat,
-    'breakerMax' : IDL.Nat,
     'haltCode' : IDL.Nat,
     'ledgerFails' : IDL.Nat,
     'haltedAt' : IDL.Int,
     'accountingOk' : IDL.Bool,
     'halted' : IDL.Bool,
     'saturations' : IDL.Nat,
-    'flagged' : IDL.Vec(FlagEntry),
   });
   const GResult_6 = IDL.Variant({ 'ok' : SecurityView, 'err' : IDL.Text });
   const TournamentSummary = IDL.Record({
@@ -412,6 +409,8 @@ export const idlFactory = ({ IDL }) => {
     'durationDays' : IDL.Nat,
     'staked' : IDL.Nat,
     'stakes' : IDL.Vec(IDL.Nat),
+    'smallBalances' : IDL.Nat,
+    'toCollect' : IDL.Nat,
     'bankAccount' : IDL.Opt(IDL.Principal),
     'bank' : IDL.Nat,
     'fund' : IDL.Int,
@@ -423,11 +422,15 @@ export const idlFactory = ({ IDL }) => {
     'cycles' : IDL.Nat,
     'lastClose' : IDL.Opt(TournamentSummary),
     'withdrawable' : IDL.Nat,
+    'smallPlayers' : IDL.Nat,
     'bankAllowance' : IDL.Nat,
     'burned' : IDL.Nat,
+    'heldJackpots' : IDL.Nat,
+    'toCollectPlayers' : IDL.Nat,
     'realLedger' : IDL.Bool,
     'payouts' : IDL.Vec(Payout),
     'paused' : IDL.Bool,
+    'unpaidPayouts' : IDL.Nat,
     'endsAt' : IDL.Int,
   });
   const GResult_4 = IDL.Variant({ 'ok' : AdminView, 'err' : IDL.Text });
@@ -455,7 +458,6 @@ export const idlFactory = ({ IDL }) => {
     'stake' : IDL.Nat,
     'gross' : IDL.Nat,
     'picks' : IDL.Nat,
-    'charged' : IDL.Nat,
     'points' : IDL.Nat,
   });
   const DiamondResult = IDL.Record({ 'won' : IDL.Nat, 'stage' : IDL.Nat });
@@ -472,6 +474,8 @@ export const idlFactory = ({ IDL }) => {
   const GResult_3 = IDL.Variant({ 'ok' : AutoResult, 'err' : IDL.Text });
   const GameConfig = IDL.Record({
     'mines' : IDL.Nat,
+    'loadMax' : IDL.Nat,
+    'loadMin' : IDL.Nat,
     'ledgerId' : IDL.Text,
     'stakeCapE8s' : IDL.Nat,
     'feeE8s' : IDL.Nat,
@@ -479,9 +483,11 @@ export const idlFactory = ({ IDL }) => {
     'diamond2Bps' : IDL.Nat,
     'cells' : IDL.Nat,
     'pointsTable' : IDL.Vec(IDL.Nat),
+    'creditCapE8s' : IDL.Nat,
     'maxPicks' : IDL.Nat,
     'payoutBps' : IDL.Nat,
     'safePicks' : IDL.Nat,
+    'minPayoutE8s' : IDL.Nat,
     'stakeMinE8s' : IDL.Nat,
     'faucetCapE8s' : IDL.Nat,
     'realLedger' : IDL.Bool,
@@ -520,7 +526,6 @@ export const idlFactory = ({ IDL }) => {
   const Dashboard = IDL.Record({
     'stakes' : IDL.Vec(IDL.Nat),
     'balance' : IDL.Nat,
-    'blocked' : IDL.Bool,
     'open' : IDL.Opt(ExcavationView),
     'pool' : IDL.Nat,
     'tournament' : IDL.Nat,
@@ -589,6 +594,7 @@ export const idlFactory = ({ IDL }) => {
     'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
     'execute' : IDL.Func([IDL.Text], [Result__1], ['query']),
     'gameAdminAckAccounting' : IDL.Func([], [GResult_5], []),
+    'gameAdminCloseAll' : IDL.Func([], [GResult_5], []),
     'gameAdminCloseTournament' : IDL.Func([], [GResult_5], []),
     'gameAdminHalt' : IDL.Func([], [GResult_5], []),
     'gameAdminLedgerAllowance' : IDL.Func(
@@ -603,15 +609,14 @@ export const idlFactory = ({ IDL }) => {
     'gameAdminResume' : IDL.Func([], [GResult_5], []),
     'gameAdminSecurity' : IDL.Func([], [GResult_6], ['query']),
     'gameAdminSeedPool' : IDL.Func([], [GResult], []),
-    'gameAdminSetBreaker' : IDL.Func([IDL.Nat, IDL.Nat], [GResult_5], []),
     'gameAdminSetDuration' : IDL.Func([IDL.Nat], [GResult_5], []),
     'gameAdminSetRealLedger' : IDL.Func([IDL.Principal], [GResult], []),
     'gameAdminTestDeposit' : IDL.Func([IDL.Nat], [GResult], []),
-    'gameAdminUnblock' : IDL.Func([IDL.Principal], [GResult_5], []),
     'gameAdminView' : IDL.Func([], [GResult_4], ['query']),
     'gameAdminWithdraw' : IDL.Func([WithdrawKind], [GResult], []),
     'gameAuto' : IDL.Func([StakeOption, IDL.Nat], [GResult_3], []),
     'gameConfig' : IDL.Func([], [GameConfig], ['query']),
+    'gameLoadCredit' : IDL.Func([IDL.Nat], [GResult], []),
     'gameMyDashboard' : IDL.Func([], [Dashboard], ['query']),
     'gamePick' : IDL.Func([IDL.Opt(StakeOption)], [GResult_2], []),
     'gameRanking' : IDL.Func([], [Ranking], ['query']),
