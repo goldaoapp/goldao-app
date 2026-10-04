@@ -98,6 +98,7 @@ export function useGameAction() {
       return Promise.all([
         queryClient.invalidateQueries({ queryKey: [KEY, "dashboard"] }),
         queryClient.invalidateQueries({ queryKey: [KEY, "ranking"] }),
+        queryClient.invalidateQueries({ queryKey: [KEY, "wallet"] }),
       ]);
     },
     [queryClient],
