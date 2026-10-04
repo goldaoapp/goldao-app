@@ -22,10 +22,14 @@ import {
   panelHeader,
   shortPrincipal,
 } from "./game-utils";
-import { errorMessage, useGameAction, useSecurityView } from "./useGame";
+import {
+  errorMessage,
+  useGameAction,
+  useGameConfig,
+  useSecurityView,
+} from "./useGame";
 
 const HALT_TEXT: Record<number, string> = {
-  1: "flagged accounts",
   2: "ledger failures",
   3: "manual",
 };
@@ -34,8 +38,6 @@ const E8S = 100_000_000n;
 // Fixed choices only: no free-text numbers, so a typo cannot reach the canister.
 const TEST_DEPOSITS = [10_000, 30_000, 100_000, 200_000];
 const DURATIONS = [1, 3, 7, 14, 30];
-const FLAG_LIMITS = [1, 2, 3, 5, 10];
-const WINDOWS_MIN = [5, 15, 30, 60, 120];
 const POOL_SEED = 5_000n * E8S;
 
 type Res<T> = { __kind__: "ok"; ok: T } | { __kind__: "err"; err: string };
@@ -57,6 +59,8 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
   const { identity } = useInternetIdentity();
   const { run, pending } = useGameAction();
   const { data: security } = useSecurityView(!!view);
+  const { data: config } = useGameConfig();
+  const minPayout = config ? fmtGoldao(config.minPayoutE8s) : "-";
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [ask, setAsk] = useState<Ask | null>(null);
   const [typed, setTyped] = useState("");
@@ -64,8 +68,6 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
   const [days, setDays] = useState("");
   const [who, setWho] = useState("");
   const [selfId, setSelfId] = useState("");
-  const [flags, setFlags] = useState("");
-  const [windowMin, setWindowMin] = useState("");
   const [busy, setBusy] = useState(false);
 
   const working = !!pending || busy;
@@ -144,7 +146,10 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
   const allBlockers: string[] = [];
   if (view) {
     if (!halted) allBlockers.push("pause new excavations first");
-    if (view.owed > 0n) allBlockers.push("players are still owed funds");
+    if (view.owed > 0n)
+      allBlockers.push(
+        "players still hold To collect or unpaid prizes (use Close and pay everything, then Pay pending)",
+      );
     if (unpaid.length > 0) allBlockers.push("pending payouts must be paid");
     if (bank <= GOLDAO_FEE_E8S) allBlockers.push("the wallet is empty");
   }
@@ -233,6 +238,42 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
           sub="GOLDAO"
         />
       </div>
+
+      {view && (
+        <div className={panel}>
+          <div className={panelHeader}>
+            <span className={cn(eyebrow, gold, "flex items-center gap-2")}>
+              <Landmark className="size-3.5" /> Owed to players
+            </span>
+            <span className={cn("font-mono text-[11px]", inkFaint)}>
+              {fmtGoldao(view.owed, 2)} GOLDAO
+            </span>
+          </div>
+          <dl className="grid grid-cols-2 gap-4 p-5 font-mono text-xs sm:grid-cols-4">
+            <Item
+              label={`To collect (${Number(view.toCollectPlayers)} players)`}
+              value={fmtGoldao(view.toCollect, 2)}
+            />
+            <Item
+              label="Pending payouts (with fees)"
+              value={fmtGoldao(view.unpaidPayouts, 2)}
+            />
+            <Item
+              label="Jackpots in play"
+              value={fmtGoldao(view.heldJackpots, 2)}
+            />
+            <Item
+              label={`Under ${minPayout} (${Number(view.smallPlayers)} players)`}
+              value={fmtGoldao(view.smallBalances, 2)}
+            />
+          </dl>
+          <p className={cn("px-5 pb-5 font-mono text-[11px]", inkFaint)}>
+            Owed = To collect + pending payouts + jackpots in play. The last
+            figure is already inside To collect: balances under the minimum are
+            not paid at a normal close and carry over to the next tournament.
+          </p>
+        </div>
+      )}
 
       <div className={panel}>
         <div className={panelHeader}>
@@ -437,7 +478,7 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
 
           <Row
             title="Close tournament"
-            hint="Ends it now and turns the credits into payouts."
+            hint={`Ends it now. To collect balances of at least ${minPayout} GOLDAO become payouts; smaller ones stay for the next tournament.`}
           >
             <Button
               variant="outline"
@@ -446,7 +487,7 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
                 confirmThen({
                   title: "Close the current tournament now?",
                   detail:
-                    "It cannot be undone. Players' credits become pending payouts.",
+                    "It cannot be undone. Large To collect balances become pending payouts.",
                   word: "CLOSE",
                   go: () =>
                     act(
@@ -458,6 +499,37 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
               }
             >
               Close now
+            </Button>
+          </Row>
+
+          <Row
+            title="Close and pay everything"
+            hint={
+              halted
+                ? "Pays every To collect balance, small ones included. Each payment costs the network fee, taken from the player's balance. Use it before withdrawing everything."
+                : "Not available: pause new excavations first."
+            }
+          >
+            <Button
+              variant="outline"
+              className="border-destructive/50 text-destructive"
+              disabled={working || !halted}
+              onClick={() =>
+                confirmThen({
+                  title: "Close the tournament and pay everything?",
+                  detail:
+                    "Every To collect balance becomes a payout, whatever its size. Each payout costs the network fee, taken from the player's balance.",
+                  word: "CLOSE ALL",
+                  go: () =>
+                    act(
+                      "close-all",
+                      () => actor!.gameAdminCloseAll(),
+                      () => "Closed. Pay the pending payouts next.",
+                    ),
+                })
+              }
+            >
+              Close and pay everything
             </Button>
           </Row>
 
@@ -486,7 +558,7 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
 
           <Row
             title="Player"
-            hint="Paste a principal to free a stuck excavation or lift a block."
+            hint="Paste a principal to free a stuck excavation."
           >
             <input
               value={who}
@@ -511,24 +583,6 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
               }
             >
               Release busy
-            </Button>
-            <Button
-              variant="outline"
-              disabled={working || !parsePrincipal(who)}
-              onClick={() =>
-                confirmThen({
-                  title: "Unblock this player?",
-                  detail: shortPrincipal(who.trim()),
-                  go: () =>
-                    act(
-                      "unblock",
-                      () => actor!.gameAdminUnblock(parsePrincipal(who)!),
-                      () => "Player unblocked.",
-                    ),
-                })
-              }
-            >
-              Unblock
             </Button>
           </Row>
 
@@ -658,104 +712,6 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
                 </Button>
               )}
             </div>
-            <div className="flex flex-wrap items-center gap-3">
-              <select
-                value={flags || String(Number(security.breakerMax))}
-                onChange={(e) => setFlags(e.target.value)}
-                disabled={working}
-                className={selectCls}
-              >
-                {FLAG_LIMITS.map((f) => (
-                  <option key={f} value={f}>
-                    {f} flags
-                  </option>
-                ))}
-              </select>
-              <select
-                value={windowMin || String(Number(security.breakerWindowMin))}
-                onChange={(e) => setWindowMin(e.target.value)}
-                disabled={working}
-                className={selectCls}
-              >
-                {WINDOWS_MIN.map((m) => (
-                  <option key={m} value={m}>
-                    {m} min
-                  </option>
-                ))}
-              </select>
-              <Button
-                variant="outline"
-                disabled={working || (!flags && !windowMin)}
-                onClick={() => {
-                  const f = flags || String(Number(security.breakerMax));
-                  const m =
-                    windowMin || String(Number(security.breakerWindowMin));
-                  confirmThen({
-                    title: `Set the limit to ${f} flags in ${m} minutes?`,
-                    detail: "Reaching it halts new excavations automatically.",
-                    go: () =>
-                      act(
-                        "breaker",
-                        () => actor!.gameAdminSetBreaker(BigInt(f), BigInt(m)),
-                        () => "Limits updated.",
-                      ),
-                  });
-                }}
-              >
-                Set limits
-              </Button>
-            </div>
-            <div className="max-h-64 overflow-auto">
-              {security.flagged.length === 0 ? (
-                <p className={cn("text-sm", inkFaint)}>
-                  No accounts under review.
-                </p>
-              ) : (
-                <table className="w-full font-mono text-xs">
-                  <thead>
-                    <tr className={cn("text-left", inkFaint)}>
-                      <th className="py-2 font-medium">Account</th>
-                      <th className="px-3 py-2 font-medium">Flagged</th>
-                      <th className="py-2 text-right font-medium" />
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {[...security.flagged]
-                      .sort((x, y) => Number(y.at - x.at))
-                      .map((f) => (
-                        <tr
-                          key={f.player.toText()}
-                          className="border-t border-[color:var(--term-border-faint)]"
-                        >
-                          <td
-                            className={cn("py-2.5", ink)}
-                            title={f.player.toText()}
-                          >
-                            {shortPrincipal(f.player.toText())}
-                          </td>
-                          <td className="px-3 py-2.5">{fmtDate(f.at)}</td>
-                          <td className="py-2.5 text-right">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              disabled={working}
-                              onClick={() =>
-                                void act(
-                                  "clear",
-                                  () => actor!.gameAdminUnblock(f.player),
-                                  () => "Account cleared.",
-                                )
-                              }
-                            >
-                              Clear
-                            </Button>
-                          </td>
-                        </tr>
-                      ))}
-                  </tbody>
-                </table>
-              )}
-            </div>
           </div>
         </div>
       )}
@@ -792,10 +748,6 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
             <Item
               label="Payouts"
               value={fmtGoldao(view.lastClose.payoutTotal)}
-            />
-            <Item
-              label="Forfeited"
-              value={fmtGoldao(view.lastClose.forfeited)}
             />
           </dl>
         </div>
