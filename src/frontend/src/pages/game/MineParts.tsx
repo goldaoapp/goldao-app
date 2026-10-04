@@ -70,10 +70,8 @@ export function MineCell({
       type="button"
       onClick={onClick}
       disabled={disabled || !!cell}
-      whileHover={!cell && !disabled ? { y: -3 } : undefined}
-      whileTap={!cell && !disabled ? { scale: 0.94 } : undefined}
       className={cn(
-        "relative flex aspect-square items-center justify-center overflow-hidden rounded-lg border transition-colors duration-300 disabled:cursor-default",
+        "relative flex aspect-square items-center justify-center overflow-hidden rounded-lg border transition-[transform,colors] duration-200 disabled:cursor-default enabled:hover:-translate-y-[3px] enabled:active:scale-95",
         style,
       )}
       aria-label={cell ? cell.kind : "Dig this cell"}
@@ -384,7 +382,8 @@ export function RunCard({
   const picks = exc ? Number(exc.picks) : 0;
   const active = !!exc?.canSave;
   const win = exc && active ? exc.runGross - exc.stake : 0n;
-  const next = exc && exc.nextGross > 0n ? exc.nextGross - exc.stake : null;
+  const nextNet = exc && exc.nextGross > 0n ? exc.nextGross - exc.stake : null;
+  const next = nextNet !== null && nextNet > 0n ? nextNet : null;
   return (
     <div
       className={cn(
@@ -450,7 +449,7 @@ export function RunCard({
           <span className={cn("font-mono text-[10px]", inkMid)}>
             {exc && next !== null
               ? `If the next pick is safe · ${(Number(exc.nextGross) / Number(exc.stake)).toFixed(2)}x`
-              : exc
+              : exc && nextNet === null
                 ? "Maximum reached"
                 : "Saving unlocks at pick 3"}
           </span>
@@ -565,6 +564,7 @@ export function ResultCard({
 }: { result: EndResult; onNew: () => void }) {
   const collapsed = result.kind === EndKind.collapsed;
   const prize = prizeName(Number(result.picks));
+  const PrizeIcon = prize.icon;
   const net = result.won > 0n ? result.won : -result.lost;
   const title = collapsed
     ? result.won > 0n
@@ -575,51 +575,70 @@ export function ResultCard({
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-1.5 rounded-xl bg-[color:var(--term-card)]/95 p-3 text-center backdrop-blur-sm"
+      className="absolute inset-0 z-10 flex items-center justify-center rounded-xl bg-black/50 p-3 backdrop-blur-[3px]"
     >
-      <span className={cn(eyebrow, gold)}>{title}</span>
-      <span
-        className={cn(
-          "font-display text-[clamp(56px,16vw,88px)] font-bold leading-none tabular-nums",
-          net > 0n ? "text-[color:var(--term-green)]" : "text-destructive",
-        )}
+      <motion.div
+        initial={{ scale: 0.92, y: 8 }}
+        animate={{ scale: 1, y: 0 }}
+        transition={{ type: "spring", stiffness: 280, damping: 22 }}
+        className="flex w-full max-w-[400px] flex-col items-center gap-1.5 rounded-2xl border border-[color:var(--term-border)] bg-[oklch(var(--background)/0.96)] px-4 py-5 text-center shadow-2xl"
       >
-        {net > 0n ? (
-          <>
-            +
-            <RollingNumber
-              value={toGoldao(net)}
-              digits={2}
-              from={0}
-              scaled
-              tick
-            />
-          </>
+        {collapsed ? (
+          <span className={cn(eyebrow, gold)}>{title}</span>
         ) : (
-          fmtSigned(net, 2)
+          <span
+            className={cn(
+              "inline-flex items-center gap-2 rounded-full border px-4 py-1.5 font-display text-[clamp(20px,5vw,30px)] font-bold uppercase leading-none tracking-wider",
+              prize.pill,
+            )}
+          >
+            <PrizeIcon className="size-[1em]" />
+            {title}
+          </span>
         )}
-      </span>
-      <span className={cn("font-mono text-xs", inkMid)}>
-        GOLDAO · {Number(result.points)} pts
-      </span>
-      {result.charged > 0n && (
+        <span
+          className={cn(
+            "font-display text-[clamp(52px,14vw,84px)] font-bold leading-none tabular-nums",
+            net > 0n ? "text-[color:var(--term-green)]" : "text-destructive",
+          )}
+        >
+          {net > 0n ? (
+            <>
+              +
+              <RollingNumber
+                value={toGoldao(net)}
+                digits={2}
+                from={0}
+                scaled
+                tick
+              />
+            </>
+          ) : (
+            fmtSigned(net, 2)
+          )}
+        </span>
         <span className={cn("font-mono text-xs", inkMid)}>
-          Charged from wallet: {fmtGoldao(result.charged, 2)}
+          GOLDAO · {Number(result.points)} pts
         </span>
-      )}
-      {result.jackpotWon > 0n && (
-        <span className={cn("font-mono text-xs", DIAMOND_TEXT)}>
-          Jackpot: +{fmtGoldao(result.jackpotWon, 2)} GOLDAO
-        </span>
-      )}
-      <button
-        type="button"
-        onClick={onNew}
-        className="mt-2 flex items-center gap-1.5 rounded-full border border-primary/60 bg-primary/10 px-4 py-1.5 font-mono text-xs font-medium text-[color:var(--term-gold)] transition-colors hover:bg-primary/20"
-      >
-        <RotateCcw className="size-3.5" />
-        New excavation
-      </button>
+        {result.charged > 0n && (
+          <span className={cn("font-mono text-xs", inkMid)}>
+            Charged from wallet: {fmtGoldao(result.charged, 2)}
+          </span>
+        )}
+        {result.jackpotWon > 0n && (
+          <span className={cn("font-mono text-xs", DIAMOND_TEXT)}>
+            Jackpot: +{fmtGoldao(result.jackpotWon, 2)} GOLDAO
+          </span>
+        )}
+        <button
+          type="button"
+          onClick={onNew}
+          className="mt-2 flex items-center gap-1.5 rounded-full border border-primary/60 bg-primary/10 px-4 py-1.5 font-mono text-xs font-medium text-[color:var(--term-gold)] transition-colors hover:bg-primary/20"
+        >
+          <RotateCcw className="size-3.5" />
+          New excavation
+        </button>
+      </motion.div>
     </motion.div>
   );
 }
