@@ -57,6 +57,8 @@ export interface AdminView {
     durationDays: bigint;
     staked: bigint;
     stakes: Array<bigint>;
+    smallBalances: bigint;
+    toCollect: bigint;
     bankAccount?: Principal;
     bank: bigint;
     fund: bigint;
@@ -68,11 +70,15 @@ export interface AdminView {
     cycles: bigint;
     lastClose?: TournamentSummary;
     withdrawable: bigint;
+    smallPlayers: bigint;
     bankAllowance: bigint;
     burned: bigint;
+    heldJackpots: bigint;
+    toCollectPlayers: bigint;
     realLedger: boolean;
     payouts: Array<Payout>;
     paused: boolean;
+    unpaidPayouts: bigint;
     endsAt: bigint;
 }
 export interface AutoResult {
@@ -92,7 +98,6 @@ export interface Cell {
 export interface Dashboard {
     stakes: Array<bigint>;
     balance: bigint;
-    blocked: boolean;
     open?: ExcavationView;
     pool: bigint;
     tournament: bigint;
@@ -119,7 +124,6 @@ export interface EndResult {
     stake: bigint;
     gross: bigint;
     picks: bigint;
-    charged: bigint;
     points: bigint;
 }
 export type Error_ = {
@@ -178,10 +182,6 @@ export interface ExcavationView {
     runGross: bigint;
     picks: bigint;
     safePctX100: bigint;
-}
-export interface FlagEntry {
-    at: bigint;
-    player: Principal;
 }
 export type GResult = {
     __kind__: "ok";
@@ -252,6 +252,8 @@ export type GResult_8 = {
 };
 export interface GameConfig {
     mines: bigint;
+    loadMax: bigint;
+    loadMin: bigint;
     ledgerId: string;
     stakeCapE8s: bigint;
     feeE8s: bigint;
@@ -259,9 +261,11 @@ export interface GameConfig {
     diamond2Bps: bigint;
     cells: bigint;
     pointsTable: Array<bigint>;
+    creditCapE8s: bigint;
     maxPicks: bigint;
     payoutBps: bigint;
     safePicks: bigint;
+    minPayoutE8s: bigint;
     stakeMinE8s: bigint;
     faucetCapE8s: bigint;
     realLedger: boolean;
@@ -326,15 +330,12 @@ export interface Result__1 {
     rows: Array<Array<Cell>>;
 }
 export interface SecurityView {
-    breakerWindowMin: bigint;
-    breakerMax: bigint;
     haltCode: bigint;
     ledgerFails: bigint;
     haltedAt: bigint;
     accountingOk: boolean;
     halted: boolean;
     saturations: bigint;
-    flagged: Array<FlagEntry>;
 }
 export interface TournamentStats {
     staked: bigint;
@@ -417,6 +418,7 @@ export interface backendInterface {
     assignCallerUserRole(user: Principal, role: UserRole): Promise<void>;
     execute(qJson: string): Promise<Result__1>;
     gameAdminAckAccounting(): Promise<GResult_5>;
+    gameAdminCloseAll(): Promise<GResult_5>;
     gameAdminCloseTournament(): Promise<GResult_5>;
     gameAdminHalt(): Promise<GResult_5>;
     gameAdminLedgerAllowance(who: Principal, spender: Principal): Promise<GResult>;
@@ -427,15 +429,14 @@ export interface backendInterface {
     gameAdminResume(): Promise<GResult_5>;
     gameAdminSecurity(): Promise<GResult_6>;
     gameAdminSeedPool(): Promise<GResult>;
-    gameAdminSetBreaker(max: bigint, windowMinutes: bigint): Promise<GResult_5>;
     gameAdminSetDuration(days: bigint): Promise<GResult_5>;
     gameAdminSetRealLedger(selfId: Principal): Promise<GResult>;
     gameAdminTestDeposit(goldao: bigint): Promise<GResult>;
-    gameAdminUnblock(player: Principal): Promise<GResult_5>;
     gameAdminView(): Promise<GResult_4>;
     gameAdminWithdraw(kind: WithdrawKind): Promise<GResult>;
     gameAuto(stake: StakeOption, stopAt: bigint): Promise<GResult_3>;
     gameConfig(): Promise<GameConfig>;
+    gameLoadCredit(goldao: bigint): Promise<GResult>;
     gameMyDashboard(): Promise<Dashboard>;
     gamePick(stake: StakeOption | null): Promise<GResult_2>;
     gameRanking(): Promise<Ranking>;
@@ -572,6 +573,20 @@ export class Backend implements backendInterface {
             }
         } else {
             const result = await this.actor.gameAdminAckAccounting();
+            return from_candid_GResult_5_n19(this._uploadFile, this._downloadFile, result);
+        }
+    }
+    async gameAdminCloseAll(): Promise<GResult_5> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.gameAdminCloseAll();
+                return from_candid_GResult_5_n19(this._uploadFile, this._downloadFile, result);
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.gameAdminCloseAll();
             return from_candid_GResult_5_n19(this._uploadFile, this._downloadFile, result);
         }
     }
@@ -715,20 +730,6 @@ export class Backend implements backendInterface {
             return from_candid_GResult_n21(this._uploadFile, this._downloadFile, result);
         }
     }
-    async gameAdminSetBreaker(arg0: bigint, arg1: bigint): Promise<GResult_5> {
-        if (this.processError) {
-            try {
-                const result = await this.actor.gameAdminSetBreaker(arg0, arg1);
-                return from_candid_GResult_5_n19(this._uploadFile, this._downloadFile, result);
-            } catch (e) {
-                this.processError(e);
-                throw new Error("unreachable");
-            }
-        } else {
-            const result = await this.actor.gameAdminSetBreaker(arg0, arg1);
-            return from_candid_GResult_5_n19(this._uploadFile, this._downloadFile, result);
-        }
-    }
     async gameAdminSetDuration(arg0: bigint): Promise<GResult_5> {
         if (this.processError) {
             try {
@@ -769,20 +770,6 @@ export class Backend implements backendInterface {
         } else {
             const result = await this.actor.gameAdminTestDeposit(arg0);
             return from_candid_GResult_n21(this._uploadFile, this._downloadFile, result);
-        }
-    }
-    async gameAdminUnblock(arg0: Principal): Promise<GResult_5> {
-        if (this.processError) {
-            try {
-                const result = await this.actor.gameAdminUnblock(arg0);
-                return from_candid_GResult_5_n19(this._uploadFile, this._downloadFile, result);
-            } catch (e) {
-                this.processError(e);
-                throw new Error("unreachable");
-            }
-        } else {
-            const result = await this.actor.gameAdminUnblock(arg0);
-            return from_candid_GResult_5_n19(this._uploadFile, this._downloadFile, result);
         }
     }
     async gameAdminView(): Promise<GResult_4> {
@@ -839,6 +826,20 @@ export class Backend implements backendInterface {
         } else {
             const result = await this.actor.gameConfig();
             return result;
+        }
+    }
+    async gameLoadCredit(arg0: bigint): Promise<GResult> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.gameLoadCredit(arg0);
+                return from_candid_GResult_n21(this._uploadFile, this._downloadFile, result);
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.gameLoadCredit(arg0);
+            return from_candid_GResult_n21(this._uploadFile, this._downloadFile, result);
         }
     }
     async gameMyDashboard(): Promise<Dashboard> {
@@ -1141,6 +1142,8 @@ function from_candid_record_n30(_uploadFile: (file: ExternalBlob) => Promise<Uin
     durationDays: bigint;
     staked: bigint;
     stakes: Array<bigint>;
+    smallBalances: bigint;
+    toCollect: bigint;
     bankAccount: [] | [Principal];
     bank: bigint;
     fund: bigint;
@@ -1152,16 +1155,22 @@ function from_candid_record_n30(_uploadFile: (file: ExternalBlob) => Promise<Uin
     cycles: bigint;
     lastClose: [] | [_TournamentSummary];
     withdrawable: bigint;
+    smallPlayers: bigint;
     bankAllowance: bigint;
     burned: bigint;
+    heldJackpots: bigint;
+    toCollectPlayers: bigint;
     realLedger: boolean;
     payouts: Array<_Payout>;
     paused: boolean;
+    unpaidPayouts: bigint;
     endsAt: bigint;
 }): {
     durationDays: bigint;
     staked: bigint;
     stakes: Array<bigint>;
+    smallBalances: bigint;
+    toCollect: bigint;
     bankAccount?: Principal;
     bank: bigint;
     fund: bigint;
@@ -1173,17 +1182,23 @@ function from_candid_record_n30(_uploadFile: (file: ExternalBlob) => Promise<Uin
     cycles: bigint;
     lastClose?: TournamentSummary;
     withdrawable: bigint;
+    smallPlayers: bigint;
     bankAllowance: bigint;
     burned: bigint;
+    heldJackpots: bigint;
+    toCollectPlayers: bigint;
     realLedger: boolean;
     payouts: Array<Payout>;
     paused: boolean;
+    unpaidPayouts: bigint;
     endsAt: bigint;
 } {
     return {
         durationDays: value.durationDays,
         staked: value.staked,
         stakes: value.stakes,
+        smallBalances: value.smallBalances,
+        toCollect: value.toCollect,
         bankAccount: record_opt_to_undefined(from_candid_opt_n31(_uploadFile, _downloadFile, value.bankAccount)),
         bank: value.bank,
         fund: value.fund,
@@ -1195,11 +1210,15 @@ function from_candid_record_n30(_uploadFile: (file: ExternalBlob) => Promise<Uin
         cycles: value.cycles,
         lastClose: record_opt_to_undefined(from_candid_opt_n32(_uploadFile, _downloadFile, value.lastClose)),
         withdrawable: value.withdrawable,
+        smallPlayers: value.smallPlayers,
         bankAllowance: value.bankAllowance,
         burned: value.burned,
+        heldJackpots: value.heldJackpots,
+        toCollectPlayers: value.toCollectPlayers,
         realLedger: value.realLedger,
         payouts: value.payouts,
         paused: value.paused,
+        unpaidPayouts: value.unpaidPayouts,
         endsAt: value.endsAt
     };
 }
@@ -1228,7 +1247,6 @@ function from_candid_record_n40(_uploadFile: (file: ExternalBlob) => Promise<Uin
     stake: bigint;
     gross: bigint;
     picks: bigint;
-    charged: bigint;
     points: bigint;
 }): {
     won: bigint;
@@ -1240,7 +1258,6 @@ function from_candid_record_n40(_uploadFile: (file: ExternalBlob) => Promise<Uin
     stake: bigint;
     gross: bigint;
     picks: bigint;
-    charged: bigint;
     points: bigint;
 } {
     return {
@@ -1253,14 +1270,12 @@ function from_candid_record_n40(_uploadFile: (file: ExternalBlob) => Promise<Uin
         stake: value.stake,
         gross: value.gross,
         picks: value.picks,
-        charged: value.charged,
         points: value.points
     };
 }
 function from_candid_record_n43(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
     stakes: Array<bigint>;
     balance: bigint;
-    blocked: boolean;
     open: [] | [_ExcavationView];
     pool: bigint;
     tournament: bigint;
@@ -1275,7 +1290,6 @@ function from_candid_record_n43(_uploadFile: (file: ExternalBlob) => Promise<Uin
 }): {
     stakes: Array<bigint>;
     balance: bigint;
-    blocked: boolean;
     open?: ExcavationView;
     pool: bigint;
     tournament: bigint;
@@ -1291,7 +1305,6 @@ function from_candid_record_n43(_uploadFile: (file: ExternalBlob) => Promise<Uin
     return {
         stakes: value.stakes,
         balance: value.balance,
-        blocked: value.blocked,
         open: record_opt_to_undefined(from_candid_opt_n44(_uploadFile, _downloadFile, value.open)),
         pool: value.pool,
         tournament: value.tournament,
