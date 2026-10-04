@@ -8,6 +8,7 @@ export type SoundKey =
   | "collapse"
   | "crack"
   | "suspense"
+  | "treasure"
   | "miss"
   | "jackpot";
 
@@ -18,6 +19,7 @@ const SOURCES: Record<SoundKey, string> = {
   collapse: "/sounds/collapse.mp3",
   crack: "/sounds/crack.mp3",
   suspense: "/sounds/suspense.mp3",
+  treasure: "/sounds/treasure.mp3",
   miss: "/sounds/miss.mp3",
   jackpot: "/sounds/jackpot.mp3",
 };
