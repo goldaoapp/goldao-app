@@ -249,6 +249,8 @@ export type Value = { 'int' : bigint } |
   { 'bool' : boolean } |
   { 'null' : null } |
   { 'text' : string };
+export type WithdrawKind = { 'all' : null } |
+  { 'available' : null };
 export interface _SERVICE {
   '_initialize_access_control' : ActorMethod<[], undefined>,
   '_internet_identity_sign_in_finish' : ActorMethod<[], Result_7>,
@@ -263,20 +265,18 @@ export interface _SERVICE {
   'gameAdminLedgerAllowance' : ActorMethod<[Principal, Principal], GResult>,
   'gameAdminLedgerBalance' : ActorMethod<[Principal], GResult>,
   'gameAdminPay' : ActorMethod<[], GResult_7>,
-  'gameAdminRecordWithdrawal' : ActorMethod<[bigint], GResult>,
   'gameAdminRefreshBank' : ActorMethod<[], GResult>,
   'gameAdminReleaseBusy' : ActorMethod<[Principal], GResult_5>,
   'gameAdminResume' : ActorMethod<[], GResult_5>,
   'gameAdminSecurity' : ActorMethod<[], GResult_6>,
-  'gameAdminSeedPool' : ActorMethod<[bigint], GResult>,
+  'gameAdminSeedPool' : ActorMethod<[], GResult>,
   'gameAdminSetBreaker' : ActorMethod<[bigint, bigint], GResult_5>,
   'gameAdminSetDuration' : ActorMethod<[bigint], GResult_5>,
   'gameAdminSetRealLedger' : ActorMethod<[Principal], GResult>,
-  'gameAdminTestApprove' : ActorMethod<[bigint], GResult>,
   'gameAdminTestDeposit' : ActorMethod<[bigint], GResult>,
   'gameAdminUnblock' : ActorMethod<[Principal], GResult_5>,
   'gameAdminView' : ActorMethod<[], GResult_4>,
-  'gameAdminWithdraw' : ActorMethod<[bigint], GResult>,
+  'gameAdminWithdraw' : ActorMethod<[WithdrawKind], GResult>,
   'gameAuto' : ActorMethod<[StakeOption, bigint], GResult_3>,
   'gameConfig' : ActorMethod<[], GameConfig>,
   'gameMyDashboard' : ActorMethod<[], Dashboard>,
