@@ -25,10 +25,20 @@ const SOURCES: Record<SoundKey, string> = {
 const VOLUME = 0.6;
 /** Relative volume per sound (1 when missing). */
 const GAIN: Partial<Record<SoundKey, number>> = { count: 0.35 };
+/** Most voices of the same sound playing at once (the rest are skipped). */
+const MAX_VOICES: Partial<Record<SoundKey, number>> = { count: 3 };
+const DEFAULT_VOICES = 6;
 const STORAGE_KEY = "goldao.game.muted";
 
-const cache: Partial<Record<SoundKey, HTMLAudioElement>> = {};
+type AudioCtor = typeof AudioContext;
+
 let muted = readMuted();
+let context: AudioContext | null = null;
+let unlockInstalled = false;
+const buffers: Partial<Record<SoundKey, AudioBuffer>> = {};
+const pending: Partial<Record<SoundKey, Promise<void>>> = {};
+const failed: Partial<Record<SoundKey, boolean>> = {};
+const voices: Partial<Record<SoundKey, number>> = {};
 
 function readMuted(): boolean {
   try {
@@ -46,33 +56,102 @@ function writeMuted(value: boolean) {
   }
 }
 
-function load(key: SoundKey): HTMLAudioElement | null {
-  if (typeof Audio === "undefined") return null;
-  let audio = cache[key];
-  if (!audio) {
-    audio = new Audio(SOURCES[key]);
-    audio.preload = "auto";
-    cache[key] = audio;
+/**
+ * One shared audio context plays every sound from decoded buffers. Unlike one
+ * <audio> element per play, it has no limit on overlapping sounds, so a long
+ * Auto dig or a rolling counter cannot make the browser drop later sounds.
+ */
+function getContext(): AudioContext | null {
+  if (context) return context;
+  if (typeof window === "undefined") return null;
+  const Ctor: AudioCtor | undefined =
+    window.AudioContext ??
+    (window as unknown as { webkitAudioContext?: AudioCtor })
+      .webkitAudioContext;
+  if (!Ctor) return null;
+  try {
+    context = new Ctor();
+  } catch {
+    return null;
   }
-  return audio;
+  return context;
 }
 
-/** Starts downloading every sound so the first pick plays without delay. */
+function resumeContext() {
+  const ctx = context;
+  if (ctx && ctx.state !== "running") void ctx.resume().catch(() => {});
+}
+
+/** Browsers keep the context suspended until a tap, click or key press. */
+function installUnlock() {
+  if (unlockInstalled || typeof window === "undefined") return;
+  unlockInstalled = true;
+  for (const type of ["pointerdown", "touchend", "keydown"]) {
+    window.addEventListener(type, resumeContext, { capture: true });
+  }
+}
+
+function loadBuffer(key: SoundKey): Promise<void> {
+  const existing = pending[key];
+  if (existing) return existing;
+  const ctx = getContext();
+  if (!ctx || failed[key]) return Promise.resolve();
+  const job = fetch(SOURCES[key])
+    .then((res) => {
+      if (!res.ok) throw new Error("missing");
+      return res.arrayBuffer();
+    })
+    .then((data) => ctx.decodeAudioData(data))
+    .then((buffer) => {
+      buffers[key] = buffer;
+    })
+    .catch(() => {
+      failed[key] = true;
+    });
+  pending[key] = job;
+  return job;
+}
+
+/** Downloads and decodes every sound so the first pick plays without delay. */
 export function preloadSounds() {
-  for (const key of Object.keys(SOURCES) as SoundKey[]) load(key);
+  installUnlock();
+  getContext();
+  for (const key of Object.keys(SOURCES) as SoundKey[]) void loadBuffer(key);
 }
 
-/** Plays a sound; overlapping plays are allowed (each one uses a copy). */
+/** Plays a sound; overlapping plays are allowed up to a small limit per sound. */
 export function playSound(key: SoundKey) {
   if (muted) return;
-  const base = load(key);
-  if (!base) return;
+  const ctx = getContext();
+  if (!ctx) return;
+  installUnlock();
+  resumeContext();
+  // Sounds started while the context is suspended would queue up and burst out
+  // together once it resumes, so they are skipped instead.
+  if (ctx.state !== "running") return;
+  const buffer = buffers[key];
+  if (!buffer) {
+    void loadBuffer(key);
+    return;
+  }
+  const active = voices[key] ?? 0;
+  if (active >= (MAX_VOICES[key] ?? DEFAULT_VOICES)) return;
   try {
-    const node = base.cloneNode(true) as HTMLAudioElement;
-    node.volume = VOLUME * (GAIN[key] ?? 1);
-    void node.play().catch(() => {});
+    const source = ctx.createBufferSource();
+    const gain = ctx.createGain();
+    source.buffer = buffer;
+    gain.gain.value = VOLUME * (GAIN[key] ?? 1);
+    source.connect(gain);
+    gain.connect(ctx.destination);
+    voices[key] = active + 1;
+    source.onended = () => {
+      voices[key] = Math.max(0, (voices[key] ?? 1) - 1);
+      source.disconnect();
+      gain.disconnect();
+    };
+    source.start(0);
   } catch {
-    // Autoplay blocked or file missing: ignore.
+    voices[key] = Math.max(0, (voices[key] ?? 1) - 1);
   }
 }
 
