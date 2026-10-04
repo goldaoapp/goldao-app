@@ -1,14 +1,30 @@
 import { useCallback, useState } from "react";
 
 // Sound files live in public/sounds/. Missing files fail silently.
-export type SoundKey = "success" | "diamond";
+export type SoundKey =
+  | "success"
+  | "diamond"
+  | "count"
+  | "collapse"
+  | "crack"
+  | "suspense"
+  | "miss"
+  | "jackpot";
 
 const SOURCES: Record<SoundKey, string> = {
   success: "/sounds/success.mp3",
   diamond: "/sounds/diamond.mp3",
+  count: "/sounds/count.wav",
+  collapse: "/sounds/collapse.wav",
+  crack: "/sounds/crack.wav",
+  suspense: "/sounds/suspense.wav",
+  miss: "/sounds/miss.wav",
+  jackpot: "/sounds/jackpot.wav",
 };
 
 const VOLUME = 0.6;
+/** Relative volume per sound (1 when missing). */
+const GAIN: Partial<Record<SoundKey, number>> = { count: 0.35 };
 const STORAGE_KEY = "goldao.game.muted";
 
 const cache: Partial<Record<SoundKey, HTMLAudioElement>> = {};
@@ -53,7 +69,7 @@ export function playSound(key: SoundKey) {
   if (!base) return;
   try {
     const node = base.cloneNode(true) as HTMLAudioElement;
-    node.volume = VOLUME;
+    node.volume = VOLUME * (GAIN[key] ?? 1);
     void node.play().catch(() => {});
   } catch {
     // Autoplay blocked or file missing: ignore.
