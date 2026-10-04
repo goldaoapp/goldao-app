@@ -620,11 +620,6 @@ export function ResultCard({
         <span className={cn("font-mono text-xs", inkMid)}>
           GOLDAO · {Number(result.points)} pts
         </span>
-        {result.charged > 0n && (
-          <span className={cn("font-mono text-xs", inkMid)}>
-            Charged from wallet: {fmtGoldao(result.charged, 2)}
-          </span>
-        )}
         {result.jackpotWon > 0n && (
           <span className={cn("font-mono text-xs", DIAMOND_TEXT)}>
             Jackpot: +{fmtGoldao(result.jackpotWon, 2)} GOLDAO
