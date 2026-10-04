@@ -1,11 +1,10 @@
-import type { AdminView } from "@/backend";
+import { type AdminView, WithdrawKind } from "@/backend";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/context/AuthContext";
 import { GOLDAO_FEE_E8S, approveSpender } from "@/lib/goldao-ledger";
 import { useInternetIdentity } from "@/lib/internet-identity";
 import { cn } from "@/lib/utils";
 import { Principal } from "@icp-sdk/core/principal";
-import { useQuery } from "@tanstack/react-query";
 import { Gem, Landmark, Shield } from "lucide-react";
 import { useState } from "react";
 import { Spinner } from "./Spinner";
@@ -31,59 +30,98 @@ const HALT_TEXT: Record<number, string> = {
   3: "manual",
 };
 
+const E8S = 100_000_000n;
+// Fixed choices only: no free-text numbers, so a typo cannot reach the canister.
+const TEST_DEPOSITS = [10_000, 30_000, 100_000, 200_000];
+const DURATIONS = [1, 3, 7, 14, 30];
+const FLAG_LIMITS = [1, 2, 3, 5, 10];
+const WINDOWS_MIN = [5, 15, 30, 60, 120];
+const POOL_SEED = 5_000n * E8S;
+
 type Res<T> = { __kind__: "ok"; ok: T } | { __kind__: "err"; err: string };
+
+interface Ask {
+  title: string;
+  detail: string;
+  word?: string;
+  go: () => Promise<void>;
+}
+
+const selectCls =
+  "rounded-md border border-[color:var(--term-border)] bg-[var(--term-card)] px-3 py-1.5 font-mono text-sm";
+const inputCls =
+  "w-80 max-w-full rounded-md border border-[color:var(--term-border)] bg-transparent px-3 py-1.5 font-mono text-xs";
 
 export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
   const { actor } = useAuth();
+  const { identity } = useInternetIdentity();
   const { run, pending } = useGameAction();
+  const { data: security } = useSecurityView(!!view);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
-  const [amount, setAmount] = useState("100000");
-  const [days, setDays] = useState("7");
+  const [ask, setAsk] = useState<Ask | null>(null);
+  const [typed, setTyped] = useState("");
+  const [deposit, setDeposit] = useState(String(TEST_DEPOSITS[1]));
+  const [days, setDays] = useState("");
   const [who, setWho] = useState("");
   const [selfId, setSelfId] = useState("");
-  const [confirm, setConfirm] = useState<string | null>(null);
   const [flags, setFlags] = useState("");
   const [windowMin, setWindowMin] = useState("");
-  const [authorizing, setAuthorizing] = useState(false);
-  const { data: security } = useSecurityView(!!view);
-  const { identity } = useInternetIdentity();
+  const [busy, setBusy] = useState(false);
+
+  const working = !!pending || busy;
+  const real = !!view?.realLedger;
   const bankText = view?.bankAccount?.toText();
   const selfText = view?.selfId?.toText();
-  const allowanceQuery = useQuery({
-    queryKey: ["game", "admin-allowance", bankText, selfText],
-    queryFn: async () => {
-      const res = await actor!.gameAdminLedgerAllowance(
-        Principal.fromText(bankText!),
-        Principal.fromText(selfText!),
-      );
-      if (res.__kind__ === "err") throw new Error(res.err);
-      return res.ok;
-    },
-    enabled: !!actor && !!view?.realLedger && !!bankText && !!selfText,
-    refetchInterval: 30_000,
-    retry: false,
-  });
 
+  const unpaid = view?.payouts.filter((p) => !p.paid) ?? [];
+  const unpaidTotal = unpaid.reduce(
+    (t, p) => t + p.amount + GOLDAO_FEE_E8S,
+    0n,
+  );
+
+  // Every action goes through here: one at a time, result always shown.
   const act = async <T,>(
     name: string,
     call: () => Promise<Res<T>>,
     text: (v: T) => string,
+    before?: () => Promise<void>,
   ) => {
-    if (!actor) return;
+    if (!actor || working) return;
     setMsg(null);
+    setBusy(true);
     try {
+      if (before) await before();
       const v = await run(name, call, "all");
       setMsg({ ok: true, text: text(v) });
     } catch (e) {
       setMsg({ ok: false, text: errorMessage(e) });
     } finally {
-      setConfirm(null);
+      setBusy(false);
     }
   };
 
-  const n = () => {
-    const v = Number.parseInt(amount, 10);
-    return Number.isFinite(v) && v > 0 ? BigInt(v) : 0n;
+  const confirmThen = (a: Ask) => {
+    setTyped("");
+    setAsk(a);
+  };
+
+  // Real mode: the backend spends an allowance the admin wallet grants.
+  // It is set here, right before the action, to exactly what that action needs.
+  const ensureAllowance = async (required: bigint) => {
+    if (!real) return;
+    if (!identity || !bankText || !selfText || !actor) {
+      throw new Error("Sign in with the admin wallet first.");
+    }
+    if (identity.getPrincipal().toText() !== bankText) {
+      throw new Error("This session is not the bank wallet.");
+    }
+    const cur = await actor.gameAdminLedgerAllowance(
+      Principal.fromText(bankText),
+      Principal.fromText(selfText),
+    );
+    if (cur.__kind__ === "err") throw new Error(cur.err);
+    if (cur.ok >= required) return;
+    await approveSpender(identity, selfText, required);
   };
 
   const parsePrincipal = (t: string): Principal | null => {
@@ -94,28 +132,31 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
     }
   };
 
-  const unpaid = view?.payouts.filter((p) => !p.paid) ?? [];
-  const needed = unpaid.reduce((t, p) => t + p.amount + GOLDAO_FEE_E8S, 0n);
-  const isBank =
-    !!identity && !!bankText && identity.getPrincipal().toText() === bankText;
+  const halted = !!security?.halted;
+  const bank = view?.bank ?? 0n;
+  const availableOut = (() => {
+    if (!view) return 0n;
+    const cap = bank > GOLDAO_FEE_E8S ? bank - GOLDAO_FEE_E8S : 0n;
+    return view.withdrawable < cap ? view.withdrawable : cap;
+  })();
+  const poolGap = view && view.pool < POOL_SEED ? POOL_SEED - view.pool : 0n;
 
-  const authorizeExact = async () => {
-    if (!identity || !selfText) return;
-    setMsg(null);
-    setAuthorizing(true);
-    try {
-      await approveSpender(identity, selfText, needed);
-      await allowanceQuery.refetch();
-      setMsg({
-        ok: true,
-        text: `Payout authorization set to ${fmtGoldao(needed)}.`,
-      });
-    } catch (e) {
-      setMsg({ ok: false, text: errorMessage(e) });
-    } finally {
-      setAuthorizing(false);
-    }
-  };
+  const allBlockers: string[] = [];
+  if (view) {
+    if (!halted) allBlockers.push("pause new excavations first");
+    if (view.owed > 0n) allBlockers.push("players are still owed funds");
+    if (unpaid.length > 0) allBlockers.push("pending payouts must be paid");
+    if (bank <= GOLDAO_FEE_E8S) allBlockers.push("the wallet is empty");
+  }
+
+  const payNow = () =>
+    act(
+      "pay",
+      () => actor!.gameAdminPay(),
+      (v) =>
+        `Paid ${Number(v.paid)}, failed ${Number(v.failed)}, remaining ${Number(v.remaining)}.`,
+      () => ensureAllowance(unpaidTotal),
+    );
 
   return (
     <div className="flex flex-col gap-6">
@@ -136,7 +177,7 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
         <Kpi
           label="Admin wallet"
           value={view ? fmtGoldao(view.bank) : <Spinner />}
-          sub={view?.realLedger ? "GOLDAO (ledger)" : "GOLDAO (test)"}
+          sub={real ? "GOLDAO (ledger)" : "GOLDAO (test)"}
         />
         <Kpi
           label="Owed to players"
@@ -199,127 +240,153 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
             <Landmark className="size-3.5" /> Funds
           </span>
           <span className={cn("font-mono text-[11px]", inkFaint)}>
-            Whole GOLDAO
+            Each button asks for confirmation
           </span>
         </div>
-        <div className="flex flex-col gap-4 p-5">
-          <input
-            value={amount}
-            onChange={(e) => setAmount(e.target.value.replace(/\D/g, ""))}
-            inputMode="numeric"
-            className="w-48 rounded-md border border-[color:var(--term-border)] bg-transparent px-3 py-1.5 font-mono text-sm"
-          />
-          <div className="flex flex-wrap gap-3">
-            {view && !view.realLedger && (
+        <div className="flex flex-col gap-5 p-5">
+          {view && !real && (
+            <Row
+              title="Test bank"
+              hint="Replaces the test balance with a preset."
+            >
+              <select
+                value={deposit}
+                onChange={(e) => setDeposit(e.target.value)}
+                disabled={working}
+                className={selectCls}
+              >
+                {TEST_DEPOSITS.map((d) => (
+                  <option key={d} value={d}>
+                    {d.toLocaleString("en-US")} GOLDAO
+                  </option>
+                ))}
+              </select>
               <Button
                 variant="outline"
-                disabled={!!pending || n() === 0n}
+                disabled={working}
                 onClick={() =>
-                  void act(
-                    "deposit",
-                    () => actor!.gameAdminTestDeposit(n()),
-                    (v) => `Bank is now ${fmtGoldao(v)}.`,
-                  )
+                  confirmThen({
+                    title: `Set the test bank to ${Number(deposit).toLocaleString("en-US")} GOLDAO?`,
+                    detail:
+                      "Test mode only. The previous test balance is replaced.",
+                    go: () =>
+                      act(
+                        "deposit",
+                        () => actor!.gameAdminTestDeposit(BigInt(deposit)),
+                        (v) => `Bank is now ${fmtGoldao(v)}.`,
+                      ),
+                  })
                 }
               >
                 Set test bank
               </Button>
-            )}
-            {view && !view.realLedger && (
-              <Button
-                variant="outline"
-                disabled={!!pending || n() === 0n}
-                onClick={() =>
-                  void act(
-                    "tapprove",
-                    () => actor!.gameAdminTestApprove(n()),
-                    (v) => `Bank allowance is now ${fmtGoldao(v)}.`,
-                  )
-                }
-              >
-                Set bank allowance
-              </Button>
-            )}
+            </Row>
+          )}
+
+          <Row
+            title="Jackpot pool"
+            hint={
+              poolGap > 0n
+                ? `Tops the pool up to ${fmtGoldao(POOL_SEED)} using ${fmtGoldao(poolGap)} from the fund.`
+                : `Already at the minimum (${fmtGoldao(POOL_SEED)}).`
+            }
+          >
             <Button
               variant="outline"
-              disabled={!!pending || n() === 0n}
+              disabled={working || !view || poolGap === 0n}
               onClick={() =>
-                void act(
-                  "seed",
-                  () => actor!.gameAdminSeedPool(n()),
-                  (v) => `Pool is now ${fmtGoldao(v)}.`,
-                )
+                confirmThen({
+                  title: `Seed the jackpot pool with ${fmtGoldao(poolGap)} GOLDAO?`,
+                  detail: `The pool will be ${fmtGoldao(POOL_SEED)}. The amount comes out of the bank fund.`,
+                  go: () =>
+                    act(
+                      "seed",
+                      () => actor!.gameAdminSeedPool(),
+                      (v) => `Pool is now ${fmtGoldao(v)}.`,
+                    ),
+                })
               }
             >
               Seed jackpot pool
             </Button>
+          </Row>
+
+          <Row
+            title="Withdraw earnings"
+            hint={`Takes ${fmtGoldao(availableOut)} GOLDAO (cycles first, then the surplus over the fund target) to the fixed treasury address. Network fee: ${fmtGoldao(GOLDAO_FEE_E8S)}.`}
+          >
             <Button
               variant="outline"
-              disabled={!!pending || n() === 0n}
-              onClick={() => setConfirm("withdraw")}
-            >
-              Withdraw
-            </Button>
-            <Button
-              variant="outline"
-              disabled={!!pending}
+              disabled={working || !view || availableOut === 0n}
               onClick={() =>
-                void act(
-                  "refresh",
-                  () => actor!.gameAdminRefreshBank(),
-                  (v) => `Bank is ${fmtGoldao(v)}.`,
-                )
+                confirmThen({
+                  title: `Withdraw ${fmtGoldao(availableOut)} GOLDAO?`,
+                  detail: "Sent to the fixed treasury address.",
+                  go: () =>
+                    act(
+                      "withdraw",
+                      () => actor!.gameAdminWithdraw(WithdrawKind.available),
+                      (v) => `Done. Bank is now ${fmtGoldao(v)}.`,
+                      () => ensureAllowance(availableOut + GOLDAO_FEE_E8S),
+                    ),
+                })
               }
             >
-              Refresh bank
+              Withdraw earnings
             </Button>
-          </div>
-          {view?.realLedger && (
-            <div className="flex flex-wrap items-center gap-3 rounded-lg border border-[color:var(--term-border)] bg-[var(--term-header)] p-3">
-              <span className={cn("font-mono text-xs", inkMid)}>
-                Authorized{" "}
-                {allowanceQuery.data !== undefined
-                  ? fmtGoldao(allowanceQuery.data)
-                  : "-"}{" "}
-                · Needed {fmtGoldao(needed)}
-              </span>
+          </Row>
+
+          <Row
+            title="Withdraw everything"
+            hint={
+              allBlockers.length === 0
+                ? `Empties the wallet (${fmtGoldao(bank - GOLDAO_FEE_E8S)} GOLDAO) to the fixed treasury address and resets pool, reserve and cycles.`
+                : `Not available: ${allBlockers.join(", ")}.`
+            }
+          >
+            <Button
+              variant="outline"
+              className="border-destructive/50 text-destructive"
+              disabled={working || !view || allBlockers.length > 0}
+              onClick={() =>
+                confirmThen({
+                  title: `Withdraw ALL ${fmtGoldao(bank - GOLDAO_FEE_E8S)} GOLDAO?`,
+                  detail:
+                    "The game will have no funds left. Sent to the fixed treasury address.",
+                  word: "WITHDRAW ALL",
+                  go: () =>
+                    act(
+                      "withdraw-all",
+                      () => actor!.gameAdminWithdraw(WithdrawKind.all),
+                      (v) => `Done. Bank is now ${fmtGoldao(v)}.`,
+                      () => ensureAllowance(bank),
+                    ),
+                })
+              }
+            >
+              Withdraw everything
+            </Button>
+          </Row>
+
+          {real && (
+            <Row
+              title="Refresh bank"
+              hint="Reads the wallet balance from the ledger."
+            >
               <Button
-                size="sm"
                 variant="outline"
-                disabled={!!pending || authorizing || needed === 0n || !isBank}
-                onClick={() => void authorizeExact()}
-              >
-                Authorize exact amount
-              </Button>
-            </div>
-          )}
-          {confirm === "withdraw" && (
-            <div className="flex flex-wrap items-center gap-3 rounded-lg border border-[color:var(--term-border)] bg-[var(--term-header)] p-3">
-              <span className={cn("text-sm", inkMid)}>
-                Withdraw {n().toString()} GOLDAO from the fund?
-              </span>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => setConfirm(null)}
-              >
-                Cancel
-              </Button>
-              <Button
-                size="sm"
-                disabled={!!pending}
-                className="gradient-primary text-primary-foreground"
+                disabled={working}
                 onClick={() =>
                   void act(
-                    "withdraw",
-                    () => actor!.gameAdminWithdraw(n()),
-                    (v) => `Bank is now ${fmtGoldao(v)}.`,
+                    "refresh",
+                    () => actor!.gameAdminRefreshBank(),
+                    (v) => `Bank is ${fmtGoldao(v)}.`,
                   )
                 }
               >
-                Confirm
+                Refresh bank
               </Button>
-            </div>
+            </Row>
           )}
         </div>
       </div>
@@ -330,152 +397,175 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
             <Shield className="size-3.5" /> Tournament
           </span>
         </div>
-        <div className="flex flex-col gap-4 p-5">
-          <div className="flex flex-wrap items-center gap-3">
-            <input
+        <div className="flex flex-col gap-5 p-5">
+          <Row
+            title="Duration"
+            hint={`Now ${view ? Number(view.durationDays) : "-"} days. Applies to the next tournament.`}
+          >
+            <select
               value={days}
-              onChange={(e) => setDays(e.target.value.replace(/\D/g, ""))}
-              inputMode="numeric"
-              className="w-20 rounded-md border border-[color:var(--term-border)] bg-transparent px-3 py-1.5 font-mono text-sm"
-            />
+              onChange={(e) => setDays(e.target.value)}
+              disabled={working}
+              className={selectCls}
+            >
+              <option value="">Choose</option>
+              {DURATIONS.map((d) => (
+                <option key={d} value={d}>
+                  {d} {d === 1 ? "day" : "days"}
+                </option>
+              ))}
+            </select>
             <Button
               variant="outline"
-              disabled={!!pending || !days}
+              disabled={working || !days}
               onClick={() =>
-                void act(
-                  "duration",
-                  () => actor!.gameAdminSetDuration(BigInt(days)),
-                  () => `Duration set to ${days} days.`,
-                )
+                confirmThen({
+                  title: `Set the duration to ${days} days?`,
+                  detail: "Applies to the next tournament.",
+                  go: () =>
+                    act(
+                      "duration",
+                      () => actor!.gameAdminSetDuration(BigInt(days)),
+                      () => `Duration set to ${days} days.`,
+                    ),
+                })
               }
             >
-              Set duration (days)
+              Set duration
             </Button>
+          </Row>
+
+          <Row
+            title="Close tournament"
+            hint="Ends it now and turns the credits into payouts."
+          >
             <Button
               variant="outline"
-              disabled={!!pending}
-              onClick={() => setConfirm("close")}
+              disabled={working}
+              onClick={() =>
+                confirmThen({
+                  title: "Close the current tournament now?",
+                  detail:
+                    "It cannot be undone. Players' credits become pending payouts.",
+                  word: "CLOSE",
+                  go: () =>
+                    act(
+                      "close",
+                      () => actor!.gameAdminCloseTournament(),
+                      () => "Close requested.",
+                    ),
+                })
+              }
             >
               Close now
             </Button>
+          </Row>
+
+          <Row
+            title="Pay pending"
+            hint={
+              unpaid.length === 0
+                ? "Nothing to pay."
+                : `${unpaid.length} payouts, ${fmtGoldao(unpaidTotal)} GOLDAO including fees. Paid in batches of 20.${real ? " The wallet authorization is set automatically." : ""}`
+            }
+          >
             <Button
-              disabled={!!pending || unpaid.length === 0}
+              disabled={working || unpaid.length === 0}
               className="gradient-primary text-primary-foreground"
               onClick={() =>
-                void act(
-                  "pay",
-                  () => actor!.gameAdminPay(),
-                  (v) =>
-                    `Paid ${Number(v.paid)}, failed ${Number(v.failed)}, remaining ${Number(v.remaining)}.`,
-                )
+                confirmThen({
+                  title: `Pay ${Math.min(20, unpaid.length)} of ${unpaid.length} pending payouts?`,
+                  detail: "Funds leave the admin wallet to the players.",
+                  go: payNow,
+                })
               }
             >
               Pay pending ({unpaid.length})
             </Button>
-          </div>
-          {confirm === "close" && (
-            <div className="flex flex-wrap items-center gap-3 rounded-lg border border-[color:var(--term-border)] bg-[var(--term-header)] p-3">
-              <span className={cn("text-sm", inkMid)}>
-                Close the current tournament now?
-              </span>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => setConfirm(null)}
-              >
-                Cancel
-              </Button>
-              <Button
-                size="sm"
-                disabled={!!pending}
-                className="gradient-primary text-primary-foreground"
-                onClick={() =>
-                  void act(
-                    "close",
-                    () => actor!.gameAdminCloseTournament(),
-                    () => "Close requested.",
-                  )
-                }
-              >
-                Confirm
-              </Button>
-            </div>
-          )}
+          </Row>
 
-          <div className="flex flex-wrap items-center gap-3">
+          <Row
+            title="Player"
+            hint="Paste a principal to free a stuck excavation or lift a block."
+          >
             <input
               value={who}
               onChange={(e) => setWho(e.target.value)}
               placeholder="Player principal"
-              className="w-80 max-w-full rounded-md border border-[color:var(--term-border)] bg-transparent px-3 py-1.5 font-mono text-xs"
+              className={inputCls}
             />
             <Button
               variant="outline"
-              disabled={!!pending || !parsePrincipal(who)}
+              disabled={working || !parsePrincipal(who)}
               onClick={() =>
-                void act(
-                  "release",
-                  () => actor!.gameAdminReleaseBusy(parsePrincipal(who)!),
-                  () => "Excavation released.",
-                )
+                confirmThen({
+                  title: "Release this player's excavation?",
+                  detail: shortPrincipal(who.trim()),
+                  go: () =>
+                    act(
+                      "release",
+                      () => actor!.gameAdminReleaseBusy(parsePrincipal(who)!),
+                      () => "Excavation released.",
+                    ),
+                })
               }
             >
               Release busy
             </Button>
             <Button
               variant="outline"
-              disabled={!!pending || !parsePrincipal(who)}
+              disabled={working || !parsePrincipal(who)}
               onClick={() =>
-                void act(
-                  "unblock",
-                  () => actor!.gameAdminUnblock(parsePrincipal(who)!),
-                  () => "Player unblocked.",
-                )
+                confirmThen({
+                  title: "Unblock this player?",
+                  detail: shortPrincipal(who.trim()),
+                  go: () =>
+                    act(
+                      "unblock",
+                      () => actor!.gameAdminUnblock(parsePrincipal(who)!),
+                      () => "Player unblocked.",
+                    ),
+                })
               }
             >
               Unblock
             </Button>
-          </div>
+          </Row>
 
-          {view && !view.realLedger && (
-            <div className="flex flex-col gap-2 border-t border-[color:var(--term-border-faint)] pt-4">
-              <span className={cn("font-mono text-[11px]", inkFaint)}>
-                Switch to the real ledger (needs no pending payouts)
-              </span>
-              <div className="flex flex-wrap gap-3">
-                <input
-                  value={selfId}
-                  onChange={(e) => setSelfId(e.target.value)}
-                  placeholder="Canister principal"
-                  className="w-80 max-w-full rounded-md border border-[color:var(--term-border)] bg-transparent px-3 py-1.5 font-mono text-xs"
-                />
-                <Button
-                  variant="outline"
-                  disabled={!!pending || !parsePrincipal(selfId)}
-                  onClick={() =>
-                    void act(
-                      "real",
-                      () =>
-                        actor!.gameAdminSetRealLedger(parsePrincipal(selfId)!),
-                      (v) => `Real ledger enabled. Bank is ${fmtGoldao(v)}.`,
-                    )
-                  }
-                >
-                  Enable
-                </Button>
-              </div>
-            </div>
-          )}
-
-          {msg && (
-            <p
-              className={cn(
-                "font-mono text-xs",
-                msg.ok ? "text-[color:var(--term-green)]" : "text-destructive",
-              )}
+          {view && !real && (
+            <Row
+              title="Real ledger"
+              hint="Switches from test to real GOLDAO. Needs no pending payouts. Irreversible."
             >
-              {msg.text}
-            </p>
+              <input
+                value={selfId}
+                onChange={(e) => setSelfId(e.target.value)}
+                placeholder="Canister principal"
+                className={inputCls}
+              />
+              <Button
+                variant="outline"
+                disabled={working || !parsePrincipal(selfId)}
+                onClick={() =>
+                  confirmThen({
+                    title: "Enable the real ledger?",
+                    detail: "From now on the admin wallet holds real GOLDAO.",
+                    word: "GO REAL",
+                    go: () =>
+                      act(
+                        "real",
+                        () =>
+                          actor!.gameAdminSetRealLedger(
+                            parsePrincipal(selfId)!,
+                          ),
+                        (v) => `Real ledger enabled. Bank is ${fmtGoldao(v)}.`,
+                      ),
+                  })
+                }
+              >
+                Enable
+              </Button>
+            </Row>
           )}
         </div>
       </div>
@@ -501,26 +591,37 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
             <div className="flex flex-wrap items-center gap-3">
               <Button
                 variant="outline"
-                disabled={!!pending || security.halted}
+                disabled={working || security.halted}
                 onClick={() =>
-                  void act(
-                    "halt",
-                    () => actor!.gameAdminHalt(),
-                    () => "New excavations are halted.",
-                  )
+                  confirmThen({
+                    title: "Halt new excavations?",
+                    detail:
+                      "Players cannot start new excavations until you resume.",
+                    go: () =>
+                      act(
+                        "halt",
+                        () => actor!.gameAdminHalt(),
+                        () => "New excavations are halted.",
+                      ),
+                  })
                 }
               >
                 Halt new excavations
               </Button>
               <Button
-                disabled={!!pending || !security.halted}
+                disabled={working || !security.halted}
                 className="gradient-primary text-primary-foreground"
                 onClick={() =>
-                  void act(
-                    "resume",
-                    () => actor!.gameAdminResume(),
-                    () => "Play resumed.",
-                  )
+                  confirmThen({
+                    title: "Resume play?",
+                    detail: "Players can start new excavations again.",
+                    go: () =>
+                      act(
+                        "resume",
+                        () => actor!.gameAdminResume(),
+                        () => "Play resumed.",
+                      ),
+                  })
                 }
               >
                 Resume
@@ -544,7 +645,7 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
                 <Button
                   size="sm"
                   variant="outline"
-                  disabled={!!pending}
+                  disabled={working}
                   onClick={() =>
                     void act(
                       "ack",
@@ -558,36 +659,48 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
               )}
             </div>
             <div className="flex flex-wrap items-center gap-3">
-              <input
-                value={flags}
-                onChange={(e) => setFlags(e.target.value.replace(/\D/g, ""))}
-                placeholder={`Flags (now ${Number(security.breakerMax)})`}
-                inputMode="numeric"
-                className="w-36 rounded-md border border-[color:var(--term-border)] bg-transparent px-3 py-1.5 font-mono text-xs"
-              />
-              <input
-                value={windowMin}
-                onChange={(e) =>
-                  setWindowMin(e.target.value.replace(/\D/g, ""))
-                }
-                placeholder={`Minutes (now ${Number(security.breakerWindowMin)})`}
-                inputMode="numeric"
-                className="w-40 rounded-md border border-[color:var(--term-border)] bg-transparent px-3 py-1.5 font-mono text-xs"
-              />
+              <select
+                value={flags || String(Number(security.breakerMax))}
+                onChange={(e) => setFlags(e.target.value)}
+                disabled={working}
+                className={selectCls}
+              >
+                {FLAG_LIMITS.map((f) => (
+                  <option key={f} value={f}>
+                    {f} flags
+                  </option>
+                ))}
+              </select>
+              <select
+                value={windowMin || String(Number(security.breakerWindowMin))}
+                onChange={(e) => setWindowMin(e.target.value)}
+                disabled={working}
+                className={selectCls}
+              >
+                {WINDOWS_MIN.map((m) => (
+                  <option key={m} value={m}>
+                    {m} min
+                  </option>
+                ))}
+              </select>
               <Button
                 variant="outline"
-                disabled={!!pending || !flags || !windowMin}
-                onClick={() =>
-                  void act(
-                    "breaker",
-                    () =>
-                      actor!.gameAdminSetBreaker(
-                        BigInt(flags),
-                        BigInt(windowMin),
+                disabled={working || (!flags && !windowMin)}
+                onClick={() => {
+                  const f = flags || String(Number(security.breakerMax));
+                  const m =
+                    windowMin || String(Number(security.breakerWindowMin));
+                  confirmThen({
+                    title: `Set the limit to ${f} flags in ${m} minutes?`,
+                    detail: "Reaching it halts new excavations automatically.",
+                    go: () =>
+                      act(
+                        "breaker",
+                        () => actor!.gameAdminSetBreaker(BigInt(f), BigInt(m)),
+                        () => "Limits updated.",
                       ),
-                    () => "Limits updated.",
-                  )
-                }
+                  });
+                }}
               >
                 Set limits
               </Button>
@@ -625,7 +738,7 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
                             <Button
                               size="sm"
                               variant="outline"
-                              disabled={!!pending}
+                              disabled={working}
                               onClick={() =>
                                 void act(
                                   "clear",
@@ -734,6 +847,76 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
           </div>
         </div>
       )}
+
+      {ask && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+          <div className="flex w-full max-w-md flex-col gap-4 rounded-xl border border-[color:var(--term-border)] bg-[var(--term-card)] p-6">
+            <p className={cn("font-display text-lg font-semibold", ink)}>
+              {ask.title}
+            </p>
+            <p className={cn("text-sm", inkMid)}>{ask.detail}</p>
+            {ask.word && (
+              <label className="flex flex-col gap-1.5">
+                <span className={cn("font-mono text-[11px]", inkFaint)}>
+                  Type {ask.word} to continue
+                </span>
+                <input
+                  value={typed}
+                  onChange={(e) => setTyped(e.target.value)}
+                  autoComplete="off"
+                  className="rounded-md border border-[color:var(--term-border)] bg-transparent px-3 py-1.5 font-mono text-sm"
+                />
+              </label>
+            )}
+            <div className="flex justify-end gap-3">
+              <Button variant="outline" onClick={() => setAsk(null)}>
+                Cancel
+              </Button>
+              <Button
+                disabled={working || (!!ask.word && typed !== ask.word)}
+                className="gradient-primary text-primary-foreground"
+                onClick={() => {
+                  const go = ask.go;
+                  setAsk(null);
+                  void go();
+                }}
+              >
+                Confirm
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {(working || msg) && (
+        <output
+          className={cn(
+            "fixed bottom-4 left-1/2 z-50 flex max-w-[92vw] -translate-x-1/2 items-center gap-3 rounded-lg border bg-[var(--term-card)] px-4 py-3 font-mono text-xs shadow-lg",
+            working
+              ? "border-[color:var(--term-border)]"
+              : msg?.ok
+                ? "border-[color:var(--term-green)] text-[color:var(--term-green)]"
+                : "border-destructive text-destructive",
+          )}
+        >
+          {working ? (
+            <>
+              <Spinner /> Working…
+            </>
+          ) : (
+            <>
+              <span>{msg?.text}</span>
+              <button
+                type="button"
+                onClick={() => setMsg(null)}
+                className="underline"
+              >
+                Dismiss
+              </button>
+            </>
+          )}
+        </output>
+      )}
     </div>
   );
 }
@@ -775,6 +958,20 @@ function Item({ label, value }: { label: string; value: string }) {
         {label}
       </dt>
       <dd className={cn("tabular-nums", ink)}>{value}</dd>
+    </div>
+  );
+}
+
+function Row({
+  title,
+  hint,
+  children,
+}: { title: string; hint: string; children: React.ReactNode }) {
+  return (
+    <div className="flex flex-col gap-2 border-b border-[color:var(--term-border-faint)] pb-5 last:border-0 last:pb-0">
+      <span className={cn("text-sm font-medium", ink)}>{title}</span>
+      <span className={cn("font-mono text-[11px]", inkFaint)}>{hint}</span>
+      <div className="flex flex-wrap items-center gap-3">{children}</div>
     </div>
   );
 }
