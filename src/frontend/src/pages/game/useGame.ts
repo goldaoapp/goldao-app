@@ -2,6 +2,7 @@ import type { Dashboard, ExcavationView, Ranking } from "@/backend";
 import { useAuth } from "@/context/AuthContext";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useState } from "react";
+import { getBoard } from "./board-store";
 
 const KEY = "game";
 
@@ -19,9 +20,22 @@ export function useGameConfig() {
 /** Personal dashboard of the signed-in player. */
 export function useDashboard() {
   const { actor, isAuthenticated, principalId } = useAuth();
+  const queryClient = useQueryClient();
   return useQuery({
     queryKey: [KEY, "dashboard", principalId],
-    queryFn: () => actor!.gameMyDashboard(),
+    queryFn: async () => {
+      const fresh = await actor!.gameMyDashboard();
+      if (!getBoard().hold) return fresh;
+      // A jackpot or auto run is still being shown: keep the balance on screen.
+      const shown = queryClient.getQueryData<Dashboard>([
+        KEY,
+        "dashboard",
+        principalId,
+      ]);
+      return shown
+        ? { ...fresh, credit: shown.credit, pool: shown.pool }
+        : fresh;
+    },
     enabled: !!actor && isAuthenticated && !!principalId,
     refetchInterval: 20_000,
   });
