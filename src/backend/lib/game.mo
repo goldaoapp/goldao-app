@@ -44,6 +44,8 @@ module {
   public let CLOSED_MSG : Text = "The tournament has just closed. Your balance was paid out or carried over to the new tournament: check your wallet and To collect, then try again.";
   public let ERR_PAY_FUNDS : Text = "The bank wallet does not cover the payout.";
   public let ERR_PAY_ALLOWANCE : Text = "The payout authorization is too low.";
+  public let STAKE_CHANGED_MSG : Text = "The stake amounts changed. Check the new amounts and try again.";
+  public let EXC_CHANGED_MSG : Text = "Your excavation changed (another tab or device?). Reload the board and try again.";
   public let LOAD_REJECT_MAX : Nat = 20;
   public let LOAD_REJECT_WINDOW_NS : Int = 60_000_000_000;
   public let PAY_BATCH : Nat = 20;
@@ -67,6 +69,32 @@ module {
   public func treasury() : Principal { Principal.fromText(TREASURY) };
 
   public let LEDGER_FAIL_MAX : Nat = 5;
+
+  // Why the game is halted (haltCode).
+  public let HALT_LEDGER : Nat = 2;
+  public let HALT_MANUAL : Nat = 3;
+  public let HALT_BANK : Nat = 4;
+  public let HALT_FUND : Nat = 5;
+
+  // Safeguards. The admin wallet pays a ledger fee for each authorization it signs, which the game
+  // cannot see: the bank wallet may hold up to BANK_TOLERANCE less than the game expects, summed
+  // over BANK_WINDOW_NS (about ten authorizations), before the game halts. The fund is sampled
+  // every tick; it halts the game when it falls by FUND_DROP_PCT percent (and at least
+  // FUND_DROP_MIN) within the samples kept.
+  public let BANK_TOLERANCE : Nat = 10_000_000_000;
+  public let BANK_WINDOW_NS : Int = 86_400_000_000_000;
+  public let FUND_SAMPLES : Nat = 10;
+  public let FUND_DROP_PCT : Nat = 30;
+  public let FUND_DROP_MIN : Nat = 1_000_000_000_000;
+
+  // Security log: one bucket per UTC day, kept for SECURITY_LOG_DAYS days, at most
+  // SECURITY_LOG_MAX_DAY distinct entries per day (repeated events are merged into one).
+  public let SECURITY_LOG_DAYS : Nat = 90;
+  public let SECURITY_LOG_MAX_DAY : Nat = 100;
+
+  public func haltReason(code : Nat) : Text {
+    if (code == HALT_LEDGER) "ledger failures" else if (code == HALT_MANUAL) "paused by admin" else if (code == HALT_BANK) "unexplained bank withdrawal" else if (code == HALT_FUND) "fund drop" else "unknown";
+  };
 
   public func isBootstrapAdmin(p : Principal) : Bool {
     let t = Principal.toText(p);
