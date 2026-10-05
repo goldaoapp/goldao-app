@@ -189,73 +189,6 @@ export interface ExcavationView {
     picks: bigint;
     safePctX100: bigint;
 }
-export type GResult = {
-    __kind__: "ok";
-    ok: bigint;
-} | {
-    __kind__: "err";
-    err: string;
-};
-export type GResult_1 = {
-    __kind__: "ok";
-    ok: EndResult;
-} | {
-    __kind__: "err";
-    err: string;
-};
-export type GResult_2 = {
-    __kind__: "ok";
-    ok: PickResult;
-} | {
-    __kind__: "err";
-    err: string;
-};
-export type GResult_3 = {
-    __kind__: "ok";
-    ok: AutoResult;
-} | {
-    __kind__: "err";
-    err: string;
-};
-export type GResult_4 = {
-    __kind__: "ok";
-    ok: AdminView;
-} | {
-    __kind__: "err";
-    err: string;
-};
-export type GResult_5 = {
-    __kind__: "ok";
-    ok: null;
-} | {
-    __kind__: "err";
-    err: string;
-};
-export type GResult_6 = {
-    __kind__: "ok";
-    ok: SecurityView;
-} | {
-    __kind__: "err";
-    err: string;
-};
-export type GResult_7 = {
-    __kind__: "ok";
-    ok: {
-        paid: bigint;
-        remaining: bigint;
-        failed: bigint;
-    };
-} | {
-    __kind__: "err";
-    err: string;
-};
-export type GResult_8 = {
-    __kind__: "ok";
-    ok: Array<[Principal, UserRole]>;
-} | {
-    __kind__: "err";
-    err: string;
-};
 export interface GameConfig {
     mines: bigint;
     loadMax: bigint;
@@ -331,7 +264,74 @@ export interface Ranking {
     jackpots: Array<JackpotWin>;
     endsAt: bigint;
 }
+export type Result = {
+    __kind__: "ok";
+    ok: bigint;
+} | {
+    __kind__: "err";
+    err: string;
+};
+export type Result_1 = {
+    __kind__: "ok";
+    ok: EndResult;
+} | {
+    __kind__: "err";
+    err: string;
+};
+export type Result_2 = {
+    __kind__: "ok";
+    ok: PickResult;
+} | {
+    __kind__: "err";
+    err: string;
+};
+export type Result_3 = {
+    __kind__: "ok";
+    ok: AutoResult;
+} | {
+    __kind__: "err";
+    err: string;
+};
+export type Result_4 = {
+    __kind__: "ok";
+    ok: AdminView;
+} | {
+    __kind__: "err";
+    err: string;
+};
+export type Result_5 = {
+    __kind__: "ok";
+    ok: null;
+} | {
+    __kind__: "err";
+    err: string;
+};
+export type Result_6 = {
+    __kind__: "ok";
+    ok: SecurityView;
+} | {
+    __kind__: "err";
+    err: string;
+};
 export type Result_7 = {
+    __kind__: "ok";
+    ok: {
+        paid: bigint;
+        remaining: bigint;
+        failed: bigint;
+    };
+} | {
+    __kind__: "err";
+    err: string;
+};
+export type Result_8 = {
+    __kind__: "ok";
+    ok: Array<[Principal, UserRole]>;
+} | {
+    __kind__: "err";
+    err: string;
+};
+export type Result_9 = {
     __kind__: "ok";
     ok: null;
 } | {
@@ -431,39 +431,39 @@ export enum WithdrawKind {
 }
 export interface backendInterface {
     _initialize_access_control(): Promise<void>;
-    _internet_identity_sign_in_finish(): Promise<Result_7>;
+    _internet_identity_sign_in_finish(): Promise<Result_9>;
     _internet_identity_sign_in_start(): Promise<Uint8Array>;
-    adminListRoles(): Promise<GResult_8>;
+    adminListRoles(): Promise<Result_8>;
     adminSyncBootstrap(): Promise<boolean>;
     assignCallerUserRole(user: Principal, role: UserRole): Promise<void>;
     execute(qJson: string): Promise<Result__1>;
-    gameAdminAckAccounting(): Promise<GResult_5>;
-    gameAdminCloseAll(): Promise<GResult_5>;
-    gameAdminCloseTournament(): Promise<GResult_5>;
-    gameAdminHalt(): Promise<GResult_5>;
-    gameAdminLedgerAllowance(who: Principal, spender: Principal): Promise<GResult>;
-    gameAdminLedgerBalance(who: Principal): Promise<GResult>;
-    gameAdminPay(): Promise<GResult_7>;
-    gameAdminRefreshBank(): Promise<GResult>;
-    gameAdminReleaseBusy(player: Principal): Promise<GResult_5>;
-    gameAdminResume(): Promise<GResult_5>;
-    gameAdminSecurity(): Promise<GResult_6>;
-    gameAdminSeedPool(): Promise<GResult>;
-    gameAdminSetDuration(days: bigint): Promise<GResult_5>;
-    gameAdminSetRealLedger(selfId: Principal): Promise<GResult>;
-    gameAdminTestDeposit(goldao: bigint): Promise<GResult>;
-    gameAdminView(): Promise<GResult_4>;
-    gameAdminWithdraw(kind: WithdrawKind): Promise<GResult>;
-    gameAuto(stake: StakeOption, stopAt: bigint): Promise<GResult_3>;
+    gameAdminAckAccounting(): Promise<Result_5>;
+    gameAdminCloseAll(): Promise<Result_5>;
+    gameAdminCloseTournament(): Promise<Result_5>;
+    gameAdminHalt(): Promise<Result_5>;
+    gameAdminLedgerAllowance(who: Principal, spender: Principal): Promise<Result>;
+    gameAdminLedgerBalance(who: Principal): Promise<Result>;
+    gameAdminPay(): Promise<Result_7>;
+    gameAdminRefreshBank(): Promise<Result>;
+    gameAdminReleaseBusy(player: Principal): Promise<Result_5>;
+    gameAdminResume(): Promise<Result_5>;
+    gameAdminSecurity(): Promise<Result_6>;
+    gameAdminSeedPool(goldao: bigint): Promise<Result>;
+    gameAdminSetDuration(days: bigint): Promise<Result_5>;
+    gameAdminSetRealLedger(selfId: Principal): Promise<Result>;
+    gameAdminTestDeposit(goldao: bigint): Promise<Result>;
+    gameAdminView(): Promise<Result_4>;
+    gameAdminWithdraw(kind: WithdrawKind): Promise<Result>;
+    gameAuto(stake: StakeOption, stopAt: bigint): Promise<Result_3>;
     gameBurned(): Promise<bigint>;
     gameConfig(): Promise<GameConfig>;
-    gameLoadCredit(goldao: bigint): Promise<GResult>;
+    gameLoadCredit(goldao: bigint): Promise<Result>;
     gameMyDashboard(): Promise<Dashboard>;
-    gamePick(stake: StakeOption | null): Promise<GResult_2>;
+    gamePick(stake: StakeOption | null): Promise<Result_2>;
     gameRanking(): Promise<Ranking>;
-    gameRequestTestTokens(goldao: bigint): Promise<GResult>;
-    gameSave(): Promise<GResult_1>;
-    gameTestApprove(goldao: bigint): Promise<GResult>;
+    gameRequestTestTokens(goldao: bigint): Promise<Result>;
+    gameSave(): Promise<Result_1>;
+    gameTestApprove(goldao: bigint): Promise<Result>;
     gameTournaments(): Promise<Array<TournamentSummary>>;
     getCallerUserRole(): Promise<UserRole>;
     /**
@@ -482,7 +482,7 @@ export interface backendInterface {
     schema(): Promise<string>;
     whoAmI(): Promise<string>;
 }
-import type { AdminView as _AdminView, AutoResult as _AutoResult, AutoStep as _AutoStep, Cell as _Cell, Dashboard as _Dashboard, DiamondResult as _DiamondResult, EndKind as _EndKind, EndResult as _EndResult, Error as _Error, ExcavationView as _ExcavationView, GResult as _GResult, GResult_1 as _GResult_1, GResult_2 as _GResult_2, GResult_3 as _GResult_3, GResult_4 as _GResult_4, GResult_5 as _GResult_5, GResult_6 as _GResult_6, GResult_7 as _GResult_7, GResult_8 as _GResult_8, Payout as _Payout, PickResult as _PickResult, PlayerTournamentResult as _PlayerTournamentResult, Result_7 as _Result_7, Result__1 as _Result__1, SecurityView as _SecurityView, StakeOption as _StakeOption, TournamentStats as _TournamentStats, TournamentSummary as _TournamentSummary, UserRole as _UserRole, Value as _Value, WithdrawKind as _WithdrawKind } from "./declarations/backend.did.d.ts";
+import type { AdminView as _AdminView, AutoResult as _AutoResult, AutoStep as _AutoStep, Cell as _Cell, Dashboard as _Dashboard, DiamondResult as _DiamondResult, EndKind as _EndKind, EndResult as _EndResult, Error as _Error, ExcavationView as _ExcavationView, Payout as _Payout, PickResult as _PickResult, PlayerTournamentResult as _PlayerTournamentResult, Result as _Result, Result_1 as _Result_1, Result_2 as _Result_2, Result_3 as _Result_3, Result_4 as _Result_4, Result_5 as _Result_5, Result_6 as _Result_6, Result_7 as _Result_7, Result_8 as _Result_8, Result_9 as _Result_9, Result__1 as _Result__1, SecurityView as _SecurityView, StakeOption as _StakeOption, TournamentStats as _TournamentStats, TournamentSummary as _TournamentSummary, UserRole as _UserRole, Value as _Value, WithdrawKind as _WithdrawKind } from "./declarations/backend.did.d.ts";
 export class Backend implements backendInterface {
     constructor(private actor: ActorSubclass<_SERVICE>, private _uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, private _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, private processError?: (error: unknown) => never){}
     async _initialize_access_control(): Promise<void> {
@@ -499,18 +499,18 @@ export class Backend implements backendInterface {
             return result;
         }
     }
-    async _internet_identity_sign_in_finish(): Promise<Result_7> {
+    async _internet_identity_sign_in_finish(): Promise<Result_9> {
         if (this.processError) {
             try {
                 const result = await this.actor._internet_identity_sign_in_finish();
-                return from_candid_Result_7_n1(this._uploadFile, this._downloadFile, result);
+                return from_candid_Result_9_n1(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
             const result = await this.actor._internet_identity_sign_in_finish();
-            return from_candid_Result_7_n1(this._uploadFile, this._downloadFile, result);
+            return from_candid_Result_9_n1(this._uploadFile, this._downloadFile, result);
         }
     }
     async _internet_identity_sign_in_start(): Promise<Uint8Array> {
@@ -527,18 +527,18 @@ export class Backend implements backendInterface {
             return result;
         }
     }
-    async adminListRoles(): Promise<GResult_8> {
+    async adminListRoles(): Promise<Result_8> {
         if (this.processError) {
             try {
                 const result = await this.actor.adminListRoles();
-                return from_candid_GResult_8_n5(this._uploadFile, this._downloadFile, result);
+                return from_candid_Result_8_n5(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
             const result = await this.actor.adminListRoles();
-            return from_candid_GResult_8_n5(this._uploadFile, this._downloadFile, result);
+            return from_candid_Result_8_n5(this._uploadFile, this._downloadFile, result);
         }
     }
     async adminSyncBootstrap(): Promise<boolean> {
@@ -583,256 +583,256 @@ export class Backend implements backendInterface {
             return from_candid_Result__1_n11(this._uploadFile, this._downloadFile, result);
         }
     }
-    async gameAdminAckAccounting(): Promise<GResult_5> {
+    async gameAdminAckAccounting(): Promise<Result_5> {
         if (this.processError) {
             try {
                 const result = await this.actor.gameAdminAckAccounting();
-                return from_candid_GResult_5_n19(this._uploadFile, this._downloadFile, result);
+                return from_candid_Result_5_n19(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
             const result = await this.actor.gameAdminAckAccounting();
-            return from_candid_GResult_5_n19(this._uploadFile, this._downloadFile, result);
+            return from_candid_Result_5_n19(this._uploadFile, this._downloadFile, result);
         }
     }
-    async gameAdminCloseAll(): Promise<GResult_5> {
+    async gameAdminCloseAll(): Promise<Result_5> {
         if (this.processError) {
             try {
                 const result = await this.actor.gameAdminCloseAll();
-                return from_candid_GResult_5_n19(this._uploadFile, this._downloadFile, result);
+                return from_candid_Result_5_n19(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
             const result = await this.actor.gameAdminCloseAll();
-            return from_candid_GResult_5_n19(this._uploadFile, this._downloadFile, result);
+            return from_candid_Result_5_n19(this._uploadFile, this._downloadFile, result);
         }
     }
-    async gameAdminCloseTournament(): Promise<GResult_5> {
+    async gameAdminCloseTournament(): Promise<Result_5> {
         if (this.processError) {
             try {
                 const result = await this.actor.gameAdminCloseTournament();
-                return from_candid_GResult_5_n19(this._uploadFile, this._downloadFile, result);
+                return from_candid_Result_5_n19(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
             const result = await this.actor.gameAdminCloseTournament();
-            return from_candid_GResult_5_n19(this._uploadFile, this._downloadFile, result);
+            return from_candid_Result_5_n19(this._uploadFile, this._downloadFile, result);
         }
     }
-    async gameAdminHalt(): Promise<GResult_5> {
+    async gameAdminHalt(): Promise<Result_5> {
         if (this.processError) {
             try {
                 const result = await this.actor.gameAdminHalt();
-                return from_candid_GResult_5_n19(this._uploadFile, this._downloadFile, result);
+                return from_candid_Result_5_n19(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
             const result = await this.actor.gameAdminHalt();
-            return from_candid_GResult_5_n19(this._uploadFile, this._downloadFile, result);
+            return from_candid_Result_5_n19(this._uploadFile, this._downloadFile, result);
         }
     }
-    async gameAdminLedgerAllowance(arg0: Principal, arg1: Principal): Promise<GResult> {
+    async gameAdminLedgerAllowance(arg0: Principal, arg1: Principal): Promise<Result> {
         if (this.processError) {
             try {
                 const result = await this.actor.gameAdminLedgerAllowance(arg0, arg1);
-                return from_candid_GResult_n21(this._uploadFile, this._downloadFile, result);
+                return from_candid_Result_n21(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
             const result = await this.actor.gameAdminLedgerAllowance(arg0, arg1);
-            return from_candid_GResult_n21(this._uploadFile, this._downloadFile, result);
+            return from_candid_Result_n21(this._uploadFile, this._downloadFile, result);
         }
     }
-    async gameAdminLedgerBalance(arg0: Principal): Promise<GResult> {
+    async gameAdminLedgerBalance(arg0: Principal): Promise<Result> {
         if (this.processError) {
             try {
                 const result = await this.actor.gameAdminLedgerBalance(arg0);
-                return from_candid_GResult_n21(this._uploadFile, this._downloadFile, result);
+                return from_candid_Result_n21(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
             const result = await this.actor.gameAdminLedgerBalance(arg0);
-            return from_candid_GResult_n21(this._uploadFile, this._downloadFile, result);
+            return from_candid_Result_n21(this._uploadFile, this._downloadFile, result);
         }
     }
-    async gameAdminPay(): Promise<GResult_7> {
+    async gameAdminPay(): Promise<Result_7> {
         if (this.processError) {
             try {
                 const result = await this.actor.gameAdminPay();
-                return from_candid_GResult_7_n23(this._uploadFile, this._downloadFile, result);
+                return from_candid_Result_7_n23(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
             const result = await this.actor.gameAdminPay();
-            return from_candid_GResult_7_n23(this._uploadFile, this._downloadFile, result);
+            return from_candid_Result_7_n23(this._uploadFile, this._downloadFile, result);
         }
     }
-    async gameAdminRefreshBank(): Promise<GResult> {
+    async gameAdminRefreshBank(): Promise<Result> {
         if (this.processError) {
             try {
                 const result = await this.actor.gameAdminRefreshBank();
-                return from_candid_GResult_n21(this._uploadFile, this._downloadFile, result);
+                return from_candid_Result_n21(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
             const result = await this.actor.gameAdminRefreshBank();
-            return from_candid_GResult_n21(this._uploadFile, this._downloadFile, result);
+            return from_candid_Result_n21(this._uploadFile, this._downloadFile, result);
         }
     }
-    async gameAdminReleaseBusy(arg0: Principal): Promise<GResult_5> {
+    async gameAdminReleaseBusy(arg0: Principal): Promise<Result_5> {
         if (this.processError) {
             try {
                 const result = await this.actor.gameAdminReleaseBusy(arg0);
-                return from_candid_GResult_5_n19(this._uploadFile, this._downloadFile, result);
+                return from_candid_Result_5_n19(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
             const result = await this.actor.gameAdminReleaseBusy(arg0);
-            return from_candid_GResult_5_n19(this._uploadFile, this._downloadFile, result);
+            return from_candid_Result_5_n19(this._uploadFile, this._downloadFile, result);
         }
     }
-    async gameAdminResume(): Promise<GResult_5> {
+    async gameAdminResume(): Promise<Result_5> {
         if (this.processError) {
             try {
                 const result = await this.actor.gameAdminResume();
-                return from_candid_GResult_5_n19(this._uploadFile, this._downloadFile, result);
+                return from_candid_Result_5_n19(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
             const result = await this.actor.gameAdminResume();
-            return from_candid_GResult_5_n19(this._uploadFile, this._downloadFile, result);
+            return from_candid_Result_5_n19(this._uploadFile, this._downloadFile, result);
         }
     }
-    async gameAdminSecurity(): Promise<GResult_6> {
+    async gameAdminSecurity(): Promise<Result_6> {
         if (this.processError) {
             try {
                 const result = await this.actor.gameAdminSecurity();
-                return from_candid_GResult_6_n25(this._uploadFile, this._downloadFile, result);
+                return from_candid_Result_6_n25(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
             const result = await this.actor.gameAdminSecurity();
-            return from_candid_GResult_6_n25(this._uploadFile, this._downloadFile, result);
+            return from_candid_Result_6_n25(this._uploadFile, this._downloadFile, result);
         }
     }
-    async gameAdminSeedPool(): Promise<GResult> {
+    async gameAdminSeedPool(arg0: bigint): Promise<Result> {
         if (this.processError) {
             try {
-                const result = await this.actor.gameAdminSeedPool();
-                return from_candid_GResult_n21(this._uploadFile, this._downloadFile, result);
+                const result = await this.actor.gameAdminSeedPool(arg0);
+                return from_candid_Result_n21(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
-            const result = await this.actor.gameAdminSeedPool();
-            return from_candid_GResult_n21(this._uploadFile, this._downloadFile, result);
+            const result = await this.actor.gameAdminSeedPool(arg0);
+            return from_candid_Result_n21(this._uploadFile, this._downloadFile, result);
         }
     }
-    async gameAdminSetDuration(arg0: bigint): Promise<GResult_5> {
+    async gameAdminSetDuration(arg0: bigint): Promise<Result_5> {
         if (this.processError) {
             try {
                 const result = await this.actor.gameAdminSetDuration(arg0);
-                return from_candid_GResult_5_n19(this._uploadFile, this._downloadFile, result);
+                return from_candid_Result_5_n19(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
             const result = await this.actor.gameAdminSetDuration(arg0);
-            return from_candid_GResult_5_n19(this._uploadFile, this._downloadFile, result);
+            return from_candid_Result_5_n19(this._uploadFile, this._downloadFile, result);
         }
     }
-    async gameAdminSetRealLedger(arg0: Principal): Promise<GResult> {
+    async gameAdminSetRealLedger(arg0: Principal): Promise<Result> {
         if (this.processError) {
             try {
                 const result = await this.actor.gameAdminSetRealLedger(arg0);
-                return from_candid_GResult_n21(this._uploadFile, this._downloadFile, result);
+                return from_candid_Result_n21(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
             const result = await this.actor.gameAdminSetRealLedger(arg0);
-            return from_candid_GResult_n21(this._uploadFile, this._downloadFile, result);
+            return from_candid_Result_n21(this._uploadFile, this._downloadFile, result);
         }
     }
-    async gameAdminTestDeposit(arg0: bigint): Promise<GResult> {
+    async gameAdminTestDeposit(arg0: bigint): Promise<Result> {
         if (this.processError) {
             try {
                 const result = await this.actor.gameAdminTestDeposit(arg0);
-                return from_candid_GResult_n21(this._uploadFile, this._downloadFile, result);
+                return from_candid_Result_n21(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
             const result = await this.actor.gameAdminTestDeposit(arg0);
-            return from_candid_GResult_n21(this._uploadFile, this._downloadFile, result);
+            return from_candid_Result_n21(this._uploadFile, this._downloadFile, result);
         }
     }
-    async gameAdminView(): Promise<GResult_4> {
+    async gameAdminView(): Promise<Result_4> {
         if (this.processError) {
             try {
                 const result = await this.actor.gameAdminView();
-                return from_candid_GResult_4_n27(this._uploadFile, this._downloadFile, result);
+                return from_candid_Result_4_n27(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
             const result = await this.actor.gameAdminView();
-            return from_candid_GResult_4_n27(this._uploadFile, this._downloadFile, result);
+            return from_candid_Result_4_n27(this._uploadFile, this._downloadFile, result);
         }
     }
-    async gameAdminWithdraw(arg0: WithdrawKind): Promise<GResult> {
+    async gameAdminWithdraw(arg0: WithdrawKind): Promise<Result> {
         if (this.processError) {
             try {
                 const result = await this.actor.gameAdminWithdraw(to_candid_WithdrawKind_n33(this._uploadFile, this._downloadFile, arg0));
-                return from_candid_GResult_n21(this._uploadFile, this._downloadFile, result);
+                return from_candid_Result_n21(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
             const result = await this.actor.gameAdminWithdraw(to_candid_WithdrawKind_n33(this._uploadFile, this._downloadFile, arg0));
-            return from_candid_GResult_n21(this._uploadFile, this._downloadFile, result);
+            return from_candid_Result_n21(this._uploadFile, this._downloadFile, result);
         }
     }
-    async gameAuto(arg0: StakeOption, arg1: bigint): Promise<GResult_3> {
+    async gameAuto(arg0: StakeOption, arg1: bigint): Promise<Result_3> {
         if (this.processError) {
             try {
                 const result = await this.actor.gameAuto(to_candid_StakeOption_n34(this._uploadFile, this._downloadFile, arg0), arg1);
-                return from_candid_GResult_3_n35(this._uploadFile, this._downloadFile, result);
+                return from_candid_Result_3_n35(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
             const result = await this.actor.gameAuto(to_candid_StakeOption_n34(this._uploadFile, this._downloadFile, arg0), arg1);
-            return from_candid_GResult_3_n35(this._uploadFile, this._downloadFile, result);
+            return from_candid_Result_3_n35(this._uploadFile, this._downloadFile, result);
         }
     }
     async gameBurned(): Promise<bigint> {
@@ -863,18 +863,18 @@ export class Backend implements backendInterface {
             return result;
         }
     }
-    async gameLoadCredit(arg0: bigint): Promise<GResult> {
+    async gameLoadCredit(arg0: bigint): Promise<Result> {
         if (this.processError) {
             try {
                 const result = await this.actor.gameLoadCredit(arg0);
-                return from_candid_GResult_n21(this._uploadFile, this._downloadFile, result);
+                return from_candid_Result_n21(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
             const result = await this.actor.gameLoadCredit(arg0);
-            return from_candid_GResult_n21(this._uploadFile, this._downloadFile, result);
+            return from_candid_Result_n21(this._uploadFile, this._downloadFile, result);
         }
     }
     async gameMyDashboard(): Promise<Dashboard> {
@@ -891,18 +891,18 @@ export class Backend implements backendInterface {
             return from_candid_Dashboard_n42(this._uploadFile, this._downloadFile, result);
         }
     }
-    async gamePick(arg0: StakeOption | null): Promise<GResult_2> {
+    async gamePick(arg0: StakeOption | null): Promise<Result_2> {
         if (this.processError) {
             try {
                 const result = await this.actor.gamePick(to_candid_opt_n45(this._uploadFile, this._downloadFile, arg0));
-                return from_candid_GResult_2_n46(this._uploadFile, this._downloadFile, result);
+                return from_candid_Result_2_n46(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
             const result = await this.actor.gamePick(to_candid_opt_n45(this._uploadFile, this._downloadFile, arg0));
-            return from_candid_GResult_2_n46(this._uploadFile, this._downloadFile, result);
+            return from_candid_Result_2_n46(this._uploadFile, this._downloadFile, result);
         }
     }
     async gameRanking(): Promise<Ranking> {
@@ -919,46 +919,46 @@ export class Backend implements backendInterface {
             return result;
         }
     }
-    async gameRequestTestTokens(arg0: bigint): Promise<GResult> {
+    async gameRequestTestTokens(arg0: bigint): Promise<Result> {
         if (this.processError) {
             try {
                 const result = await this.actor.gameRequestTestTokens(arg0);
-                return from_candid_GResult_n21(this._uploadFile, this._downloadFile, result);
+                return from_candid_Result_n21(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
             const result = await this.actor.gameRequestTestTokens(arg0);
-            return from_candid_GResult_n21(this._uploadFile, this._downloadFile, result);
+            return from_candid_Result_n21(this._uploadFile, this._downloadFile, result);
         }
     }
-    async gameSave(): Promise<GResult_1> {
+    async gameSave(): Promise<Result_1> {
         if (this.processError) {
             try {
                 const result = await this.actor.gameSave();
-                return from_candid_GResult_1_n51(this._uploadFile, this._downloadFile, result);
+                return from_candid_Result_1_n51(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
             const result = await this.actor.gameSave();
-            return from_candid_GResult_1_n51(this._uploadFile, this._downloadFile, result);
+            return from_candid_Result_1_n51(this._uploadFile, this._downloadFile, result);
         }
     }
-    async gameTestApprove(arg0: bigint): Promise<GResult> {
+    async gameTestApprove(arg0: bigint): Promise<Result> {
         if (this.processError) {
             try {
                 const result = await this.actor.gameTestApprove(arg0);
-                return from_candid_GResult_n21(this._uploadFile, this._downloadFile, result);
+                return from_candid_Result_n21(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
             const result = await this.actor.gameTestApprove(arg0);
-            return from_candid_GResult_n21(this._uploadFile, this._downloadFile, result);
+            return from_candid_Result_n21(this._uploadFile, this._downloadFile, result);
         }
     }
     async gameTournaments(): Promise<Array<TournamentSummary>> {
@@ -1095,41 +1095,41 @@ function from_candid_EndResult_n39(_uploadFile: (file: ExternalBlob) => Promise<
 function from_candid_Error_n3(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _Error): Error_ {
     return from_candid_variant_n4(_uploadFile, _downloadFile, value);
 }
-function from_candid_GResult_1_n51(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _GResult_1): GResult_1 {
-    return from_candid_variant_n52(_uploadFile, _downloadFile, value);
-}
-function from_candid_GResult_2_n46(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _GResult_2): GResult_2 {
-    return from_candid_variant_n47(_uploadFile, _downloadFile, value);
-}
-function from_candid_GResult_3_n35(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _GResult_3): GResult_3 {
-    return from_candid_variant_n36(_uploadFile, _downloadFile, value);
-}
-function from_candid_GResult_4_n27(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _GResult_4): GResult_4 {
-    return from_candid_variant_n28(_uploadFile, _downloadFile, value);
-}
-function from_candid_GResult_5_n19(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _GResult_5): GResult_5 {
-    return from_candid_variant_n20(_uploadFile, _downloadFile, value);
-}
-function from_candid_GResult_6_n25(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _GResult_6): GResult_6 {
-    return from_candid_variant_n26(_uploadFile, _downloadFile, value);
-}
-function from_candid_GResult_7_n23(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _GResult_7): GResult_7 {
-    return from_candid_variant_n24(_uploadFile, _downloadFile, value);
-}
-function from_candid_GResult_8_n5(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _GResult_8): GResult_8 {
-    return from_candid_variant_n6(_uploadFile, _downloadFile, value);
-}
-function from_candid_GResult_n21(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _GResult): GResult {
-    return from_candid_variant_n22(_uploadFile, _downloadFile, value);
-}
 function from_candid_PickResult_n48(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _PickResult): PickResult {
     return from_candid_record_n49(_uploadFile, _downloadFile, value);
 }
-function from_candid_Result_7_n1(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _Result_7): Result_7 {
+function from_candid_Result_1_n51(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _Result_1): Result_1 {
+    return from_candid_variant_n52(_uploadFile, _downloadFile, value);
+}
+function from_candid_Result_2_n46(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _Result_2): Result_2 {
+    return from_candid_variant_n47(_uploadFile, _downloadFile, value);
+}
+function from_candid_Result_3_n35(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _Result_3): Result_3 {
+    return from_candid_variant_n36(_uploadFile, _downloadFile, value);
+}
+function from_candid_Result_4_n27(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _Result_4): Result_4 {
+    return from_candid_variant_n28(_uploadFile, _downloadFile, value);
+}
+function from_candid_Result_5_n19(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _Result_5): Result_5 {
+    return from_candid_variant_n20(_uploadFile, _downloadFile, value);
+}
+function from_candid_Result_6_n25(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _Result_6): Result_6 {
+    return from_candid_variant_n26(_uploadFile, _downloadFile, value);
+}
+function from_candid_Result_7_n23(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _Result_7): Result_7 {
+    return from_candid_variant_n24(_uploadFile, _downloadFile, value);
+}
+function from_candid_Result_8_n5(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _Result_8): Result_8 {
+    return from_candid_variant_n6(_uploadFile, _downloadFile, value);
+}
+function from_candid_Result_9_n1(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _Result_9): Result_9 {
     return from_candid_variant_n2(_uploadFile, _downloadFile, value);
 }
 function from_candid_Result__1_n11(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _Result__1): Result__1 {
     return from_candid_record_n12(_uploadFile, _downloadFile, value);
+}
+function from_candid_Result_n21(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _Result): Result {
+    return from_candid_variant_n22(_uploadFile, _downloadFile, value);
 }
 function from_candid_UserRole_n9(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _UserRole): UserRole {
     return "admin" in value ? UserRole.admin : "user" in value ? UserRole.user : "guest" in value ? UserRole.guest : value;
