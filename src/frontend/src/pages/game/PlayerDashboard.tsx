@@ -15,10 +15,7 @@ import {
   netOf,
   panel,
   panelHeader,
-  picksForPoints,
-  prizeName,
 } from "./game-utils";
-import { useGameConfig } from "./useGame";
 
 interface Props {
   dashboard: Dashboard | undefined;
@@ -26,7 +23,6 @@ interface Props {
 
 export function PlayerDashboard({ dashboard }: Props) {
   const { isAuthenticated } = useAuth();
-  const { data: config } = useGameConfig();
 
   if (!dashboard) {
     return (
@@ -50,10 +46,9 @@ export function PlayerDashboard({ dashboard }: Props) {
 
   const s = dashboard.stats;
   const net = netOf(s);
-  const table = config ? config.pointsTable.map(Number) : [];
-  const best = Number(s.bestPoints);
+  // Biggest return of a single excavation in the current tournament.
   const bestPrize =
-    best > 0 ? prizeName(picksForPoints(table, best)).name : "None yet";
+    dashboard.bestReturn > 0n ? fmtGoldao(dashboard.bestReturn, 2) : "None yet";
 
   return (
     <div className="flex flex-col gap-6">
