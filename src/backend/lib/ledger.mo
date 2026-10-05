@@ -27,6 +27,8 @@ module {
     #GenericError : { error_code : Nat; message : Text };
   };
 
+  public type TransferFromResult = { #Ok : Nat; #Err : TransferFromError };
+
   public type Allowance = { allowance : Nat; expires_at : ?Nat64 };
 
   public type Ledger = actor {
