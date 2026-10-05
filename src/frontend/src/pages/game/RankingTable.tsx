@@ -23,7 +23,7 @@ import {
 } from "./game-utils";
 import { useGameConfig } from "./useGame";
 
-type SortKey = "net" | "points" | "jackpot";
+type SortKey = "volume" | "net" | "points" | "jackpot";
 
 const TOP = 20;
 
@@ -36,18 +36,20 @@ export function RankingTable({ ranking, tournaments }: Props) {
   const { principalId } = useAuth();
   const { data: config } = useGameConfig();
   const table = config ? config.pointsTable.map(Number) : [];
-  const [sort, setSort] = useState<SortKey>("net");
+  const [sort, setSort] = useState<SortKey>("volume");
   const [showAll, setShowAll] = useState(false);
 
   const rows = useMemo(() => {
     if (!ranking) return [];
     const base = [...ranking.players];
     const key = (p: (typeof base)[number]) =>
-      sort === "points"
-        ? Number(p.bestPoints)
-        : sort === "jackpot"
-          ? Number(p.jackpotWon)
-          : Number(netOf(p));
+      sort === "volume"
+        ? Number(p.staked)
+        : sort === "points"
+          ? Number(p.bestPoints)
+          : sort === "jackpot"
+            ? Number(p.jackpotWon)
+            : Number(netOf(p));
     return base
       .sort((a, b) => key(b) - key(a))
       .map((p, i) => ({ ...p, pos: i + 1 }));
@@ -63,8 +65,9 @@ export function RankingTable({ ranking, tournaments }: Props) {
   return (
     <div className="flex flex-col gap-6">
       {ranking && (
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
           <Kpi label="Jackpot pool" value={fmtGoldao(ranking.pool)} diamond />
+          <Kpi label="Top 10 pool" value={fmtGoldao(ranking.top10Pool)} />
           <Kpi label="Staked" value={fmtGoldao(ranking.staked)} />
           <Kpi label="Players" value={String(ranking.players.length)} />
           <Kpi label="Ends in" value={fmtCountdown(ranking.endsAt)} />
@@ -79,6 +82,7 @@ export function RankingTable({ ranking, tournaments }: Props) {
           <div className="inline-flex rounded-md border border-[color:var(--term-border)] p-0.5 font-mono text-[11px]">
             {(
               [
+                ["volume", "Volume"],
                 ["net", "Net"],
                 ["points", "Best prize"],
                 ["jackpot", "Jackpot"],
@@ -117,6 +121,7 @@ export function RankingTable({ ranking, tournaments }: Props) {
                   <th className="hidden px-3 py-2 font-medium sm:table-cell">
                     Staked
                   </th>
+                  <th className="px-3 py-2 font-medium">Top 10</th>
                   <th className="px-3 py-2 font-medium">Net result</th>
                   <th className="hidden px-3 py-2 font-medium sm:table-cell">
                     Best prize
@@ -144,6 +149,15 @@ export function RankingTable({ ranking, tournaments }: Props) {
                       </td>
                       <td className="hidden px-3 py-2.5 sm:table-cell">
                         {fmtGoldao(p.staked)}
+                      </td>
+                      <td
+                        className={cn(
+                          "px-3 py-2.5 tabular-nums",
+                          p.prize > 0n ? gold : inkFaint,
+                        )}
+                      >
+                        #{Number(p.rank)}
+                        {p.prize > 0n ? ` +${fmtGoldao(p.prize, 2)}` : ""}
                       </td>
                       <td
                         className={cn(
@@ -188,6 +202,33 @@ export function RankingTable({ ranking, tournaments }: Props) {
           </button>
         )}
       </div>
+
+      {ranking && ranking.lastTop10.length > 0 && (
+        <div className={panel}>
+          <div className={panelHeader}>
+            <span className={cn(eyebrow, gold)}>
+              Top 10 winners · tournament{" "}
+              {Number(ranking.lastTop10[0].tournament)}
+            </span>
+          </div>
+          <ul className="divide-y divide-[color:var(--term-border-faint)] font-mono text-xs">
+            {ranking.lastTop10.map((w) => (
+              <li
+                key={`${w.player.toText()}-${String(w.rank)}`}
+                className="flex items-center justify-between px-5 py-2.5"
+              >
+                <span className={ink}>
+                  #{Number(w.rank)} {shortPrincipal(w.player.toText())}
+                </span>
+                <span className={inkFaint}>{fmtGoldao(w.volume)} staked</span>
+                <span className={cn("tabular-nums", gold)}>
+                  +{fmtGoldao(w.prize, 2)}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {ranking && ranking.jackpots.length > 0 && (
         <div className={panel}>
