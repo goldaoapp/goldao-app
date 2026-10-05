@@ -124,6 +124,32 @@ module {
     var lastTop10 : [TopPrize];
     best : Map.Map<Principal, Nat>;
     loaded : Set.Set<Principal>;
+    securityLog : Map.Map<Nat, [SecurityEvent]>;
+    var fundSamples : [Int];
+  };
+
+  // Security log. #info: something happened (admin action, recovery). #warning: worth a look.
+  // #critical: needs the admin's attention (the game may be halted).
+  public type SecurityLevel = { #info; #warning; #critical };
+
+  // Repeated events with the same code on the same UTC day are merged: count and lastAt grow,
+  // description keeps the latest detail.
+  public type SecurityEvent = {
+    at : Int;
+    lastAt : Int;
+    level : SecurityLevel;
+    code : Text;
+    title : Text;
+    description : Text;
+    count : Nat;
+  };
+
+  public type SecurityDay = { day : Nat; events : Nat; attention : Nat };
+
+  public type SecurityLogView = {
+    days : [SecurityDay];
+    day : Nat;
+    events : [SecurityEvent];
   };
 
   public type SecurityView = {
