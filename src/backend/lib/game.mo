@@ -41,6 +41,9 @@ module {
   public let DAY_NS : Int = 86_400_000_000_000;
   public let BUSY_STALE_NS : Int = 600_000_000_000;
   public let STAMP_MAX_AGE_NS : Nat64 = 72_000_000_000_000;
+  public let CLOSED_MSG : Text = "The tournament has just closed. Your balance was paid out or carried over to the new tournament: check your wallet and To collect, then try again.";
+  public let ERR_PAY_FUNDS : Text = "The bank wallet does not cover the payout.";
+  public let ERR_PAY_ALLOWANCE : Text = "The payout authorization is too low.";
   public let LOAD_REJECT_MAX : Nat = 20;
   public let LOAD_REJECT_WINDOW_NS : Int = 60_000_000_000;
   public let PAY_BATCH : Nat = 20;
