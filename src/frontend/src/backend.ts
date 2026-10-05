@@ -108,6 +108,7 @@ export interface Dashboard {
     history: Array<PlayerTournamentResult>;
     credit: bigint;
     stats: TournamentStats;
+    bestReturn: bigint;
     allowance: bigint;
     faucetRemaining: bigint;
     top10Entry: bigint;
@@ -454,6 +455,7 @@ export interface backendInterface {
     gameAdminView(): Promise<GResult_4>;
     gameAdminWithdraw(kind: WithdrawKind): Promise<GResult>;
     gameAuto(stake: StakeOption, stopAt: bigint): Promise<GResult_3>;
+    gameBurned(): Promise<bigint>;
     gameConfig(): Promise<GameConfig>;
     gameLoadCredit(goldao: bigint): Promise<GResult>;
     gameMyDashboard(): Promise<Dashboard>;
@@ -831,6 +833,20 @@ export class Backend implements backendInterface {
         } else {
             const result = await this.actor.gameAuto(to_candid_StakeOption_n34(this._uploadFile, this._downloadFile, arg0), arg1);
             return from_candid_GResult_3_n35(this._uploadFile, this._downloadFile, result);
+        }
+    }
+    async gameBurned(): Promise<bigint> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.gameBurned();
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.gameBurned();
+            return result;
         }
     }
     async gameConfig(): Promise<GameConfig> {
@@ -1307,6 +1323,7 @@ function from_candid_record_n43(_uploadFile: (file: ExternalBlob) => Promise<Uin
     history: Array<_PlayerTournamentResult>;
     credit: bigint;
     stats: _TournamentStats;
+    bestReturn: bigint;
     allowance: bigint;
     faucetRemaining: bigint;
     top10Entry: bigint;
@@ -1325,6 +1342,7 @@ function from_candid_record_n43(_uploadFile: (file: ExternalBlob) => Promise<Uin
     history: Array<PlayerTournamentResult>;
     credit: bigint;
     stats: TournamentStats;
+    bestReturn: bigint;
     allowance: bigint;
     faucetRemaining: bigint;
     top10Entry: bigint;
@@ -1344,6 +1362,7 @@ function from_candid_record_n43(_uploadFile: (file: ExternalBlob) => Promise<Uin
         history: value.history,
         credit: value.credit,
         stats: value.stats,
+        bestReturn: value.bestReturn,
         allowance: value.allowance,
         faucetRemaining: value.faucetRemaining,
         top10Entry: value.top10Entry,
