@@ -15,17 +15,36 @@ export const eyebrow =
 /** Set to an image path (e.g. "/assets/images/diamond.png") once the diamond artwork is added. */
 export const DIAMOND_IMG: string | null = "/assets/images/diamond.png";
 
-const E8S = 100_000_000;
+/** e8s in one cent (0.01 GOLDAO). Every amount on screen is rounded down to cents, never up. */
+const CENT = 1_000_000n;
 
+/**
+ * GOLDAO amount rounded down to 2 decimals, as a number. Display only: it is
+ * exact for animations because it always has at most 2 decimals.
+ */
 export function toGoldao(e8s: bigint): number {
-  return Number(e8s) / E8S;
+  return Number(e8s / CENT) / 100;
 }
 
-export function fmtGoldao(e8s: bigint, digits = 0): string {
-  return toGoldao(e8s).toLocaleString("en-US", {
-    minimumFractionDigits: digits,
-    maximumFractionDigits: digits,
-  });
+/** Whole cents -> "1,234" or "1,234.56": decimals only when there are cents. */
+export function fmtCents(cents: bigint): string {
+  const neg = cents < 0n;
+  const abs = neg ? -cents : cents;
+  const whole = (abs / 100n).toLocaleString("en-US");
+  const frac = abs % 100n;
+  const body =
+    frac === 0n ? whole : `${whole}.${frac.toString().padStart(2, "0")}`;
+  return neg ? `-${body}` : body;
+}
+
+/** GOLDAO amount, rounded down: at most 2 decimals, shown only when needed. */
+export function fmtGoldao(e8s: bigint): string {
+  return fmtCents(e8s / CENT);
+}
+
+/** Same as fmtGoldao for a number that already has at most 2 decimals (animations). */
+export function fmtGoldaoNumber(value: number): string {
+  return fmtCents(BigInt(Math.round(value * 100)));
 }
 
 /** Average points are sent as x100 integers. */
@@ -62,14 +81,37 @@ export const STAKE_LABELS = ["Min", "Mid", "Max"];
 
 export const PAYOUT_BPS = 9_250;
 
-/** Net multiplier text for a points value, e.g. 114 -> "1.05x". */
-export function fmtMult(points: number): string {
-  return `${((points * PAYOUT_BPS) / 1_000_000).toFixed(2)}x`;
+/**
+ * Multiplier in hundredths for a points value (105 = 1.05x), rounded down.
+ * Same integer math as the backend (Game.multX100).
+ */
+export function multX100(points: number, bps: number = PAYOUT_BPS): number {
+  return Math.floor((points * bps) / 10_000);
 }
 
-/** Gross payout (e8s) for a stake and points, same integer math as the backend. */
+/** Hundredths -> "1.05x". */
+export function fmtMultX100(m: number): string {
+  return `${Math.floor(m / 100)}.${String(m % 100).padStart(2, "0")}x`;
+}
+
+/** Multiplier text for a points value, e.g. 114 -> "1.05x" (rounded down). */
+export function fmtMult(points: number, bps: number = PAYOUT_BPS): string {
+  return fmtMultX100(multX100(points, bps));
+}
+
+/** Multiplier text taken from what the backend returned: gross / stake, rounded down. */
+export function fmtMultOf(gross: bigint, stake: bigint): string {
+  return fmtMultX100(stake > 0n ? Number((gross * 100n) / stake) : 0);
+}
+
+/** Gross payout (e8s) for a stake and points, same integer math as the backend (Game.gross). */
 export function grossOf(stake: bigint, points: number): bigint {
-  return (stake * BigInt(points) * BigInt(PAYOUT_BPS)) / 1_000_000n;
+  return (stake * BigInt(multX100(points))) / 100n;
+}
+
+/** Points that pay when the mine collapses after `picks` safe picks, same as the backend (collapsePoints). */
+export function collapsePoints(points: number): number {
+  return Math.floor((points + 1) / 2);
 }
 
 export interface PrizeMeta {
@@ -120,10 +162,10 @@ export function netOf(row: {
 /** Picks at which an excavation ends and pays by itself. Same as the backend. */
 export const MAX_PICKS = 10;
 
-export function fmtSigned(e8s: bigint, digits = 0): string {
-  const sign = e8s > 0n ? "+" : e8s < 0n ? "-" : "";
-  const abs = e8s < 0n ? -e8s : e8s;
-  return `${sign}${fmtGoldao(abs, digits)}`;
+export function fmtSigned(e8s: bigint): string {
+  const cents = e8s / CENT;
+  const sign = cents > 0n ? "+" : cents < 0n ? "-" : "";
+  return `${sign}${fmtCents(cents < 0n ? -cents : cents)}`;
 }
 
 /** Amount authorized to the game in one step (whole GOLDAO). */
