@@ -60,7 +60,7 @@ export function fmtDate(ns: bigint): string {
 
 export const STAKE_LABELS = ["Min", "Mid", "Max"];
 
-export const PAYOUT_BPS = 9_200;
+export const PAYOUT_BPS = 9_250;
 
 /** Net multiplier text for a points value, e.g. 114 -> "1.05x". */
 export function fmtMult(points: number): string {
