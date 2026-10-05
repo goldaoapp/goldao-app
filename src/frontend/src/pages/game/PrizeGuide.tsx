@@ -81,6 +81,16 @@ export function PrizeGuide({ config, stakes }: Props) {
             costs the network fee). Smaller balances stay in To collect for the
             next tournament.
           </p>
+          <p>
+            Top 10: {Number(config.top10Bps) / 100}% of every stake goes to a
+            prize pool paid when the tournament closes to the ten players with
+            the most volume staked (
+            {config.top10Weights.map((w) => `${Number(w)}%`).join(", ")} of the
+            pool, from first to tenth). You need at least{" "}
+            {fmtGoldao(config.top10MinVolumeE8s)} GOLDAO staked to qualify; the
+            shares nobody qualifies for stay in the pool for the next
+            tournament. Your place shows next to To collect.
+          </p>
         </div>
       </div>
 
