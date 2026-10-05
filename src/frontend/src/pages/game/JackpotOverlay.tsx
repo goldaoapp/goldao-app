@@ -358,13 +358,7 @@ export function JackpotOverlay({
             className="text-gradient-gold font-display text-[clamp(52px,14vw,140px)] font-bold leading-none tabular-nums drop-shadow-[0_0_24px_oklch(0.74_0.14_80/0.55)]"
           >
             +
-            <RollingNumber
-              value={toGoldao(won)}
-              digits={2}
-              from={0}
-              scaled
-              tick
-            />
+            <RollingNumber value={toGoldao(won)} from={0} scaled tick />
           </motion.span>
           <span className={cn("font-mono text-sm tracking-[0.2em]", gold)}>
             GOLDAO
