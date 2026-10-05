@@ -11,6 +11,7 @@ export interface AdminView {
     durationDays: bigint;
     staked: bigint;
     stakes: Array<bigint>;
+    top10: bigint;
     smallBalances: bigint;
     toCollect: bigint;
     bankAccount?: Principal;
@@ -50,7 +51,10 @@ export interface Cell {
     name: string;
 }
 export interface Dashboard {
+    top10Pool: bigint;
+    top10Rank: bigint;
     stakes: Array<bigint>;
+    top10Prize: bigint;
     balance: bigint;
     open?: ExcavationView;
     pool: bigint;
@@ -60,6 +64,7 @@ export interface Dashboard {
     stats: TournamentStats;
     allowance: bigint;
     faucetRemaining: bigint;
+    top10Entry: bigint;
     pendingPayout: bigint;
     paused: boolean;
     endsAt: bigint;
@@ -208,7 +213,9 @@ export interface GameConfig {
     mines: bigint;
     loadMax: bigint;
     loadMin: bigint;
+    top10Bps: bigint;
     ledgerId: string;
+    top10Weights: Array<bigint>;
     stakeCapE8s: bigint;
     feeE8s: bigint;
     diamond1Bps: bigint;
@@ -217,6 +224,7 @@ export interface GameConfig {
     pointsTable: Array<bigint>;
     creditCapE8s: bigint;
     maxPicks: bigint;
+    top10MinVolumeE8s: bigint;
     payoutBps: bigint;
     safePicks: bigint;
     minPayoutE8s: bigint;
@@ -255,7 +263,9 @@ export interface PlayerRow {
     deepest: bigint;
     player: Principal;
     excavations: bigint;
+    rank: bigint;
     bestPoints: bigint;
+    prize: bigint;
     returned: bigint;
 }
 export interface PlayerTournamentResult {
@@ -265,9 +275,11 @@ export interface PlayerTournamentResult {
     payout: bigint;
 }
 export interface Ranking {
+    top10Pool: bigint;
     staked: bigint;
     pool: bigint;
     tournament: bigint;
+    lastTop10: Array<TopPrize>;
     players: Array<PlayerRow>;
     jackpots: Array<JackpotWin>;
     endsAt: bigint;
@@ -290,6 +302,13 @@ export interface SecurityView {
     accountingOk: boolean;
     halted: boolean;
     saturations: bigint;
+}
+export interface TopPrize {
+    player: Principal;
+    rank: bigint;
+    tournament: bigint;
+    volume: bigint;
+    prize: bigint;
 }
 export interface TournamentStats {
     staked: bigint;
