@@ -41,7 +41,8 @@ const E8S = 100_000_000n;
 // Fixed choices only: no free-text numbers, so a typo cannot reach the canister.
 const TEST_DEPOSITS = [10_000, 30_000, 100_000, 200_000];
 const DURATIONS = [1, 3, 7, 14, 30];
-const POOL_SEED = 5_000n * E8S;
+const POOL_SEED_MIN = 5_000;
+const POOL_SEED_MAX = 20_000;
 // The wallet authorization given to the backend lives only this long.
 const WITHDRAW_WINDOW_MS = 2 * 60_000;
 const PAY_WINDOW_MS = 10 * 60_000;
@@ -72,6 +73,7 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
   const [ask, setAsk] = useState<Ask | null>(null);
   const [deposit, setDeposit] = useState(String(TEST_DEPOSITS[1]));
   const [days, setDays] = useState("");
+  const [seed, setSeed] = useState(String(POOL_SEED_MIN));
   const [who, setWho] = useState("");
   const [selfId, setSelfId] = useState("");
   const [busy, setBusy] = useState(false);
@@ -155,7 +157,11 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
     const cap = bank > GOLDAO_FEE_E8S ? bank - GOLDAO_FEE_E8S : 0n;
     return view.withdrawable < cap ? view.withdrawable : cap;
   })();
-  const poolGap = view && view.pool < POOL_SEED ? POOL_SEED - view.pool : 0n;
+  const seedNum = /^\d+$/.test(seed) ? Number(seed) : 0;
+  const seedValid = seedNum >= POOL_SEED_MIN && seedNum <= POOL_SEED_MAX;
+  const seedTarget = BigInt(seedNum) * E8S;
+  const poolGap =
+    view && seedValid && view.pool < seedTarget ? seedTarget - view.pool : 0n;
 
   const allBlockers: string[] = [];
   if (view) {
@@ -381,22 +387,35 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
           <Row
             title="Jackpot pool"
             hint={
-              poolGap > 0n
-                ? `Tops the pool up to ${fmtGoldao(POOL_SEED)} using ${fmtGoldao(poolGap)} from the fund.`
-                : `Already at the minimum (${fmtGoldao(POOL_SEED)}).`
+              !seedValid
+                ? `Choose between ${POOL_SEED_MIN.toLocaleString("en-US")} and ${POOL_SEED_MAX.toLocaleString("en-US")} GOLDAO.`
+                : poolGap > 0n
+                  ? `Tops the pool up to ${fmtGoldao(seedTarget)} using ${fmtGoldao(poolGap)} from the fund.`
+                  : `The pool is already at or above ${fmtGoldao(seedTarget)}.`
             }
           >
+            <input
+              type="number"
+              inputMode="numeric"
+              min={POOL_SEED_MIN}
+              max={POOL_SEED_MAX}
+              step={1000}
+              value={seed}
+              onChange={(e) => setSeed(e.target.value)}
+              disabled={working}
+              className={inputCls}
+            />
             <Button
               variant="outline"
-              disabled={working || !view || poolGap === 0n}
+              disabled={working || !view || !seedValid || poolGap === 0n}
               onClick={() =>
                 confirmThen({
                   title: `Seed the jackpot pool with ${fmtGoldao(poolGap)} GOLDAO?`,
-                  detail: `The pool will be ${fmtGoldao(POOL_SEED)}. The amount comes out of the bank fund.`,
+                  detail: `The pool will be ${fmtGoldao(seedTarget)}. The amount comes out of the bank fund.`,
                   go: () =>
                     act(
                       "seed",
-                      () => actor!.gameAdminSeedPool(),
+                      () => actor!.gameAdminSeedPool(BigInt(seedNum)),
                       (v) => `Pool is now ${fmtGoldao(v)}.`,
                     ),
                 })
