@@ -51,6 +51,17 @@ export function useRanking() {
   });
 }
 
+/** Total GOLDAO burned by the game (public). */
+export function useBurned() {
+  const { actor } = useAuth();
+  return useQuery({
+    queryKey: [KEY, "burned"],
+    queryFn: () => actor!.gameBurned(),
+    enabled: !!actor,
+    refetchInterval: 15_000,
+  });
+}
+
 export function useTournaments() {
   const { actor } = useAuth();
   return useQuery({
