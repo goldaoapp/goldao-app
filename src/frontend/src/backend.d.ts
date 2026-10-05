@@ -62,6 +62,7 @@ export interface Dashboard {
     history: Array<PlayerTournamentResult>;
     credit: bigint;
     stats: TournamentStats;
+    bestReturn: bigint;
     allowance: bigint;
     faucetRemaining: bigint;
     top10Entry: bigint;
@@ -405,6 +406,7 @@ export interface backendInterface {
     gameAdminView(): Promise<GResult_4>;
     gameAdminWithdraw(kind: WithdrawKind): Promise<GResult>;
     gameAuto(stake: StakeOption, stopAt: bigint): Promise<GResult_3>;
+    gameBurned(): Promise<bigint>;
     gameConfig(): Promise<GameConfig>;
     gameLoadCredit(goldao: bigint): Promise<GResult>;
     gameMyDashboard(): Promise<Dashboard>;
