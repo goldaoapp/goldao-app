@@ -48,20 +48,20 @@ export function PlayerDashboard({ dashboard }: Props) {
   const net = netOf(s);
   // Biggest return of a single excavation in the current tournament.
   const bestPrize =
-    dashboard.bestReturn > 0n ? fmtGoldao(dashboard.bestReturn, 2) : "None yet";
+    dashboard.bestReturn > 0n ? fmtGoldao(dashboard.bestReturn) : "None yet";
 
   return (
     <div className="flex flex-col gap-6">
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         <Kpi label="Excavations" value={String(Number(s.excavations))} />
         <Kpi label="Staked" value={fmtGoldao(s.staked)} />
-        <Kpi label="Returned" value={fmtGoldao(s.returned, 2)} />
+        <Kpi label="Returned" value={fmtGoldao(s.returned)} />
         <Kpi
           label="Net result"
-          value={fmtSigned(net, 2)}
+          value={fmtSigned(net)}
           tone={net > 0n ? "up" : net < 0n ? "down" : undefined}
         />
-        <Kpi label="Jackpots" value={fmtGoldao(s.jackpotWon, 2)} diamond />
+        <Kpi label="Jackpots" value={fmtGoldao(s.jackpotWon)} diamond />
         <Kpi label="Collapses" value={String(Number(s.collapses))} />
         <Kpi label="Best prize" value={bestPrize} />
         <Kpi label="Deepest pick" value={String(Number(s.deepest))} />
@@ -78,10 +78,10 @@ export function PlayerDashboard({ dashboard }: Props) {
           </span>
         </div>
         <dl className="grid grid-cols-2 gap-4 p-5 font-mono text-xs sm:grid-cols-3">
-          <Item label="To collect" value={fmtGoldao(dashboard.credit, 2)} />
+          <Item label="To collect" value={fmtGoldao(dashboard.credit)} />
           <Item
             label="Pending payout"
-            value={fmtGoldao(dashboard.pendingPayout, 2)}
+            value={fmtGoldao(dashboard.pendingPayout)}
           />
           <Item label="Jackpot pool" value={fmtGoldao(dashboard.pool)} />
         </dl>
@@ -121,12 +121,12 @@ export function PlayerDashboard({ dashboard }: Props) {
                     </td>
                     <td className="px-3 py-2.5">{fmtGoldao(h.stats.staked)}</td>
                     <td className="px-3 py-2.5 tabular-nums">
-                      {fmtSigned(netOf(h.stats), 2)}
+                      {fmtSigned(netOf(h.stats))}
                     </td>
                     <td
                       className={cn("px-5 py-2.5 text-right tabular-nums", ink)}
                     >
-                      {fmtGoldao(h.payout, 2)}
+                      {fmtGoldao(h.payout)}
                     </td>
                   </tr>
                 ))}
