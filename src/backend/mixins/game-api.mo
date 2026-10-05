@@ -21,6 +21,12 @@ mixin (
   transient var gSat : Nat = 0;
   // Players with a credit load in flight: one at a time.
   transient let gLoading = Set.empty<Principal>();
+  // Rejected loads (no funds, no allowance) in the current window. Every load that reaches the
+  // ledger bumps movSeq, which can make the bank refresh fail, so a flood of loads from accounts
+  // that never paid is cut off before it reaches the ledger. Players who already loaded once
+  // are never throttled.
+  transient var gRejectedSince : Int = 0;
+  transient var gRejected : Nat = 0;
 
   func gSub(a : Nat, b : Nat) : Nat {
     if (b > a) {
@@ -28,6 +34,20 @@ mixin (
       return 0;
     };
     a - b;
+  };
+
+  func gLoadThrottled(p : Principal) : Bool {
+    if (not gameState.realLedger or gameState.loaded.contains(p)) return false;
+    Time.now() - gRejectedSince < Game.LOAD_REJECT_WINDOW_NS and gRejected >= Game.LOAD_REJECT_MAX;
+  };
+
+  func gLoadRejected() {
+    let now = Time.now();
+    if (now - gRejectedSince >= Game.LOAD_REJECT_WINDOW_NS) {
+      gRejectedSince := now;
+      gRejected := 0;
+    };
+    gRejected += 1;
   };
 
   func gUnpaidTotal() : Nat {
@@ -717,6 +737,7 @@ mixin (
       return #err("To collect cannot go above " # Nat.toText(Game.CREDIT_CAP / Game.E8S) # " GOLDAO.");
     };
     if (gLoading.contains(caller)) return #err("A load is already in progress.");
+    if (gLoadThrottled(caller)) return #err("Too many rejected loads right now. Try again in a minute.");
     gLoading.add(caller);
     let res = await lLoad(caller, amount);
     gLoading.remove(caller);
@@ -727,8 +748,14 @@ mixin (
         gameState.owed += amount;
         #ok(gCredit(caller));
       };
-      case (#allowance) #err("Authorize the game to charge up to " # Nat.toText(need / Game.E8S) # " GOLDAO.");
-      case (#funds) #err("Insufficient balance: you need " # Nat.toText(need / Game.E8S) # " GOLDAO (amount plus the network fee).");
+      case (#allowance) {
+        gLoadRejected();
+        #err("Authorize the game to charge up to " # Nat.toText(need / Game.E8S) # " GOLDAO.");
+      };
+      case (#funds) {
+        gLoadRejected();
+        #err("Insufficient balance: you need " # Nat.toText(need / Game.E8S) # " GOLDAO (amount plus the network fee).");
+      };
       case (#down) #err("The ledger is unavailable. Try again later.");
     };
   };
