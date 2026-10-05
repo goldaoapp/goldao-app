@@ -5,8 +5,11 @@ import { GOLDAO_FEE_E8S, approveSpender } from "@/lib/goldao-ledger";
 import { useInternetIdentity } from "@/lib/internet-identity";
 import { cn } from "@/lib/utils";
 import { Principal } from "@icp-sdk/core/principal";
+import { useQueryClient } from "@tanstack/react-query";
 import { Gem, Landmark, Shield } from "lucide-react";
 import { useState } from "react";
+import { ConfirmDialog } from "./ConfirmDialog";
+import { CopyField } from "./CopyField";
 import { Spinner } from "./Spinner";
 import {
   DIAMOND_TEXT,
@@ -39,6 +42,9 @@ const E8S = 100_000_000n;
 const TEST_DEPOSITS = [10_000, 30_000, 100_000, 200_000];
 const DURATIONS = [1, 3, 7, 14, 30];
 const POOL_SEED = 5_000n * E8S;
+// The wallet authorization given to the backend lives only this long.
+const WITHDRAW_WINDOW_MS = 2 * 60_000;
+const PAY_WINDOW_MS = 10 * 60_000;
 
 type Res<T> = { __kind__: "ok"; ok: T } | { __kind__: "err"; err: string };
 
@@ -55,15 +61,15 @@ const inputCls =
   "w-80 max-w-full rounded-md border border-[color:var(--term-border)] bg-transparent px-3 py-1.5 font-mono text-xs";
 
 export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
-  const { actor } = useAuth();
+  const { actor, principalId } = useAuth();
   const { identity } = useInternetIdentity();
+  const queryClient = useQueryClient();
   const { run, pending } = useGameAction();
   const { data: security } = useSecurityView(!!view);
   const { data: config } = useGameConfig();
   const minPayout = config ? fmtGoldao(config.minPayoutE8s) : "-";
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [ask, setAsk] = useState<Ask | null>(null);
-  const [typed, setTyped] = useState("");
   const [deposit, setDeposit] = useState(String(TEST_DEPOSITS[1]));
   const [days, setDays] = useState("");
   const [who, setWho] = useState("");
@@ -76,10 +82,7 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
   const selfText = view?.selfId?.toText();
 
   const unpaid = view?.payouts.filter((p) => !p.paid) ?? [];
-  const unpaidTotal = unpaid.reduce(
-    (t, p) => t + p.amount + GOLDAO_FEE_E8S,
-    0n,
-  );
+  const unpaidTotal = view?.unpaidPayouts ?? 0n;
 
   // Every action goes through here: one at a time, result always shown.
   const act = async <T,>(
@@ -87,6 +90,7 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
     call: () => Promise<Res<T>>,
     text: (v: T) => string,
     before?: () => Promise<void>,
+    after?: () => Promise<void>,
   ) => {
     if (!actor || working) return;
     setMsg(null);
@@ -98,32 +102,42 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
     } catch (e) {
       setMsg({ ok: false, text: errorMessage(e) });
     } finally {
+      if (after) await after();
       setBusy(false);
     }
   };
 
-  const confirmThen = (a: Ask) => {
-    setTyped("");
-    setAsk(a);
-  };
+  const confirmThen = (a: Ask) => setAsk(a);
 
   // Real mode: the backend spends an allowance the admin wallet grants.
-  // It is set here, right before the action, to exactly what that action needs.
-  const ensureAllowance = async (required: bigint) => {
+  // It is set right before the action to exactly what the action needs, and the
+  // ledger drops it by itself after `windowMs`, used or not.
+  const authorize = async (required: bigint, windowMs: number) => {
     if (!real) return;
-    if (!identity || !bankText || !selfText || !actor) {
+    if (!identity || !bankText || !selfText) {
       throw new Error("Sign in with the admin wallet first.");
     }
     if (identity.getPrincipal().toText() !== bankText) {
       throw new Error("This session is not the bank wallet.");
     }
-    const cur = await actor.gameAdminLedgerAllowance(
-      Principal.fromText(bankText),
-      Principal.fromText(selfText),
-    );
-    if (cur.__kind__ === "err") throw new Error(cur.err);
-    if (cur.ok >= required) return;
-    await approveSpender(identity, selfText, required);
+    await approveSpender(identity, selfText, required, windowMs);
+  };
+
+  // Right after an operation, cancels whatever authorization is left. A dust
+  // amount is not worth another network fee: it expires within minutes.
+  const revokeLeftover = async () => {
+    if (!real || !actor || !identity || !bankText || !selfText) return;
+    try {
+      const cur = await actor.gameAdminLedgerAllowance(
+        Principal.fromText(bankText),
+        Principal.fromText(selfText),
+      );
+      if (cur.__kind__ === "ok" && cur.ok > GOLDAO_FEE_E8S) {
+        await approveSpender(identity, selfText, 0n);
+      }
+    } catch {
+      // The expiry set when it was granted still applies.
+    }
   };
 
   const parsePrincipal = (t: string): Principal | null => {
@@ -154,14 +168,41 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
     if (bank <= GOLDAO_FEE_E8S) allBlockers.push("the wallet is empty");
   }
 
-  const payNow = () =>
-    act(
-      "pay",
-      () => actor!.gameAdminPay(),
-      (v) =>
-        `Paid ${Number(v.paid)}, failed ${Number(v.failed)}, remaining ${Number(v.remaining)}.`,
-      () => ensureAllowance(unpaidTotal),
-    );
+  // One authorization for the whole run, then every batch of 20 back to back.
+  const payNow = async () => {
+    if (!actor || working) return;
+    setMsg(null);
+    setBusy(true);
+    let paid = 0;
+    let failed = 0;
+    let remaining = unpaid.length;
+    try {
+      await authorize(unpaidTotal, PAY_WINDOW_MS);
+      for (let i = 0; i < 500; i++) {
+        const r = await run("pay", () => actor.gameAdminPay(), false);
+        paid += Number(r.paid);
+        failed += Number(r.failed);
+        remaining = Number(r.remaining);
+        if (remaining === 0 || r.paid === 0n) break;
+      }
+      setMsg({
+        ok: failed === 0 && remaining === 0,
+        text: `Paid ${paid}, failed ${failed}, remaining ${remaining}.`,
+      });
+    } catch (e) {
+      setMsg({
+        ok: false,
+        text:
+          paid > 0
+            ? `Paid ${paid} before an error: ${errorMessage(e)}`
+            : errorMessage(e),
+      });
+    } finally {
+      await revokeLeftover();
+      await queryClient.invalidateQueries({ queryKey: ["game"] });
+      setBusy(false);
+    }
+  };
 
   return (
     <div className="flex flex-col gap-6">
@@ -205,6 +246,11 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
         <Kpi
           label="Jackpot reserve"
           value={view ? fmtGoldao(view.reserve) : <Spinner />}
+          sub="GOLDAO"
+        />
+        <Kpi
+          label="Top 10 pool"
+          value={view ? fmtGoldao(view.top10) : <Spinner />}
           sub="GOLDAO"
         />
         <Kpi
@@ -285,6 +331,14 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
           </span>
         </div>
         <div className="flex flex-col gap-5 p-5">
+          <CopyField
+            label={
+              real
+                ? "Admin wallet address: send GOLDAO here to fund the game"
+                : "Admin wallet address: it becomes the bank when you enable the real ledger"
+            }
+            value={bankText ?? principalId ?? ""}
+          />
           {view && !real && (
             <Row
               title="Test bank"
@@ -354,7 +408,7 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
 
           <Row
             title="Withdraw earnings"
-            hint={`Takes ${fmtGoldao(availableOut)} GOLDAO (cycles first, then the surplus over the fund target) to the fixed treasury address. Network fee: ${fmtGoldao(GOLDAO_FEE_E8S)}.`}
+            hint={`Takes ${fmtGoldao(availableOut)} GOLDAO (cycles first, then the surplus over the fund target) to the fixed treasury address. Network fee: ${fmtGoldao(GOLDAO_FEE_E8S)}.${real ? " The wallet authorization is set for that amount only and expires in 2 minutes." : ""}`}
           >
             <Button
               variant="outline"
@@ -368,7 +422,12 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
                       "withdraw",
                       () => actor!.gameAdminWithdraw(WithdrawKind.available),
                       (v) => `Done. Bank is now ${fmtGoldao(v)}.`,
-                      () => ensureAllowance(availableOut + GOLDAO_FEE_E8S),
+                      () =>
+                        authorize(
+                          availableOut + GOLDAO_FEE_E8S,
+                          WITHDRAW_WINDOW_MS,
+                        ),
+                      revokeLeftover,
                     ),
                 })
               }
@@ -381,7 +440,7 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
             title="Withdraw everything"
             hint={
               allBlockers.length === 0
-                ? `Empties the wallet (${fmtGoldao(bank - GOLDAO_FEE_E8S)} GOLDAO) to the fixed treasury address and resets pool, reserve and cycles.`
+                ? `Empties the wallet (${fmtGoldao(bank - GOLDAO_FEE_E8S)} GOLDAO) to the fixed treasury address and resets pool, reserve, Top 10 pool and cycles.`
                 : `Not available: ${allBlockers.join(", ")}.`
             }
           >
@@ -400,7 +459,17 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
                       "withdraw-all",
                       () => actor!.gameAdminWithdraw(WithdrawKind.all),
                       (v) => `Done. Bank is now ${fmtGoldao(v)}.`,
-                      () => ensureAllowance(bank),
+                      async () => {
+                        const fresh = await actor!.gameAdminRefreshBank();
+                        if (fresh.__kind__ === "err")
+                          throw new Error(fresh.err);
+                        // The authorization costs one fee first, then the transfer.
+                        await authorize(
+                          fresh.ok - GOLDAO_FEE_E8S,
+                          WITHDRAW_WINDOW_MS,
+                        );
+                      },
+                      revokeLeftover,
                     ),
                 })
               }
@@ -538,7 +607,7 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
             hint={
               unpaid.length === 0
                 ? "Nothing to pay."
-                : `${unpaid.length} payouts, ${fmtGoldao(unpaidTotal)} GOLDAO including fees. Paid in batches of 20.${real ? " The wallet authorization is set automatically." : ""}`
+                : `${fmtGoldao(unpaidTotal)} GOLDAO pending including fees, paid in batches of 20 until done.${real ? " The wallet authorization is set automatically for exactly that amount and expires in 10 minutes." : ""}`
             }
           >
             <Button
@@ -546,8 +615,9 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
               className="gradient-primary text-primary-foreground"
               onClick={() =>
                 confirmThen({
-                  title: `Pay ${Math.min(20, unpaid.length)} of ${unpaid.length} pending payouts?`,
-                  detail: "Funds leave the admin wallet to the players.",
+                  title: `Pay all pending payouts (${fmtGoldao(unpaidTotal)} GOLDAO)?`,
+                  detail:
+                    "Funds leave the admin wallet to the players. Keep this page open until it finishes.",
                   go: payNow,
                 })
               }
@@ -801,43 +871,19 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
       )}
 
       {ask && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-          <div className="flex w-full max-w-md flex-col gap-4 rounded-xl border border-[color:var(--term-border)] bg-[var(--term-card)] p-6">
-            <p className={cn("font-display text-lg font-semibold", ink)}>
-              {ask.title}
-            </p>
-            <p className={cn("text-sm", inkMid)}>{ask.detail}</p>
-            {ask.word && (
-              <label className="flex flex-col gap-1.5">
-                <span className={cn("font-mono text-[11px]", inkFaint)}>
-                  Type {ask.word} to continue
-                </span>
-                <input
-                  value={typed}
-                  onChange={(e) => setTyped(e.target.value)}
-                  autoComplete="off"
-                  className="rounded-md border border-[color:var(--term-border)] bg-transparent px-3 py-1.5 font-mono text-sm"
-                />
-              </label>
-            )}
-            <div className="flex justify-end gap-3">
-              <Button variant="outline" onClick={() => setAsk(null)}>
-                Cancel
-              </Button>
-              <Button
-                disabled={working || (!!ask.word && typed !== ask.word)}
-                className="gradient-primary text-primary-foreground"
-                onClick={() => {
-                  const go = ask.go;
-                  setAsk(null);
-                  void go();
-                }}
-              >
-                Confirm
-              </Button>
-            </div>
-          </div>
-        </div>
+        <ConfirmDialog
+          key={ask.title}
+          title={ask.title}
+          detail={ask.detail}
+          word={ask.word}
+          busy={working}
+          onCancel={() => setAsk(null)}
+          onConfirm={() => {
+            const go = ask.go;
+            setAsk(null);
+            void go();
+          }}
+        />
       )}
 
       {(working || msg) && (
