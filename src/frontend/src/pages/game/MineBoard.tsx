@@ -21,7 +21,6 @@ import {
 import { BoardLoader } from "./Spinner";
 import {
   TreasureOverlay,
-  type TreasureView,
   isTreasure,
 } from "./TreasureOverlay";
 import {
@@ -70,14 +69,14 @@ export function MineBoard({ dashboard }: Props) {
   const { actor, isAuthenticated, isLoading, login, principalId } = useAuth();
   const { run, refreshAll, setOpenExcavation, setCredit } = useGameAction();
   const board = useBoard();
-  const { exc, cells, digging, result, error, notice, jackpot } = board;
+  const { exc, cells, digging, result, error, notice, jackpot, treasure } =
+    board;
   const { muted, toggleMuted } = useSoundToggle();
   const [autoStop, setAutoStop] = useState(3);
   const [autoBusy, setAutoBusy] = useState(false);
   const [bandHost, setBandHost] = useState<HTMLDivElement | null>(null);
   const busyRef = useRef(false);
   const jackpotResolve = useRef<(() => void) | null>(null);
-  const [treasure, setTreasure] = useState<TreasureView | null>(null);
 
   const stakes = dashboard?.stakes ?? [];
   const paused = !!dashboard?.paused;
@@ -117,9 +116,14 @@ export function MineBoard({ dashboard }: Props) {
         n += 1;
         restored[idx] = { kind: "token", token: tokenForPick(n) };
       }
-      setBoard({ exc: open, cells: restored, result: null });
+      setBoard({
+        exc: open,
+        cells: restored,
+        result: null,
+        inPlay: open.stake,
+      });
     }
-    if (!open && exc && digging === null) setBoard({ exc: null });
+    if (!open && exc && digging === null) setBoard({ exc: null, inPlay: 0n });
   }, [
     dashboard,
     open,
@@ -155,6 +159,7 @@ export function MineBoard({ dashboard }: Props) {
   const finish = (end: EndResult, stake: bigint) => {
     setBoard({
       exc: null,
+      inPlay: 0n,
       digging: null,
       result: end,
       skipRestoreUntil: Date.now() + 6000,
@@ -166,7 +171,13 @@ export function MineBoard({ dashboard }: Props) {
     else if (end.won > 0n && !treasureWin) playSound("success");
     if (end.gross >= stake * 2n) setBoard((s) => ({ rain: s.rain + 1 }));
     if (treasureWin) {
-      setTreasure({ won: end.won, points: Number(end.points) });
+      setBoard({
+        treasure: {
+          gross: end.gross,
+          won: end.won,
+          points: Number(end.points),
+        },
+      });
     }
     void refreshAll();
   };
@@ -189,6 +200,7 @@ export function MineBoard({ dashboard }: Props) {
       }
       if (!coversStake(stakeAmount)) return;
       setBoard((s) => ({
+        inPlay: stakeAmount,
         digging: index,
         cells: starting ? {} : s.cells,
         result: null,
@@ -255,6 +267,7 @@ export function MineBoard({ dashboard }: Props) {
     } finally {
       busyRef.current = false;
       setBoard({ digging: null });
+      if (!getBoard().exc) setBoard({ inPlay: 0n });
     }
   };
 
@@ -283,7 +296,13 @@ export function MineBoard({ dashboard }: Props) {
     if (stakeAmount === 0n || paused) return;
     busyRef.current = true;
     setAutoBusy(true);
-    setBoard({ error: null, result: null, cells: {}, hold: true });
+    setBoard({
+      error: null,
+      result: null,
+      cells: {},
+      hold: true,
+      inPlay: stakeAmount,
+    });
     try {
       if (!coversStake(stakeAmount)) return;
       const out = await run(
@@ -330,6 +349,7 @@ export function MineBoard({ dashboard }: Props) {
       busyRef.current = false;
       setAutoBusy(false);
       setBoard({ hold: false });
+      if (!getBoard().exc) setBoard({ inPlay: 0n });
     }
   };
 
@@ -346,7 +366,7 @@ export function MineBoard({ dashboard }: Props) {
     jackpotResolve.current?.();
     jackpotResolve.current = null;
   }, [setCredit, refreshAll]);
-  const closeTreasure = useCallback(() => setTreasure(null), []);
+  const closeTreasure = useCallback(() => setBoard({ treasure: null }), []);
 
   const message = (() => {
     if (error) return { text: error, tone: "err" as const };
@@ -495,7 +515,7 @@ export function MineBoard({ dashboard }: Props) {
               >
                 {indexes.slice(SPLIT_AT).map(renderCell)}
               </div>
-              {result && !exc && <ResultCard result={result} onNew={newGame} />}
+              {result && !exc && !treasure && <ResultCard result={result} onNew={newGame} />}
               <BoardMessage
                 text={message.text}
                 tone={message.tone}
@@ -549,8 +569,9 @@ export function MineBoard({ dashboard }: Props) {
       </div>
 
       <p className={cn("text-center font-mono text-[11px]", inkFaint)}>
-        Your stakes come out of To collect. Losses are deducted from it, wins
-        are added, and the balance is paid when the tournament closes.
+        Your stake leaves To collect when you start digging. Every prize shown
+        includes your stake, and the balance is paid when the tournament
+        closes.
       </p>
     </div>
   );
