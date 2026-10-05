@@ -6,6 +6,7 @@ import Principal "mo:core/Principal";
 
 module {
   public let E8S : Nat = 100_000_000;
+  public let CENT : Nat = 1_000_000;
   public let FEE : Nat = 1_000_000_000;
   public let CELLS : Nat = 25;
   public let MINES : Nat = 5;
@@ -80,9 +81,11 @@ module {
 
   public func collapsePoints(k : Nat) : Nat { (pointsAt(k) + 1) / 2 };
 
+  // Top-10 prizes are rounded down to whole cents (0.01 GOLDAO) so every balance has at most 2 decimals.
+  // The remainder stays in the bucket for the next tournament.
   public func top10Prize(bucket : Nat, rank : Nat, volume : Nat) : Nat {
     if (rank == 0 or rank > TOP10_WEIGHTS.size() or volume < TOP10_MIN_VOLUME) return 0;
-    bucket * TOP10_WEIGHTS[rank - 1] / 100;
+    bucket * TOP10_WEIGHTS[rank - 1] / 100 / CENT * CENT;
   };
 
   public func canSave(picks : Nat) : Bool { picks > SAFE };
@@ -91,8 +94,14 @@ module {
     if (picks < SAFE) 10_000 else if (picks >= MAX_PICKS) 0 else sub(sub(CELLS, MINES), picks) * 10_000 / sub(CELLS, picks);
   };
 
+  // Multiplier in hundredths (105 = 1.05x), always rounded down. This is the single source of truth:
+  // the frontend shows exactly this value. Stakes are whole GOLDAO, so stake * multiplier is exact to 0.01.
+  public func multX100(points : Nat) : Nat {
+    points * PAYOUT_BPS / 10_000;
+  };
+
   public func gross(stake : Nat, points : Nat) : Nat {
-    stake * points * PAYOUT_BPS / 1_000_000;
+    stake * multX100(points) / 100;
   };
 
   public func fund(bank : Nat, owed : Nat, pool : Nat, reserve : Nat, cycles : Nat, top10 : Nat) : Int {
