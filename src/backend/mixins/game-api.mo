@@ -12,6 +12,7 @@ import Random "mo:core/Random";
 import Result "mo:core/Result";
 import Set "mo:core/Set";
 import Time "mo:core/Time";
+import Prim "mo:⛔";
 
 mixin (
   gameState : Types.GameState,
@@ -323,8 +324,8 @@ mixin (
     gameState.movSeq += 1;
     let need = amount + Game.FEE;
     if (not gameState.realLedger) {
-      if (gameState.bank < need) return #err("The bank wallet does not cover the payout.");
-      if (gameState.bankAllowance < need) return #err("The payout authorization is too low.");
+      if (gameState.bank < need) return #err(Game.ERR_PAY_FUNDS);
+      if (gameState.bankAllowance < need) return #err(Game.ERR_PAY_ALLOWANCE);
       gameState.bank := gSub(gameState.bank, need);
       gameState.bankAllowance := gSub(gameState.bankAllowance, need);
       gameState.balances.add(to, gBalance(to) + amount);
@@ -362,8 +363,8 @@ mixin (
           };
           #err("Payout timestamp expired. Run the payment again.");
         };
-        case (#Err(#InsufficientFunds _)) #err("The bank wallet does not cover the payout.");
-        case (#Err(#InsufficientAllowance _)) #err("The payout authorization is too low.");
+        case (#Err(#InsufficientFunds _)) #err(Game.ERR_PAY_FUNDS);
+        case (#Err(#InsufficientAllowance _)) #err(Game.ERR_PAY_ALLOWANCE);
         case (#Err _) #err("The ledger rejected the payout.");
       };
     } catch (_) {
@@ -508,7 +509,9 @@ mixin (
         let f = gFlush(p, e);
         ignore gSettle(p, f, Game.pointsAt(f.picks), #saved);
       } else {
-        gReleaseHeld(e);
+        // A jackpot found on the first two picks is not lost when the tournament closes:
+        // it is credited to the player.
+        if (e.held > 0) ignore gFlush(p, e);
         gameState.open.remove(p);
       };
     };
@@ -543,7 +546,7 @@ mixin (
       } else if (pays(c)) {
         let id = gameState.nextPayoutId;
         gameState.nextPayoutId += 1;
-        gameState.payouts.add(id, { id; tournament = t; to = p; amount = c - Game.FEE; paid = false; stamp = 0 });
+        gameState.payouts.add(id, { id; tournament = t; to = p; amount = c - Game.FEE; paid = false; stamp = (0 : Nat64) });
         payoutTotal += c - Game.FEE;
         settled.add((p, 0));
       } else if (payAll) {
@@ -601,12 +604,36 @@ mixin (
     gameState.endsAt := Time.now() + gameState.durationDays * Game.DAY_NS;
   };
 
-  func gMaybeClose() {
+  // Closes the tournament when its time is up and nothing is in flight. True if it closed now.
+  func gCloseIfDue() : Bool {
     if (gameState.endsAt == 0) {
       gameState.endsAt := Time.now() + gameState.durationDays * Game.DAY_NS;
-      return;
+      return false;
     };
-    if (Time.now() >= gameState.endsAt and not gAnyBusy()) gCloseTournament(false);
+    if (Time.now() >= gameState.endsAt and not gAnyBusy()) {
+      gCloseTournament(false);
+      return true;
+    };
+    false;
+  };
+
+  func gMaybeClose() {
+    ignore gCloseIfDue();
+  };
+
+  // Automatic close: every minute the tournament is checked. A mixin cannot declare a timer
+  // directly, so it is armed from the first update call after each deploy (players and the
+  // admin call one right away). The manual close of the admin panel keeps working.
+  transient var gTimerOn : Bool = false;
+
+  func gTick() : async () {
+    gMaybeClose();
+  };
+
+  func gArmTimer<system>() {
+    if (gTimerOn) return;
+    gTimerOn := true;
+    ignore Prim.setTimer<system>(60_000_000_000, true, gTick);
   };
 
   func gClosing() : Bool {
@@ -725,8 +752,9 @@ mixin (
   // Credit: the player loads To collect from the wallet. It backs every stake.
 
   public shared ({ caller }) func gameLoadCredit(goldao : Nat) : async Result.Result<Nat, Text> {
+    gArmTimer<system>();
     switch (gRequireUser(caller)) { case (?e) return #err(e); case null {} };
-    gMaybeClose();
+    if (gCloseIfDue()) return #err(Game.CLOSED_MSG);
     if (gameState.halted) return #err("Bets are paused. Try again later.");
     if (gClosing()) return #err("The tournament is closing. Try again in a few seconds.");
     if (goldao < Game.LOAD_MIN or goldao > Game.LOAD_MAX) {
@@ -763,8 +791,9 @@ mixin (
   // Play
 
   public shared ({ caller }) func gamePick(stake : ?Types.StakeOption) : async Result.Result<Types.PickResult, Text> {
+    gArmTimer<system>();
     switch (gRequireUser(caller)) { case (?e) return #err(e); case null {} };
-    gMaybeClose();
+    if (gCloseIfDue()) return #err(Game.CLOSED_MSG);
     if (gameState.halted) return #err("Bets are paused. Try again later.");
 
     var ex : Types.Excavation = switch (gameState.open.get(caller)) {
@@ -869,6 +898,7 @@ mixin (
   };
 
   public shared ({ caller }) func gameSave() : async Result.Result<Types.EndResult, Text> {
+    gArmTimer<system>();
     switch (gRequireUser(caller)) { case (?e) return #err(e); case null {} };
     let ex = switch (gameState.open.get(caller)) {
       case (?e) e;
@@ -884,8 +914,9 @@ mixin (
   };
 
   public shared ({ caller }) func gameAuto(stake : Types.StakeOption, stopAt : Nat) : async Result.Result<Types.AutoResult, Text> {
+    gArmTimer<system>();
     switch (gRequireUser(caller)) { case (?e) return #err(e); case null {} };
-    gMaybeClose();
+    if (gCloseIfDue()) return #err(Game.CLOSED_MSG);
     if (gameState.halted) return #err("Bets are paused. Try again later.");
     if (stopAt <= Game.SAFE or stopAt > Game.MAX_PICKS) return #err("Choose a pick between 3 and 10.");
     if (gClosing()) return #err("The tournament is closing. Try again in a few seconds.");
@@ -1048,6 +1079,7 @@ mixin (
   };
 
   public shared ({ caller }) func adminSyncBootstrap() : async Bool {
+    gArmTimer<system>();
     if (Principal.isAnonymous(caller) or not Game.isBootstrapAdmin(caller)) return false;
     accessControlState.userRoles.add(caller, #admin);
     accessControlState.adminAssigned := true;
@@ -1116,6 +1148,7 @@ mixin (
   };
 
   public shared ({ caller }) func gameAdminCloseTournament() : async Result.Result<(), Text> {
+    gArmTimer<system>();
     if (not gIsAdmin(caller)) return #err("Admin only.");
     if (gAnyBusy()) return #err("Excavations in progress. Try again in a few seconds.");
     gCloseTournament(false);
@@ -1187,14 +1220,22 @@ mixin (
     };
     let pending = Array.sort(
       gameState.payouts.values().filter(func(po : Types.Payout) : Bool { not po.paid }).toArray(),
-      func(a : Types.Payout, b : Types.Payout) : { #less; #equal; #greater } { Nat.compare(a.id, b.id) },
+      func(a : Types.Payout, b : Types.Payout) : { #less; #equal; #greater } {
+        switch (Nat.compare(a.amount, b.amount)) {
+          case (#equal) Nat.compare(a.id, b.id);
+          case (o) o;
+        };
+      },
     );
     var paid = 0;
     var failed = 0;
     var firstError : ?Text = null;
     var handled = 0;
+    // Smaller payouts go first. When one does not fit the funds or the authorization, every
+    // bigger one would fail too, so the run ends there and they stay pending.
+    var stop = false;
     for (po in pending.values()) {
-      if (handled < Game.PAY_BATCH) {
+      if (not stop and handled < Game.PAY_BATCH) {
         handled += 1;
         switch (gameState.payouts.get(po.id)) {
           case (?cur) {
@@ -1216,6 +1257,7 @@ mixin (
                 case (#err m) {
                   failed += 1;
                   if (firstError == null) firstError := ?m;
+                  if (m == Game.ERR_PAY_FUNDS or m == Game.ERR_PAY_ALLOWANCE) stop := true;
                 };
               };
             };
