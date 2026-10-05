@@ -171,6 +171,9 @@ export function fmtSigned(e8s: bigint): string {
 /** Amount authorized to the game in one step (whole GOLDAO). */
 export const AUTHORIZE_GOLDAO = 10_000;
 
+/** The authorization expires on its own after this time, used or not. */
+export const AUTHORIZE_DAYS = 7;
+
 export function shortPrincipal(p: string): string {
   return p.length > 14 ? `${p.slice(0, 5)}…${p.slice(-5)}` : p;
 }
