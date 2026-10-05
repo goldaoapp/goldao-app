@@ -298,25 +298,25 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
               <Landmark className="size-3.5" /> Owed to players
             </span>
             <span className={cn("font-mono text-[11px]", inkFaint)}>
-              {fmtGoldao(view.owed, 2)} GOLDAO
+              {fmtGoldao(view.owed)} GOLDAO
             </span>
           </div>
           <dl className="grid grid-cols-2 gap-4 p-5 font-mono text-xs sm:grid-cols-4">
             <Item
               label={`To collect (${Number(view.toCollectPlayers)} players)`}
-              value={fmtGoldao(view.toCollect, 2)}
+              value={fmtGoldao(view.toCollect)}
             />
             <Item
               label="Pending payouts (with fees)"
-              value={fmtGoldao(view.unpaidPayouts, 2)}
+              value={fmtGoldao(view.unpaidPayouts)}
             />
             <Item
               label="Jackpots in play"
-              value={fmtGoldao(view.heldJackpots, 2)}
+              value={fmtGoldao(view.heldJackpots)}
             />
             <Item
               label={`Under ${minPayout} (${Number(view.smallPlayers)} players)`}
-              value={fmtGoldao(view.smallBalances, 2)}
+              value={fmtGoldao(view.smallBalances)}
             />
           </dl>
           <p className={cn("px-5 pb-5 font-mono text-[11px]", inkFaint)}>
@@ -879,7 +879,7 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
                     <td
                       className={cn("px-5 py-2.5 text-right tabular-nums", ink)}
                     >
-                      {fmtGoldao(p.amount, 2)}
+                      {fmtGoldao(p.amount)}
                     </td>
                   </tr>
                 ))}
