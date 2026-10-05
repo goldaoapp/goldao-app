@@ -399,7 +399,7 @@ export interface backendInterface {
     gameAdminReleaseBusy(player: Principal): Promise<GResult_5>;
     gameAdminResume(): Promise<GResult_5>;
     gameAdminSecurity(): Promise<GResult_6>;
-    gameAdminSeedPool(): Promise<GResult>;
+    gameAdminSeedPool(goldao: bigint): Promise<GResult>;
     gameAdminSetDuration(days: bigint): Promise<GResult_5>;
     gameAdminSetRealLedger(selfId: Principal): Promise<GResult>;
     gameAdminTestDeposit(goldao: bigint): Promise<GResult>;
