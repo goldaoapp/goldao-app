@@ -443,6 +443,40 @@ export function RunCard({
   );
 }
 
+/** The player's place in the weekly volume ranking and the extra prize it would pay now. */
+function TopRank({ dashboard }: { dashboard: Dashboard | undefined }) {
+  if (!dashboard) return null;
+  const rank = Number(dashboard.top10Rank);
+  const staked = dashboard.stats.staked;
+  const need =
+    dashboard.top10Entry > staked ? dashboard.top10Entry - staked : 0n;
+  const inTop = rank >= 1 && rank <= 10 && dashboard.top10Prize > 0n;
+  let text: string;
+  if (inTop) {
+    text = `Top 10 #${rank} · +${fmtGoldao(dashboard.top10Prize, 2)} if it closed now`;
+  } else if (rank === 0) {
+    text = `Top 10 · stake ${fmtGoldao(dashboard.top10Entry)} to qualify`;
+  } else {
+    text = `Rank #${rank} · ${fmtGoldao(need > 0n ? need : 1n)}+ more volume to reach the Top 10`;
+  }
+  return (
+    <div
+      className={cn(
+        "flex min-w-0 flex-col gap-0.5 rounded-lg border px-2.5 py-1.5 font-mono text-[11px] leading-snug",
+        inTop
+          ? "border-[color:var(--term-green)]/50 bg-[color:var(--term-green)]/10 text-[color:var(--term-green)]"
+          : "border-[color:var(--term-border)]",
+        inTop ? "" : inkMid,
+      )}
+    >
+      <span>{text}</span>
+      <span className={inTop ? "opacity-80" : inkFaint}>
+        Top 10 pool {fmtGoldao(dashboard.top10Pool, 2)} GOLDAO
+      </span>
+    </div>
+  );
+}
+
 export function CreditBar({
   dashboard,
   className,
@@ -492,6 +526,7 @@ export function CreditBar({
           GOLDAO
         </span>
       </motion.span>
+      <TopRank dashboard={dashboard} />
       <span className={cn("font-mono text-[11px]", inkFaint)}>
         Paid when the tournament closes
         {dashboard ? ` · ${fmtCountdown(dashboard.endsAt)}` : ""}
