@@ -85,7 +85,48 @@ mixin (
   };
 
   func gFund() : Int {
-    Game.fund(gameState.bank, gameState.owed, gameState.pool, gameState.reserve, gameState.cycles);
+    Game.fund(gameState.bank, gameState.owed, gameState.pool, gameState.reserve, gameState.cycles, gameState.top10);
+  };
+
+  // Top-10 ranking by volume staked in the current tournament. Ties go to the lower principal.
+  func gBetter(a : (Principal, Nat), b : (Principal, Nat)) : Bool {
+    a.1 > b.1 or (a.1 == b.1 and Principal.compare(a.0, b.0) == #less);
+  };
+
+  func gTopList() : [(Principal, Nat)] {
+    let n = Game.TOP10_WEIGHTS.size();
+    var top : [(Principal, Nat)] = [];
+    for ((p, s) in gameState.stats.entries()) {
+      if (s.staked > 0) {
+        let cand = (p, s.staked);
+        if (top.size() < n or gBetter(cand, top[top.size() - 1])) {
+          let next = Array.sort(
+            Array.concat(top, [cand]),
+            func(a : (Principal, Nat), b : (Principal, Nat)) : { #less; #equal; #greater } {
+              if (gBetter(a, b)) #less else if (gBetter(b, a)) #greater else #equal;
+            },
+          );
+          top := if (next.size() > n) Array.sliceToArray(next, 0, n) else next;
+        };
+      };
+    };
+    top;
+  };
+
+  func gRankOf(p : Principal) : Nat {
+    let mine = gStats(p).staked;
+    if (mine == 0) return 0;
+    var rank = 1;
+    for ((q, s) in gameState.stats.entries()) {
+      if (q != p and gBetter((q, s.staked), (p, mine))) rank += 1;
+    };
+    rank;
+  };
+
+  func gTopEntry() : Nat {
+    let top = gTopList();
+    let n = Game.TOP10_WEIGHTS.size();
+    if (top.size() < n) Game.TOP10_MIN_VOLUME else Nat.max(Game.TOP10_MIN_VOLUME, top[n - 1].1);
   };
 
   func gStakes() : [Nat] { Game.stakes(gFund()) };
@@ -359,6 +400,7 @@ mixin (
       gameState.reserve := Game.RESERVE_CAP;
     };
     gameState.cycles += stake * Game.CYCLES_BPS / 10_000;
+    gameState.top10 += stake * Game.TOP10_BPS / 10_000;
 
     var won = 0;
     var lost = 0;
@@ -417,6 +459,24 @@ mixin (
         gameState.open.remove(p);
       };
     };
+
+    // The Top-10 prize goes to the biggest volumes as credit, so it is paid like any other balance.
+    let bucket = gameState.top10;
+    var topPaid = 0;
+    let topWinners = List.empty<Types.TopPrize>();
+    var rank = 1;
+    for ((p, volume) in gTopList().values()) {
+      let prize = Game.top10Prize(bucket, rank, volume);
+      if (prize > 0) {
+        gameState.credits.add(p, gCredit(p) + prize);
+        gameState.owed += prize;
+        topPaid += prize;
+        topWinners.add({ tournament = t; rank; player = p; volume; prize });
+      };
+      rank += 1;
+    };
+    gameState.top10 := gSub(gameState.top10, topPaid);
+    gameState.lastTop10 := topWinners.toArray();
 
     // Small balances stay in To collect for the next tournament. A full close
     // (payAll) pays everything above the fee and forfeits the rest.
@@ -566,6 +626,9 @@ mixin (
       loadMax = Game.LOAD_MAX;
       creditCapE8s = Game.CREDIT_CAP;
       minPayoutE8s = Game.MIN_PAYOUT;
+      top10Bps = Game.TOP10_BPS;
+      top10Weights = Game.TOP10_WEIGHTS;
+      top10MinVolumeE8s = Game.TOP10_MIN_VOLUME;
       realLedger = gameState.realLedger;
       ledgerId = Ledger.GOLDAO_LEDGER;
     };
@@ -867,6 +930,10 @@ mixin (
       credit = gCredit(caller);
       pendingPayout = pending;
       pool = gameState.pool;
+      top10Pool = gameState.top10;
+      top10Rank = gRankOf(caller);
+      top10Prize = Game.top10Prize(gameState.top10, gRankOf(caller), gStats(caller).staked);
+      top10Entry = gTopEntry();
       faucetRemaining = Game.sub(Game.FAUCET_CAP, gFaucetUsed(caller));
       open;
       stats = gStats(caller);
@@ -879,16 +946,29 @@ mixin (
     let rows = List.empty<Types.PlayerRow>();
     for ((p, s) in gameState.stats.entries()) {
       staked += s.staked;
-      rows.add({ player = p; excavations = s.excavations; staked = s.staked; returned = s.returned; jackpotWon = s.jackpotWon; bestPoints = s.bestPoints; deepest = s.deepest });
+      rows.add({ player = p; excavations = s.excavations; staked = s.staked; returned = s.returned; jackpotWon = s.jackpotWon; bestPoints = s.bestPoints; deepest = s.deepest; rank = 0; prize = 0 });
     };
-    let net = func(r : Types.PlayerRow) : Int { (r.returned + r.jackpotWon : Int) - r.staked };
-    let sorted = Array.sort(rows.toArray(), func(a : Types.PlayerRow, b : Types.PlayerRow) : { #less; #equal; #greater } { Int.compare(net(b), net(a)) });
+    let sorted = Array.sort(
+      rows.toArray(),
+      func(a : Types.PlayerRow, b : Types.PlayerRow) : { #less; #equal; #greater } {
+        if (gBetter((a.player, a.staked), (b.player, b.staked))) #less else #greater;
+      },
+    );
+    let ranked = Array.tabulate<Types.PlayerRow>(
+      sorted.size(),
+      func(i : Nat) : Types.PlayerRow {
+        let r = sorted[i];
+        { r with rank = i + 1; prize = Game.top10Prize(gameState.top10, i + 1, r.staked) };
+      },
+    );
     {
       tournament = gameState.tournament;
       endsAt = gameState.endsAt;
       pool = gameState.pool;
+      top10Pool = gameState.top10;
+      lastTop10 = gameState.lastTop10;
       staked;
-      players = if (sorted.size() > 200) Array.sliceToArray(sorted, 0, 200) else sorted;
+      players = if (ranked.size() > 200) Array.sliceToArray(ranked, 0, 200) else ranked;
       jackpots = gameState.jackpots;
     };
   };
@@ -956,6 +1036,7 @@ mixin (
       pool = gameState.pool;
       reserve = gameState.reserve;
       cycles = gameState.cycles;
+      top10 = gameState.top10;
       burned = gameState.burned;
       fund = gFund();
       withdrawable = gWithdrawable();
@@ -1176,6 +1257,7 @@ mixin (
         gameState.pool := 0;
         gameState.reserve := 0;
         gameState.cycles := 0;
+        gameState.top10 := 0;
       };
       case (#available) {
         gameState.cycles := Game.sub(gameState.cycles, amount);
@@ -1271,6 +1353,8 @@ mixin (
     gameState.pool := 0;
     gameState.reserve := 0;
     gameState.cycles := 0;
+    gameState.top10 := 0;
+    gameState.lastTop10 := [];
     gameState.burned := 0;
     Map.clear(gameState.balances);
     Map.clear(gameState.allowances);
