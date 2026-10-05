@@ -1,203 +1,306 @@
-import Nat "mo:core/Nat";
-import Nat8 "mo:core/Nat8";
-import Nat64 "mo:core/Nat64";
-import Int "mo:core/Int";
-import Principal "mo:core/Principal";
+import Map "mo:core/Map";
+import List "mo:core/List";
+import Set "mo:core/Set";
 
 module {
-  public let E8S : Nat = 100_000_000;
-  public let CENT : Nat = 1_000_000;
-  public let FEE : Nat = 1_000_000_000;
-  public let CELLS : Nat = 25;
-  public let MINES : Nat = 5;
-  public let SAFE : Nat = 2;
-  public let MAX_PICKS : Nat = 10;
-  public let POINTS : [Nat] = [0, 50, 100, 114, 131, 151, 176, 208, 248, 299, 367];
-
-  public let STAKE_MIN : Nat = 10_000_000_000;
-  public let STAKE_CAP : Nat = 100_000_000_000;
-  public let STAKE_STEP : Nat = 10_000_000_000;
-  public let MID_STEP : Nat = 1_000_000_000;
-  public let MAX_STAKE_BPS : Nat = 50;
-  public let PAYOUT_BPS : Nat = 9_250;
-  public let POOL_BPS : Nat = 250;
-  public let RESERVE_BPS : Nat = 250;
-  public let CYCLES_BPS : Nat = 50;
-  public let TOP10_BPS : Nat = 95;
-  public let TOP10_WEIGHTS : [Nat] = [25, 18, 14, 11, 9, 7, 6, 4, 3, 3];
-  public let TOP10_MIN_VOLUME : Nat = 100_000_000_000;
-  public let POOL_SEED : Nat = 500_000_000_000;
-  public let POOL_SEED_MAX : Nat = 2_000_000_000_000;
-  public let RESERVE_CAP : Nat = 2_000_000_000_000;
-  public let FUND_FLOOR : Nat = 2_000_000_000_000;
-  public let FUND_TARGET : Nat = 20_000_000_000_000;
-  public let DIAMOND1_BPS : Nat = 200;
-  public let DIAMOND2_BPS : Nat = 2_000;
-  public let DIAMOND3_PER_GOLDAO : Nat = 15_625;
-  public let DIAMOND3_BASE : Nat = 100_000_000;
-  public let DEFAULT_DURATION_DAYS : Nat = 7;
-  public let MAX_DURATION_DAYS : Nat = 60;
-  public let JACKPOT_LOG : Nat = 50;
-  public let DAY_NS : Int = 86_400_000_000_000;
-  public let BUSY_STALE_NS : Int = 600_000_000_000;
-  public let STAMP_MAX_AGE_NS : Nat64 = 72_000_000_000_000;
-  public let CLOSED_MSG : Text = "The tournament has just closed. Your balance was paid out or carried over to the new tournament: check your wallet and To collect, then try again.";
-  public let ERR_PAY_FUNDS : Text = "The bank wallet does not cover the payout.";
-  public let ERR_PAY_ALLOWANCE : Text = "The payout authorization is too low.";
-  public let STAKE_CHANGED_MSG : Text = "The stake amounts changed. Check the new amounts and try again.";
-  public let EXC_CHANGED_MSG : Text = "Your excavation changed (another tab or device?). Reload the board and try again.";
-  public let LOAD_REJECT_MAX : Nat = 20;
-  public let LOAD_REJECT_WINDOW_NS : Int = 60_000_000_000;
-  public let PAY_BATCH : Nat = 20;
-  public let FAUCET_CAP : Nat = 2_000_000_000_000;
-  public let FAUCET_GLOBAL_CAP : Nat = 200_000_000_000_000;
-  public let TEST_DEPOSITS : [Nat] = [10_000, 30_000, 100_000, 200_000];
-  public let LOAD_MIN : Nat = 100;
-  public let LOAD_MAX : Nat = 5_000;
-  public let CREDIT_CAP : Nat = 2_000_000_000_000;
-  public let MIN_PAYOUT : Nat = 5_000_000_000;
-  public let MAX_APPROVE : Nat = 1_000_000_000_000_000;
-
-  // Principals that are always admin. Paste Internet Identity principals here before deploying.
-  public let BOOTSTRAP_ADMINS : [Text] = [
-  "o4k5k-q4hdh-hmf4x-qnqbw-m53ao-c4u6t-6vyft-ejkie-iepjy-ziitc-3ae",
-  "nxdvu-ipwv3-xgadl-ws3fw-ply6m-vf5st-nd5mq-4hv5c-nzvgc-o6swr-oae",
-  ];
-
-  public let TREASURY : Text = "mkbc4-kaq3u-voc2z-j7yut-xgc3h-2gcgd-hfuzl-ss6uo-4q5q7-egfp4-qqe";
-
-  public func treasury() : Principal { Principal.fromText(TREASURY) };
-
-  public let LEDGER_FAIL_MAX : Nat = 5;
-
-  // Why the game is halted (haltCode).
-  public let HALT_LEDGER : Nat = 2;
-  public let HALT_MANUAL : Nat = 3;
-  public let HALT_BANK : Nat = 4;
-  public let HALT_FUND : Nat = 5;
-
-  // Safeguards. The admin wallet pays a ledger fee for each authorization it signs, which the game
-  // cannot see: the bank wallet may hold up to BANK_TOLERANCE less than the game expects, summed
-  // over BANK_WINDOW_NS (about ten authorizations), before the game halts. The fund is sampled
-  // every tick; it halts the game when it falls by FUND_DROP_PCT percent (and at least
-  // FUND_DROP_MIN) within the samples kept.
-  public let BANK_TOLERANCE : Nat = 10_000_000_000;
-  public let BANK_WINDOW_NS : Int = 86_400_000_000_000;
-  public let FUND_SAMPLES : Nat = 10;
-  public let FUND_DROP_PCT : Nat = 30;
-  public let FUND_DROP_MIN : Nat = 1_000_000_000_000;
-
-  // Security log: one bucket per UTC day, kept for SECURITY_LOG_DAYS days, at most
-  // SECURITY_LOG_MAX_DAY distinct entries per day (repeated events are merged into one).
-  public let SECURITY_LOG_DAYS : Nat = 90;
-  public let SECURITY_LOG_MAX_DAY : Nat = 100;
-
-  public func haltReason(code : Nat) : Text {
-    if (code == HALT_LEDGER) "ledger failures" else if (code == HALT_MANUAL) "paused by admin" else if (code == HALT_BANK) "unexplained bank withdrawal" else if (code == HALT_FUND) "fund drop" else "unknown";
+  public type UserRole = { #admin; #user; #guest };
+  public type AccessControlState = {
+    var adminAssigned : Bool;
+    userRoles : Map.Map<Principal, UserRole>;
   };
 
-  public func isBootstrapAdmin(p : Principal) : Bool {
-    let t = Principal.toText(p);
-    for (a in BOOTSTRAP_ADMINS.values()) {
-      if (a == t) return true;
-    };
-    false;
+  public type StakeOption = { #min; #mid; #max };
+
+  public type WithdrawKind = { #available; #all };
+
+  public type Charge = { #ok; #allowance; #funds; #down };
+
+  public type Excavation = {
+    tournament : Nat;
+    stake : Nat;
+    picks : Nat;
+    diamonds : Nat;
+    jackpotWon : Nat;
+    held : Nat;
+    busy : Bool;
+    token : Nat;
+    busyAt : Int;
   };
 
-  public func sub(a : Nat, b : Nat) : Nat {
-    let d : Int = a - b;
-    if (d > 0) Int.abs(d) else 0;
+  public type TournamentStats = {
+    excavations : Nat;
+    staked : Nat;
+    returned : Nat;
+    jackpotWon : Nat;
+    jackpots : Nat;
+    charged : Nat;
+    collapses : Nat;
+    bestPoints : Nat;
+    deepest : Nat;
   };
 
-  public func pointsAt(k : Nat) : Nat {
-    if (k < POINTS.size()) POINTS[k] else POINTS[MAX_PICKS];
+  public type Payout = {
+    id : Nat;
+    tournament : Nat;
+    to : Principal;
+    amount : Nat;
+    paid : Bool;
+    stamp : Nat64;
   };
 
-  public func collapsePoints(k : Nat) : Nat { (pointsAt(k) + 1) / 2 };
-
-  // Top-10 prizes are rounded down to whole cents (0.01 GOLDAO) so every balance has at most 2 decimals.
-  // The remainder stays in the bucket for the next tournament.
-  public func top10Prize(bucket : Nat, rank : Nat, volume : Nat) : Nat {
-    if (rank == 0 or rank > TOP10_WEIGHTS.size() or volume < TOP10_MIN_VOLUME) return 0;
-    bucket * TOP10_WEIGHTS[rank - 1] / 100 / CENT * CENT;
+  public type JackpotWin = {
+    tournament : Nat;
+    player : Principal;
+    amount : Nat;
+    stake : Nat;
+    at : Int;
   };
 
-  public func canSave(picks : Nat) : Bool { picks > SAFE };
-
-  public func safePctX100(picks : Nat) : Nat {
-    if (picks < SAFE) 10_000 else if (picks >= MAX_PICKS) 0 else sub(sub(CELLS, MINES), picks) * 10_000 / sub(CELLS, picks);
+  public type PlayerTournamentResult = {
+    tournament : Nat;
+    stats : TournamentStats;
+    credit : Nat;
+    payout : Nat;
   };
 
-  // Multiplier in hundredths (105 = 1.05x), always rounded down. This is the single source of truth:
-  // the frontend shows exactly this value. Stakes are whole GOLDAO, so stake * multiplier is exact to 0.01.
-  public func multX100(points : Nat) : Nat {
-    points * PAYOUT_BPS / 10_000;
+  public type TournamentSummary = {
+    tournament : Nat;
+    players : Nat;
+    excavations : Nat;
+    staked : Nat;
+    returned : Nat;
+    jackpots : Nat;
+    jackpotPaid : Nat;
+    payoutTotal : Nat;
+    forfeited : Nat;
+    closedAt : Int;
   };
 
-  public func gross(stake : Nat, points : Nat) : Nat {
-    stake * multX100(points) / 100;
+  public type TopPrize = {
+    tournament : Nat;
+    rank : Nat;
+    player : Principal;
+    volume : Nat;
+    prize : Nat;
   };
 
-  public func fund(bank : Nat, owed : Nat, pool : Nat, reserve : Nat, cycles : Nat, top10 : Nat) : Int {
-    let b : Int = bank;
-    b - owed - pool - reserve - cycles - top10;
+  public type GameState = {
+    var tournament : Nat;
+    var endsAt : Int;
+    var durationDays : Nat;
+    var bank : Nat;
+    var owed : Nat;
+    var pool : Nat;
+    var reserve : Nat;
+    var cycles : Nat;
+    var burned : Nat;
+    var realLedger : Bool;
+    var bankAccount : ?Principal;
+    var selfId : ?Principal;
+    var bankAllowance : Nat;
+    var seq : Nat;
+    var movSeq : Nat;
+    var payingSince : Int;
+    var nextPayoutId : Nat;
+    balances : Map.Map<Principal, Nat>;
+    allowances : Map.Map<Principal, Nat>;
+    faucet : Map.Map<Principal, (Nat, Nat)>;
+    credits : Map.Map<Principal, Nat>;
+    open : Map.Map<Principal, Excavation>;
+    stats : Map.Map<Principal, TournamentStats>;
+    history : Map.Map<Principal, List.List<PlayerTournamentResult>>;
+    blocked : Map.Map<Principal, Nat>;
+    tournaments : List.List<TournamentSummary>;
+    payouts : Map.Map<Nat, Payout>;
+    var jackpots : [JackpotWin];
+    var halted : Bool;
+    var haltCode : Nat;
+    var haltedAt : Int;
+    var resumedAt : Int;
+    var breakerMax : Nat;
+    var breakerWindowNs : Int;
+    var ledgerFails : Nat;
+    var top10 : Nat;
+    var lastTop10 : [TopPrize];
+    best : Map.Map<Principal, Nat>;
+    loaded : Set.Set<Principal>;
+    securityLog : Map.Map<Nat, [SecurityEvent]>;
+    var fundSamples : [Int];
   };
 
-  public func stakes(f : Int) : [Nat] {
-    if (f < FUND_FLOOR) return [];
-    let raw = Int.abs(f) * MAX_STAKE_BPS / 10_000;
-    let max = Nat.min(STAKE_CAP, Nat.max(STAKE_MIN, raw / STAKE_STEP * STAKE_STEP));
-    let mid = ((STAKE_MIN + max) / 2 + MID_STEP / 2) / MID_STEP * MID_STEP;
-    [STAKE_MIN, mid, max];
+  // Security log. #info: something happened (admin action, recovery). #warning: worth a look.
+  // #critical: needs the admin's attention (the game may be halted).
+  public type SecurityLevel = { #info; #warning; #critical };
+
+  // Repeated events with the same code on the same UTC day are merged: count and lastAt grow,
+  // description keeps the latest detail.
+  public type SecurityEvent = {
+    at : Int;
+    lastAt : Int;
+    level : SecurityLevel;
+    code : Text;
+    title : Text;
+    description : Text;
+    count : Nat;
   };
 
-  public func bytesToNat(bytes : [Nat8], from : Nat, len : Nat) : Nat {
-    var n = 0;
-    var i = from;
-    while (i < from + len and i < bytes.size()) {
-      n := n * 256 + Nat8.toNat(bytes[i]);
-      i += 1;
-    };
-    n;
+  public type SecurityDay = { day : Nat; events : Nat; attention : Nat };
+
+  public type SecurityLogView = {
+    days : [SecurityDay];
+    day : Nat;
+    events : [SecurityEvent];
   };
 
-  public func collapseHit(picks : Nat, r : Nat) : Bool {
-    picks >= SAFE and (r % sub(CELLS, picks)) < MINES;
+  public type SecurityView = {
+    halted : Bool;
+    haltCode : Nat;
+    haltedAt : Int;
+    ledgerFails : Nat;
+    saturations : Nat;
+    accountingOk : Bool;
   };
 
-  public func diamond1Hit(r : Nat) : Bool { r % 10_000 < DIAMOND1_BPS };
-  public func diamond2Hit(r : Nat) : Bool { r % 10_000 < DIAMOND2_BPS };
-  public func diamond3Hit(r : Nat, stake : Nat) : Bool {
-    r % DIAMOND3_BASE < stake / E8S * DIAMOND3_PER_GOLDAO;
+  public type ExcavationView = {
+    stake : Nat;
+    picks : Nat;
+    diamonds : Nat;
+    jackpotWon : Nat;
+    held : Nat;
+    runPoints : Nat;
+    runGross : Nat;
+    collapseGross : Nat;
+    nextGross : Nat;
+    safePctX100 : Nat;
+    canSave : Bool;
   };
 
-  public class Prng(seed : Nat64) {
-    var s : Nat64 = seed;
-    public func next() : Nat64 {
-      s +%= 0x9E3779B97F4A7C15;
-      var z = s;
-      z := (z ^ (z >> 30)) *% 0xBF58476D1CE4E5B9;
-      z := (z ^ (z >> 27)) *% 0x94D049BB133111EB;
-      z ^ (z >> 31);
-    };
-    public func below(n : Nat) : Nat { Nat64.toNat(next()) % n };
+  public type EndKind = { #saved; #collapsed; #maxed };
+
+  public type EndResult = {
+    kind : EndKind;
+    picks : Nat;
+    points : Nat;
+    stake : Nat;
+    gross : Nat;
+    won : Nat;
+    lost : Nat;
+    jackpotWon : Nat;
+    credit : Nat;
+    balance : Nat;
   };
 
-  public func seedFrom(bytes : [Nat8]) : Nat64 {
-    var s : Nat64 = 0;
-    var i = 0;
-    while (i < 4) {
-      var w : Nat64 = 0;
-      var j = 0;
-      while (j < 8) {
-        let idx = i * 8 + j;
-        let b : Nat8 = if (idx < bytes.size()) bytes[idx] else 0;
-        w := (w << 8) | Nat.toNat64(Nat8.toNat(b));
-        j += 1;
-      };
-      s := s ^ w;
-      i += 1;
-    };
-    s;
+  public type DiamondResult = { stage : Nat; won : Nat };
+
+  public type PickResult = {
+    collapsed : Bool;
+    picks : Nat;
+    diamond : DiamondResult;
+    excavation : ?ExcavationView;
+    end : ?EndResult;
+    credit : Nat;
+    pool : Nat;
+  };
+
+  public type AutoStep = { pick : Nat; collapsed : Bool; diamond : DiamondResult };
+  public type AutoResult = { steps : [AutoStep]; end : EndResult; pool : Nat };
+
+  public type Dashboard = {
+    tournament : Nat;
+    endsAt : Int;
+    paused : Bool;
+    stakes : [Nat];
+    balance : Nat;
+    allowance : Nat;
+    credit : Nat;
+    pendingPayout : Nat;
+    pool : Nat;
+    top10Pool : Nat;
+    top10Rank : Nat;
+    top10Prize : Nat;
+    top10Entry : Nat;
+    faucetRemaining : Nat;
+    open : ?ExcavationView;
+    stats : TournamentStats;
+    bestReturn : Nat;
+    history : [PlayerTournamentResult];
+  };
+
+  public type PlayerRow = {
+    player : Principal;
+    excavations : Nat;
+    staked : Nat;
+    returned : Nat;
+    jackpotWon : Nat;
+    bestPoints : Nat;
+    deepest : Nat;
+    rank : Nat;
+    prize : Nat;
+  };
+
+  public type Ranking = {
+    tournament : Nat;
+    endsAt : Int;
+    pool : Nat;
+    top10Pool : Nat;
+    lastTop10 : [TopPrize];
+    staked : Nat;
+    players : [PlayerRow];
+    jackpots : [JackpotWin];
+  };
+
+  public type GameConfig = {
+    feeE8s : Nat;
+    cells : Nat;
+    mines : Nat;
+    safePicks : Nat;
+    maxPicks : Nat;
+    pointsTable : [Nat];
+    payoutBps : Nat;
+    stakeMinE8s : Nat;
+    stakeCapE8s : Nat;
+    diamond1Bps : Nat;
+    diamond2Bps : Nat;
+    diamond3PerGoldao : Nat;
+    faucetCapE8s : Nat;
+    loadMin : Nat;
+    loadMax : Nat;
+    creditCapE8s : Nat;
+    minPayoutE8s : Nat;
+    top10Bps : Nat;
+    top10Weights : [Nat];
+    top10MinVolumeE8s : Nat;
+    realLedger : Bool;
+    ledgerId : Text;
+  };
+
+  public type AdminView = {
+    tournament : Nat;
+    endsAt : Int;
+    durationDays : Nat;
+    realLedger : Bool;
+    bank : Nat;
+    owed : Nat;
+    toCollect : Nat;
+    toCollectPlayers : Nat;
+    smallBalances : Nat;
+    smallPlayers : Nat;
+    heldJackpots : Nat;
+    unpaidPayouts : Nat;
+    pool : Nat;
+    reserve : Nat;
+    cycles : Nat;
+    top10 : Nat;
+    burned : Nat;
+    fund : Int;
+    withdrawable : Nat;
+    stakes : [Nat];
+    paused : Bool;
+    staked : Nat;
+    bankAllowance : Nat;
+    bankAccount : ?Principal;
+    selfId : ?Principal;
+    payouts : [Payout];
+    lastClose : ?TournamentSummary;
   };
 };
