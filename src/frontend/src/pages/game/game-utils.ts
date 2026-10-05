@@ -117,6 +117,9 @@ export function netOf(row: {
   return row.returned + row.jackpotWon - row.staked;
 }
 
+/** Picks at which an excavation ends and pays by itself. Same as the backend. */
+export const MAX_PICKS = 10;
+
 export function fmtSigned(e8s: bigint, digits = 0): string {
   const sign = e8s > 0n ? "+" : e8s < 0n ? "-" : "";
   const abs = e8s < 0n ? -e8s : e8s;
