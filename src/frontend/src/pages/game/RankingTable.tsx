@@ -157,7 +157,7 @@ export function RankingTable({ ranking, tournaments }: Props) {
                         )}
                       >
                         #{Number(p.rank)}
-                        {p.prize > 0n ? ` +${fmtGoldao(p.prize, 2)}` : ""}
+                        {p.prize > 0n ? ` +${fmtGoldao(p.prize)}` : ""}
                       </td>
                       <td
                         className={cn(
@@ -165,7 +165,7 @@ export function RankingTable({ ranking, tournaments }: Props) {
                           netOf(p) >= 0 ? "text-emerald-400" : "text-red-400",
                         )}
                       >
-                        {fmtSigned(netOf(p), 2)}
+                        {fmtSigned(netOf(p))}
                       </td>
                       <td className="hidden px-3 py-2.5 sm:table-cell">
                         {Number(p.bestPoints) > 0
@@ -222,7 +222,7 @@ export function RankingTable({ ranking, tournaments }: Props) {
                 </span>
                 <span className={inkFaint}>{fmtGoldao(w.volume)} staked</span>
                 <span className={cn("tabular-nums", gold)}>
-                  +{fmtGoldao(w.prize, 2)}
+                  +{fmtGoldao(w.prize)}
                 </span>
               </li>
             ))}
@@ -253,7 +253,7 @@ export function RankingTable({ ranking, tournaments }: Props) {
                   </span>
                   <span className={inkFaint}>{fmtDate(j.at)}</span>
                   <span className={cn("tabular-nums", DIAMOND_TEXT)}>
-                    {fmtGoldao(j.amount, 2)}
+                    {fmtGoldao(j.amount)}
                   </span>
                 </li>
               ))}
