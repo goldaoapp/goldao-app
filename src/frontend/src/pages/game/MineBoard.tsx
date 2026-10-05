@@ -19,10 +19,7 @@ import {
   StakeSelector,
 } from "./MineParts";
 import { BoardLoader } from "./Spinner";
-import {
-  TreasureOverlay,
-  isTreasure,
-} from "./TreasureOverlay";
+import { TreasureOverlay, isTreasure } from "./TreasureOverlay";
 import {
   type Cell,
   clearBoardCells,
@@ -34,12 +31,12 @@ import {
   useBoard,
 } from "./board-store";
 import {
-  PAYOUT_BPS,
   eyebrow,
   fmtCountdown,
   fmtGoldao,
   gold,
   inkFaint,
+  multX100,
   panel,
   panelHeader,
   tokenForPick,
@@ -53,7 +50,7 @@ const SPLIT_AT = 15;
 const STAKE_KEYS = [StakeOption.min, StakeOption.mid, StakeOption.max];
 const AUTO_STEP_MS = 450;
 /** Coins fall from this multiplier up. */
-const COIN_MULT = 1.1;
+const COIN_MULT_X100 = 110;
 /** A collapse that still pays resets the board after this delay. */
 const AUTO_RESET_MS = 5000;
 const RESTORE_ORDER = [
@@ -247,8 +244,7 @@ export function MineBoard({ dashboard }: Props) {
         if (res.excavation) setOpenExcavation(res.excavation);
         if (
           res.excavation &&
-          (Number(res.excavation.runPoints) * PAYOUT_BPS) / 1_000_000 >
-            COIN_MULT
+          multX100(Number(res.excavation.runPoints)) > COIN_MULT_X100
         ) {
           setBoard((s) => ({ rain: s.rain + 1 }));
         }
@@ -515,7 +511,9 @@ export function MineBoard({ dashboard }: Props) {
               >
                 {indexes.slice(SPLIT_AT).map(renderCell)}
               </div>
-              {result && !exc && !treasure && <ResultCard result={result} onNew={newGame} />}
+              {result && !exc && !treasure && (
+                <ResultCard result={result} onNew={newGame} />
+              )}
               <BoardMessage
                 text={message.text}
                 tone={message.tone}
@@ -570,8 +568,7 @@ export function MineBoard({ dashboard }: Props) {
 
       <p className={cn("text-center font-mono text-[11px]", inkFaint)}>
         Your stake leaves To collect when you start digging. Every prize shown
-        includes your stake, and the balance is paid when the tournament
-        closes.
+        includes your stake, and the balance is paid when the tournament closes.
       </p>
     </div>
   );
