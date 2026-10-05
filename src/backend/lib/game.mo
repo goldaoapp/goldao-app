@@ -41,6 +41,8 @@ module {
   public let DAY_NS : Int = 86_400_000_000_000;
   public let BUSY_STALE_NS : Int = 600_000_000_000;
   public let STAMP_MAX_AGE_NS : Nat64 = 72_000_000_000_000;
+  public let LOAD_REJECT_MAX : Nat = 20;
+  public let LOAD_REJECT_WINDOW_NS : Int = 60_000_000_000;
   public let PAY_BATCH : Nat = 20;
   public let FAUCET_CAP : Nat = 2_000_000_000_000;
   public let FAUCET_GLOBAL_CAP : Nat = 200_000_000_000_000;
