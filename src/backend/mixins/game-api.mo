@@ -1094,10 +1094,12 @@ mixin (
     #ok(());
   };
 
-  public shared ({ caller }) func gameAdminSeedPool() : async Result.Result<Nat, Text> {
+  public shared ({ caller }) func gameAdminSeedPool(goldao : Nat) : async Result.Result<Nat, Text> {
     if (not gIsAdmin(caller)) return #err("Admin only.");
-    if (gameState.pool >= Game.POOL_SEED) return #err("The jackpot pool is already at its minimum.");
-    let amount = Game.POOL_SEED - gameState.pool;
+    let target = goldao * Game.E8S;
+    if (target < Game.POOL_SEED or target > Game.POOL_SEED_MAX) return #err("Choose a pool between 5,000 and 20,000 GOLDAO.");
+    if (gameState.pool >= target) return #err("The jackpot pool is already at or above that amount.");
+    let amount = target - gameState.pool;
     let after : Int = gFund() - amount;
     if (after < Game.FUND_FLOOR) return #err("The bank fund would fall below its floor.");
     gameState.pool += amount;
