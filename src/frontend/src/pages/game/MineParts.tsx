@@ -22,7 +22,7 @@ import {
   useTransform,
 } from "motion/react";
 import { useEffect, useRef } from "react";
-import type { Cell } from "./board-store";
+import { type Cell, useBoard } from "./board-store";
 import {
   DIAMOND_CELL,
   DIAMOND_IMG,
@@ -40,6 +40,7 @@ import {
   ink,
   inkFaint,
   inkMid,
+  MAX_PICKS,
   panel,
   prizeName,
   toGoldao,
@@ -286,6 +287,8 @@ function pickHint(exc: ExcavationView | null, picks: number): string {
   if (!exc)
     return "Pick any cell to start. The first two picks are always safe.";
   if (picks < 2) return "Free pick: nothing at risk.";
+  if (picks + 1 >= MAX_PICKS)
+    return "Last pick: it is collected automatically.";
   if (!exc.canSave) return "First risky pick. Surviving it unlocks Save.";
   if (picks < 4) return "One more pick for Ingot.";
   if (picks < 6) return "Treasure is within reach.";
@@ -360,9 +363,10 @@ export function RunCard({
 }) {
   const picks = exc ? Number(exc.picks) : 0;
   const active = !!exc?.canSave;
-  const win = exc && active ? exc.runGross - exc.stake : 0n;
-  const nextNet = exc && exc.nextGross > 0n ? exc.nextGross - exc.stake : null;
-  const next = nextNet !== null && nextNet > 0n ? nextNet : null;
+  // Prizes include the stake, like the multiplier: 1.05x on 1,000 is 1,050.
+  const prize = exc && active ? exc.runGross : 0n;
+  const next = exc && exc.nextGross > 0n ? exc.nextGross : null;
+  const lastPick = !!exc && picks + 1 >= MAX_PICKS;
   return (
     <div
       className={cn(
@@ -373,20 +377,19 @@ export function RunCard({
       <div className="grid grid-cols-2 items-end gap-3">
         <div className="flex min-w-0 flex-col gap-0.5">
           <span className={cn(eyebrow, "text-[10px]", inkFaint)}>
-            Winning now
+            Prize now
           </span>
           <span
             className={cn(
               "font-display text-[28px] font-bold leading-none tabular-nums transition-colors sm:text-[40px]",
-              win > 0n ? "text-[color:var(--term-green)]" : ink,
+              prize > 0n ? "text-[color:var(--term-green)]" : ink,
             )}
           >
-            {win > 0n && "+"}
-            <RollingNumber value={toGoldao(win)} digits={2} scaled tick />
+            <RollingNumber value={toGoldao(prize)} digits={2} scaled tick />
           </span>
           <span className="min-h-3.5 font-mono text-[10px] text-destructive">
             {exc && active
-              ? `If it collapses: ${fmtSigned(exc.collapseGross - exc.stake, 2)}`
+              ? `If it collapses you get ${fmtGoldao(exc.collapseGross, 2)}`
               : "No risk on the first 2 picks"}
           </span>
         </div>
@@ -423,12 +426,12 @@ export function RunCard({
             animate={{ opacity: 1, y: 0 }}
             className="font-display text-[26px] font-bold leading-none tabular-nums text-[color:var(--term-green)] sm:text-[32px]"
           >
-            {next !== null ? fmtSigned(next, 2) : "-"}
+            {next !== null ? fmtGoldao(next, 2) : "-"}
           </motion.span>
           <span className={cn("font-mono text-[10px]", inkMid)}>
             {exc && next !== null
-              ? `If the next pick is safe · ${(Number(exc.nextGross) / Number(exc.stake)).toFixed(2)}x`
-              : exc && nextNet === null
+              ? `${lastPick ? "Last pick, collected automatically" : "If the next pick is safe"} · ${(Number(exc.nextGross) / Number(exc.stake)).toFixed(2)}x`
+              : exc
                 ? "Maximum reached"
                 : "Saving unlocks at pick 3"}
           </span>
@@ -436,7 +439,7 @@ export function RunCard({
         <SaveButton
           canSave={canSave}
           onSave={onSave}
-          amount={exc ? fmtSigned(exc.runGross - exc.stake, 2) : undefined}
+          amount={exc ? fmtGoldao(exc.runGross, 2) : undefined}
         />
       </div>
     </div>
@@ -481,7 +484,14 @@ export function CreditBar({
   dashboard,
   className,
 }: { dashboard: Dashboard | undefined; className?: string }) {
-  const credit = dashboard ? Number(dashboard.credit) / 1e8 : 0;
+  // The stake of an excavation in play is already out of To collect on screen.
+  const { inPlay } = useBoard();
+  const shown = dashboard
+    ? dashboard.credit > inPlay
+      ? dashboard.credit - inPlay
+      : 0n
+    : 0n;
+  const credit = Number(shown) / 1e8;
   const prev = useRef(credit);
   const settled = useRef(false);
   const dir =
@@ -579,7 +589,8 @@ export function ResultCard({
   const collapsed = result.kind === EndKind.collapsed;
   const prize = prizeName(Number(result.picks));
   const PrizeIcon = prize.icon;
-  const net = result.won > 0n ? result.won : -result.lost;
+  const back = result.gross;
+  const profit = result.won > 0n ? result.won : -result.lost;
   const title = collapsed
     ? result.won > 0n
       ? "Collapse · you keep half"
@@ -613,25 +624,22 @@ export function ResultCard({
         <span
           className={cn(
             "font-display text-[clamp(52px,14vw,84px)] font-bold leading-none tabular-nums",
-            net > 0n ? "text-[color:var(--term-green)]" : "text-destructive",
+            result.won > 0n
+              ? "text-[color:var(--term-green)]"
+              : "text-destructive",
           )}
         >
-          {net > 0n ? (
-            <>
-              +
-              <RollingNumber
-                value={toGoldao(net)}
-                digits={2}
-                from={0}
-                scaled
-                tick
-              />
-            </>
-          ) : (
-            fmtSigned(net, 2)
-          )}
+          <RollingNumber
+            value={toGoldao(back)}
+            digits={2}
+            from={0}
+            scaled
+            tick
+          />
         </span>
-        <span className={cn("font-mono text-xs", inkMid)}>GOLDAO</span>
+        <span className={cn("font-mono text-xs", inkMid)}>
+          GOLDAO back · profit {fmtSigned(profit, 2)}
+        </span>
         {result.jackpotWon > 0n && (
           <span className={cn("font-mono text-xs", DIAMOND_TEXT)}>
             Jackpot: +{fmtGoldao(result.jackpotWon, 2)} GOLDAO
