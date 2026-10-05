@@ -27,6 +27,7 @@ import {
   DIAMOND_CELL,
   DIAMOND_IMG,
   DIAMOND_TEXT,
+  MAX_PICKS,
   ROCK_CELL,
   STAKE_LABELS,
   TOKENS,
@@ -34,13 +35,13 @@ import {
   eyebrow,
   fmtCountdown,
   fmtGoldao,
-  fmtMult,
+  fmtGoldaoNumber,
+  fmtMultOf,
   fmtSigned,
   gold,
   ink,
   inkFaint,
   inkMid,
-  MAX_PICKS,
   panel,
   prizeName,
   toGoldao,
@@ -149,26 +150,27 @@ function Sparkle() {
 export function RollingNumber({
   value,
   className,
-  digits = 0,
   scaled = false,
   tick = false,
   from,
 }: {
   value: number;
   className?: string;
-  digits?: number;
   scaled?: boolean;
   tick?: boolean;
   from?: number;
 }) {
   const mv = useMotionValue(from ?? value);
   const prev = useRef(from ?? value);
-  const text = useTransform(mv, (v) =>
-    v.toLocaleString("en-US", {
-      minimumFractionDigits: digits,
-      maximumFractionDigits: digits,
-    }),
-  );
+  const target = useRef(value);
+  target.current = value;
+  // Rolling: always 2 decimals, rounded down. At rest: exactly what fmtGoldao shows.
+  const text = useTransform(mv, (v) => {
+    if (Math.abs(v - target.current) < 0.005)
+      return fmtGoldaoNumber(target.current);
+    const cents = Math.max(0, Math.floor(v * 100 + 1e-6));
+    return `${Math.floor(cents / 100).toLocaleString("en-US")}.${String(cents % 100).padStart(2, "0")}`;
+  });
   useEffect(() => {
     const delta = Math.abs(value - prev.current);
     prev.current = value;
@@ -385,11 +387,11 @@ export function RunCard({
               prize > 0n ? "text-[color:var(--term-green)]" : ink,
             )}
           >
-            <RollingNumber value={toGoldao(prize)} digits={2} scaled tick />
+            <RollingNumber value={toGoldao(prize)} scaled tick />
           </span>
           <span className="min-h-3.5 font-mono text-[10px] text-destructive">
             {exc && active
-              ? `If it collapses you get ${fmtGoldao(exc.collapseGross, 2)}`
+              ? `If it collapses you get ${fmtGoldao(exc.collapseGross)}`
               : "No risk on the first 2 picks"}
           </span>
         </div>
@@ -404,7 +406,7 @@ export function RunCard({
             transition={{ type: "spring", stiffness: 300, damping: 14 }}
             className="text-gradient-gold origin-left font-display text-[32px] font-bold leading-none tabular-nums sm:text-[44px]"
           >
-            {exc && active ? fmtMult(Number(exc.runPoints)) : "0.00x"}
+            {exc && active ? fmtMultOf(exc.runGross, exc.stake) : "0.00x"}
           </motion.span>
           <div className="h-1 w-full overflow-hidden rounded-full bg-[color:var(--term-border)]">
             <motion.div
@@ -426,11 +428,11 @@ export function RunCard({
             animate={{ opacity: 1, y: 0 }}
             className="font-display text-[26px] font-bold leading-none tabular-nums text-[color:var(--term-green)] sm:text-[32px]"
           >
-            {next !== null ? fmtGoldao(next, 2) : "-"}
+            {next !== null ? fmtGoldao(next) : "-"}
           </motion.span>
           <span className={cn("font-mono text-[10px]", inkMid)}>
             {exc && next !== null
-              ? `${lastPick ? "Last pick, collected automatically" : "If the next pick is safe"} · ${(Number(exc.nextGross) / Number(exc.stake)).toFixed(2)}x`
+              ? `${lastPick ? "Last pick, collected automatically" : "If the next pick is safe"} · ${fmtMultOf(exc.nextGross, exc.stake)}`
               : exc
                 ? "Maximum reached"
                 : "Saving unlocks at pick 3"}
@@ -439,7 +441,7 @@ export function RunCard({
         <SaveButton
           canSave={canSave}
           onSave={onSave}
-          amount={exc ? fmtGoldao(exc.runGross, 2) : undefined}
+          amount={exc ? fmtGoldao(exc.runGross) : undefined}
         />
       </div>
     </div>
@@ -456,7 +458,7 @@ function TopRank({ dashboard }: { dashboard: Dashboard | undefined }) {
   const inTop = rank >= 1 && rank <= 10 && dashboard.top10Prize > 0n;
   let text: string;
   if (inTop) {
-    text = `Top 10 #${rank} · +${fmtGoldao(dashboard.top10Prize, 2)} if it closed now`;
+    text = `Top 10 #${rank} · +${fmtGoldao(dashboard.top10Prize)} if it closed now`;
   } else if (rank === 0) {
     text = `Top 10 · stake ${fmtGoldao(dashboard.top10Entry)} to qualify`;
   } else {
@@ -474,7 +476,7 @@ function TopRank({ dashboard }: { dashboard: Dashboard | undefined }) {
     >
       <span>{text}</span>
       <span className={inTop ? "opacity-80" : inkFaint}>
-        Top 10 pool {fmtGoldao(dashboard.top10Pool, 2)} GOLDAO
+        Top 10 pool {fmtGoldao(dashboard.top10Pool)} GOLDAO
       </span>
     </div>
   );
@@ -491,7 +493,7 @@ export function CreditBar({
       ? dashboard.credit - inPlay
       : 0n
     : 0n;
-  const credit = Number(shown) / 1e8;
+  const credit = toGoldao(shown);
   const prev = useRef(credit);
   const settled = useRef(false);
   const dir =
@@ -528,7 +530,6 @@ export function CreditBar({
       >
         <RollingNumber
           value={credit}
-          digits={2}
           scaled={settled.current}
           tick={settled.current}
         />
@@ -571,7 +572,7 @@ export function JackpotCard({
           DIAMOND_TEXT,
         )}
       >
-        <RollingNumber value={pool ? Number(pool) / 1e8 : 0} />
+        <RollingNumber value={pool ? toGoldao(pool) : 0} />
         <span className={cn("ml-2 font-mono text-xs", inkFaint)}>GOLDAO</span>
       </span>
       <span className={cn("font-mono text-[11px]", inkMid)}>
@@ -593,7 +594,7 @@ export function ResultCard({
   const profit = result.won > 0n ? result.won : -result.lost;
   const title = collapsed
     ? result.won > 0n
-      ? "Collapse · you keep half"
+      ? "Collapse · half of the points"
       : "Collapse"
     : prize.name;
   return (
@@ -629,20 +630,14 @@ export function ResultCard({
               : "text-destructive",
           )}
         >
-          <RollingNumber
-            value={toGoldao(back)}
-            digits={2}
-            from={0}
-            scaled
-            tick
-          />
+          <RollingNumber value={toGoldao(back)} from={0} scaled tick />
         </span>
         <span className={cn("font-mono text-xs", inkMid)}>
-          GOLDAO back · profit {fmtSigned(profit, 2)}
+          GOLDAO back · profit {fmtSigned(profit)}
         </span>
         {result.jackpotWon > 0n && (
           <span className={cn("font-mono text-xs", DIAMOND_TEXT)}>
-            Jackpot: +{fmtGoldao(result.jackpotWon, 2)} GOLDAO
+            Jackpot: +{fmtGoldao(result.jackpotWon)} GOLDAO
           </span>
         )}
         <button
