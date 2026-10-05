@@ -233,6 +233,15 @@ mixin (
 
   // Pulls the amount from the player's wallet into the bank. The caller grants
   // the credit only after this returns #ok, i.e. after the ledger confirmed it.
+  // The first successful load of a player also counts the 10 GOLDAO fee the
+  // player burned when authorizing the game account (simulated mode already
+  // counts that fee when the test authorization is made).
+  func gMarkLoaded(p : Principal) {
+    if (gameState.loaded.contains(p)) return;
+    gameState.loaded.add(p);
+    if (gameState.realLedger) gameState.burned += Game.FEE;
+  };
+
   func lLoad(p : Principal, amount : Nat) : async Types.Charge {
     gameState.movSeq += 1;
     let need = amount + Game.FEE;
@@ -243,6 +252,7 @@ mixin (
       gameState.allowances.add(p, gSub(gAllowance(p), need));
       gameState.bank += amount;
       gameState.burned += Game.FEE;
+      gMarkLoaded(p);
       gameState.movSeq += 1;
       return #ok;
     };
@@ -263,6 +273,8 @@ mixin (
         case (#Ok _) {
           gLedgerOk();
           gameState.bank += amount;
+          gameState.burned += Game.FEE;
+          gMarkLoaded(p);
           #ok;
         };
         case (#Err(#InsufficientAllowance _)) #allowance;
@@ -307,10 +319,12 @@ mixin (
       switch (res) {
         case (#Ok _) {
           gameState.bank := gSub(gameState.bank, need);
+          gameState.burned += Game.FEE;
           #ok;
         };
         case (#Err(#Duplicate _)) {
           gameState.bank := gSub(gameState.bank, need);
+          gameState.burned += Game.FEE;
           #ok;
         };
         case (#Err(#TooOld)) {
@@ -431,6 +445,9 @@ mixin (
         deepest = Nat.max(s.deepest, e.picks);
       },
     );
+    let playReturn = g + e.jackpotWon;
+    let prevBest = switch (gameState.best.get(p)) { case (?v) v; case null 0 };
+    if (playReturn > prevBest) gameState.best.add(p, playReturn);
     gameState.open.remove(p);
     {
       kind;
@@ -543,6 +560,7 @@ mixin (
       if (lost > 0) gameState.owed := gSub(gameState.owed, lost);
     };
     gameState.stats.clear();
+    gameState.best.clear();
     gameState.tournament := t + 1;
     gameState.endsAt := Time.now() + gameState.durationDays * Game.DAY_NS;
   };
@@ -606,6 +624,8 @@ mixin (
   };
 
   // Test wallet and faucet
+
+  public query func gameBurned() : async Nat { gameState.burned };
 
   public query func gameConfig() : async Types.GameConfig {
     {
@@ -937,6 +957,7 @@ mixin (
       faucetRemaining = Game.sub(Game.FAUCET_CAP, gFaucetUsed(caller));
       open;
       stats = gStats(caller);
+      bestReturn = switch (gameState.best.get(caller)) { case (?v) v; case null 0 };
       history = switch (gameState.history.get(caller)) { case (?l) l.toArray(); case null [] };
     };
   };
@@ -1206,6 +1227,7 @@ mixin (
       switch (res) {
         case (#Ok _) {
           gameState.bank := gSub(gameState.bank, amount + Game.FEE);
+          gameState.burned += Game.FEE;
           #ok(());
         };
         case (#Err(#InsufficientAllowance _)) #err("The withdrawal authorization is too low.");
@@ -1356,6 +1378,7 @@ mixin (
     gameState.top10 := 0;
     gameState.lastTop10 := [];
     gameState.burned := 0;
+    gameState.loaded.clear();
     Map.clear(gameState.balances);
     Map.clear(gameState.allowances);
     Map.clear(gameState.faucet);
