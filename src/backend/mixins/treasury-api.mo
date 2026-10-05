@@ -1,6 +1,7 @@
 import TreasuryTypes "../types/treasury";
 import TreasuryLib "../lib/treasury";
 import Map "mo:core/Map";
+import Time "mo:core/Time";
 
 mixin (
   treasurySnapshots : Map.Map<Text, TreasuryTypes.TreasurySnapshot>,
@@ -10,11 +11,11 @@ mixin (
     TreasuryLib.has(treasurySnapshots, date);
   };
 
-  /// Save a daily snapshot. Write-once per day — rejects if date exists.
+  /// Save a daily snapshot. Write-once per day, only for today's date (UTC), validated in the lib.
   public func saveTreasurySnapshot(
     snapshot : TreasuryTypes.TreasurySnapshot,
   ) : async Bool {
-    TreasuryLib.save(treasurySnapshots, snapshot);
+    TreasuryLib.save(treasurySnapshots, snapshot, Time.now());
   };
 
   /// Full history sorted by date ascending.
