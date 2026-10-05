@@ -1,15 +1,7 @@
 import { PageHeader } from "@/components/common";
 import { cn } from "@/lib/utils";
 import { Link } from "@tanstack/react-router";
-import {
-  ArrowRight,
-  Coins,
-  Gamepad2,
-  Gem,
-  Lock,
-  Mountain,
-  Users,
-} from "lucide-react";
+import { ArrowRight, Gamepad2, Gem, Lock, Mountain, Users } from "lucide-react";
 import { motion } from "motion/react";
 import { Spinner } from "../game/Spinner";
 import {
@@ -77,8 +69,19 @@ function GoldMineCard() {
               <Users className="size-3.5" />
               {players ?? <Spinner />}
             </span>
-            <span className="flex items-center gap-1">
-              <Coins className="size-3.5" />
+            <span
+              className="flex items-center gap-1"
+              title="Current diamond jackpot"
+            >
+              {DIAMOND_IMG ? (
+                <img
+                  src={DIAMOND_IMG}
+                  alt=""
+                  className="size-3.5 object-contain"
+                />
+              ) : (
+                <Gem className={cn("size-3.5", DIAMOND_TEXT)} />
+              )}
               {ranking ? fmtGoldao(ranking.pool) : <Spinner />}
             </span>
           </span>
