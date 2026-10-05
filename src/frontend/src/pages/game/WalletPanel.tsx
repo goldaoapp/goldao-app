@@ -1,10 +1,16 @@
 import type { Dashboard, GameConfig } from "@/backend";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/context/AuthContext";
+import { transferGoldao } from "@/lib/goldao-ledger";
+import { useInternetIdentity } from "@/lib/internet-identity";
 import { cn } from "@/lib/utils";
+import { Principal } from "@icp-sdk/core/principal";
+import { useQueryClient } from "@tanstack/react-query";
 import { Coins, Droplets, ShieldCheck, Wallet } from "lucide-react";
 import { motion } from "motion/react";
 import { useState } from "react";
+import { ConfirmDialog } from "./ConfirmDialog";
+import { CopyField } from "./CopyField";
 import { Spinner } from "./Spinner";
 import { eyebrow, fmtGoldao, gold, ink, inkFaint, panel } from "./game-utils";
 import { errorMessage, useGameAction } from "./useGame";
@@ -14,13 +20,29 @@ const FAUCET_PRESETS = [1_000, 5_000, 10_000, 20_000];
 const LOAD_PRESETS = [200, 500, 1_000, 2_000, 5_000];
 const E8S = 100_000_000n;
 
+/** "12.5" -> e8s. Null when the text is not a positive amount. */
+function parseGoldao(text: string): bigint | null {
+  if (!/^\d+(\.\d{1,8})?$/.test(text)) return null;
+  const [whole, frac = ""] = text.split(".");
+  const v = BigInt(whole) * E8S + BigInt(frac.padEnd(8, "0"));
+  return v > 0n ? v : null;
+}
+
+function formatE8s(v: bigint): string {
+  const whole = v / E8S;
+  const frac = (v % E8S).toString().padStart(8, "0").replace(/0+$/, "");
+  return frac ? `${whole}.${frac}` : `${whole}`;
+}
+
 interface Props {
   dashboard: Dashboard | undefined;
   config: GameConfig | undefined;
 }
 
 export function WalletPanel({ dashboard, config }: Props) {
-  const { actor } = useAuth();
+  const { actor, principalId } = useAuth();
+  const { identity } = useInternetIdentity();
+  const queryClient = useQueryClient();
   const { run, pending } = useGameAction();
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
@@ -44,6 +66,47 @@ export function WalletPanel({ dashboard, config }: Props) {
         : balance < need
           ? "Not enough GOLDAO in your wallet."
           : null;
+
+  const [dest, setDest] = useState("");
+  const [sendText, setSendText] = useState("");
+  const [sending, setSending] = useState(false);
+  const [askSend, setAskSend] = useState(false);
+
+  const destPrincipal = (() => {
+    try {
+      const p = Principal.fromText(dest.trim());
+      return p.isAnonymous() || p.toText() === principalId ? null : p;
+    } catch {
+      return null;
+    }
+  })();
+  const sendAmount = parseGoldao(sendText.trim());
+  const sendBlock = !destPrincipal
+    ? "Enter a valid destination address."
+    : !sendAmount
+      ? "Enter an amount."
+      : sendAmount + fee > balance
+        ? "Not enough GOLDAO in your wallet (the fee is paid on top)."
+        : null;
+
+  const sendFromWallet = async () => {
+    if (!identity || !destPrincipal || !sendAmount || sending) return;
+    setMsg(null);
+    setSending(true);
+    try {
+      await transferGoldao(identity, destPrincipal.toText(), sendAmount);
+      await queryClient.invalidateQueries({ queryKey: ["game", "wallet"] });
+      setSendText("");
+      setMsg({
+        ok: true,
+        text: `Sent ${formatE8s(sendAmount)} GOLDAO to ${destPrincipal.toText().slice(0, 5)}…`,
+      });
+    } catch (e) {
+      setMsg({ ok: false, text: errorMessage(e) });
+    } finally {
+      setSending(false);
+    }
+  };
 
   const loadCredit = async () => {
     if (!actor || loading || loadBlock) return;
@@ -198,6 +261,73 @@ export function WalletPanel({ dashboard, config }: Props) {
           </>
         )}
       </div>
+
+      {real && principalId && (
+        <div className="flex flex-col gap-5 border-t border-[color:var(--term-border-faint)] p-5 md:col-span-3">
+          <CopyField
+            label="Your wallet address: send GOLDAO here from any wallet to deposit"
+            value={principalId}
+          />
+          <div className="flex flex-col gap-2">
+            <span className={cn(eyebrow, inkFaint)}>Withdraw from wallet</span>
+            <div className="flex flex-wrap items-center gap-2">
+              <input
+                value={dest}
+                onChange={(e) => setDest(e.target.value)}
+                placeholder="Destination address"
+                disabled={sending}
+                className="w-80 max-w-full rounded-md border border-[color:var(--term-border)] bg-transparent px-3 py-1.5 font-mono text-xs"
+              />
+              <input
+                value={sendText}
+                onChange={(e) =>
+                  setSendText(e.target.value.replace(/[^\d.]/g, ""))
+                }
+                placeholder="Amount"
+                inputMode="decimal"
+                disabled={sending}
+                className="w-32 rounded-md border border-[color:var(--term-border)] bg-transparent px-3 py-1.5 font-mono text-xs"
+              />
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={sending || balance <= fee}
+                onClick={() => setSendText(formatE8s(balance - fee))}
+              >
+                Max
+              </Button>
+              <Button
+                size="sm"
+                disabled={sending || !!sendBlock}
+                onClick={() => setAskSend(true)}
+                className="gradient-primary text-primary-foreground"
+              >
+                {sending ? <Spinner /> : null}
+                Withdraw
+              </Button>
+            </div>
+            <span className={cn("font-mono text-[11px]", inkFaint)}>
+              {dest || sendText
+                ? (sendBlock ??
+                  `Network fee ${fmtGoldao(fee)} GOLDAO, paid on top.`)
+                : `Sends GOLDAO from your wallet to any address. Network fee ${fmtGoldao(fee)} GOLDAO, paid on top. To collect is not affected.`}
+            </span>
+          </div>
+        </div>
+      )}
+
+      {askSend && destPrincipal && sendAmount && (
+        <ConfirmDialog
+          title={`Send ${formatE8s(sendAmount)} GOLDAO?`}
+          detail={`To ${destPrincipal.toText()}. The network fee is paid on top. This cannot be undone.`}
+          busy={sending}
+          onCancel={() => setAskSend(false)}
+          onConfirm={() => {
+            setAskSend(false);
+            void sendFromWallet();
+          }}
+        />
+      )}
 
       {msg && (
         <p
