@@ -79,16 +79,15 @@ export function TreasureOverlay({
     if (view) playSound("treasure");
   }, [view]);
 
-  return (
+  const content = (
     <AnimatePresence>
       {view && (
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="absolute inset-0 z-40 flex flex-col items-center justify-center gap-3 rounded-xl bg-black/50 p-4 text-center backdrop-blur-[2px]"
+          className="pointer-events-none fixed inset-0 z-[90] flex flex-col items-center justify-center gap-3 p-4 text-center"
         >
-          <GoldRain />
           <span className="text-gradient-gold font-display text-[clamp(44px,12vw,110px)] font-bold uppercase leading-none tracking-wide">
             Treasure
           </span>
@@ -115,12 +114,29 @@ export function TreasureOverlay({
           <button
             type="button"
             onClick={onClose}
-            className="gradient-primary mt-2 rounded-full px-9 py-3 font-display text-lg font-bold text-primary-foreground"
+            className="gradient-primary pointer-events-auto mt-2 rounded-full px-9 py-3 font-display text-lg font-bold text-primary-foreground"
           >
             Continue
           </button>
         </motion.div>
       )}
     </AnimatePresence>
+  );
+
+  return (
+    <>
+      <AnimatePresence>
+        {view && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="absolute inset-0 z-40 rounded-xl bg-black/50 backdrop-blur-[2px]"
+          />
+        )}
+      </AnimatePresence>
+      {view && <GoldRain />}
+      {typeof document !== "undefined" && createPortal(content, document.body)}
+    </>
   );
 }
