@@ -18,10 +18,10 @@ module {
   public let STAKE_STEP : Nat = 10_000_000_000;
   public let MID_STEP : Nat = 1_000_000_000;
   public let MAX_STAKE_BPS : Nat = 50;
-  public let PAYOUT_BPS : Nat = 9_200;
+  public let PAYOUT_BPS : Nat = 9_250;
   public let POOL_BPS : Nat = 250;
   public let RESERVE_BPS : Nat = 250;
-  public let CYCLES_BPS : Nat = 100;
+  public let CYCLES_BPS : Nat = 50;
   public let TOP10_BPS : Nat = 95;
   public let TOP10_WEIGHTS : [Nat] = [25, 18, 14, 11, 9, 7, 6, 4, 3, 3];
   public let TOP10_MIN_VOLUME : Nat = 100_000_000_000;
