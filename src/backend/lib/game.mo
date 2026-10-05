@@ -22,6 +22,9 @@ module {
   public let POOL_BPS : Nat = 250;
   public let RESERVE_BPS : Nat = 250;
   public let CYCLES_BPS : Nat = 100;
+  public let TOP10_BPS : Nat = 95;
+  public let TOP10_WEIGHTS : [Nat] = [25, 18, 14, 11, 9, 7, 6, 4, 3, 3];
+  public let TOP10_MIN_VOLUME : Nat = 100_000_000_000;
   public let POOL_SEED : Nat = 500_000_000_000;
   public let RESERVE_CAP : Nat = 2_000_000_000_000;
   public let FUND_FLOOR : Nat = 2_000_000_000_000;
@@ -76,6 +79,11 @@ module {
 
   public func collapsePoints(k : Nat) : Nat { (pointsAt(k) + 1) / 2 };
 
+  public func top10Prize(bucket : Nat, rank : Nat, volume : Nat) : Nat {
+    if (rank == 0 or rank > TOP10_WEIGHTS.size() or volume < TOP10_MIN_VOLUME) return 0;
+    bucket * TOP10_WEIGHTS[rank - 1] / 100;
+  };
+
   public func canSave(picks : Nat) : Bool { picks > SAFE };
 
   public func safePctX100(picks : Nat) : Nat {
@@ -86,9 +94,9 @@ module {
     stake * points * PAYOUT_BPS / 1_000_000;
   };
 
-  public func fund(bank : Nat, owed : Nat, pool : Nat, reserve : Nat, cycles : Nat) : Int {
+  public func fund(bank : Nat, owed : Nat, pool : Nat, reserve : Nat, cycles : Nat, top10 : Nat) : Int {
     let b : Int = bank;
-    b - owed - pool - reserve - cycles;
+    b - owed - pool - reserve - cycles - top10;
   };
 
   public func stakes(f : Int) : [Nat] {
