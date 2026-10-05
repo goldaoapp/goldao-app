@@ -75,6 +75,14 @@ module {
     closedAt : Int;
   };
 
+  public type TopPrize = {
+    tournament : Nat;
+    rank : Nat;
+    player : Principal;
+    volume : Nat;
+    prize : Nat;
+  };
+
   public type GameState = {
     var tournament : Nat;
     var endsAt : Int;
@@ -111,6 +119,8 @@ module {
     var breakerMax : Nat;
     var breakerWindowNs : Int;
     var ledgerFails : Nat;
+    var top10 : Nat;
+    var lastTop10 : [TopPrize];
   };
 
   public type SecurityView = {
@@ -176,6 +186,10 @@ module {
     credit : Nat;
     pendingPayout : Nat;
     pool : Nat;
+    top10Pool : Nat;
+    top10Rank : Nat;
+    top10Prize : Nat;
+    top10Entry : Nat;
     faucetRemaining : Nat;
     open : ?ExcavationView;
     stats : TournamentStats;
@@ -190,12 +204,16 @@ module {
     jackpotWon : Nat;
     bestPoints : Nat;
     deepest : Nat;
+    rank : Nat;
+    prize : Nat;
   };
 
   public type Ranking = {
     tournament : Nat;
     endsAt : Int;
     pool : Nat;
+    top10Pool : Nat;
+    lastTop10 : [TopPrize];
     staked : Nat;
     players : [PlayerRow];
     jackpots : [JackpotWin];
@@ -219,6 +237,9 @@ module {
     loadMax : Nat;
     creditCapE8s : Nat;
     minPayoutE8s : Nat;
+    top10Bps : Nat;
+    top10Weights : [Nat];
+    top10MinVolumeE8s : Nat;
     realLedger : Bool;
     ledgerId : Text;
   };
@@ -239,6 +260,7 @@ module {
     pool : Nat;
     reserve : Nat;
     cycles : Nat;
+    top10 : Nat;
     burned : Nat;
     fund : Int;
     withdrawable : Nat;
