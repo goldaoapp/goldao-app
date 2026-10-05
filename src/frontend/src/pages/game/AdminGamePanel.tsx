@@ -1,11 +1,12 @@
 import { type AdminView, WithdrawKind } from "@/backend";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/context/AuthContext";
+import { loadEnv } from "@/hooks/useBackendActor";
 import { GOLDAO_FEE_E8S, approveSpender } from "@/lib/goldao-ledger";
 import { useInternetIdentity } from "@/lib/internet-identity";
 import { cn } from "@/lib/utils";
 import { Principal } from "@icp-sdk/core/principal";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Gem, Landmark, Shield } from "lucide-react";
 import { useState } from "react";
 import { ConfirmDialog } from "./ConfirmDialog";
@@ -46,6 +47,9 @@ const POOL_SEED_MAX = 20_000;
 // The wallet authorization given to the backend lives only this long.
 const WITHDRAW_WINDOW_MS = 2 * 60_000;
 const PAY_WINDOW_MS = 10 * 60_000;
+// Hard ceiling for any single authorization signed from this panel. The amounts come from
+// unverified queries, so a wrong answer can never make the wallet approve more than this.
+const MAX_AUTHORIZE_E8S = 1_000_000n * E8S;
 
 type Res<T> = { __kind__: "ok"; ok: T } | { __kind__: "err"; err: string };
 
@@ -75,13 +79,21 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
   const [days, setDays] = useState("");
   const [seed, setSeed] = useState(String(POOL_SEED_MIN));
   const [who, setWho] = useState("");
-  const [selfId, setSelfId] = useState("");
   const [busy, setBusy] = useState(false);
 
   const working = !!pending || busy;
   const real = !!view?.realLedger;
   const bankText = view?.bankAccount?.toText();
   const selfText = view?.selfId?.toText();
+  // The game account comes from the deployment itself (env.json), not from a query to the
+  // canister. The view is only used to check that both agree.
+  const envQuery = useQuery({
+    queryKey: ["game", "spender"],
+    queryFn: async () => (await loadEnv()).backend_canister_id ?? "",
+    staleTime: Number.POSITIVE_INFINITY,
+  });
+  const envId =
+    envQuery.data && envQuery.data !== "undefined" ? envQuery.data : "";
 
   const unpaid = view?.payouts.filter((p) => !p.paid) ?? [];
   const unpaidTotal = view?.unpaidPayouts ?? 0n;
@@ -116,26 +128,44 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
   // ledger drops it by itself after `windowMs`, used or not.
   const authorize = async (required: bigint, windowMs: number) => {
     if (!real) return;
-    if (!identity || !bankText || !selfText) {
+    if (!identity || !bankText || !envId) {
       throw new Error("Sign in with the admin wallet first.");
+    }
+    if (selfText !== envId) {
+      throw new Error(
+        "The game account does not match this canister. Nothing was authorized.",
+      );
+    }
+    if (required > MAX_AUTHORIZE_E8S) {
+      throw new Error(
+        "The amount is above the safety limit. Nothing was authorized.",
+      );
     }
     if (identity.getPrincipal().toText() !== bankText) {
       throw new Error("This session is not the bank wallet.");
     }
-    await approveSpender(identity, selfText, required, windowMs);
+    await approveSpender(identity, envId, required, windowMs);
   };
 
   // Right after an operation, cancels whatever authorization is left. A dust
   // amount is not worth another network fee: it expires within minutes.
   const revokeLeftover = async () => {
-    if (!real || !actor || !identity || !bankText || !selfText) return;
+    if (
+      !real ||
+      !actor ||
+      !identity ||
+      !bankText ||
+      !envId ||
+      selfText !== envId
+    )
+      return;
     try {
       const cur = await actor.gameAdminLedgerAllowance(
         Principal.fromText(bankText),
-        Principal.fromText(selfText),
+        Principal.fromText(envId),
       );
       if (cur.__kind__ === "ok" && cur.ok > GOLDAO_FEE_E8S) {
-        await approveSpender(identity, selfText, 0n);
+        await approveSpender(identity, envId, 0n);
       }
     } catch {
       // The expiry set when it was granted still applies.
@@ -680,15 +710,12 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
               title="Real ledger"
               hint="Switches from test to real GOLDAO. Needs no pending payouts. Irreversible."
             >
-              <input
-                value={selfId}
-                onChange={(e) => setSelfId(e.target.value)}
-                placeholder="Canister principal"
-                className={inputCls}
-              />
+              <span className="font-mono text-xs">
+                {envId ? `Game account ${envId}` : "Game account unknown"}
+              </span>
               <Button
                 variant="outline"
-                disabled={working || !parsePrincipal(selfId)}
+                disabled={working || !parsePrincipal(envId)}
                 onClick={() =>
                   confirmThen({
                     title: "Enable the real ledger?",
@@ -698,9 +725,7 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
                       act(
                         "real",
                         () =>
-                          actor!.gameAdminSetRealLedger(
-                            parsePrincipal(selfId)!,
-                          ),
+                          actor!.gameAdminSetRealLedger(parsePrincipal(envId)!),
                         (v) => `Real ledger enabled. Bank is ${fmtGoldao(v)}.`,
                       ),
                   })
