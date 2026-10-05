@@ -57,6 +57,7 @@ export interface AdminView {
     durationDays: bigint;
     staked: bigint;
     stakes: Array<bigint>;
+    top10: bigint;
     smallBalances: bigint;
     toCollect: bigint;
     bankAccount?: Principal;
@@ -96,7 +97,10 @@ export interface Cell {
     name: string;
 }
 export interface Dashboard {
+    top10Pool: bigint;
+    top10Rank: bigint;
     stakes: Array<bigint>;
+    top10Prize: bigint;
     balance: bigint;
     open?: ExcavationView;
     pool: bigint;
@@ -106,6 +110,7 @@ export interface Dashboard {
     stats: TournamentStats;
     allowance: bigint;
     faucetRemaining: bigint;
+    top10Entry: bigint;
     pendingPayout: bigint;
     paused: boolean;
     endsAt: bigint;
@@ -254,7 +259,9 @@ export interface GameConfig {
     mines: bigint;
     loadMax: bigint;
     loadMin: bigint;
+    top10Bps: bigint;
     ledgerId: string;
+    top10Weights: Array<bigint>;
     stakeCapE8s: bigint;
     feeE8s: bigint;
     diamond1Bps: bigint;
@@ -263,6 +270,7 @@ export interface GameConfig {
     pointsTable: Array<bigint>;
     creditCapE8s: bigint;
     maxPicks: bigint;
+    top10MinVolumeE8s: bigint;
     payoutBps: bigint;
     safePicks: bigint;
     minPayoutE8s: bigint;
@@ -301,7 +309,9 @@ export interface PlayerRow {
     deepest: bigint;
     player: Principal;
     excavations: bigint;
+    rank: bigint;
     bestPoints: bigint;
+    prize: bigint;
     returned: bigint;
 }
 export interface PlayerTournamentResult {
@@ -311,9 +321,11 @@ export interface PlayerTournamentResult {
     payout: bigint;
 }
 export interface Ranking {
+    top10Pool: bigint;
     staked: bigint;
     pool: bigint;
     tournament: bigint;
+    lastTop10: Array<TopPrize>;
     players: Array<PlayerRow>;
     jackpots: Array<JackpotWin>;
     endsAt: bigint;
@@ -336,6 +348,13 @@ export interface SecurityView {
     accountingOk: boolean;
     halted: boolean;
     saturations: bigint;
+}
+export interface TopPrize {
+    player: Principal;
+    rank: bigint;
+    tournament: bigint;
+    volume: bigint;
+    prize: bigint;
 }
 export interface TournamentStats {
     staked: bigint;
@@ -1142,6 +1161,7 @@ function from_candid_record_n30(_uploadFile: (file: ExternalBlob) => Promise<Uin
     durationDays: bigint;
     staked: bigint;
     stakes: Array<bigint>;
+    top10: bigint;
     smallBalances: bigint;
     toCollect: bigint;
     bankAccount: [] | [Principal];
@@ -1169,6 +1189,7 @@ function from_candid_record_n30(_uploadFile: (file: ExternalBlob) => Promise<Uin
     durationDays: bigint;
     staked: bigint;
     stakes: Array<bigint>;
+    top10: bigint;
     smallBalances: bigint;
     toCollect: bigint;
     bankAccount?: Principal;
@@ -1197,6 +1218,7 @@ function from_candid_record_n30(_uploadFile: (file: ExternalBlob) => Promise<Uin
         durationDays: value.durationDays,
         staked: value.staked,
         stakes: value.stakes,
+        top10: value.top10,
         smallBalances: value.smallBalances,
         toCollect: value.toCollect,
         bankAccount: record_opt_to_undefined(from_candid_opt_n31(_uploadFile, _downloadFile, value.bankAccount)),
@@ -1274,7 +1296,10 @@ function from_candid_record_n40(_uploadFile: (file: ExternalBlob) => Promise<Uin
     };
 }
 function from_candid_record_n43(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
+    top10Pool: bigint;
+    top10Rank: bigint;
     stakes: Array<bigint>;
+    top10Prize: bigint;
     balance: bigint;
     open: [] | [_ExcavationView];
     pool: bigint;
@@ -1284,11 +1309,15 @@ function from_candid_record_n43(_uploadFile: (file: ExternalBlob) => Promise<Uin
     stats: _TournamentStats;
     allowance: bigint;
     faucetRemaining: bigint;
+    top10Entry: bigint;
     pendingPayout: bigint;
     paused: boolean;
     endsAt: bigint;
 }): {
+    top10Pool: bigint;
+    top10Rank: bigint;
     stakes: Array<bigint>;
+    top10Prize: bigint;
     balance: bigint;
     open?: ExcavationView;
     pool: bigint;
@@ -1298,12 +1327,16 @@ function from_candid_record_n43(_uploadFile: (file: ExternalBlob) => Promise<Uin
     stats: TournamentStats;
     allowance: bigint;
     faucetRemaining: bigint;
+    top10Entry: bigint;
     pendingPayout: bigint;
     paused: boolean;
     endsAt: bigint;
 } {
     return {
+        top10Pool: value.top10Pool,
+        top10Rank: value.top10Rank,
         stakes: value.stakes,
+        top10Prize: value.top10Prize,
         balance: value.balance,
         open: record_opt_to_undefined(from_candid_opt_n44(_uploadFile, _downloadFile, value.open)),
         pool: value.pool,
@@ -1313,6 +1346,7 @@ function from_candid_record_n43(_uploadFile: (file: ExternalBlob) => Promise<Uin
         stats: value.stats,
         allowance: value.allowance,
         faucetRemaining: value.faucetRemaining,
+        top10Entry: value.top10Entry,
         pendingPayout: value.pendingPayout,
         paused: value.paused,
         endsAt: value.endsAt
