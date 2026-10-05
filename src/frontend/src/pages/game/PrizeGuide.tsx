@@ -5,6 +5,7 @@ import { Spinner } from "./Spinner";
 import {
   DIAMOND_TEXT,
   STAKE_LABELS,
+  collapsePoints,
   eyebrow,
   fmtGoldao,
   fmtMult,
@@ -41,7 +42,7 @@ export function PrizeGuide({ config, stakes }: Props) {
   const mines = Number(config.mines);
   const safe = Number(config.safePicks);
   const pts = config.pointsTable.map(Number);
-  const payout = Number(config.payoutBps) / 100;
+  const bps = Number(config.payoutBps);
   const d1 = Number(config.diamond1Bps) / 10_000;
   const d2 = Number(config.diamond2Bps) / 10_000;
   const perGoldao = Number(config.diamond3PerGoldao) / Number(1e8);
@@ -65,15 +66,16 @@ export function PrizeGuide({ config, stakes }: Props) {
             Choose a stake and dig. The board has {cells} cells and {mines} of
             them collapse the mine. The first {safe} picks are always safe. From
             the third pick you can save: you receive{" "}
-            <span className={ink}>{payout}% of stake x points</span>, shown as a
-            multiplier.
+            <span className={ink}>your stake x the multiplier</span> shown
+            below, rounded down to 2 decimals.
           </p>
           <p>
             Before digging, load credit into To collect from your wallet. Every
             stake comes out of it: wins are added, and if the mine collapses you
-            keep half of the points reached, so the rest of the stake is
-            deducted. The wallet is only touched when you load credit, and each
-            load pays the {fmtGoldao(config.feeE8s)} GOLDAO network fee.
+            get half of the points reached (rounded up), shown in the If it
+            collapses column; the rest of the stake is deducted. The wallet is
+            only touched when you load credit, and each load pays the{" "}
+            {fmtGoldao(config.feeE8s)} GOLDAO network fee.
           </p>
           <p>
             When the tournament closes, To collect is paid to your wallet if it
@@ -133,11 +135,11 @@ export function PrizeGuide({ config, stakes }: Props) {
                       </span>
                     </td>
                     <td className={cn("px-3 py-2.5 tabular-nums", ink)}>
-                      {fmtMult(p)}
+                      {fmtMult(p, bps)}
                     </td>
                     <td className="px-3 py-2.5 tabular-nums">
                       <Mountain className="mr-1 inline size-3" />
-                      {fmtMult(Math.ceil(p / 2))}
+                      {fmtMult(collapsePoints(p), bps)}
                     </td>
                     <td className="px-5 py-2.5 text-right tabular-nums">
                       {reachPct(picks, cells, mines, safe).toFixed(0)}%
