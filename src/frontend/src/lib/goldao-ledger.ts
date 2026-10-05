@@ -100,8 +100,31 @@ const ledgerIdlFactory = (({ IDL }: { IDL: typeof IDLType }) => {
     Expired: IDL.Record({ ledger_time: IDL.Nat64 }),
     InsufficientFunds: IDL.Record({ balance: IDL.Nat }),
   });
+  const TransferArg = IDL.Record({
+    to: Account,
+    fee: IDL.Opt(IDL.Nat),
+    memo: IDL.Opt(IDL.Vec(IDL.Nat8)),
+    from_subaccount: IDL.Opt(IDL.Vec(IDL.Nat8)),
+    created_at_time: IDL.Opt(IDL.Nat64),
+    amount: IDL.Nat,
+  });
+  const TransferError = IDL.Variant({
+    GenericError: IDL.Record({ message: IDL.Text, error_code: IDL.Nat }),
+    TemporarilyUnavailable: IDL.Null,
+    BadBurn: IDL.Record({ min_burn_amount: IDL.Nat }),
+    Duplicate: IDL.Record({ duplicate_of: IDL.Nat }),
+    BadFee: IDL.Record({ expected_fee: IDL.Nat }),
+    CreatedInFuture: IDL.Record({ ledger_time: IDL.Nat64 }),
+    TooOld: IDL.Null,
+    InsufficientFunds: IDL.Record({ balance: IDL.Nat }),
+  });
   return IDL.Service({
     icrc1_balance_of: IDL.Func([Account], [IDL.Nat], ["query"]),
+    icrc1_transfer: IDL.Func(
+      [TransferArg],
+      [IDL.Variant({ Ok: IDL.Nat, Err: TransferError })],
+      [],
+    ),
     icrc2_allowance: IDL.Func(
       [IDL.Record({ account: Account, spender: Account })],
       [IDL.Record({ allowance: IDL.Nat, expires_at: IDL.Opt(IDL.Nat64) })],
@@ -167,10 +190,18 @@ interface LedgerActor {
     spender: Icrc1Account;
     amount: bigint;
     expected_allowance: [];
-    expires_at: [];
+    expires_at: [] | [bigint];
     fee: [];
     memo: [];
     created_at_time: [];
+  }) => Promise<{ Ok: bigint } | { Err: Record<string, unknown> }>;
+  icrc1_transfer: (a: {
+    to: Icrc1Account;
+    fee: [bigint];
+    memo: [];
+    from_subaccount: [];
+    created_at_time: [];
+    amount: bigint;
   }) => Promise<{ Ok: bigint } | { Err: Record<string, unknown> }>;
   icrc1_total_supply: () => Promise<bigint>;
   get_transactions: (req: {
@@ -334,31 +365,66 @@ export async function fetchAllowance(
   return r.allowance;
 }
 
-/** Signs an icrc2_approve with the player's identity. */
-export async function approveSpender(
-  identity: unknown,
-  spender: string,
-  amount: bigint,
-): Promise<void> {
+async function signedLedger(identity: unknown): Promise<LedgerActor> {
   const agent = await SignedAgent.create({
     identity: identity as never,
     host: "https://icp-api.io",
   });
-  const l = Actor.createActor(ledgerIdlFactory, {
+  return Actor.createActor(ledgerIdlFactory, {
     agent: agent as never,
     canisterId: GOLDAO_LEDGER,
   }) as unknown as LedgerActor;
+}
+
+/**
+ * Signs an icrc2_approve with the caller's identity. It replaces any previous
+ * authorization. With `expiresInMs` the ledger drops it by itself after that
+ * time, whether or not it was used.
+ */
+export async function approveSpender(
+  identity: unknown,
+  spender: string,
+  amount: bigint,
+  expiresInMs?: number,
+): Promise<void> {
+  const l = await signedLedger(identity);
   const res = await l.icrc2_approve({
     from_subaccount: [],
     spender: acct(spender),
     amount,
     expected_allowance: [],
-    expires_at: [],
+    expires_at:
+      expiresInMs === undefined
+        ? []
+        : [BigInt(Date.now() + expiresInMs) * 1_000_000n],
     fee: [],
     memo: [],
     created_at_time: [],
   });
   if ("Err" in res) {
     throw new Error("The authorization was rejected by the ledger.");
+  }
+}
+
+/** Sends GOLDAO from the caller's own wallet. The ledger fee is paid on top. */
+export async function transferGoldao(
+  identity: unknown,
+  to: string,
+  amount: bigint,
+): Promise<void> {
+  const l = await signedLedger(identity);
+  const res = await l.icrc1_transfer({
+    to: acct(to),
+    fee: [GOLDAO_FEE_E8S],
+    memo: [],
+    from_subaccount: [],
+    created_at_time: [],
+    amount,
+  });
+  if ("Err" in res) {
+    if ("InsufficientFunds" in res.Err) {
+      throw new Error("Insufficient GOLDAO in your wallet.");
+    }
+    throw new Error("The ledger rejected the transfer.");
   }
 }
