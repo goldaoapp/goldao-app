@@ -1,15 +1,15 @@
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useMemo } from "react";
 import { createPortal } from "react-dom";
-import type { TreasureView } from "./board-store";
 import { RollingNumber } from "./MineParts";
+import type { TreasureView } from "./board-store";
 import {
-  PAYOUT_BPS,
   TOKENS,
   fmtGoldao,
   fmtMult,
   gold,
   inkMid,
+  multX100,
   toGoldao,
 } from "./game-utils";
 import { playSound } from "./sounds";
@@ -18,7 +18,7 @@ export type { TreasureView } from "./board-store";
 
 /** A win shown as x1.62 or more is a Treasure (6 picks or deeper). */
 export function isTreasure(points: number): boolean {
-  return Math.round((points * PAYOUT_BPS) / 10_000) >= 162;
+  return multX100(points) >= 162;
 }
 
 /** Gold coins falling over the whole screen while the Treasure is celebrated. */
@@ -95,19 +95,13 @@ export function TreasureOverlay({
             transition={{ duration: 1.4, repeat: Number.POSITIVE_INFINITY }}
             className="text-gradient-gold font-display text-[clamp(48px,13vw,120px)] font-bold leading-none tabular-nums drop-shadow-[0_0_24px_oklch(0.74_0.14_80/0.55)]"
           >
-            <RollingNumber
-              value={toGoldao(view.gross)}
-              digits={2}
-              from={0}
-              scaled
-              tick
-            />
+            <RollingNumber value={toGoldao(view.gross)} from={0} scaled tick />
           </motion.span>
           <span className={`font-mono text-sm tracking-[0.2em] ${gold}`}>
             GOLDAO
           </span>
           <span className={`font-mono text-xs ${inkMid}`}>
-            {fmtMult(view.points)} · profit +{fmtGoldao(view.won, 2)}
+            {fmtMult(view.points)} · profit +{fmtGoldao(view.won)}
           </span>
           <button
             type="button"
