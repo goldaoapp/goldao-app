@@ -10,7 +10,7 @@ import {
 import { useInternetIdentity } from "@/lib/internet-identity";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback } from "react";
-import { AUTHORIZE_GOLDAO } from "./game-utils";
+import { AUTHORIZE_DAYS, AUTHORIZE_GOLDAO } from "./game-utils";
 
 const E8S = 100_000_000n;
 
@@ -75,6 +75,7 @@ export function useWallet(
           identity,
           spender.data,
           BigInt(AUTHORIZE_GOLDAO) * E8S,
+          AUTHORIZE_DAYS * 24 * 60 * 60 * 1000,
         );
         await ledger.refetch();
       } else {
