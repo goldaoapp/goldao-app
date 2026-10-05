@@ -46,12 +46,10 @@ mixin (
     gameState.owed == credits + held + gUnpaidTotal();
   };
 
+  // The game admin comes only from BOOTSTRAP_ADMINS. Roles from the access-control
+  // extension are ignored here, so nobody can become game admin by logging in first.
   func gIsAdmin(p : Principal) : Bool {
-    if (Game.isBootstrapAdmin(p)) return true;
-    switch (accessControlState.userRoles.get(p)) {
-      case (?#admin) true;
-      case _ false;
-    };
+    Game.isBootstrapAdmin(p);
   };
 
   func gIsBank(p : Principal) : Bool {
@@ -291,6 +289,16 @@ mixin (
     };
   };
 
+  // Ledger timestamp of a payout. It is assigned at the first payment attempt, not when the
+  // payout is created, and renewed when it is close to the ledger's 24 h limit. It is saved
+  // before the call, so a retry of the same payout reuses it and the ledger answers Duplicate.
+  func gPayStamp(po : Types.Payout) : Nat64 {
+    let now = Nat.toNat64(Int.abs(Time.now()));
+    if (po.stamp != 0 and now < po.stamp + Game.STAMP_MAX_AGE_NS) return po.stamp;
+    gameState.payouts.add(po.id, { po with stamp = now });
+    now;
+  };
+
   func lPay(to : Principal, amount : Nat, id : Nat, stamp : Nat64) : async Result.Result<(), Text> {
     gameState.movSeq += 1;
     let need = amount + Game.FEE;
@@ -390,6 +398,14 @@ mixin (
     gameState.reserve := gSub(gameState.reserve, seed);
     gameState.pool := seed;
     gameState.owed += won;
+    // The pool restarts at POOL_SEED at least. What the reserve cannot cover comes from the
+    // bank fund, never taking the fund below its floor.
+    let missing = Game.sub(Game.POOL_SEED, seed);
+    if (missing > 0) {
+      let f = gFund();
+      let room : Nat = if (f > Game.FUND_FLOOR) Int.abs(f - Game.FUND_FLOOR) else 0;
+      gameState.pool += Nat.min(missing, room);
+    };
     ({ stage = 3; won }, { e with held = e.held + won; jackpotWon = e.jackpotWon + won });
   };
 
@@ -507,7 +523,7 @@ mixin (
       } else if (pays(c)) {
         let id = gameState.nextPayoutId;
         gameState.nextPayoutId += 1;
-        gameState.payouts.add(id, { id; tournament = t; to = p; amount = c - Game.FEE; paid = false; stamp = Nat.toNat64(Int.abs(Time.now())) });
+        gameState.payouts.add(id, { id; tournament = t; to = p; amount = c - Game.FEE; paid = false; stamp = 0 });
         payoutTotal += c - Game.FEE;
         settled.add((p, 0));
       } else if (payAll) {
@@ -1156,7 +1172,7 @@ mixin (
         switch (gameState.payouts.get(po.id)) {
           case (?cur) {
             if (not cur.paid) {
-              let res = await lPay(cur.to, cur.amount, cur.id, cur.stamp);
+              let res = await lPay(cur.to, cur.amount, cur.id, gPayStamp(cur));
               switch (res) {
                 case (#ok) {
                   switch (gameState.payouts.get(cur.id)) {
@@ -1381,6 +1397,16 @@ mixin (
     gameState.lastTop10 := [];
     gameState.burned := 0;
     gameState.loaded.clear();
+    // Fresh start: all test statistics, history and tournaments are erased.
+    gameState.stats.clear();
+    gameState.best.clear();
+    gameState.history.clear();
+    gameState.blocked.clear();
+    gameState.tournaments.clear();
+    gameState.payouts.clear();
+    gameState.jackpots := [];
+    gameState.tournament := 1;
+    gameState.endsAt := Time.now() + gameState.durationDays * Game.DAY_NS;
     Map.clear(gameState.balances);
     Map.clear(gameState.allowances);
     Map.clear(gameState.faucet);
