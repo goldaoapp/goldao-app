@@ -26,6 +26,7 @@ module {
   public let TOP10_WEIGHTS : [Nat] = [25, 18, 14, 11, 9, 7, 6, 4, 3, 3];
   public let TOP10_MIN_VOLUME : Nat = 100_000_000_000;
   public let POOL_SEED : Nat = 500_000_000_000;
+  public let POOL_SEED_MAX : Nat = 2_000_000_000_000;
   public let RESERVE_CAP : Nat = 2_000_000_000_000;
   public let FUND_FLOOR : Nat = 2_000_000_000_000;
   public let FUND_TARGET : Nat = 20_000_000_000_000;
