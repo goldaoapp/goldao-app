@@ -31,6 +31,7 @@ import {
   useGameAction,
   useGameConfig,
   useSecurityView,
+  useTournaments,
 } from "./useGame";
 
 const HALT_TEXT: Record<number, string> = {
@@ -72,6 +73,7 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
   const { run, pending } = useGameAction();
   const { data: security } = useSecurityView(!!view);
   const { data: config } = useGameConfig();
+  const { data: tournaments } = useTournaments();
   const minPayout = config ? fmtGoldao(config.minPayoutE8s) : "-";
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [ask, setAsk] = useState<Ask | null>(null);
@@ -656,7 +658,7 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
             hint={
               unpaid.length === 0
                 ? "Nothing to pay."
-                : `${fmtGoldao(unpaidTotal)} GOLDAO pending including fees, paid in batches of 20 until done.${real ? " The wallet authorization is set automatically for exactly that amount and expires in 10 minutes." : ""}`
+                : `${fmtGoldao(unpaidTotal)} GOLDAO pending including fees, smallest first, in batches of 20 until done. A payout that does not fit the funds or the authorization waits for the next run.${real ? " The wallet authorization is set automatically for exactly that amount and expires in 10 minutes." : ""}`
             }
           >
             <Button
@@ -872,7 +874,7 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
           <div className={panelHeader}>
             <span className={cn(eyebrow, gold)}>Payouts</span>
             <span className={cn("font-mono text-[11px]", inkFaint)}>
-              {unpaid.length} pending
+              {unpaid.length} pending · {fmtGoldao(unpaidTotal)} GOLDAO
             </span>
           </div>
           <div className="max-h-[420px] overflow-auto">
@@ -881,33 +883,47 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
                 <tr className={cn("text-left", inkFaint)}>
                   <th className="px-5 py-2 font-medium">Principal</th>
                   <th className="px-3 py-2 font-medium">Tournament</th>
+                  <th className="px-3 py-2 font-medium">Closed</th>
                   <th className="px-3 py-2 font-medium">Status</th>
                   <th className="px-5 py-2 text-right font-medium">Amount</th>
                 </tr>
               </thead>
               <tbody>
-                {view.payouts.map((p) => (
-                  <tr
-                    key={String(p.id)}
-                    className="border-t border-[color:var(--term-border-faint)]"
-                  >
-                    <td
-                      className={cn("px-5 py-2.5", ink)}
-                      title={p.to.toText()}
+                {[...view.payouts]
+                  .sort((a, b) => Number(a.paid) - Number(b.paid))
+                  .map((p) => (
+                    <tr
+                      key={String(p.id)}
+                      className="border-t border-[color:var(--term-border-faint)]"
                     >
-                      {shortPrincipal(p.to.toText())}
-                    </td>
-                    <td className="px-3 py-2.5">#{Number(p.tournament)}</td>
-                    <td className="px-3 py-2.5">
-                      {p.paid ? "paid" : "pending"}
-                    </td>
-                    <td
-                      className={cn("px-5 py-2.5 text-right tabular-nums", ink)}
-                    >
-                      {fmtGoldao(p.amount)}
-                    </td>
-                  </tr>
-                ))}
+                      <td
+                        className={cn("px-5 py-2.5", ink)}
+                        title={p.to.toText()}
+                      >
+                        {shortPrincipal(p.to.toText())}
+                      </td>
+                      <td className="px-3 py-2.5">#{Number(p.tournament)}</td>
+                      <td className="px-3 py-2.5">
+                        {(() => {
+                          const t = tournaments?.find(
+                            (x) => x.tournament === p.tournament,
+                          );
+                          return t ? fmtDate(t.closedAt) : "-";
+                        })()}
+                      </td>
+                      <td className="px-3 py-2.5">
+                        {p.paid ? "paid" : "pending"}
+                      </td>
+                      <td
+                        className={cn(
+                          "px-5 py-2.5 text-right tabular-nums",
+                          ink,
+                        )}
+                      >
+                        {fmtGoldao(p.amount)}
+                      </td>
+                    </tr>
+                  ))}
               </tbody>
             </table>
           </div>
