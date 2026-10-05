@@ -1,5 +1,6 @@
 import Map "mo:core/Map";
 import List "mo:core/List";
+import Set "mo:core/Set";
 
 module {
   public type UserRole = { #admin; #user; #guest };
@@ -121,6 +122,8 @@ module {
     var ledgerFails : Nat;
     var top10 : Nat;
     var lastTop10 : [TopPrize];
+    best : Map.Map<Principal, Nat>;
+    loaded : Set.Set<Principal>;
   };
 
   public type SecurityView = {
@@ -193,6 +196,7 @@ module {
     faucetRemaining : Nat;
     open : ?ExcavationView;
     stats : TournamentStats;
+    bestReturn : Nat;
     history : [PlayerTournamentResult];
   };
 
