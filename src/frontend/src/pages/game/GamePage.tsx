@@ -16,6 +16,7 @@ import {
 import { motion } from "motion/react";
 import { type ReactNode, useState } from "react";
 import { AdminGamePanel } from "./AdminGamePanel";
+import { BurnedCounter } from "./BurnedCounter";
 import { MineBoard } from "./MineBoard";
 import { PlayerDashboard } from "./PlayerDashboard";
 import { PrizeGuide } from "./PrizeGuide";
@@ -24,6 +25,7 @@ import { WalletPanel } from "./WalletPanel";
 import { fmtCountdown, gold, inkFaint, inkMid, panel } from "./game-utils";
 import {
   useAdminView,
+  useBurned,
   useDashboard,
   useGameConfig,
   useRanking,
@@ -39,6 +41,7 @@ export default function GamePage() {
   const { data: dashboard } = useDashboard();
   const { data: ranking } = useRanking();
   const { data: tournaments } = useTournaments();
+  const { data: burned } = useBurned();
   const { data: adminView } = useAdminView(isAuthenticated);
 
   const isAdmin = !!adminView;
@@ -119,25 +122,28 @@ export default function GamePage() {
       )}
 
       <Tabs value={tab} onValueChange={setPicked} className="gap-4">
-        <TabsList className="grid h-auto w-full auto-cols-fr grid-flow-col rounded-lg border border-[color:var(--term-border)] bg-[var(--term-header)] p-1 sm:flex sm:h-10 sm:w-fit sm:justify-start">
-          {!isAdmin && <Tab value="mine" icon={<Pickaxe />} label="Mine" />}
-          {!isAdmin && (
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <TabsList className="grid h-auto w-full auto-cols-fr grid-flow-col rounded-lg border border-[color:var(--term-border)] bg-[var(--term-header)] p-1 sm:flex sm:h-10 sm:w-fit sm:justify-start">
+            {!isAdmin && <Tab value="mine" icon={<Pickaxe />} label="Mine" />}
+            {!isAdmin && (
+              <Tab
+                value="stats"
+                icon={<LayoutDashboard />}
+                label="My stats"
+                short="Stats"
+              />
+            )}
+            <Tab value="ranking" icon={<ListOrdered />} label="Ranking" />
             <Tab
-              value="stats"
-              icon={<LayoutDashboard />}
-              label="My stats"
-              short="Stats"
+              value="guide"
+              icon={<BookOpen />}
+              label="How it works"
+              short="Guide"
             />
-          )}
-          <Tab value="ranking" icon={<ListOrdered />} label="Ranking" />
-          <Tab
-            value="guide"
-            icon={<BookOpen />}
-            label="How it works"
-            short="Guide"
-          />
-          {adminView && <Tab value="admin" icon={<Shield />} label="Admin" />}
-        </TabsList>
+            {adminView && <Tab value="admin" icon={<Shield />} label="Admin" />}
+          </TabsList>
+          {burned !== undefined && <BurnedCounter value={burned} />}
+        </div>
 
         {!isAdmin && (
           <TabsContent value="mine">
