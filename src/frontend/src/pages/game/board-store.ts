@@ -26,6 +26,13 @@ export interface HeldBalance {
   pool: bigint;
 }
 
+/** A big win (Treasure) waiting to be celebrated. gross includes the stake. */
+export interface TreasureView {
+  gross: bigint;
+  won: bigint;
+  points: number;
+}
+
 export interface AutoView {
   steps: AutoStep[];
   index: number;
@@ -51,6 +58,10 @@ export interface BoardState {
   hold: boolean;
   /** Balance to show once the jackpot reveal is closed. */
   heldBalance: HeldBalance | null;
+  /** Stake of the excavation in play. To collect shows it as already spent. */
+  inPlay: bigint;
+  /** Treasure celebration to show; kept here so it survives leaving the tab. */
+  treasure: TreasureView | null;
 }
 
 const EMPTY: BoardState = {
@@ -68,6 +79,8 @@ const EMPTY: BoardState = {
   skipRestoreUntil: 0,
   hold: false,
   heldBalance: null,
+  inPlay: 0n,
+  treasure: null,
 };
 
 let state: BoardState = EMPTY;
