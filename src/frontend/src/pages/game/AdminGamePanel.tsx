@@ -230,7 +230,7 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
     if (!halted) allBlockers.push("pause new excavations first");
     if (view.owed > 0n)
       allBlockers.push(
-        "players still hold To collect or unpaid prizes (use Close and pay everything, then Pay pending)",
+        "players still hold an Accumulated prize or unpaid prizes (use Close and pay everything, then Pay pending)",
       );
     if (unpaid.length > 0) allBlockers.push("pending payouts must be paid");
     if (bank <= GOLDAO_FEE_E8S) allBlockers.push("the wallet is empty");
@@ -370,7 +370,7 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
         <Kpi
           label="Owed to players"
           value={view ? fmtGoldao(view.owed) : <Spinner />}
-          sub="credits to collect"
+          sub="accumulated prizes"
         />
         <Kpi
           label="Bank fund"
@@ -439,7 +439,7 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
           </div>
           <dl className="grid grid-cols-2 gap-4 p-5 font-mono text-xs sm:grid-cols-4">
             <Item
-              label={`To collect (${Number(view.toCollectPlayers)} players)`}
+              label={`Accumulated prize (${Number(view.toCollectPlayers)} players)`}
               value={fmtGoldao(view.toCollect)}
             />
             <Item
@@ -456,9 +456,10 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
             />
           </dl>
           <p className={cn("px-5 pb-5 font-mono text-[11px]", inkFaint)}>
-            Owed = To collect + pending payouts + jackpots in play. The last
-            figure is already inside To collect: balances under the minimum are
-            not paid at a normal close and carry over to the next tournament.
+            Owed = Accumulated prize + pending payouts + jackpots in play. The
+            last figure is already inside Accumulated prize: balances under the
+            minimum are not paid at a normal close and carry over to the next
+            tournament.
           </p>
         </div>
       )}
@@ -706,7 +707,7 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
 
           <Row
             title="Close tournament"
-            hint={`Ends it now. To collect balances of at least ${minPayout} GOLDAO become payouts; smaller ones stay for the next tournament.`}
+            hint={`Ends it now. Accumulated prize balances of at least ${minPayout} GOLDAO become payouts; smaller ones stay for the next tournament.`}
           >
             <Button
               variant="outline"
@@ -715,7 +716,7 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
                 confirmThen({
                   title: "Close the current tournament now?",
                   detail:
-                    "It cannot be undone. Large To collect balances become pending payouts.",
+                    "It cannot be undone. Large Accumulated prize balances become pending payouts.",
                   word: "CLOSE",
                   go: () =>
                     act(
@@ -734,7 +735,7 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
             title="Close and pay everything"
             hint={
               halted
-                ? "Pays every To collect balance, small ones included. Each payment costs the network fee, taken from the player's balance. Use it before withdrawing everything."
+                ? "Pays every Accumulated prize balance, small ones included. Each payment costs the network fee, taken from the player's balance. Use it before withdrawing everything."
                 : "Not available: pause new excavations first."
             }
           >
@@ -746,7 +747,7 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
                 confirmThen({
                   title: "Close the tournament and pay everything?",
                   detail:
-                    "Every To collect balance becomes a payout, whatever its size. Each payout costs the network fee, taken from the player's balance.",
+                    "Every Accumulated prize balance becomes a payout, whatever its size. Each payout costs the network fee, taken from the player's balance.",
                   word: "CLOSE ALL",
                   go: () =>
                     act(
