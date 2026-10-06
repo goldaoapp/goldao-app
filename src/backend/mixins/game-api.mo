@@ -1,6 +1,7 @@
 import Types "../types/game";
 import Game "../lib/game";
 import Ledger "../lib/ledger";
+import SecLog "../lib/security-log";
 import Map "mo:core/Map";
 import List "mo:core/List";
 import Array "mo:core/Array";
@@ -28,10 +29,31 @@ mixin (
   // are never throttled.
   transient var gRejectedSince : Int = 0;
   transient var gRejected : Nat = 0;
+  // Real-ledger transfers started and not yet answered. A bank reading taken while one is in
+  // flight is not comparable with the game's own books, so it is neither audited nor adopted.
+  transient var gInFlight : Nat = 0;
+  // A transfer ended without an answer: it may or may not have been executed. The next clean
+  // bank reading is adopted without raising an alarm.
+  transient var gUncertain : Bool = false;
+  transient var gWatching : Bool = false;
+  // GOLDAO found missing from the bank (adopted silently, within the tolerance) in the current window.
+  transient var gShort : Nat = 0;
+  transient var gShortSince : Int = 0;
+
+  // Security log
+  func gLog(level : Types.SecurityLevel, code : Text, title : Text, description : Text) {
+    SecLog.record(gameState.securityLog, Time.now(), level, code, title, description);
+  };
+
+  // Admin actions: each one is listed on its own.
+  func gLogAction(code : Text, title : Text, description : Text) {
+    SecLog.append(gameState.securityLog, Time.now(), #info, code, title, description);
+  };
 
   func gSub(a : Nat, b : Nat) : Nat {
     if (b > a) {
       gSat += 1;
+      gLog(#warning, "accounting", "Accounting check tripped", "A balance would have gone below zero. Payments and withdrawals stay blocked until the alert is cleared.");
       return 0;
     };
     a - b;
@@ -39,7 +61,9 @@ mixin (
 
   func gLoadThrottled(p : Principal) : Bool {
     if (not gameState.realLedger or gameState.loaded.contains(p)) return false;
-    Time.now() - gRejectedSince < Game.LOAD_REJECT_WINDOW_NS and gRejected >= Game.LOAD_REJECT_MAX;
+    let on = Time.now() - gRejectedSince < Game.LOAD_REJECT_WINDOW_NS and gRejected >= Game.LOAD_REJECT_MAX;
+    if (on) gLog(#warning, "load_throttle", "Load throttle active", "Loads from accounts that never paid are being rejected (" # Nat.toText(gRejected) # " rejected in the last minute).");
+    on;
   };
 
   func gLoadRejected() {
@@ -175,7 +199,9 @@ mixin (
     gameState.halted or gStakes().size() == 0;
   };
 
-  func gHalt(code : Nat) {
+  // Halts new bets and records why. The event is logged even if the game was already halted.
+  func gHalt(code : Nat, level : Types.SecurityLevel, title : Text, description : Text) {
+    gLog(level, "halt_" # Nat.toText(code), title, description);
     if (gameState.halted) return;
     gameState.halted := true;
     gameState.haltCode := code;
@@ -186,7 +212,9 @@ mixin (
 
   func gLedgerFail() {
     gameState.ledgerFails += 1;
-    if (gameState.ledgerFails >= Game.LEDGER_FAIL_MAX) gHalt(2);
+    if (gameState.ledgerFails >= Game.LEDGER_FAIL_MAX) {
+      gHalt(Game.HALT_LEDGER, #critical, "Ledger failures", Nat.toText(gameState.ledgerFails) # " ledger errors in a row. Bets are paused.");
+    };
   };
 
   func gNextToken() : Nat {
@@ -225,29 +253,129 @@ mixin (
     };
   };
 
-  func lBankRefresh() : async Bool {
+  // Safeguard 1: the bank wallet must hold what the game's own books say. Every movement the
+  // game makes (loads, payouts, admin withdrawals) updates the books, so a lower balance means
+  // GOLDAO left the wallet some other way. Only a clean reading is compared (see gInFlight).
+  func gAuditBank(read : Nat) {
+    let expected = gameState.bank;
+    if (gUncertain) {
+      gUncertain := false;
+      if (read != expected) {
+        gLog(#info, "bank_resync", "Bank balance resynced", "After a ledger call without an answer, the bank was re-read: game " # SecLog.fmt(expected) # ", ledger " # SecLog.fmt(read) # " GOLDAO.");
+      };
+      return;
+    };
+    if (read >= expected) return;
+    let now = Time.now();
+    if (now - gShortSince >= Game.BANK_WINDOW_NS) {
+      gShortSince := now;
+      gShort := 0;
+    };
+    gShort += expected - read;
+    if (gShort > Game.BANK_TOLERANCE) {
+      gHalt(
+        Game.HALT_BANK,
+        #critical,
+        "Unexplained bank withdrawal",
+        "The bank wallet holds " # SecLog.fmt(read) # " GOLDAO but the game expected " # SecLog.fmt(expected) # " (" # SecLog.fmt(gShort) # " missing today). Bets are paused. If you did not move it, check the wallet.",
+      );
+      gShort := 0;
+    };
+  };
+
+  // Reads the bank balance from the ledger. The reading is adopted (and audited) only when no
+  // transfer was in flight or started meanwhile; otherwise it is retried. `countFails` is false for
+  // the background check, so an unreachable ledger never halts the game by itself.
+  func lBankRefreshWith(countFails : Bool) : async Bool {
     if (not gameState.realLedger) return true;
     let acct = switch (gameState.bankAccount) { case (?a) a; case null return false };
     var tries = 0;
     while (tries < 3) {
       let before = gameState.movSeq;
+      let idle = gInFlight == 0;
       let bal = try { ?(await Ledger.ledger().icrc1_balance_of(Ledger.account(acct))) } catch (_) { null };
       switch (bal) {
         case (?b) {
           gLedgerOk();
-          if (gameState.movSeq == before) {
+          if (idle and gInFlight == 0 and gameState.movSeq == before) {
+            gAuditBank(b);
             gameState.bank := b;
             return true;
           };
         };
         case null {
-          gLedgerFail();
+          if (countFails) gLedgerFail();
           return false;
         };
       };
       tries += 1;
     };
     false;
+  };
+
+  func lBankRefresh() : async Bool { await lBankRefreshWith(true) };
+
+  // Safeguard 2: the fund cannot fall faster than the bets allow. It is sampled every tick; if it
+  // is FUND_DROP_PCT percent (and at least FUND_DROP_MIN) below the highest sample kept, the game
+  // halts. Moves made on purpose by the admin reset the samples (gFundReset).
+  func gFundReset() {
+    gameState.fundSamples := [gFund()];
+  };
+
+  func gWatchFund() {
+    let f = gFund();
+    if (gameState.halted) {
+      gFundReset();
+      return;
+    };
+    var peak = f;
+    for (v in gameState.fundSamples.values()) { if (v > peak) peak := v };
+    if (peak > 0) {
+      let drop = Int.abs(peak - f);
+      let limit = Nat.max(Int.abs(peak) * Game.FUND_DROP_PCT / 100, Game.FUND_DROP_MIN);
+      if (drop >= limit) {
+        gHalt(
+          Game.HALT_FUND,
+          #critical,
+          "Bank fund dropped abruptly",
+          "The fund fell from " # SecLog.fmtInt(peak) # " to " # SecLog.fmtInt(f) # " GOLDAO within about " # Nat.toText(Game.FUND_SAMPLES) # " minutes. Bets are paused.",
+        );
+        gFundReset();
+        return;
+      };
+    };
+    let all = Array.concat(gameState.fundSamples, [f]);
+    gameState.fundSamples := if (all.size() > Game.FUND_SAMPLES) Array.sliceToArray(all, all.size() - Game.FUND_SAMPLES, all.size()) else all;
+  };
+
+  func gWatchBank() : async () {
+    if (gWatching or not gameState.realLedger) return;
+    gWatching := true;
+    ignore await lBankRefreshWith(false);
+    gWatching := false;
+  };
+
+  // The only place that sends GOLDAO out of or into the bank through the ledger. Null means
+  // the call ended without an answer (the transfer may have been executed).
+  func lTransfer(from : Principal, to : Principal, amount : Nat, stamp : Nat64, what : Text) : async ?Ledger.TransferFromResult {
+    gInFlight += 1;
+    let res = try {
+      ?(await Ledger.ledger().icrc2_transfer_from({
+        spender_subaccount = null;
+        from = Ledger.account(from);
+        to = Ledger.account(to);
+        amount;
+        fee = ?Game.FEE;
+        memo = null;
+        created_at_time = ?stamp;
+      }));
+    } catch (_) { null };
+    if (gInFlight > 0) gInFlight -= 1;
+    if (res == null) {
+      gUncertain := true;
+      gLog(#info, "ledger_no_answer", "Ledger call without an answer", "A " # what # " transfer got no answer from the ledger. The bank will be re-read before it is audited again.");
+    };
+    res;
   };
 
   // Pulls the amount from the player's wallet into the bank. The caller grants
@@ -277,36 +405,26 @@ mixin (
     };
     let bankAcct = switch (gameState.bankAccount) { case (?a) a; case null return #down };
     let stamp = Nat.toNat64(Int.abs(Time.now()));
-    try {
-      let res = await Ledger.ledger().icrc2_transfer_from({
-        spender_subaccount = null;
-        from = Ledger.account(p);
-        to = Ledger.account(bankAcct);
-        amount;
-        fee = ?Game.FEE;
-        memo = null;
-        created_at_time = ?stamp;
-      });
-      gameState.movSeq += 1;
-      switch (res) {
-        case (#Ok _) {
-          gLedgerOk();
-          gameState.bank += amount;
-          gameState.burned += Game.FEE;
-          gMarkLoaded(p);
-          #ok;
-        };
-        case (#Err(#InsufficientAllowance _)) #allowance;
-        case (#Err(#InsufficientFunds _)) #funds;
-        case (#Err _) {
-          gLedgerFail();
-          #down;
-        };
+    let answer = await lTransfer(p, bankAcct, amount, stamp, "load");
+    gameState.movSeq += 1;
+    switch (answer) {
+      case null {
+        gLedgerFail();
+        #down;
       };
-    } catch (_) {
-      gameState.movSeq += 1;
-      gLedgerFail();
-      #down;
+      case (?(#Ok _)) {
+        gLedgerOk();
+        gameState.bank += amount;
+        gameState.burned += Game.FEE;
+        gMarkLoaded(p);
+        #ok;
+      };
+      case (?(#Err(#InsufficientAllowance _))) #allowance;
+      case (?(#Err(#InsufficientFunds _))) #funds;
+      case (?(#Err _)) {
+        gLedgerFail();
+        #down;
+      };
     };
   };
 
@@ -334,42 +452,30 @@ mixin (
       return #ok;
     };
     let bankAcct = switch (gameState.bankAccount) { case (?a) a; case null return #err("Ledger mode is not configured.") };
-    try {
-      let res = await Ledger.ledger().icrc2_transfer_from({
-        spender_subaccount = null;
-        from = Ledger.account(bankAcct);
-        to = Ledger.account(to);
-        amount;
-        fee = ?Game.FEE;
-        memo = null;
-        created_at_time = ?stamp;
-      });
-      gameState.movSeq += 1;
-      switch (res) {
-        case (#Ok _) {
-          gameState.bank := gSub(gameState.bank, need);
-          gameState.burned += Game.FEE;
-          #ok;
-        };
-        case (#Err(#Duplicate _)) {
-          gameState.bank := gSub(gameState.bank, need);
-          gameState.burned += Game.FEE;
-          #ok;
-        };
-        case (#Err(#TooOld)) {
-          switch (gameState.payouts.get(id)) {
-            case (?po) gameState.payouts.add(id, { po with stamp = Nat.toNat64(Int.abs(Time.now())) });
-            case null {};
-          };
-          #err("Payout timestamp expired. Run the payment again.");
-        };
-        case (#Err(#InsufficientFunds _)) #err(Game.ERR_PAY_FUNDS);
-        case (#Err(#InsufficientAllowance _)) #err(Game.ERR_PAY_ALLOWANCE);
-        case (#Err _) #err("The ledger rejected the payout.");
+    let answer = await lTransfer(bankAcct, to, amount, stamp, "payout");
+    gameState.movSeq += 1;
+    switch (answer) {
+      case null #err("The ledger is unavailable.");
+      case (?(#Ok _)) {
+        gameState.bank := gSub(gameState.bank, need);
+        gameState.burned += Game.FEE;
+        #ok;
       };
-    } catch (_) {
-      gameState.movSeq += 1;
-      #err("The ledger is unavailable.");
+      case (?(#Err(#Duplicate _))) {
+        gameState.bank := gSub(gameState.bank, need);
+        gameState.burned += Game.FEE;
+        #ok;
+      };
+      case (?(#Err(#TooOld))) {
+        switch (gameState.payouts.get(id)) {
+          case (?po) gameState.payouts.add(id, { po with stamp = Nat.toNat64(Int.abs(Time.now())) });
+          case null {};
+        };
+        #err("Payout timestamp expired. Run the payment again.");
+      };
+      case (?(#Err(#InsufficientFunds _))) #err(Game.ERR_PAY_FUNDS);
+      case (?(#Err(#InsufficientAllowance _))) #err(Game.ERR_PAY_ALLOWANCE);
+      case (?(#Err _)) #err("The ledger rejected the payout.");
     };
   };
 
@@ -628,6 +734,8 @@ mixin (
 
   func gTick() : async () {
     gMaybeClose();
+    gWatchFund();
+    await gWatchBank();
   };
 
   func gArmTimer<system>() {
@@ -663,7 +771,7 @@ mixin (
     #ok((placeholder, idx));
   };
 
-  func gStart(p : Principal, token : Nat, idx : Nat) : async Result.Result<Types.Excavation, Text> {
+  func gStart(p : Principal, token : Nat, idx : Nat, expectedStake : Nat) : async Result.Result<Types.Excavation, Text> {
     let fresh = await lBankRefresh();
     if (not fresh) {
       gDrop(p, token);
@@ -673,6 +781,12 @@ mixin (
     if (options.size() != 3 or gameState.halted) {
       gDrop(p, token);
       return #err("Bets are paused. Try again later.");
+    };
+    // The amounts depend on the fund, which the refresh above may have changed: the player must
+    // get the stake that was on screen, never another one.
+    if (options[idx] != expectedStake) {
+      gDrop(p, token);
+      return #err(Game.STAKE_CHANGED_MSG);
     };
     let started : Types.Excavation = switch (gSame(p, token)) {
       case (?e) ({ e with stake = options[idx]; tournament = gameState.tournament });
@@ -790,7 +904,7 @@ mixin (
 
   // Play
 
-  public shared ({ caller }) func gamePick(stake : ?Types.StakeOption) : async Result.Result<Types.PickResult, Text> {
+  public shared ({ caller }) func gamePick(stake : ?Types.StakeOption, expectedStake : Nat, expectedPicks : Nat) : async Result.Result<Types.PickResult, Text> {
     gArmTimer<system>();
     switch (gRequireUser(caller)) { case (?e) return #err(e); case null {} };
     if (gCloseIfDue()) return #err(Game.CLOSED_MSG);
@@ -803,6 +917,8 @@ mixin (
           gDrop(caller, e.token);
           return #err("Try again.");
         };
+        // What the player sees must be what the backend has: another tab or device may have moved on.
+        if (e.picks != expectedPicks or e.stake != expectedStake) return #err(Game.EXC_CHANGED_MSG);
         if (gClosing()) return #err("The tournament is closing. Try again in a few seconds.");
         let token = gNextToken();
         let busy = { e with busy = true; token; busyAt = Time.now() };
@@ -810,11 +926,12 @@ mixin (
         busy;
       };
       case null {
+        if (expectedPicks != 0) return #err(Game.EXC_CHANGED_MSG);
         if (gClosing()) return #err("The tournament is closing. Try again in a few seconds.");
         switch (gOpen(caller, stake)) {
           case (#err m) return #err(m);
           case (#ok(placeholder, idx)) {
-            switch (await gStart(caller, placeholder.token, idx)) {
+            switch (await gStart(caller, placeholder.token, idx, expectedStake)) {
               case (#ok e) e;
               case (#err m) return #err(m);
             };
@@ -913,7 +1030,7 @@ mixin (
     #ok(end);
   };
 
-  public shared ({ caller }) func gameAuto(stake : Types.StakeOption, stopAt : Nat) : async Result.Result<Types.AutoResult, Text> {
+  public shared ({ caller }) func gameAuto(stake : Types.StakeOption, stopAt : Nat, expectedStake : Nat) : async Result.Result<Types.AutoResult, Text> {
     gArmTimer<system>();
     switch (gRequireUser(caller)) { case (?e) return #err(e); case null {} };
     if (gCloseIfDue()) return #err(Game.CLOSED_MSG);
@@ -930,7 +1047,7 @@ mixin (
     var ex : Types.Excavation = switch (gOpen(caller, ?stake)) {
       case (#err m) return #err(m);
       case (#ok(placeholder, idx)) {
-        switch (await gStart(caller, placeholder.token, idx)) {
+        switch (await gStart(caller, placeholder.token, idx, expectedStake)) {
           case (#ok e) e;
           case (#err m) return #err(m);
         };
@@ -1179,6 +1296,8 @@ mixin (
     let after : Int = gFund() - amount;
     if (after < Game.FUND_FLOOR) return #err("The bank fund would fall below its floor.");
     gameState.pool += amount;
+    gFundReset();
+    gLogAction("seed_pool", "Jackpot pool topped up", "The pool was raised to " # SecLog.fmt(gameState.pool) # " GOLDAO from the bank fund.");
     #ok(gameState.pool);
   };
 
@@ -1300,30 +1419,18 @@ mixin (
       return #ok(());
     };
     let bankAcct = switch (gameState.bankAccount) { case (?a) a; case null return #err("Ledger mode is not configured.") };
-    try {
-      let res = await Ledger.ledger().icrc2_transfer_from({
-        spender_subaccount = null;
-        from = Ledger.account(bankAcct);
-        to = Ledger.account(Game.treasury());
-        amount;
-        fee = ?Game.FEE;
-        memo = null;
-        created_at_time = ?Nat.toNat64(Int.abs(Time.now()));
-      });
-      gameState.movSeq += 1;
-      switch (res) {
-        case (#Ok _) {
-          gameState.bank := gSub(gameState.bank, amount + Game.FEE);
-          gameState.burned += Game.FEE;
-          #ok(());
-        };
-        case (#Err(#InsufficientAllowance _)) #err("The withdrawal authorization is too low.");
-        case (#Err(#InsufficientFunds _)) #err("The bank wallet does not cover the withdrawal.");
-        case (#Err _) #err("The ledger rejected the withdrawal.");
+    let answer = await lTransfer(bankAcct, Game.treasury(), amount, Nat.toNat64(Int.abs(Time.now())), "withdrawal");
+    gameState.movSeq += 1;
+    switch (answer) {
+      case null #err("The ledger is unavailable. Refresh the bank before trying again.");
+      case (?(#Ok _)) {
+        gameState.bank := gSub(gameState.bank, amount + Game.FEE);
+        gameState.burned += Game.FEE;
+        #ok(());
       };
-    } catch (_) {
-      gameState.movSeq += 1;
-      #err("The ledger is unavailable. Refresh the bank before trying again.");
+      case (?(#Err(#InsufficientAllowance _))) #err("The withdrawal authorization is too low.");
+      case (?(#Err(#InsufficientFunds _))) #err("The bank wallet does not cover the withdrawal.");
+      case (?(#Err _)) #err("The ledger rejected the withdrawal.");
     };
   };
 
@@ -1373,6 +1480,8 @@ mixin (
       };
     };
     if (gameState.realLedger) { ignore await lBankRefresh() };
+    gFundReset();
+    gLogAction("withdraw", "Admin withdrawal", "Withdrew " # SecLog.fmt(amount) # " GOLDAO to the treasury (" # (switch (kind) { case (#all) "everything"; case (#available) "available excess" }) # ").");
     #ok(amount);
   };
 
@@ -1406,6 +1515,12 @@ mixin (
     });
   };
 
+  // One UTC day of the security log, plus the list of days that have entries.
+  public shared query ({ caller }) func gameAdminSecurityLog(day : Nat) : async Result.Result<Types.SecurityLogView, Text> {
+    if (not gIsAdmin(caller)) return #err("Admin only.");
+    #ok({ days = SecLog.days(gameState.securityLog); day; events = SecLog.eventsOf(gameState.securityLog, day) });
+  };
+
   public shared ({ caller }) func gameAdminAckAccounting() : async Result.Result<(), Text> {
     if (not gIsAdmin(caller)) return #err("Admin only.");
     if (not gAccountingOk()) return #err("The accounting check still fails.");
@@ -1415,14 +1530,18 @@ mixin (
 
   public shared ({ caller }) func gameAdminHalt() : async Result.Result<(), Text> {
     if (not gIsAdmin(caller)) return #err("Admin only.");
-    gHalt(3);
+    gHalt(Game.HALT_MANUAL, #info, "Halted by admin", "New excavations were halted from the admin panel.");
     #ok(());
   };
 
   public shared ({ caller }) func gameAdminResume() : async Result.Result<(), Text> {
     if (not gIsAdmin(caller)) return #err("Admin only.");
+    if (gameState.halted) {
+      gLogAction("resume", "Resumed by admin", "Play resumed. It had been halted: " # Game.haltReason(gameState.haltCode) # ".");
+    };
     gameState.halted := false;
     gameState.haltCode := 0;
+    gFundReset();
     gameState.resumedAt := Time.now();
     gameState.ledgerFails := 0;
     #ok(());
@@ -1482,6 +1601,8 @@ mixin (
     gameState.bank := balance;
     gameState.bankAllowance := 0;
     gameState.realLedger := true;
+    gFundReset();
+    gLogAction("real_ledger", "Real ledger enabled", "The game now uses real GOLDAO. Bank balance: " # SecLog.fmt(balance) # " GOLDAO.");
     #ok(balance);
   };
 };
