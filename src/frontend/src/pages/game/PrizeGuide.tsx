@@ -4,6 +4,7 @@ import { BookOpen, Gem, Mountain } from "lucide-react";
 import { Spinner } from "./Spinner";
 import {
   DIAMOND_TEXT,
+  MAX_PICKS,
   STAKE_LABELS,
   collapsePoints,
   eyebrow,
@@ -51,7 +52,7 @@ export function PrizeGuide({ config, stakes }: Props) {
 
   const rows = pts
     .map((p, picks) => ({ picks, p }))
-    .filter((r) => r.picks > safe);
+    .filter((r) => r.picks >= safe);
 
   return (
     <div className="flex flex-col gap-6">
@@ -104,10 +105,12 @@ export function PrizeGuide({ config, stakes }: Props) {
           <table className="w-full font-mono text-xs">
             <thead>
               <tr className={cn("text-left", inkFaint)}>
-                <th className="px-5 py-2 font-medium">Save at pick</th>
+                <th className="px-5 py-2 font-medium">Save after pick</th>
                 <th className="px-3 py-2 font-medium">Prize</th>
                 <th className="px-3 py-2 font-medium">Multiplier</th>
-                <th className="px-3 py-2 font-medium">If it collapses</th>
+                <th className="px-3 py-2 font-medium">
+                  If the next pick collapses
+                </th>
                 <th className="px-5 py-2 text-right font-medium">
                   Chance to reach
                 </th>
@@ -117,6 +120,9 @@ export function PrizeGuide({ config, stakes }: Props) {
               {rows.map(({ picks, p }) => {
                 const prize = prizeName(picks);
                 const Icon = prize.icon;
+                // Saving unlocks after pick 3, and pick 10 is collected by itself.
+                const canSaveHere = picks > safe;
+                const lastPick = picks >= MAX_PICKS;
                 return (
                   <tr
                     key={picks}
@@ -124,22 +130,32 @@ export function PrizeGuide({ config, stakes }: Props) {
                   >
                     <td className={cn("px-5 py-2.5", ink)}>{picks}</td>
                     <td className="px-3 py-2.5">
-                      <span
-                        className={cn(
-                          "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px]",
-                          prize.pill,
-                        )}
-                      >
-                        <Icon className="size-3" />
-                        {prize.name}
-                      </span>
+                      {canSaveHere ? (
+                        <span
+                          className={cn(
+                            "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px]",
+                            prize.pill,
+                          )}
+                        >
+                          <Icon className="size-3" />
+                          {prize.name}
+                        </span>
+                      ) : (
+                        <span className={inkFaint}>Cannot save yet</span>
+                      )}
                     </td>
                     <td className={cn("px-3 py-2.5 tabular-nums", ink)}>
-                      {fmtMult(p, bps)}
+                      {canSaveHere ? fmtMult(p, bps) : "-"}
                     </td>
                     <td className="px-3 py-2.5 tabular-nums">
-                      <Mountain className="mr-1 inline size-3" />
-                      {fmtMult(collapsePoints(p), bps)}
+                      {lastPick ? (
+                        <span className={inkFaint}>-</span>
+                      ) : (
+                        <>
+                          <Mountain className="mr-1 inline size-3" />
+                          {fmtMult(collapsePoints(p), bps)}
+                        </>
+                      )}
                     </td>
                     <td className="px-5 py-2.5 text-right tabular-nums">
                       {reachPct(picks, cells, mines, safe).toFixed(0)}%
@@ -150,6 +166,18 @@ export function PrizeGuide({ config, stakes }: Props) {
             </tbody>
           </table>
         </div>
+        <p
+          className={cn(
+            "border-t border-[color:var(--term-border-faint)] px-5 py-3 font-mono text-[11px]",
+            inkFaint,
+          )}
+        >
+          Each row is a moment of the excavation: the picks you have already
+          made safely. The collapse column is what you get if you keep digging
+          and the very next pick collapses. The first {safe} picks are always
+          safe, so the next pick is the first with real risk. At pick 10 the
+          prize is collected automatically.
+        </p>
       </div>
 
       <div className={panel}>
