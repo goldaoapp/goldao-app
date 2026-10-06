@@ -41,11 +41,11 @@ module {
   public let DAY_NS : Int = 86_400_000_000_000;
   public let BUSY_STALE_NS : Int = 600_000_000_000;
   public let STAMP_MAX_AGE_NS : Nat64 = 72_000_000_000_000;
-  public let CLOSED_MSG : Text = "The tournament has just closed. Your balance was paid out or carried over to the new tournament: check your wallet and To collect, then try again.";
+  public let CLOSED_MSG : Text = "The tournament has just closed. Your balance was paid out or carried over to the new tournament: check your wallet and Accumulated prize, then try again.";
   public let ERR_PAY_FUNDS : Text = "The bank wallet does not cover the payout.";
   public let ERR_PAY_ALLOWANCE : Text = "The payout authorization is too low.";
   public let ERR_PAY_UNCERTAIN : Text = "This payout got no answer from the ledger and its timestamp expired. Look for it in the ledger before paying again.";
-  public let NEED_CREDIT_MSG : Text = "Load credit first: your To collect balance must cover the stake.";
+  public let NEED_CREDIT_MSG : Text = "Load balance first: your Accumulated prize must cover the stake.";
   public let STAKE_CHANGED_MSG : Text = "The stake amounts changed. Check the new amounts and try again.";
   public let EXC_CHANGED_MSG : Text = "Your excavation changed (another tab or device?). Reload the board and try again.";
   public let LOAD_REJECT_MAX : Nat = 20;
