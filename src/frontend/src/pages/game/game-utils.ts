@@ -42,6 +42,24 @@ export function fmtGoldao(e8s: bigint): string {
   return fmtCents(e8s / CENT);
 }
 
+/** Exact amount for copying into a sheet: whole units, up to 8 decimals, no separators. */
+export function plainGoldao(e8s: bigint): string {
+  const whole = e8s / 100_000_000n;
+  const frac = (e8s % 100_000_000n)
+    .toString()
+    .padStart(8, "0")
+    .replace(/0+$/, "");
+  return frac ? `${whole}.${frac}` : `${whole}`;
+}
+
+/** Ledger transactions are looked up in the SNS dashboard; only the id changes. */
+export const TX_EXPLORER_URL =
+  "https://dashboard.internetcomputer.org/sns/tw2vt-hqaaa-aaaaq-aab6a-cai/transaction/";
+
+export function txUrl(id: bigint): string {
+  return `${TX_EXPLORER_URL}${id.toString()}`;
+}
+
 /** Same as fmtGoldao for a number that already has at most 2 decimals (animations). */
 export function fmtGoldaoNumber(value: number): string {
   return fmtCents(BigInt(Math.round(value * 100)));
