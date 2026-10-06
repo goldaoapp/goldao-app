@@ -7,6 +7,7 @@ import type {
 import { EndKind } from "@/backend";
 import { cn } from "@/lib/utils";
 import {
+  ArrowUp,
   Gem,
   Mountain,
   Pickaxe,
@@ -21,7 +22,7 @@ import {
   useMotionValue,
   useTransform,
 } from "motion/react";
-import { useEffect, useRef } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { type Cell, useBoard } from "./board-store";
 import {
   DIAMOND_CELL,
@@ -34,10 +35,12 @@ import {
   type TokenKey,
   eyebrow,
   fmtCountdown,
+  fmtFixed2Number,
   fmtGoldao,
+  fmtGoldao2,
   fmtGoldaoNumber,
   fmtMultOf,
-  fmtSigned,
+  fmtPct1,
   gold,
   ink,
   inkFaint,
@@ -153,12 +156,15 @@ export function RollingNumber({
   scaled = false,
   tick = false,
   from,
+  fixed2 = false,
 }: {
   value: number;
   className?: string;
   scaled?: boolean;
   tick?: boolean;
   from?: number;
+  /** Always 2 decimals at rest too ("105.00"), not only while rolling. */
+  fixed2?: boolean;
 }) {
   const mv = useMotionValue(from ?? value);
   const prev = useRef(from ?? value);
@@ -167,7 +173,9 @@ export function RollingNumber({
   // Rolling: always 2 decimals, rounded down. At rest: exactly what fmtGoldao shows.
   const text = useTransform(mv, (v) => {
     if (Math.abs(v - target.current) < 0.005)
-      return fmtGoldaoNumber(target.current);
+      return fixed2
+        ? fmtFixed2Number(target.current)
+        : fmtGoldaoNumber(target.current);
     const cents = Math.max(0, Math.floor(v * 100 + 1e-6));
     return `${Math.floor(cents / 100).toLocaleString("en-US")}.${String(cents % 100).padStart(2, "0")}`;
   });
@@ -387,7 +395,7 @@ export function RunCard({
               prize > 0n ? "text-[color:var(--term-green)]" : ink,
             )}
           >
-            <RollingNumber value={toGoldao(prize)} scaled tick />
+            <RollingNumber value={toGoldao(prize)} scaled tick fixed2 />
           </span>
           <span className="min-h-3.5 font-mono text-[10px] text-destructive">
             {exc && active
@@ -428,7 +436,7 @@ export function RunCard({
             animate={{ opacity: 1, y: 0 }}
             className="font-display text-[26px] font-bold leading-none tabular-nums text-[color:var(--term-green)] sm:text-[32px]"
           >
-            {next !== null ? fmtGoldao(next) : "-"}
+            {next !== null ? fmtGoldao2(next) : "-"}
           </motion.span>
           <span className={cn("font-mono text-[10px]", inkMid)}>
             {exc && next !== null
@@ -494,16 +502,21 @@ export function CreditBar({
       : 0n
     : 0n;
   const credit = toGoldao(shown);
-  const prev = useRef(credit);
-  const settled = useRef(false);
-  const dir =
-    credit > prev.current ? "up" : credit < prev.current ? "down" : "same";
+  // Last value that was really on screen (null until the dashboard has loaded).
+  const prev = useRef<number | null>(null);
+  const [flash, setFlash] = useState(false);
+  const loaded = !!dashboard;
   useEffect(() => {
+    if (!loaded) return;
+    const before = prev.current;
     prev.current = credit;
-  }, [credit]);
-  useEffect(() => {
-    if (dashboard) settled.current = true;
-  }, [dashboard]);
+    // Green only when To collect really goes up. It never turns red, and a value
+    // that does not change (a refetch) does nothing.
+    if (before === null || credit <= before) return;
+    setFlash(true);
+    const t = window.setTimeout(() => setFlash(false), 1200);
+    return () => window.clearTimeout(t);
+  }, [credit, loaded]);
   return (
     <div
       className={cn(
@@ -513,30 +526,21 @@ export function CreditBar({
       )}
     >
       <span className={cn(eyebrow, inkFaint)}>To collect</span>
-      <motion.span
-        key={`${credit}-${dir}`}
-        initial={{
-          scale: dir === "same" ? 1 : 1.06,
-          color:
-            dir === "up"
-              ? "oklch(0.78 0.15 85)"
-              : dir === "down"
-                ? "oklch(0.62 0.2 25)"
-                : undefined,
-        }}
-        animate={{ scale: 1, color: "var(--term-ink)" }}
-        transition={{ duration: 1.1 }}
-        className="flex origin-left flex-wrap items-baseline gap-x-3 font-display text-[34px] font-bold leading-none tabular-nums md:text-[clamp(48px,6vw,84px)]"
+      <span
+        className={cn(
+          "flex flex-wrap items-baseline gap-x-3 font-display text-[34px] font-bold leading-none tabular-nums transition-colors duration-1000 md:text-[clamp(48px,6vw,84px)]",
+          flash ? "text-[color:var(--term-green)]" : ink,
+        )}
       >
         <RollingNumber
           value={credit}
-          scaled={settled.current}
-          tick={settled.current}
+          scaled={prev.current !== null}
+          tick={prev.current !== null}
         />
         <span className={cn("font-mono text-xs font-semibold", gold)}>
           GOLDAO
         </span>
-      </motion.span>
+      </span>
       <TopRank dashboard={dashboard} />
       <span className={cn("font-mono text-[11px]", inkFaint)}>
         Paid when the tournament closes
@@ -582,21 +586,72 @@ export function JackpotCard({
   );
 }
 
-/** End of the excavation, shown over the board. */
+const PINK = "text-[#d6336c] dark:text-[#ff7ab8]";
+const GREEN = "text-[color:var(--term-green)]";
+
+/**
+ * Big number that shrinks so it always fits the card (hundreds or thousands of
+ * GOLDAO). Width is estimated from the final text, so it does not jump while rolling.
+ */
+function FitNumber({
+  value,
+  className,
+}: { value: bigint; className?: string }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [width, setWidth] = useState(0);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const measure = () => setWidth(el.clientWidth);
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  const text = fmtGoldao2(value);
+  // Digits are about 0.64em wide in the display font, "," and "." about 0.32em.
+  let em = 0;
+  for (const ch of text) em += ch === "," || ch === "." ? 0.32 : 0.64;
+  const MAX = 74;
+  const MIN = 22;
+  const fit = width > 0 ? Math.floor(width / em) : MAX;
+  const size = Math.max(MIN, Math.min(MAX, fit));
+  return (
+    <div ref={ref} className="w-full">
+      <span
+        className={cn(
+          "block whitespace-nowrap font-display font-bold leading-none tabular-nums",
+          className,
+        )}
+        style={{ fontSize: size }}
+      >
+        <RollingNumber value={toGoldao(value)} from={0} scaled tick fixed2 />
+      </span>
+    </div>
+  );
+}
+
+/**
+ * End of the excavation, shown over the board. Prize: pill + number + profit.
+ * Collapse: label + number + how much of the stake was rescued. With a jackpot
+ * (also after a collapse) the title is DIAMOND JACKPOT and prize + jackpot are added.
+ * Nothing here is ever red.
+ */
 export function ResultCard({
   result,
   onNew,
 }: { result: EndResult; onNew: () => void }) {
   const collapsed = result.kind === EndKind.collapsed;
+  const jackpot = result.jackpotWon > 0n;
   const prize = prizeName(Number(result.picks));
   const PrizeIcon = prize.icon;
-  const back = result.gross;
-  const profit = result.won > 0n ? result.won : -result.lost;
-  const title = collapsed
-    ? result.won > 0n
-      ? "Collapse · half of the points"
-      : "Collapse"
-    : prize.name;
+  const total = result.gross + (jackpot ? result.jackpotWon : 0n);
+  const stake = result.stake;
+  const gain = total > stake && stake > 0n;
+  const pct = gain ? fmtPct1(total - stake, stake) : null;
+  // Rescue bar of a collapse without jackpot: part of the stake that came back.
+  const rescued = stake > 0n ? Number((result.gross * 1000n) / stake) / 10 : 0;
+  const numberColor = jackpot ? PINK : GREEN;
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -607,10 +662,15 @@ export function ResultCard({
         initial={{ scale: 0.92, y: 8 }}
         animate={{ scale: 1, y: 0 }}
         transition={{ type: "spring", stiffness: 280, damping: 22 }}
-        className="flex w-full max-w-[400px] flex-col items-center gap-1.5 rounded-2xl border border-[color:var(--term-border)] bg-[oklch(var(--background)/0.96)] px-4 py-5 text-center shadow-2xl"
+        className="flex w-full max-w-[400px] flex-col items-center gap-2.5 rounded-2xl border border-[color:var(--term-border)] bg-[oklch(var(--background)/0.96)] px-4 py-5 text-center shadow-2xl"
       >
-        {collapsed ? (
-          <span className={cn(eyebrow, gold)}>{title}</span>
+        {jackpot ? (
+          <span className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-[#d6336c] px-4 py-1.5 font-display text-[clamp(16px,4.4vw,24px)] font-bold uppercase leading-none tracking-wider text-white dark:bg-[#b8337a] dark:text-[#fff5fa]">
+            <Gem className="size-[1em]" />
+            Diamond jackpot
+          </span>
+        ) : collapsed ? (
+          <span className={cn(eyebrow, gold)}>Collapse · GOLDAO secured</span>
         ) : (
           <span
             className={cn(
@@ -619,31 +679,63 @@ export function ResultCard({
             )}
           >
             <PrizeIcon className="size-[1em]" />
-            {title}
+            {prize.name}
           </span>
         )}
-        <span
-          className={cn(
-            "font-display text-[clamp(52px,14vw,84px)] font-bold leading-none tabular-nums",
-            result.won > 0n
-              ? "text-[color:var(--term-green)]"
-              : "text-destructive",
-          )}
-        >
-          <RollingNumber value={toGoldao(back)} from={0} scaled tick />
-        </span>
-        <span className={cn("font-mono text-xs", inkMid)}>
-          GOLDAO back · profit {fmtSigned(profit)}
-        </span>
-        {result.jackpotWon > 0n && (
-          <span className={cn("font-mono text-xs", DIAMOND_TEXT)}>
-            Jackpot: +{fmtGoldao(result.jackpotWon)} GOLDAO
-          </span>
+        <FitNumber value={total} className={numberColor} />
+        {jackpot ? (
+          <>
+            {pct !== null && (
+              <span
+                className={cn(
+                  "inline-flex items-center gap-1 rounded-full border border-[#d6336c]/40 bg-[#d6336c]/10 px-3 py-1 font-mono text-xs font-bold dark:border-[#ff7ab8]/40 dark:bg-[#ff7ab8]/10",
+                  PINK,
+                )}
+              >
+                <ArrowUp className="size-3" />+{pct}% profit
+              </span>
+            )}
+            <span className={cn("font-mono text-[11px] font-bold", PINK)}>
+              {fmtGoldao2(result.gross)} {collapsed ? "secured" : "prize"} +{" "}
+              {fmtGoldao2(result.jackpotWon)} jackpot
+            </span>
+          </>
+        ) : collapsed ? (
+          <div className="flex w-full flex-col gap-1">
+            <div className="h-2 w-full overflow-hidden rounded-full bg-[color:var(--term-border)]">
+              <div
+                className="h-full rounded-full bg-[color:var(--term-green)]"
+                style={{ width: `${Math.max(0, Math.min(100, rescued))}%` }}
+              />
+            </div>
+            <div
+              className={cn(
+                "flex justify-between font-mono text-[10.5px]",
+                inkFaint,
+              )}
+            >
+              <span>
+                {Math.floor(rescued).toLocaleString("en-US")}% rescued
+              </span>
+              <span>of {fmtGoldao2(stake)}</span>
+            </div>
+          </div>
+        ) : (
+          pct !== null && (
+            <span
+              className={cn(
+                "inline-flex items-center gap-1 rounded-full border border-[color:var(--term-green)]/40 bg-[color:var(--term-green)]/10 px-3 py-1 font-mono text-xs font-bold",
+                GREEN,
+              )}
+            >
+              <ArrowUp className="size-3" />+{pct}% profit
+            </span>
+          )
         )}
         <button
           type="button"
           onClick={onNew}
-          className="mt-2 flex items-center gap-1.5 rounded-full border border-primary/60 bg-primary/10 px-4 py-1.5 font-mono text-xs font-medium text-[color:var(--term-gold)] transition-colors hover:bg-primary/20"
+          className="mt-1 flex items-center gap-1.5 rounded-full border border-primary/60 bg-primary/10 px-4 py-1.5 font-mono text-xs font-medium text-[color:var(--term-gold)] transition-colors hover:bg-primary/20"
         >
           <RotateCcw className="size-3.5" />
           New excavation
