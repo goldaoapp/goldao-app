@@ -59,6 +59,30 @@ const RESTORE_ORDER = [
   12, 6, 18, 8, 16, 2, 22, 10, 14, 0, 24, 4, 20, 7, 17, 11, 13, 1, 23, 3,
 ];
 
+/**
+ * Cells for an excavation with `picks` picks: keeps the ones already known (up to `picks`) and
+ * fills the missing ones with plain tokens, because the backend only stores how many picks were made.
+ */
+function fillCells(
+  known: Record<number, Cell>,
+  picks: number,
+): Record<number, Cell> {
+  const out: Record<number, Cell> = {};
+  let n = 0;
+  for (const key of Object.keys(known)) {
+    if (n >= picks) break;
+    out[Number(key)] = known[Number(key)];
+    n += 1;
+  }
+  for (const idx of RESTORE_ORDER) {
+    if (n >= picks) break;
+    if (out[idx]) continue;
+    n += 1;
+    out[idx] = { kind: "token", token: tokenForPick(n) };
+  }
+  return out;
+}
+
 interface Props {
   dashboard: Dashboard | undefined;
   config: GameConfig | undefined;
@@ -68,20 +92,28 @@ export function MineBoard({ dashboard }: Props) {
   const { actor, isAuthenticated, isLoading, login, principalId } = useAuth();
   const { run, refreshAll, setOpenExcavation, setCredit } = useGameAction();
   const board = useBoard();
-  const { exc, cells, digging, result, error, notice, jackpot, treasure } =
-    board;
+  const {
+    exc,
+    cells,
+    digging,
+    result,
+    error,
+    notice,
+    jackpot,
+    treasure,
+    working,
+    autoRun,
+  } = board;
   const { muted, toggleMuted } = useSoundToggle();
   const [autoStop, setAutoStop] = useState(3);
-  const [autoBusy, setAutoBusy] = useState(false);
   const [bandHost, setBandHost] = useState<HTMLDivElement | null>(null);
-  const busyRef = useRef(false);
   const jackpotResolve = useRef<(() => void) | null>(null);
 
   const stakes = dashboard?.stakes ?? [];
   const paused = !!dashboard?.paused;
   const credit = dashboard?.credit ?? 0n;
   const excNo = dashboard ? Number(dashboard.stats.excavations) : 0;
-  const busy = digging !== null || autoBusy || busyRef.current;
+  const busy = digging !== null || autoRun || working;
   const locked = busy || jackpot !== null;
   const booting = isLoading || (isAuthenticated && !dashboard);
 
@@ -97,27 +129,22 @@ export function MineBoard({ dashboard }: Props) {
     if (getBoard().owner !== principalId) resetBoard(principalId);
   }, [principalId]);
 
-  // Restore an excavation left open (reload, another tab) from the backend.
+  // Keeps the board in step with the backend's open excavation: restores it after a reload or
+  // from another tab, and rebuilds it when the backend is further along than the screen (a pick
+  // that timed out, an action from another tab). A cache that is behind never rewinds the board;
+  // the next pick is checked by the backend itself (expectedPicks).
   const open = dashboard?.open;
   useEffect(() => {
-    if (!dashboard || busyRef.current || autoBusy) return;
+    if (!dashboard || working || getBoard().working || autoRun) return;
     if (board.owner !== principalId || !principalId) return;
     if (Date.now() < board.skipRestoreUntil) return;
-    if (open && !exc) {
-      const picks = Number(open.picks);
-      const saved =
-        loadBoardCells(principalId, dashboard.tournament, excNo) ?? {};
-      const restored: Record<number, Cell> = { ...saved };
-      let n = Object.keys(saved).length;
-      for (const idx of RESTORE_ORDER) {
-        if (n >= picks) break;
-        if (restored[idx]) continue;
-        n += 1;
-        restored[idx] = { kind: "token", token: tokenForPick(n) };
-      }
+    if (open && (!exc || Number(open.picks) > Number(exc.picks))) {
+      const base = exc
+        ? cells
+        : (loadBoardCells(principalId, dashboard.tournament, excNo) ?? {});
       setBoard({
         exc: open,
-        cells: restored,
+        cells: fillCells(base, Number(open.picks)),
         result: null,
         inPlay: open.stake,
       });
@@ -127,12 +154,14 @@ export function MineBoard({ dashboard }: Props) {
     dashboard,
     open,
     exc,
+    cells,
     digging,
     excNo,
     principalId,
     board.owner,
     board.skipRestoreUntil,
-    autoBusy,
+    autoRun,
+    working,
   ]);
 
   // A collapse that still pays shows the green result, then clears the board.
@@ -164,7 +193,7 @@ export function MineBoard({ dashboard }: Props) {
       skipRestoreUntil: Date.now() + 6000,
     });
     clearBoardCells();
-    setOpenExcavation(null);
+    void setOpenExcavation(null);
     const treasureWin = end.won > 0n && isTreasure(Number(end.points));
     if (end.kind === EndKind.collapsed) playSound("collapse");
     else if (end.won > 0n && !treasureWin) playSound("success");
@@ -182,14 +211,13 @@ export function MineBoard({ dashboard }: Props) {
   };
 
   const dig = async (index: number) => {
-    if (!actor || busyRef.current || locked || cells[index]) return;
+    if (!actor || getBoard().working || locked || cells[index]) return;
     if (!isAuthenticated) {
       login();
       return;
     }
     if (paused) return;
-    busyRef.current = true;
-    setBoard({ error: null });
+    setBoard({ working: true, error: null });
     try {
       const starting = !exc;
       const stakeAmount = exc ? exc.stake : (stakes[board.stake] ?? 0n);
@@ -229,7 +257,7 @@ export function MineBoard({ dashboard }: Props) {
           heldBalance: { credit: res.credit, pool: res.pool },
         });
       } else {
-        setCredit(res.credit, res.pool);
+        void setCredit(res.credit, res.pool);
       }
       if (!res.collapsed) playSound(stage > 0 ? "diamond" : "success");
       if (stage > 0) {
@@ -248,7 +276,9 @@ export function MineBoard({ dashboard }: Props) {
         finish(res.end, stakeAmount);
       } else {
         setBoard({ exc: res.excavation ?? null });
-        if (res.excavation) setOpenExcavation(res.excavation);
+        // Awaited: the cache must hold this excavation before the board is released, or the
+        // sync effect would see "no open excavation" and clear the board.
+        if (res.excavation) await setOpenExcavation(res.excavation);
         if (
           res.excavation &&
           multX100(Number(res.excavation.runPoints)) > COIN_MULT_X100
@@ -274,38 +304,37 @@ export function MineBoard({ dashboard }: Props) {
         setBoard({ exc: null, cells: {}, inPlay: 0n, skipRestoreUntil: 0 });
       }
     } finally {
-      busyRef.current = false;
-      setBoard({ digging: null });
+      setBoard({ working: false, digging: null });
       if (!getBoard().exc) setBoard({ inPlay: 0n });
     }
   };
 
   const save = async () => {
-    if (!actor || !exc?.canSave || busyRef.current) return;
-    busyRef.current = true;
-    setBoard({ error: null });
+    if (!actor || !exc?.canSave || getBoard().working) return;
+    setBoard({ working: true, error: null });
     try {
       const end = await run("save", () => actor.gameSave(), false);
-      setCredit(end.credit, dashboard?.pool ?? 0n);
+      void setCredit(end.credit, dashboard?.pool ?? 0n);
       finish(end, exc.stake);
     } catch (e) {
       setBoard({ error: errorMessage(e) });
+      void refreshAll();
     } finally {
-      busyRef.current = false;
+      setBoard({ working: false });
     }
   };
 
   const runAuto = async () => {
-    if (!actor || busyRef.current || locked || exc) return;
+    if (!actor || getBoard().working || locked || exc) return;
     if (!isAuthenticated) {
       login();
       return;
     }
     const stakeAmount = stakes[board.stake] ?? 0n;
     if (stakeAmount === 0n || paused) return;
-    busyRef.current = true;
-    setAutoBusy(true);
     setBoard({
+      working: true,
+      autoRun: true,
       error: null,
       result: null,
       cells: {},
@@ -354,15 +383,13 @@ export function MineBoard({ dashboard }: Props) {
           });
         }
       }
-      setCredit(out.end.credit, out.pool);
+      void setCredit(out.end.credit, out.pool);
       finish(out.end, stakeAmount);
     } catch (e) {
       setBoard({ error: errorMessage(e) });
       void refreshAll();
     } finally {
-      busyRef.current = false;
-      setAutoBusy(false);
-      setBoard({ hold: false });
+      setBoard({ working: false, autoRun: false, hold: false });
       if (!getBoard().exc) setBoard({ inPlay: 0n });
     }
   };
@@ -373,7 +400,7 @@ export function MineBoard({ dashboard }: Props) {
     setBoard({ jackpot: null });
     if (held) {
       // Now the new balance can roll up on screen.
-      setCredit(held.credit, held.pool);
+      void setCredit(held.credit, held.pool);
       setBoard({ hold: false, heldBalance: null });
       void refreshAll();
     }
@@ -570,7 +597,7 @@ export function MineBoard({ dashboard }: Props) {
                 <AutoPicker
                   value={autoStop}
                   disabled={locked || !!exc || paused || !dashboard}
-                  busy={autoBusy}
+                  busy={autoRun}
                   onChange={setAutoStop}
                   onRun={() => void runAuto()}
                 />
