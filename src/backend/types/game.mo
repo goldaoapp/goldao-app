@@ -260,6 +260,8 @@ module {
     top10Pool : Nat;
     lastTop10 : [TopPrize];
     staked : Nat;
+    // Players with stats this tournament. `players` carries at most the first 200 of them.
+    totalPlayers : Nat;
     players : [PlayerRow];
     jackpots : [JackpotWin];
   };
@@ -287,6 +289,8 @@ module {
     top10MinVolumeE8s : Nat;
     realLedger : Bool;
     ledgerId : Text;
+    poolSeedE8s : Nat;
+    poolSeedMaxE8s : Nat;
   };
 
   public type AdminView = {
