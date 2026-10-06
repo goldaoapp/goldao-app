@@ -764,7 +764,8 @@ const GREEN = "text-[color:var(--term-green)]";
 function FitNumber({
   value,
   className,
-}: { value: bigint; className?: string }) {
+  plus,
+}: { value: bigint; className?: string; plus?: boolean }) {
   const ref = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(0);
   useLayoutEffect(() => {
@@ -776,7 +777,7 @@ function FitNumber({
     ro.observe(el);
     return () => ro.disconnect();
   }, []);
-  const text = fmtGoldao2(value);
+  const text = (plus ? "+" : "") + fmtGoldao2(value);
   // Digits are about 0.64em wide in the display font, "," and "." about 0.32em.
   let em = 0;
   for (const ch of text) em += ch === "," || ch === "." ? 0.32 : 0.64;
@@ -793,6 +794,7 @@ function FitNumber({
         )}
         style={{ fontSize: size }}
       >
+        {plus && "+"}
         <RollingNumber value={toGoldao(value)} from={0} scaled tick fixed2 />
       </span>
     </div>
@@ -850,7 +852,7 @@ export function ResultCard({
             {prize.name}
           </span>
         )}
-        <FitNumber value={total} className={numberColor} />
+        <FitNumber value={total} className={numberColor} plus={total > 0n} />
         {jackpot ? (
           <>
             {pct !== null && (
