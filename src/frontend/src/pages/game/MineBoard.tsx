@@ -49,6 +49,8 @@ const CELLS = 25;
 const SPLIT_AT = 15;
 const STAKE_KEYS = [StakeOption.min, StakeOption.mid, StakeOption.max];
 const AUTO_STEP_MS = 450;
+/** Start of the backend message sent when the open excavation is not the one on screen. */
+const EXC_CHANGED = "Your excavation changed";
 /** Coins fall from this multiplier up. */
 const COIN_MULT_X100 = 110;
 /** A collapse that still pays resets the board after this delay. */
@@ -204,7 +206,12 @@ export function MineBoard({ dashboard }: Props) {
       }));
       const res = await run(
         "pick",
-        () => actor.gamePick(starting ? STAKE_KEYS[board.stake] : null),
+        () =>
+          actor.gamePick(
+            starting ? STAKE_KEYS[board.stake] : null,
+            stakeAmount,
+            exc ? exc.picks : 0n,
+          ),
         false,
       );
       const picks = Number(res.picks);
@@ -258,8 +265,14 @@ export function MineBoard({ dashboard }: Props) {
         }
       }
     } catch (e) {
-      setBoard({ error: errorMessage(e) });
-      void refreshAll();
+      const m = errorMessage(e);
+      setBoard({ error: m });
+      await refreshAll();
+      // Another tab or device moved the excavation on: rebuild the board from the backend.
+      if (m.startsWith(EXC_CHANGED)) {
+        clearBoardCells();
+        setBoard({ exc: null, cells: {}, inPlay: 0n, skipRestoreUntil: 0 });
+      }
     } finally {
       busyRef.current = false;
       setBoard({ digging: null });
@@ -303,7 +316,12 @@ export function MineBoard({ dashboard }: Props) {
       if (!coversStake(stakeAmount)) return;
       const out = await run(
         "auto",
-        () => actor.gameAuto(STAKE_KEYS[board.stake], BigInt(autoStop)),
+        () =>
+          actor.gameAuto(
+            STAKE_KEYS[board.stake],
+            BigInt(autoStop),
+            stakeAmount,
+          ),
         false,
       );
       const free = Array.from({ length: CELLS }, (_, i) => i).sort(
