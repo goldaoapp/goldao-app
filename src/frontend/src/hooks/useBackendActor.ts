@@ -3,7 +3,7 @@
 // process.env.CANISTER_ID_BACKEND, luego el /env.json inyectado en deploy.
 
 import { useInternetIdentity } from "@/lib/internet-identity";
-import { HttpAgent } from "@icp-sdk/core/agent";
+import { HttpAgent, type Identity } from "@icp-sdk/core/agent";
 import { useEffect, useRef, useState } from "react";
 import { type Backend, type ExternalBlob, createActor } from "../backend";
 
@@ -28,14 +28,38 @@ export async function loadEnv(): Promise<EnvConfig> {
   return envPromise;
 }
 
+interface Built {
+  /** Principal the actor was built for ("anon" without a session). */
+  key: string;
+  actor: Backend;
+}
+
+function identityKey(identity: Identity | null): string {
+  if (!identity) return "anon";
+  try {
+    return identity.getPrincipal().toString();
+  } catch {
+    return "anon";
+  }
+}
+
+/**
+ * The actor is only handed out while it belongs to the current identity. After a login or a
+ * reload the principal is known a moment before the signed actor is ready; in that gap the
+ * actor is null, so no query can go out with the anonymous actor under the new principal.
+ */
 export function useBackendActor() {
   const { identity } = useInternetIdentity();
-  const [actor, setActor] = useState<Backend | null>(null);
+  const key = identityKey(identity);
+  const [built, setBuilt] = useState<Built | null>(null);
   const [isFetching, setIsFetching] = useState(true);
-  const builtForRef = useRef<string | null>(null);
-  const actorRef = useRef<Backend | null>(null);
+  const builtRef = useRef<Built | null>(null);
 
   useEffect(() => {
+    if (builtRef.current?.key === key) {
+      setIsFetching(false);
+      return;
+    }
     let cancelled = false;
 
     async function build() {
@@ -47,21 +71,6 @@ export function useBackendActor() {
         const isLocal = network === "local";
 
         if (!canisterId || canisterId === "undefined") {
-          if (!cancelled) setIsFetching(false);
-          return;
-        }
-
-        const identityKey = identity
-          ? (() => {
-              try {
-                return identity.getPrincipal().toString();
-              } catch {
-                return "anon";
-              }
-            })()
-          : "anon";
-
-        if (builtForRef.current === identityKey && actorRef.current !== null) {
           if (!cancelled) setIsFetching(false);
           return;
         }
@@ -94,9 +103,9 @@ export function useBackendActor() {
         });
 
         if (!cancelled) {
-          builtForRef.current = identityKey;
-          actorRef.current = newActor;
-          setActor(newActor);
+          const next: Built = { key, actor: newActor };
+          builtRef.current = next;
+          setBuilt(next);
           setIsFetching(false);
         }
       } catch {
@@ -108,7 +117,7 @@ export function useBackendActor() {
     return () => {
       cancelled = true;
     };
-  }, [identity]);
+  }, [identity, key]);
 
-  return { actor, isFetching };
+  return { actor: built?.key === key ? built.actor : null, isFetching };
 }
