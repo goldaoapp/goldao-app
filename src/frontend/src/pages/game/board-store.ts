@@ -62,6 +62,10 @@ export interface BoardState {
   inPlay: bigint;
   /** Treasure celebration to show; kept here so it survives leaving the tab. */
   treasure: TreasureView | null;
+  /** A pick, save or auto run is in progress. Kept here so leaving the tab does not unlock the board. */
+  working: boolean;
+  /** An auto run is in progress (a subset of working). */
+  autoRun: boolean;
 }
 
 const EMPTY: BoardState = {
@@ -81,6 +85,8 @@ const EMPTY: BoardState = {
   heldBalance: null,
   inPlay: 0n,
   treasure: null,
+  working: false,
+  autoRun: false,
 };
 
 let state: BoardState = EMPTY;
