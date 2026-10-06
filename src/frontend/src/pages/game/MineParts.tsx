@@ -398,9 +398,7 @@ export function RunCard({
             <RollingNumber value={toGoldao(prize)} scaled tick fixed2 />
           </span>
           <span className="min-h-3.5 font-mono text-[10px] text-destructive">
-            {exc && active
-              ? `If it collapses you get ${fmtGoldao(exc.collapseGross)}`
-              : "No risk on the first 2 picks"}
+            {exc && active ? "" : "No risk on the first 2 picks"}
           </span>
         </div>
         <div className="flex min-w-0 flex-col items-start gap-1">
@@ -456,36 +454,143 @@ export function RunCard({
   );
 }
 
-/** The player's place in the weekly volume ranking and the extra prize it would pay now. */
-function TopRank({ dashboard }: { dashboard: Dashboard | undefined }) {
-  if (!dashboard) return null;
-  const rank = Number(dashboard.top10Rank);
-  const staked = dashboard.stats.staked;
-  const need =
-    dashboard.top10Entry > staked ? dashboard.top10Entry - staked : 0n;
-  const inTop = rank >= 1 && rank <= 10 && dashboard.top10Prize > 0n;
-  let text: string;
-  if (inTop) {
-    text = `Top 10 #${rank} · +${fmtGoldao(dashboard.top10Prize)} if it closed now`;
-  } else if (rank === 0) {
-    text = `Top 10 · stake ${fmtGoldao(dashboard.top10Entry)} to qualify`;
-  } else {
-    text = `Rank #${rank} · ${fmtGoldao(need > 0n ? need : 1n)}+ more volume to reach the Top 10`;
-  }
+/** Medal look per tier: 1 gold, 2 silver, 3 bronze, 4 neutral (ranks 4 to 10 and outside). */
+const MEDAL: Record<1 | 2 | 3 | 4, string> = {
+  1: "bg-[linear-gradient(145deg,#f3d58f,#d9a93f)] text-[#54360b] dark:bg-[linear-gradient(145deg,#e8c370,#a88130)] dark:text-[#2b1d06]",
+  2: "bg-[linear-gradient(145deg,#f0f2f4,#b3bac2)] text-[#3b434b] dark:bg-[linear-gradient(145deg,#dde1e5,#868d96)] dark:text-[#1f2329]",
+  3: "bg-[linear-gradient(145deg,#ecbc92,#bd7f4b)] text-[#4a2a10] dark:bg-[linear-gradient(145deg,#d9a273,#8f5b31)] dark:text-[#2a1608]",
+  4: "bg-[linear-gradient(145deg,#ead8ca,#cbb2a0)] text-[#5c4f47] dark:bg-[linear-gradient(145deg,#505050,#3d3d3c)] dark:text-[#e6d9c3]",
+};
+const HEX_CLIP = "polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%)";
+const LABEL = "text-[#7a6a60] dark:text-[#9b9a94]";
+const NUM = "text-[#2a2520] dark:text-[#f0e6d6]";
+const GOLD = "text-[#b08a2e] dark:text-[#c9a03c]";
+const FOOT = "text-[#8a7a70] dark:text-[#8f8e88]";
+const GREEN_RANK = "text-[#2d8a5e] dark:text-[#36c58a]";
+
+/** Hex badge with the player's place in the volume ranking and what the Top 10 would pay now. */
+function RankPanel({ dashboard }: { dashboard: Dashboard | undefined }) {
+  const rank = dashboard ? Number(dashboard.top10Rank) : 0;
+  const inTop = rank >= 1 && rank <= 10;
+  const tier = (rank >= 1 && rank <= 3 ? rank : 4) as 1 | 2 | 3 | 4;
+  const prize = dashboard && inTop ? dashboard.top10Prize : 0n;
+  let gap = "";
+  if (dashboard && rank > 10) gap = `${rank - 10} spots to Top 10`;
+  else if (dashboard && rank === 0)
+    gap = `Stake ${fmtGoldao(dashboard.top10Entry)} to enter`;
   return (
-    <div
-      className={cn(
-        "flex min-w-0 flex-col gap-0.5 rounded-lg border px-2.5 py-1.5 font-mono text-[11px] leading-snug",
-        inTop
-          ? "border-[color:var(--term-green)]/50 bg-[color:var(--term-green)]/10 text-[color:var(--term-green)]"
-          : "border-[color:var(--term-border)]",
-        inTop ? "" : inkMid,
-      )}
-    >
-      <span>{text}</span>
-      <span className={inTop ? "opacity-80" : inkFaint}>
-        Top 10 pool {fmtGoldao(dashboard.top10Pool)} GOLDAO
-      </span>
+    <div className="flex min-w-0 flex-col gap-2.5 rounded-[14px] border border-[rgba(92,79,71,.18)] bg-white/20 px-3.5 pb-3.5 pt-3 dark:border-white/[.07] dark:bg-black/[.18]">
+      <div className="flex items-center justify-between">
+        <span
+          className={cn(
+            "text-[11px] font-bold uppercase tracking-[.26em]",
+            LABEL,
+          )}
+        >
+          Your rank
+        </span>
+        <span className="group relative inline-flex">
+          <button
+            type="button"
+            aria-label="Top 10 pool info"
+            className={cn(
+              "inline-flex size-[18px] cursor-help items-center justify-center rounded-full border border-[rgba(92,79,71,.18)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#b08a2e] dark:border-white/[.07]",
+              LABEL,
+            )}
+          >
+            <svg
+              viewBox="0 0 24 24"
+              className="size-[11px]"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.6"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden
+            >
+              <title>Info</title>
+              <path d="M12 11v6" />
+              <path d="M12 7h.01" />
+            </svg>
+          </button>
+          <span
+            className={cn(
+              "pointer-events-none absolute -right-1 bottom-[calc(100%+8px)] z-10 translate-y-[3px] whitespace-nowrap rounded-[10px] border border-[rgba(201,160,60,.65)] bg-[#f1e1d6] px-2.5 py-[7px] text-[11px] opacity-0 shadow-[0_14px_34px_rgba(92,60,40,.18)] transition group-focus-within:translate-y-0 group-focus-within:opacity-100 group-hover:translate-y-0 group-hover:opacity-100 dark:border-[rgba(174,137,58,.5)] dark:bg-[#232423] dark:shadow-[0_14px_34px_rgba(0,0,0,.45)]",
+              NUM,
+            )}
+          >
+            Top 10 pool{" "}
+            <b className={GOLD}>
+              {dashboard ? fmtGoldao(dashboard.top10Pool) : "-"} GOLDAO
+            </b>
+          </span>
+        </span>
+      </div>
+      <div className="flex flex-col items-center gap-[9px] text-center">
+        <div
+          className={cn(
+            "flex h-20 w-[72px] flex-col items-center justify-center gap-px",
+            MEDAL[tier],
+          )}
+          style={{ clipPath: HEX_CLIP }}
+        >
+          {inTop ? (
+            <svg
+              viewBox="0 0 24 24"
+              className="size-4"
+              fill="currentColor"
+              aria-hidden
+            >
+              <title>Rank</title>
+              {rank <= 3 ? (
+                <path d="M3 8l4.5 4L12 5l4.5 7L21 8l-2 11H5z" />
+              ) : (
+                <path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z" />
+              )}
+            </svg>
+          ) : (
+            <svg
+              viewBox="0 0 24 24"
+              className="size-3.5 opacity-80"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.4"
+              strokeLinecap="round"
+              aria-hidden
+            >
+              <title>Rank</title>
+              <circle cx="12" cy="12" r="8" />
+              <circle cx="12" cy="12" r="3.5" />
+            </svg>
+          )}
+          <span
+            className="font-display font-extrabold leading-none tracking-[-.02em]"
+            style={{
+              fontSize: inTop ? 24 : String(rank).length >= 3 ? 17 : 22,
+            }}
+          >
+            {rank > 0 ? `#${rank}` : "-"}
+          </span>
+        </div>
+        <div>
+          <div
+            className={cn(
+              "font-display text-[28px] font-extrabold leading-none tracking-[-.01em]",
+              inTop && prize > 0n ? GREEN_RANK : FOOT,
+            )}
+          >
+            +{fmtGoldao2(prize)}
+          </div>
+          <div className={cn("mt-1 text-[11px]", FOOT)}>
+            GOLDAO if it closed now
+          </div>
+        </div>
+        {gap && (
+          <div className={cn("text-[11px] font-bold tracking-[.02em]", GOLD)}>
+            {gap}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -517,35 +622,90 @@ export function CreditBar({
     const t = window.setTimeout(() => setFlash(false), 1200);
     return () => window.clearTimeout(t);
   }, [credit, loaded]);
+
+  // Card width decides the layout (side by side from 520px) and how big the number can be.
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const leftRef = useRef<HTMLDivElement>(null);
+  const [box, setBox] = useState({ wrap: 0, left: 0 });
+  useLayoutEffect(() => {
+    const wrap = wrapRef.current;
+    const left = leftRef.current;
+    if (!wrap || !left) return;
+    const measure = () =>
+      setBox({ wrap: wrap.clientWidth, left: left.clientWidth });
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(wrap);
+    ro.observe(left);
+    return () => ro.disconnect();
+  }, []);
+  const narrow = box.wrap > 0 && box.wrap < 520;
+  let em = 0;
+  for (const ch of fmtGoldao2(shown))
+    em += ch === "," || ch === "." ? 0.32 : 0.64;
+  const wanted = box.wrap * (narrow ? 0.135 : 0.08);
+  const room = box.left > 0 ? box.left / em : wanted;
+  const size =
+    box.wrap > 0 ? Math.max(20, Math.min(84, wanted, Math.floor(room))) : 40;
+
   return (
-    <div
-      className={cn(
-        panel,
-        "flex min-w-0 flex-col justify-between gap-2 border-primary/50 bg-[var(--term-alt)] p-3 sm:p-6",
-        className,
-      )}
-    >
-      <span className={cn(eyebrow, inkFaint)}>To collect</span>
-      <span
+    <div ref={wrapRef} className={cn("min-w-0", className)}>
+      <div
         className={cn(
-          "flex flex-wrap items-baseline gap-x-3 font-display text-[34px] font-bold leading-none tabular-nums transition-colors duration-1000 md:text-[clamp(48px,6vw,84px)]",
-          flash ? "text-[color:var(--term-green)]" : ink,
+          "grid items-stretch gap-[22px] rounded-[18px] border border-[rgba(201,160,60,.65)] bg-[#e2cabc] px-[22px] pb-5 pt-[22px] shadow-[0_14px_34px_rgba(92,60,40,.18)] dark:border-[rgba(174,137,58,.5)] dark:bg-[#343433] dark:shadow-[0_14px_34px_rgba(0,0,0,.45)]",
+          narrow ? "grid-cols-1 gap-4" : "grid-cols-[minmax(0,1fr)_230px]",
         )}
       >
-        <RollingNumber
-          value={credit}
-          scaled={prev.current !== null}
-          tick={prev.current !== null}
-        />
-        <span className={cn("font-mono text-xs font-semibold", gold)}>
-          GOLDAO
-        </span>
-      </span>
-      <TopRank dashboard={dashboard} />
-      <span className={cn("font-mono text-[11px]", inkFaint)}>
-        Paid when the tournament closes
-        {dashboard ? ` · ${fmtCountdown(dashboard.endsAt)}` : ""}
-      </span>
+        <div
+          ref={leftRef}
+          className={cn(
+            "flex min-w-0 flex-col justify-between",
+            narrow && "gap-1",
+          )}
+        >
+          <div>
+            <div
+              className={cn(
+                "text-[11px] font-bold uppercase tracking-[.26em]",
+                LABEL,
+              )}
+            >
+              To collect
+            </div>
+            <div
+              className={cn(
+                "flex flex-wrap items-baseline gap-x-2.5 gap-y-1",
+                narrow ? "my-2.5 mb-3" : "mb-3.5 mt-3.5",
+              )}
+            >
+              <span
+                className={cn(
+                  "whitespace-nowrap font-display font-extrabold leading-none tracking-[-.02em] tabular-nums transition-colors duration-1000",
+                  flash ? GREEN_RANK : NUM,
+                )}
+                style={{ fontSize: size }}
+              >
+                <RollingNumber
+                  value={credit}
+                  scaled={prev.current !== null}
+                  tick={prev.current !== null}
+                  fixed2
+                />
+              </span>
+              <span
+                className={cn("text-[11px] font-bold tracking-[.12em]", GOLD)}
+              >
+                GOLDAO
+              </span>
+            </div>
+          </div>
+          <div className={cn("text-[11.5px]", FOOT)}>
+            Paid when the tournament closes
+            {dashboard ? ` · ${fmtCountdown(dashboard.endsAt)}` : ""}
+          </div>
+        </div>
+        <RankPanel dashboard={dashboard} />
+      </div>
     </div>
   );
 }
