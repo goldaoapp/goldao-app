@@ -45,7 +45,7 @@ export function BurnedCounter({ value }: { value: bigint }) {
 
   return (
     <div
-      className="relative flex items-center gap-2 px-1"
+      className="relative flex shrink-0 items-center gap-2 whitespace-nowrap px-1"
       title="All GOLDAO burned by the game: fees of loads, payouts and withdrawals"
     >
       <motion.span
