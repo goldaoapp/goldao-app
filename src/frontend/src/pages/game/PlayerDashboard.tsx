@@ -79,7 +79,7 @@ export function PlayerDashboard({ dashboard }: Props) {
           </span>
         </div>
         <dl className="grid grid-cols-2 gap-4 p-5 font-mono text-xs sm:grid-cols-3">
-          <Item label="To collect" value={fmtGoldao(dashboard.credit)} />
+          <Item label="Accumulated prize" value={fmtGoldao(dashboard.credit)} />
           <Item
             label="Pending payout"
             value={fmtGoldao(dashboard.pendingPayout)}
