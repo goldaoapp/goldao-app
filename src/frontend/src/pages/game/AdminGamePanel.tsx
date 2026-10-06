@@ -47,8 +47,9 @@ const E8S = 100_000_000n;
 // Fixed choices only: no free-text numbers, so a typo cannot reach the canister.
 const TEST_DEPOSITS = [10_000, 30_000, 100_000, 200_000];
 const DURATIONS = [1, 3, 7, 14, 30];
-const POOL_SEED_MIN = 5_000;
-const POOL_SEED_MAX = 20_000;
+// Fallback pool range while the config loads. The backend's own range (gameConfig) wins.
+const POOL_SEED_MIN_FALLBACK = 5_000;
+const POOL_SEED_MAX_FALLBACK = 20_000;
 // The wallet authorization given to the backend lives only this long.
 const WITHDRAW_WINDOW_MS = 2 * 60_000;
 const PAY_WINDOW_MS = 10 * 60_000;
@@ -82,7 +83,7 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
   const [ask, setAsk] = useState<Ask | null>(null);
   const [deposit, setDeposit] = useState(String(TEST_DEPOSITS[1]));
   const [days, setDays] = useState("");
-  const [seed, setSeed] = useState(String(POOL_SEED_MIN));
+  const [seed, setSeed] = useState(String(POOL_SEED_MIN_FALLBACK));
   const [who, setWho] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -164,6 +165,14 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
     await approveSpender(identity, envId, required, windowMs);
   };
 
+  // Asks the backend (a free query) whether it would refuse the action, before the wallet signs
+  // an authorization: that signature costs a network fee even when the action is then refused.
+  const preflight = async (check: () => Promise<Res<unknown>>) => {
+    if (!real || !actor) return;
+    const r = await check();
+    if (r.__kind__ === "err") throw new Error(r.err);
+  };
+
   // Right after an operation, cancels whatever authorization is left. A dust
   // amount is not worth another network fee: it expires within minutes.
   const revokeLeftover = async () => {
@@ -204,8 +213,14 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
     const cap = bank > GOLDAO_FEE_E8S ? bank - GOLDAO_FEE_E8S : 0n;
     return view.withdrawable < cap ? view.withdrawable : cap;
   })();
+  const poolSeedMin = config
+    ? Number(config.poolSeedE8s / E8S)
+    : POOL_SEED_MIN_FALLBACK;
+  const poolSeedMax = config
+    ? Number(config.poolSeedMaxE8s / E8S)
+    : POOL_SEED_MAX_FALLBACK;
   const seedNum = /^\d+$/.test(seed) ? Number(seed) : 0;
-  const seedValid = seedNum >= POOL_SEED_MIN && seedNum <= POOL_SEED_MAX;
+  const seedValid = seedNum >= poolSeedMin && seedNum <= poolSeedMax;
   const seedTarget = BigInt(seedNum) * E8S;
   const poolGap =
     view && seedValid && view.pool < seedTarget ? seedTarget - view.pool : 0n;
@@ -230,6 +245,7 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
     let failed = 0;
     let remaining = unpaid.length;
     try {
+      await preflight(() => actor.gameAdminCheckPay());
       await authorize(unpaidTotal, PAY_WINDOW_MS);
       for (let i = 0; i < 500; i++) {
         const r = await run("pay", () => actor.gameAdminPay(20n), false);
@@ -265,6 +281,7 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
     setBusy(true);
     try {
       const need = p.amount + GOLDAO_FEE_E8S;
+      await preflight(() => actor.gameAdminCheckPay());
       await authorize(
         unpaidTotal > need ? unpaidTotal : need,
         PAY_WINDOW_MS,
@@ -306,6 +323,7 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
         )
         .slice(0, n);
       const need = batch.reduce((s, p) => s + p.amount + GOLDAO_FEE_E8S, 0n);
+      await preflight(() => actor.gameAdminCheckPay());
       await authorize(need, PAY_WINDOW_MS);
       const r = await run("pay", () => actor.gameAdminPay(BigInt(n)), "all");
       setMsg({
@@ -464,10 +482,7 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
             value={bankText ?? principalId ?? ""}
           />
           {view && !real && (
-            <Row
-              title="Test bank"
-              hint="Replaces the test balance with a preset."
-            >
+            <Row title="Test bank" hint="Adds the preset to the test balance.">
               <select
                 value={deposit}
                 onChange={(e) => setDeposit(e.target.value)}
@@ -485,9 +500,9 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
                 disabled={working}
                 onClick={() =>
                   confirmThen({
-                    title: `Set the test bank to ${Number(deposit).toLocaleString("en-US")} GOLDAO?`,
+                    title: `Add ${Number(deposit).toLocaleString("en-US")} GOLDAO to the test bank?`,
                     detail:
-                      "Test mode only. The previous test balance is replaced.",
+                      "Test mode only. The amount is added to the current test balance.",
                     go: () =>
                       act(
                         "deposit",
@@ -497,7 +512,7 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
                   })
                 }
               >
-                Set test bank
+                Add to test bank
               </Button>
             </Row>
           )}
@@ -506,7 +521,7 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
             title="Jackpot pool"
             hint={
               !seedValid
-                ? `Choose between ${POOL_SEED_MIN.toLocaleString("en-US")} and ${POOL_SEED_MAX.toLocaleString("en-US")} GOLDAO.`
+                ? `Choose between ${poolSeedMin.toLocaleString("en-US")} and ${poolSeedMax.toLocaleString("en-US")} GOLDAO.`
                 : poolGap > 0n
                   ? `Tops the pool up to ${fmtGoldao(seedTarget)} using ${fmtGoldao(poolGap)} from the fund.`
                   : `The pool is already at or above ${fmtGoldao(seedTarget)}.`
@@ -515,8 +530,8 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
             <input
               type="number"
               inputMode="numeric"
-              min={POOL_SEED_MIN}
-              max={POOL_SEED_MAX}
+              min={poolSeedMin}
+              max={poolSeedMax}
               step={1000}
               value={seed}
               onChange={(e) => setSeed(e.target.value)}
@@ -559,11 +574,15 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
                       "withdraw",
                       () => actor!.gameAdminWithdraw(WithdrawKind.available),
                       (v) => `Done. Bank is now ${fmtGoldao(v)}.`,
-                      () =>
-                        authorize(
+                      async () => {
+                        await preflight(() =>
+                          actor!.gameAdminCheckWithdraw(WithdrawKind.available),
+                        );
+                        await authorize(
                           availableOut + GOLDAO_FEE_E8S,
                           WITHDRAW_WINDOW_MS,
-                        ),
+                        );
+                      },
                       revokeLeftover,
                     ),
                 })
@@ -600,6 +619,9 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
                         const fresh = await actor!.gameAdminRefreshBank();
                         if (fresh.__kind__ === "err")
                           throw new Error(fresh.err);
+                        await preflight(() =>
+                          actor!.gameAdminCheckWithdraw(WithdrawKind.all),
+                        );
                         // The authorization costs one fee first, then the transfer.
                         await authorize(
                           fresh.ok - GOLDAO_FEE_E8S,
