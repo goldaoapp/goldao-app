@@ -1276,7 +1276,7 @@ mixin (
     let rows = List.empty<Types.PlayerRow>();
     for ((p, s) in gameState.stats.entries()) {
       staked += s.staked;
-      rows.add({ player = p; excavations = s.excavations; staked = s.staked; returned = s.returned; jackpotWon = s.jackpotWon; bestPoints = s.bestPoints; deepest = s.deepest; rank = 0; prize = 0 });
+      rows.add({ player = p; excavations = s.excavations; staked = s.staked; returned = s.returned; jackpotWon = s.jackpotWon; bestPoints = s.bestPoints; bestReturn = switch (gameState.best.get(p)) { case (?v) v; case null 0 }; deepest = s.deepest; rank = 0; prize = 0 });
     };
     let sorted = Array.sort(
       rows.toArray(),
