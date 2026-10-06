@@ -8,7 +8,7 @@ import { Principal } from "@icp-sdk/core/principal";
 import { useQueryClient } from "@tanstack/react-query";
 import { Coins, Droplets, ShieldCheck, Wallet } from "lucide-react";
 import { motion } from "motion/react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { CopyField } from "./CopyField";
 import { Spinner } from "./Spinner";
@@ -51,21 +51,44 @@ export function WalletPanel({ dashboard, config }: Props) {
   const [loading, setLoading] = useState(false);
   const fee = config?.feeE8s ?? 1_000_000_000n;
   const credit = dashboard?.credit ?? 0n;
-  const presets = LOAD_PRESETS.filter(
-    (a) =>
-      !config || (a >= Number(config.loadMin) && a <= Number(config.loadMax)),
-  );
   const need = BigInt(amount) * E8S + fee;
-  const room = config ? config.creditCapE8s - credit : 0n;
+  const room =
+    config && config.creditCapE8s > credit ? config.creditCapE8s - credit : 0n;
+  const roomGoldao = Number(room / E8S);
+  const loadMin = config ? Number(config.loadMin) : 0;
+  // Most that can be loaded now: the per-load maximum or what is left under the To collect limit.
+  const maxLoad = config ? Math.min(Number(config.loadMax), roomGoldao) : 0;
+  const canLoad = !config || maxLoad >= loadMin;
+  // Only amounts that fit; "Max" covers the rest (for example 50 left under the limit).
+  const presets = LOAD_PRESETS.filter(
+    (a) => !config || (a >= loadMin && a <= maxLoad),
+  );
+  const showMax = !!config && canLoad && !presets.includes(maxLoad);
   const loadBlock = !dashboard
     ? "Loading"
     : dashboard.paused
       ? "Bets are paused."
-      : BigInt(amount) * E8S > room
-        ? "That would pass the To collect limit."
-        : balance < need
-          ? "Not enough GOLDAO in your wallet."
-          : null;
+      : !canLoad
+        ? `To collect is full (limit ${fmtGoldao(config?.creditCapE8s ?? 0n)} GOLDAO). You can load again after you use some of it.`
+        : amount < loadMin || amount > maxLoad
+          ? `Choose between ${loadMin.toLocaleString("en-US")} and ${maxLoad.toLocaleString("en-US")} GOLDAO.`
+          : balance < need
+            ? "Not enough GOLDAO in your wallet."
+            : null;
+
+  // If the chosen amount no longer fits (To collect grew), move it to the biggest one that does.
+  useEffect(() => {
+    if (!config || !canLoad || amount <= maxLoad) return;
+    const fit = [...presets].reverse().find((a) => a <= maxLoad);
+    setAmount(fit ?? maxLoad);
+  }, [config, canLoad, amount, maxLoad, presets]);
+
+  // A green confirmation goes away by itself; errors stay until the next action.
+  useEffect(() => {
+    if (!msg?.ok) return;
+    const t = window.setTimeout(() => setMsg(null), 6000);
+    return () => window.clearTimeout(t);
+  }, [msg]);
 
   const [dest, setDest] = useState("");
   const [sendText, setSendText] = useState("");
@@ -188,6 +211,14 @@ export function WalletPanel({ dashboard, config }: Props) {
             ? `Pending payout from last tournament: ${fmtGoldao(dashboard.pendingPayout)}`
             : "Backs your stakes. Paid when the tournament closes"}
         </span>
+        {config && (
+          <span className={cn("font-mono text-[11px]", inkFaint)}>
+            Limit {fmtGoldao(config.creditCapE8s)} GOLDAO.{" "}
+            {canLoad
+              ? `You can load up to ${maxLoad.toLocaleString("en-US")} more now.`
+              : "It is full, so loading is off until you use some of it."}
+          </span>
+        )}
         <div className="flex flex-wrap gap-2">
           {presets.map((a) => (
             <Button
@@ -201,6 +232,17 @@ export function WalletPanel({ dashboard, config }: Props) {
               {a.toLocaleString("en-US")}
             </Button>
           ))}
+          {showMax && (
+            <Button
+              size="sm"
+              variant={amount === maxLoad ? "default" : "outline"}
+              disabled={loading || !!pending}
+              onClick={() => setAmount(maxLoad)}
+              className="font-mono text-xs"
+            >
+              Max {maxLoad.toLocaleString("en-US")}
+            </Button>
+          )}
         </div>
         <Button
           size="sm"
@@ -237,6 +279,14 @@ export function WalletPanel({ dashboard, config }: Props) {
               className={cn(eyebrow, inkFaint, "flex items-center gap-1.5")}
             >
               <Droplets className="size-3.5" /> Test faucet
+            </span>
+            <span className={cn("text-xs", inkFaint)}>
+              {config
+                ? `Up to ${fmtGoldao(config.faucetCapE8s)} test GOLDAO per tournament. `
+                : ""}
+              {faucetLeft >= FAUCET_PRESETS[0]
+                ? `${faucetLeft.toLocaleString("en-US")} left.`
+                : "You have used them for this tournament. They come back with the next one."}
             </span>
             <div className="flex flex-wrap gap-2">
               {FAUCET_PRESETS.map((a) => (
