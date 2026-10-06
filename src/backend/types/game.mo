@@ -246,6 +246,8 @@ module {
     returned : Nat;
     jackpotWon : Nat;
     bestPoints : Nat;
+    /** Biggest return of a single excavation (prize plus jackpot, stake included). */
+    bestReturn : Nat;
     deepest : Nat;
     rank : Nat;
     prize : Nat;
