@@ -5,6 +5,7 @@ import { Gem, History, LayoutDashboard } from "lucide-react";
 import { Spinner } from "./Spinner";
 import {
   DIAMOND_TEXT,
+  bestPrizeText,
   eyebrow,
   fmtCountdown,
   fmtGoldao,
@@ -16,6 +17,7 @@ import {
   panel,
   panelHeader,
 } from "./game-utils";
+import { useGameConfig } from "./useGame";
 
 interface Props {
   dashboard: Dashboard | undefined;
@@ -23,6 +25,7 @@ interface Props {
 
 export function PlayerDashboard({ dashboard }: Props) {
   const { isAuthenticated } = useAuth();
+  const { data: config } = useGameConfig();
 
   if (!dashboard) {
     return (
@@ -46,9 +49,11 @@ export function PlayerDashboard({ dashboard }: Props) {
 
   const s = dashboard.stats;
   const net = netOf(s);
-  // Biggest return of a single excavation in the current tournament.
-  const bestPrize =
-    dashboard.bestReturn > 0n ? fmtGoldao(dashboard.bestReturn) : "None yet";
+  // Same text as the Ranking: prize name and multiplier of the best saved excavation.
+  const bestPrize = config
+    ? bestPrizeText(config.pointsTable.map(Number), Number(s.bestPoints))
+    : "-";
+  const jackpots = s.jackpotWon > 0n ? fmtGoldao(s.jackpotWon) : "-";
 
   return (
     <div className="flex flex-col gap-6">
@@ -61,7 +66,7 @@ export function PlayerDashboard({ dashboard }: Props) {
           value={fmtSigned(net)}
           tone={net > 0n ? "up" : net < 0n ? "down" : undefined}
         />
-        <Kpi label="Jackpots" value={fmtGoldao(s.jackpotWon)} diamond />
+        <Kpi label="Jackpots" value={jackpots} diamond />
         <Kpi label="Collapses" value={String(Number(s.collapses))} />
         <Kpi label="Best prize" value={bestPrize} />
         <Kpi label="Deepest pick" value={String(Number(s.deepest))} />
