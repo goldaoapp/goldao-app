@@ -6,7 +6,6 @@ import { useMemo, useState } from "react";
 import { Spinner } from "./Spinner";
 import {
   DIAMOND_TEXT,
-  bestPrizeText,
   eyebrow,
   fmtCountdown,
   fmtDate,
@@ -20,7 +19,6 @@ import {
   panelHeader,
   shortPrincipal,
 } from "./game-utils";
-import { useGameConfig } from "./useGame";
 
 type SortKey = "volume" | "net" | "points" | "jackpot";
 
@@ -33,8 +31,6 @@ interface Props {
 
 export function RankingTable({ ranking, tournaments }: Props) {
   const { principalId } = useAuth();
-  const { data: config } = useGameConfig();
-  const table = config ? config.pointsTable.map(Number) : [];
   const [sort, setSort] = useState<SortKey>("volume");
   const [showAll, setShowAll] = useState(false);
 
@@ -45,7 +41,7 @@ export function RankingTable({ ranking, tournaments }: Props) {
       sort === "volume"
         ? Number(p.staked)
         : sort === "points"
-          ? Number(p.bestPoints)
+          ? Number(p.bestReturn)
           : sort === "jackpot"
             ? Number(p.jackpotWon)
             : Number(netOf(p));
@@ -161,13 +157,15 @@ export function RankingTable({ ranking, tournaments }: Props) {
                       <td
                         className={cn(
                           "px-3 py-2.5 tabular-nums",
-                          netOf(p) >= 0 ? "text-emerald-400" : "text-red-400",
+                          netOf(p) > 0n
+                            ? "text-[color:var(--term-green)]"
+                            : ink,
                         )}
                       >
                         {fmtSigned(netOf(p))}
                       </td>
                       <td className="hidden px-3 py-2.5 sm:table-cell">
-                        {bestPrizeText(table, Number(p.bestPoints))}
+                        {p.bestReturn > 0n ? fmtGoldao(p.bestReturn) : "-"}
                       </td>
                       <td
                         className={cn(
