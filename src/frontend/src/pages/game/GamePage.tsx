@@ -141,7 +141,7 @@ export default function GamePage() {
       )}
 
       <Tabs value={tab} onValueChange={setPicked} className="gap-4">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
           <TabsList className="grid h-auto w-full auto-cols-fr grid-flow-col rounded-lg border border-[color:var(--term-border)] bg-[var(--term-header)] p-1 sm:flex sm:h-10 sm:w-fit sm:justify-start">
             {!isAdmin && <Tab value="mine" icon={<Pickaxe />} label="Mine" />}
             {!isAdmin && (
