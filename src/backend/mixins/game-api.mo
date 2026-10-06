@@ -928,6 +928,8 @@ mixin (
       top10MinVolumeE8s = Game.TOP10_MIN_VOLUME;
       realLedger = gameState.realLedger;
       ledgerId = Ledger.GOLDAO_LEDGER;
+      poolSeedE8s = Game.POOL_SEED;
+      poolSeedMaxE8s = Game.POOL_SEED_MAX;
     };
   };
 
@@ -1298,6 +1300,7 @@ mixin (
       top10Pool = gameState.top10;
       lastTop10 = gameState.lastTop10;
       staked;
+      totalPlayers = ranked.size();
       players = if (ranked.size() > 200) Array.sliceToArray(ranked, 0, 200) else ranked;
       jackpots = gameState.jackpots;
     };
@@ -1350,6 +1353,23 @@ mixin (
     for ((_, e) in gameState.open.entries()) { inPlay += e.held };
     let stakes = gStakes();
     let all = gameState.payouts.values().toArray();
+    // Every unpaid payout is always listed (the admin panel decides what to pay from this list);
+    // only the paid history is limited to the latest 200.
+    let shownPayouts = do {
+      let kept = List.empty<Types.Payout>();
+      var paidKept = 0;
+      var i = all.size();
+      while (i > 0) {
+        i -= 1;
+        let po = all[i];
+        if (not po.paid) kept.add(po) else if (paidKept < 200) {
+          kept.add(po);
+          paidKept += 1;
+        };
+      };
+      kept.reverseInPlace();
+      kept.toArray();
+    };
     let tn = gameState.tournaments.size();
     #ok({
       tournament = gameState.tournament;
@@ -1377,7 +1397,7 @@ mixin (
       bankAllowance = gameState.bankAllowance;
       bankAccount = gameState.bankAccount;
       selfId = gameState.selfId;
-      payouts = if (all.size() > 200) Array.sliceToArray(all, all.size() - 200, all.size()) else all;
+      payouts = shownPayouts;
       lastClose = if (tn == 0) null else gameState.tournaments.get(tn - 1);
     });
   };
@@ -1470,6 +1490,34 @@ mixin (
       "Payout sent",
       "Payout #" # Nat.toText(id) # ": " # SecLog.fmt(amount) # " GOLDAO to " # Principal.toText(to) # (switch (txId) { case (?t) ", ledger transaction " # Nat.toText(t); case null ", simulated" }) # ".",
     );
+  };
+
+  // Free checks for the admin panel: the same refusals the action itself would give, answered
+  // before the wallet signs an authorization (which costs a network fee even if the action is
+  // then refused). Read-only; the action still validates everything on its own.
+  func gBusyNow() : Bool {
+    gameState.payingSince != 0 and Time.now() - gameState.payingSince < Game.BUSY_STALE_NS;
+  };
+
+  public shared query ({ caller }) func gameAdminCheckPay() : async Result.Result<(), Text> {
+    if (not gIsAdmin(caller)) return #err("Admin only.");
+    if (gBusyNow()) return #err("A payment run is in progress.");
+    if (gameState.saturations > 0 or not gAccountingOk()) return #err("Accounting check failed. Payments are blocked.");
+    if (gUnpaidTotal() == 0) return #err("There are no pending payouts.");
+    #ok(());
+  };
+
+  public shared query ({ caller }) func gameAdminCheckWithdraw(kind : Types.WithdrawKind) : async Result.Result<(), Text> {
+    if (not gIsAdmin(caller)) return #err("Admin only.");
+    if (gBusyNow()) return #err("A money movement is in progress.");
+    switch (gWithdrawBlocked(kind)) { case (?m) return #err(m); case null {} };
+    let spendable = Game.sub(gameState.bank, Game.FEE);
+    let amount = switch (kind) {
+      case (#all) spendable;
+      case (#available) Nat.min(gWithdrawable(), spendable);
+    };
+    if (amount == 0) return #err("Nothing to withdraw.");
+    #ok(());
   };
 
   // Pays pending payouts, smallest first, at most `max` of them (and never more than PAY_BATCH).
