@@ -1,17 +1,11 @@
+import { Trophy } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useMemo } from "react";
 import { createPortal } from "react-dom";
+import { SunRays } from "./JackpotOverlay";
 import { RollingNumber } from "./MineParts";
 import type { TreasureView } from "./board-store";
-import {
-  TOKENS,
-  fmtGoldao,
-  fmtMult,
-  gold,
-  inkMid,
-  multX100,
-  toGoldao,
-} from "./game-utils";
+import { TOKENS, fmtPct1, gold, multX100, toGoldao } from "./game-utils";
 import { playSound } from "./sounds";
 
 export type { TreasureView } from "./board-store";
@@ -87,6 +81,27 @@ export function TreasureOverlay({
           exit={{ opacity: 0 }}
           className="pointer-events-none fixed inset-0 z-[90] flex flex-col items-center justify-center gap-3 p-4 text-center"
         >
+          <svg width="0" height="0" className="absolute" aria-hidden>
+            <title>Gold</title>
+            <defs>
+              <linearGradient
+                id="treasure-gold"
+                gradientUnits="userSpaceOnUse"
+                x1="0"
+                y1="0"
+                x2="24"
+                y2="24"
+              >
+                <stop offset="0" stopColor="oklch(0.86 0.14 80)" />
+                <stop offset="1" stopColor="oklch(0.65 0.14 50)" />
+              </linearGradient>
+            </defs>
+          </svg>
+          <Trophy
+            stroke="url(#treasure-gold)"
+            strokeWidth={1.6}
+            className="size-[clamp(64px,12vw,104px)] drop-shadow-[0_6px_18px_oklch(0.74_0.14_80/0.6)]"
+          />
           <span className="text-gradient-gold font-display text-[clamp(44px,12vw,110px)] font-bold uppercase leading-none tracking-wide">
             Treasure
           </span>
@@ -95,14 +110,28 @@ export function TreasureOverlay({
             transition={{ duration: 1.4, repeat: Number.POSITIVE_INFINITY }}
             className="text-gradient-gold font-display text-[clamp(48px,13vw,120px)] font-bold leading-none tabular-nums drop-shadow-[0_0_24px_oklch(0.74_0.14_80/0.55)]"
           >
-            <RollingNumber value={toGoldao(view.gross)} from={0} scaled tick />
+            <RollingNumber
+              value={toGoldao(view.gross)}
+              from={0}
+              scaled
+              tick
+              fixed2
+            />
           </motion.span>
           <span className={`font-mono text-sm tracking-[0.2em] ${gold}`}>
             GOLDAO
           </span>
-          <span className={`font-mono text-xs ${inkMid}`}>
-            {fmtMult(view.points)} · profit +{fmtGoldao(view.won)}
-          </span>
+          {view.gross > view.won && (
+            <span
+              className="rounded-full border border-[color:var(--term-green-border)] px-3 py-1 font-mono text-xs font-bold text-[color:var(--term-green)]"
+              style={{
+                background:
+                  "linear-gradient(var(--term-green-bg), var(--term-green-bg)), oklch(var(--background))",
+              }}
+            >
+              +{fmtPct1(view.won, view.gross - view.won)}% profit
+            </span>
+          )}
           <button
             type="button"
             onClick={onClose}
@@ -127,6 +156,7 @@ export function TreasureOverlay({
           />
         )}
       </AnimatePresence>
+      {view && <SunRays color="oklch(0.74 0.14 80 / 0.55)" />}
       {view && <GoldRain />}
       {typeof document !== "undefined" && createPortal(content, document.body)}
     </>
