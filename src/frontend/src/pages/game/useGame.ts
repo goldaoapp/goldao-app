@@ -72,19 +72,24 @@ export function useTournaments() {
   });
 }
 
+/** The backend answered that the caller is not an admin: a final answer, not a failure. */
+class NotAdminError extends Error {}
+
 export function useAdminView(enabled: boolean) {
   const { actor, principalId } = useAuth();
   return useQuery({
     queryKey: [KEY, "admin", principalId],
     queryFn: async () => {
       const res = await actor!.gameAdminView();
-      if (res.__kind__ === "err") throw new Error(res.err);
+      if (res.__kind__ === "err") throw new NotAdminError(res.err);
       return res.ok;
     },
     enabled: !!actor && enabled,
-    // Non-admins get an error once; stop polling in that case.
-    refetchInterval: (q) => (q.state.status === "error" ? false : 30_000),
-    retry: false,
+    // Non-admins get an answer once and polling stops. A network failure is retried, and
+    // polling goes on, so an admin never loses the tab because of one bad request.
+    refetchInterval: (q) =>
+      q.state.error instanceof NotAdminError ? false : 30_000,
+    retry: (count, error) => !(error instanceof NotAdminError) && count < 3,
   });
 }
 
@@ -167,8 +172,11 @@ export function useGameAction() {
 
   // Writes the player's open excavation into the cached dashboard, so the cache
   // matches the backend between polls (picks do not refetch the dashboard).
+  // A refetch already in flight would overwrite these values with older ones when it lands, so it
+  // is cancelled first (the cache is written only after the cancellation has settled).
   const setOpenExcavation = useCallback(
-    (open: ExcavationView | null) => {
+    async (open: ExcavationView | null) => {
+      await queryClient.cancelQueries({ queryKey: [KEY, "dashboard"] });
       queryClient.setQueriesData<Dashboard>(
         { queryKey: [KEY, "dashboard"] },
         (old) => (old ? { ...old, open: open ?? undefined } : old),
@@ -178,7 +186,11 @@ export function useGameAction() {
   );
 
   const setCredit = useCallback(
-    (credit: bigint, pool: bigint) => {
+    async (credit: bigint, pool: bigint) => {
+      await Promise.all([
+        queryClient.cancelQueries({ queryKey: [KEY, "dashboard"] }),
+        queryClient.cancelQueries({ queryKey: [KEY, "ranking"] }),
+      ]);
       queryClient.setQueriesData<Dashboard>(
         { queryKey: [KEY, "dashboard"] },
         (old) => (old ? { ...old, credit, pool } : old),
