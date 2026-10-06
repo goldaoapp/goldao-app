@@ -1,4 +1,4 @@
-import { type AdminView, WithdrawKind } from "@/backend";
+import { type AdminView, type Payout, WithdrawKind } from "@/backend";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/context/AuthContext";
 import { loadEnv } from "@/hooks/useBackendActor";
@@ -11,6 +11,7 @@ import { Gem, Landmark, Shield } from "lucide-react";
 import { useState } from "react";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { CopyField } from "./CopyField";
+import { PayoutLogPanel } from "./PayoutLogPanel";
 import { SecurityLogPanel } from "./SecurityLogPanel";
 import { Spinner } from "./Spinner";
 import {
@@ -32,7 +33,6 @@ import {
   useGameAction,
   useGameConfig,
   useSecurityView,
-  useTournaments,
 } from "./useGame";
 
 const HALT_TEXT: Record<number, string> = {
@@ -40,6 +40,7 @@ const HALT_TEXT: Record<number, string> = {
   3: "manual",
   4: "unexplained bank withdrawal",
   5: "fund drop",
+  6: "ledger fee changed",
 };
 
 const E8S = 100_000_000n;
@@ -76,7 +77,6 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
   const { run, pending } = useGameAction();
   const { data: security } = useSecurityView(!!view);
   const { data: config } = useGameConfig();
-  const { data: tournaments } = useTournaments();
   const minPayout = config ? fmtGoldao(config.minPayoutE8s) : "-";
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [ask, setAsk] = useState<Ask | null>(null);
@@ -131,7 +131,12 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
   // Real mode: the backend spends an allowance the admin wallet grants.
   // It is set right before the action to exactly what the action needs, and the
   // ledger drops it by itself after `windowMs`, used or not.
-  const authorize = async (required: bigint, windowMs: number) => {
+  // With `reuseMin`, an authorization that already covers it is kept (no new approval fee).
+  const authorize = async (
+    required: bigint,
+    windowMs: number,
+    reuseMin?: bigint,
+  ) => {
     if (!real) return;
     if (!identity || !bankText || !envId) {
       throw new Error("Sign in with the admin wallet first.");
@@ -148,6 +153,13 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
     }
     if (identity.getPrincipal().toText() !== bankText) {
       throw new Error("This session is not the bank wallet.");
+    }
+    if (reuseMin !== undefined && actor) {
+      const cur = await actor.gameAdminLedgerAllowance(
+        Principal.fromText(bankText),
+        Principal.fromText(envId),
+      );
+      if (cur.__kind__ === "ok" && cur.ok >= reuseMin) return;
     }
     await approveSpender(identity, envId, required, windowMs);
   };
@@ -220,7 +232,7 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
     try {
       await authorize(unpaidTotal, PAY_WINDOW_MS);
       for (let i = 0; i < 500; i++) {
-        const r = await run("pay", () => actor.gameAdminPay(), false);
+        const r = await run("pay", () => actor.gameAdminPay(20n), false);
         paid += Number(r.paid);
         failed += Number(r.failed);
         remaining = Number(r.remaining);
@@ -244,6 +256,77 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
       setBusy(false);
     }
   };
+
+  // One payout. The authorization covers every pending payout, and it is reused by the next
+  // clicks while it is enough, so paying one by one does not cost a network fee each time.
+  const payOne = async (p: Payout, renew: boolean) => {
+    if (!actor || working) return;
+    setMsg(null);
+    setBusy(true);
+    try {
+      const need = p.amount + GOLDAO_FEE_E8S;
+      await authorize(
+        unpaidTotal > need ? unpaidTotal : need,
+        PAY_WINDOW_MS,
+        need,
+      );
+      const tx = await run(
+        "pay-one",
+        () => actor.gameAdminPayOne(p.id, renew),
+        "all",
+      );
+      setMsg({
+        ok: true,
+        text:
+          tx !== undefined
+            ? `Paid ${fmtGoldao(p.amount)} GOLDAO. Ledger transaction ${tx}.`
+            : `Paid ${fmtGoldao(p.amount)} GOLDAO (test mode, no ledger transaction).`,
+      });
+    } catch (e) {
+      setMsg({ ok: false, text: errorMessage(e) });
+    } finally {
+      await queryClient.invalidateQueries({ queryKey: ["game"] });
+      setBusy(false);
+    }
+  };
+
+  // The next `n` smallest pending payouts, the same order the backend uses.
+  const payNext = async (n: number) => {
+    if (!actor || working) return;
+    setMsg(null);
+    setBusy(true);
+    try {
+      const batch = [...unpaid]
+        .sort((a, b) =>
+          a.amount === b.amount
+            ? Number(a.id - b.id)
+            : a.amount < b.amount
+              ? -1
+              : 1,
+        )
+        .slice(0, n);
+      const need = batch.reduce((s, p) => s + p.amount + GOLDAO_FEE_E8S, 0n);
+      await authorize(need, PAY_WINDOW_MS);
+      const r = await run("pay", () => actor.gameAdminPay(BigInt(n)), "all");
+      setMsg({
+        ok: r.failed === 0n,
+        text: `Paid ${Number(r.paid)}, failed ${Number(r.failed)}, remaining ${Number(r.remaining)}.`,
+      });
+    } catch (e) {
+      setMsg({ ok: false, text: errorMessage(e) });
+    } finally {
+      await revokeLeftover();
+      await queryClient.invalidateQueries({ queryKey: ["game"] });
+      setBusy(false);
+    }
+  };
+
+  const markPaid = (p: Payout, txId: bigint) =>
+    act(
+      "mark-paid",
+      () => actor!.gameAdminMarkPaid(p.id, txId),
+      () => `Recorded as paid with transaction ${txId}.`,
+    );
 
   return (
     <div className="flex flex-col gap-6">
@@ -678,6 +761,24 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
             >
               Pay pending ({unpaid.length})
             </Button>
+            {real && (
+              <Button
+                variant="outline"
+                disabled={working}
+                onClick={() =>
+                  void act(
+                    "revoke",
+                    async () => {
+                      await revokeLeftover();
+                      return { __kind__: "ok" as const, ok: null };
+                    },
+                    () => "Authorization revoked.",
+                  )
+                }
+              >
+                Revoke authorization
+              </Button>
+            )}
           </Row>
 
           <Row
@@ -875,64 +976,36 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
       )}
 
       {view && view.payouts.length > 0 && (
-        <div className={panel}>
-          <div className={panelHeader}>
-            <span className={cn(eyebrow, gold)}>Payouts</span>
-            <span className={cn("font-mono text-[11px]", inkFaint)}>
-              {unpaid.length} pending · {fmtGoldao(unpaidTotal)} GOLDAO
-            </span>
-          </div>
-          <div className="max-h-[420px] overflow-auto">
-            <table className="w-full font-mono text-xs">
-              <thead>
-                <tr className={cn("text-left", inkFaint)}>
-                  <th className="px-5 py-2 font-medium">Principal</th>
-                  <th className="px-3 py-2 font-medium">Tournament</th>
-                  <th className="px-3 py-2 font-medium">Closed</th>
-                  <th className="px-3 py-2 font-medium">Status</th>
-                  <th className="px-5 py-2 text-right font-medium">Amount</th>
-                </tr>
-              </thead>
-              <tbody>
-                {[...view.payouts]
-                  .sort((a, b) => Number(a.paid) - Number(b.paid))
-                  .map((p) => (
-                    <tr
-                      key={String(p.id)}
-                      className="border-t border-[color:var(--term-border-faint)]"
-                    >
-                      <td
-                        className={cn("px-5 py-2.5", ink)}
-                        title={p.to.toText()}
-                      >
-                        {shortPrincipal(p.to.toText())}
-                      </td>
-                      <td className="px-3 py-2.5">#{Number(p.tournament)}</td>
-                      <td className="px-3 py-2.5">
-                        {(() => {
-                          const t = tournaments?.find(
-                            (x) => x.tournament === p.tournament,
-                          );
-                          return t ? fmtDate(t.closedAt) : "-";
-                        })()}
-                      </td>
-                      <td className="px-3 py-2.5">
-                        {p.paid ? "paid" : "pending"}
-                      </td>
-                      <td
-                        className={cn(
-                          "px-5 py-2.5 text-right tabular-nums",
-                          ink,
-                        )}
-                      >
-                        {fmtGoldao(p.amount)}
-                      </td>
-                    </tr>
-                  ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
+        <PayoutLogPanel
+          view={view}
+          working={working}
+          onPayOne={(p, renew) =>
+            renew
+              ? confirmThen({
+                  title: "Renew this payout?",
+                  detail:
+                    "Only if you checked in the ledger that it was NOT sent. A new timestamp is assigned and the next payment sends it for real.",
+                  word: "RENEW",
+                  go: () => payOne(p, true),
+                })
+              : void payOne(p, false)
+          }
+          onPayNext={(n) =>
+            confirmThen({
+              title: `Pay the next ${n} payouts?`,
+              detail:
+                "Smallest first. Funds leave the admin wallet to the players. Keep this page open until it finishes.",
+              go: () => payNext(n),
+            })
+          }
+          onMarkPaid={(p, txId) =>
+            confirmThen({
+              title: `Mark as paid with transaction ${txId}?`,
+              detail: `${shortPrincipal(p.to.toText())} · ${fmtGoldao(p.amount)} GOLDAO. Only if you saw this transaction in the ledger.`,
+              go: () => markPaid(p, txId),
+            })
+          }
+        />
       )}
 
       {ask && (
