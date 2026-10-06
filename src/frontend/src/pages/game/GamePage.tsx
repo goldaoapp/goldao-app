@@ -17,6 +17,7 @@ import { motion } from "motion/react";
 import { type ReactNode, useState } from "react";
 import { AdminGamePanel } from "./AdminGamePanel";
 import { BurnedCounter } from "./BurnedCounter";
+import { GameStatus } from "./GameStatus";
 import { MineBoard } from "./MineBoard";
 import { PlayerDashboard } from "./PlayerDashboard";
 import { PrizeGuide } from "./PrizeGuide";
@@ -36,10 +37,13 @@ import {
  * Gold mine game — /gamefi/mine.
  */
 export default function GamePage() {
-  const { isAuthenticated, isLoading, login } = useAuth();
-  const { data: config } = useGameConfig();
-  const { data: dashboard } = useDashboard();
-  const { data: ranking } = useRanking();
+  const { actor, isAuthenticated, isLoading, login } = useAuth();
+  const configQuery = useGameConfig();
+  const dashboardQuery = useDashboard();
+  const rankingQuery = useRanking();
+  const config = configQuery.data;
+  const dashboard = dashboardQuery.data;
+  const ranking = rankingQuery.data;
   const { data: tournaments } = useTournaments();
   const { data: burned } = useBurned();
   const { data: adminView } = useAdminView(isAuthenticated);
@@ -48,6 +52,19 @@ export default function GamePage() {
   // Admins land on the admin tab; an admin view that arrives late still wins.
   const [picked, setPicked] = useState<string | null>(null);
   const tab = picked ?? (isAdmin ? "admin" : "mine");
+
+  // Data the page cannot do without: the session and the first answers. The dashboard only
+  // counts for a signed-in player.
+  const needed = isAuthenticated
+    ? [configQuery, rankingQuery, dashboardQuery]
+    : [configQuery, rankingQuery];
+  const failed = needed.some((q) => q.isError && q.data === undefined);
+  const waiting =
+    !failed &&
+    (isLoading || !actor || needed.some((q) => q.data === undefined));
+  const retry = () => {
+    for (const q of needed) if (q.isError) void q.refetch();
+  };
 
   const tournament = dashboard?.tournament ?? ranking?.tournament;
   const paused = dashboard?.paused ?? false;
@@ -95,6 +112,8 @@ export default function GamePage() {
           </motion.span>
         )}
       </PageHeader>
+
+      <GameStatus waiting={waiting} failed={failed} onRetry={retry} />
 
       {isAuthenticated ? (
         isAdmin ? null : (
