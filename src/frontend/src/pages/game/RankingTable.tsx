@@ -64,7 +64,7 @@ export function RankingTable({ ranking, tournaments }: Props) {
           <Kpi label="Jackpot pool" value={fmtGoldao(ranking.pool)} diamond />
           <Kpi label="Top 10 pool" value={fmtGoldao(ranking.top10Pool)} />
           <Kpi label="Staked" value={fmtGoldao(ranking.staked)} />
-          <Kpi label="Players" value={String(ranking.players.length)} />
+          <Kpi label="Players" value={String(Number(ranking.totalPlayers))} />
           <Kpi label="Ends in" value={fmtCountdown(ranking.endsAt)} />
         </div>
       )}
