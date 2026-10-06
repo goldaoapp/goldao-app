@@ -123,6 +123,22 @@ export function useSecurityLog(day: number, enabled: boolean) {
   });
 }
 
+/** Every payout of one tournament (the payment log). */
+export function usePayouts(tournament: number | null) {
+  const { actor, principalId } = useAuth();
+  return useQuery({
+    queryKey: [KEY, "payouts", principalId, tournament],
+    queryFn: async () => {
+      const res = await actor!.gameAdminPayouts(BigInt(tournament ?? 0));
+      if (res.__kind__ === "err") throw new Error(res.err);
+      return res.ok;
+    },
+    enabled: !!actor && tournament !== null,
+    refetchInterval: (q) => (q.state.status === "error" ? false : 30_000),
+    retry: false,
+  });
+}
+
 type Res<T> = { __kind__: "ok"; ok: T } | { __kind__: "err"; err: string };
 
 /**
