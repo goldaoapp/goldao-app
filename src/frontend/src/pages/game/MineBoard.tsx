@@ -31,6 +31,7 @@ import {
   useBoard,
 } from "./board-store";
 import {
+  PAYOUT_BPS,
   eyebrow,
   fmtCountdown,
   fmtGoldao,
@@ -42,7 +43,7 @@ import {
   tokenForPick,
 } from "./game-utils";
 import { playSound, preloadSounds, useSoundToggle } from "./sounds";
-import { errorMessage, useGameAction } from "./useGame";
+import { errorMessage, useGameAction, useGameConfig } from "./useGame";
 
 const CELLS = 25;
 /** The board splits after this many cells when a diamond opens the jackpot. */
@@ -115,8 +116,12 @@ export function MineBoard({ dashboard }: Props) {
   const seenRain = useRef(board.rain);
   const [rainSeed, setRainSeed] = useState(0);
 
+  const { data: config } = useGameConfig();
+  const payoutBps = config ? Number(config.payoutBps) : PAYOUT_BPS;
   const stakes = dashboard?.stakes ?? [];
-  const paused = !!dashboard?.paused;
+  // With the fund under its floor no new excavation can start, but one already open can be
+  // finished (the backend allows it), so the board stays usable for it.
+  const paused = !!dashboard?.paused && !exc && !dashboard?.open;
   const credit = dashboard?.credit ?? 0n;
   const excNo = dashboard ? Number(dashboard.stats.excavations) : 0;
   const busy = digging !== null || autoRun || working;
@@ -153,6 +158,13 @@ export function MineBoard({ dashboard }: Props) {
   // that timed out, an action from another tab). A cache that is behind never rewinds the board;
   // the next pick is checked by the backend itself (expectedPicks).
   const open = dashboard?.open;
+  // Tournament an on-screen excavation belongs to, to tell a close from a finish elsewhere.
+  const excTournament = useRef<number | null>(null);
+  useEffect(() => {
+    if (!exc) excTournament.current = null;
+    else if (excTournament.current === null && dashboard)
+      excTournament.current = Number(dashboard.tournament);
+  }, [exc, dashboard]);
   useEffect(() => {
     if (!dashboard || working || getBoard().working || autoRun) return;
     if (board.owner !== principalId || !principalId) return;
@@ -168,7 +180,20 @@ export function MineBoard({ dashboard }: Props) {
         inPlay: open.stake,
       });
     }
-    if (!open && exc && digging === null) setBoard({ exc: null, inPlay: 0n });
+    if (!open && exc && digging === null) {
+      // The excavation is gone. If a new tournament started meanwhile, the close settled it
+      // (saved to To collect when it could be): say so instead of silently clearing the board.
+      const closed =
+        excTournament.current !== null &&
+        excTournament.current !== Number(dashboard.tournament);
+      setBoard({
+        exc: null,
+        inPlay: 0n,
+        notice: closed
+          ? "The tournament closed. Your excavation was settled: check To collect."
+          : null,
+      });
+    }
   }, [
     dashboard,
     open,
@@ -221,7 +246,7 @@ export function MineBoard({ dashboard }: Props) {
       end.won > 0n &&
       end.jackpotWon === 0n &&
       end.kind !== EndKind.collapsed &&
-      isTreasure(Number(end.points));
+      isTreasure(Number(end.picks));
     if (end.kind === EndKind.collapsed) playSound("collapse");
     else if (end.won > 0n && end.jackpotWon === 0n && !treasureWin)
       playSound("success");
@@ -245,7 +270,7 @@ export function MineBoard({ dashboard }: Props) {
       return;
     }
     if (paused) return;
-    setBoard({ working: true, error: null });
+    setBoard({ working: true, error: null, notice: null });
     try {
       const starting = !exc;
       const stakeAmount = exc ? exc.stake : (stakes[board.stake] ?? 0n);
@@ -309,7 +334,7 @@ export function MineBoard({ dashboard }: Props) {
         if (res.excavation) await setOpenExcavation(res.excavation);
         if (
           res.excavation &&
-          multX100(Number(res.excavation.runPoints)) > COIN_MULT_X100
+          multX100(Number(res.excavation.runPoints), payoutBps) > COIN_MULT_X100
         ) {
           setBoard((s) => ({ rain: s.rain + 1 }));
         }
@@ -364,6 +389,7 @@ export function MineBoard({ dashboard }: Props) {
       working: true,
       autoRun: true,
       error: null,
+      notice: null,
       result: null,
       cells: {},
       hold: true,
@@ -396,8 +422,8 @@ export function MineBoard({ dashboard }: Props) {
             ? { kind: "diamond" }
             : { kind: "token", token: tokenForPick(Number(step.pick)) };
         setBoard((s) => ({ cells: { ...s.cells, [free[i]]: cell } }));
-        if (step.collapsed) playSound("collapse");
-        else playSound(stage > 0 ? "diamond" : "success");
+        // A collapse sound is played once by finish(), not per step.
+        if (!step.collapsed) playSound(stage > 0 ? "diamond" : "success");
         if (stage > 0) {
           // The auto run waits here until the player opens the three slots.
           await new Promise<void>((resolve) => {
@@ -422,7 +448,8 @@ export function MineBoard({ dashboard }: Props) {
     }
   };
 
-  const newGame = () => setBoard({ cells: {}, result: null, error: null });
+  const newGame = () =>
+    setBoard({ cells: {}, result: null, error: null, notice: null });
   const closeJackpot = useCallback(() => {
     const held = getBoard().heldBalance;
     setBoard({ jackpot: null });
@@ -610,23 +637,30 @@ export function MineBoard({ dashboard }: Props) {
 
             <CreditBar
               dashboard={dashboard}
-              className="col-span-1 md:col-start-2 md:row-start-2"
+              className="col-span-2 md:col-span-1 md:col-start-2 md:row-start-2"
             />
-            <JackpotCard pool={dashboard?.pool} className="md:hidden" />
+            <JackpotCard
+              pool={dashboard?.pool}
+              className="col-span-2 md:hidden"
+            />
 
             {/* Stake, progress and extras */}
             <div className="col-span-2 grid grid-cols-2 gap-2 md:col-span-1 md:col-start-2 md:row-start-1 md:flex md:flex-col md:justify-between md:gap-2.5">
               <PayoutStep exc={exc} />
               <JackpotCard pool={dashboard?.pool} className="hidden md:flex" />
-              <div className="col-span-2">
-                <StakeSelector
-                  stakes={stakes}
-                  value={board.stake}
-                  locked={!!exc || locked}
-                  paused={paused}
-                  onChange={(v) => setBoard({ stake: v })}
-                />
-              </div>
+              {/* No stake options while the fund is under its floor, but an open excavation
+                  can still be finished, so the "paused" notice is not shown over it. */}
+              {(stakes.length === 3 || !exc) && (
+                <div className="col-span-2">
+                  <StakeSelector
+                    stakes={stakes}
+                    value={board.stake}
+                    locked={!!exc || locked}
+                    paused={paused}
+                    onChange={(v) => setBoard({ stake: v })}
+                  />
+                </div>
+              )}
               <div className="col-span-2">
                 <AutoPicker
                   value={autoStop}
