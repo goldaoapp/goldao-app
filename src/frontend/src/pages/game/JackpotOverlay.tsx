@@ -4,18 +4,23 @@ import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { RollingNumber } from "./MineParts";
-import type { JackpotView } from "./board-store";
+import { type JackpotView, useBoard } from "./board-store";
 import {
   DIAMOND_IMG,
   DIAMOND_TEXT,
   TOKENS,
   fmtGoldao,
+  fmtPct1,
   gold,
   inkFaint,
   inkMid,
   toGoldao,
 } from "./game-utils";
 import { playSound } from "./sounds";
+
+/** Solid base under the green chip so the falling pieces do not show through it. */
+const CHIP_BG =
+  "linear-gradient(var(--term-green-bg), var(--term-green-bg)), oklch(var(--background))";
 
 /** Suspense while a tapped slot charges, then the reveal. */
 const CHARGE_MS = 1700;
@@ -55,6 +60,37 @@ export function CoinRain({ seed }: { seed: number }) {
         />
       ))}
     </div>
+  );
+}
+
+/** Slow turning light rays behind a celebration (`color` is any CSS color with some alpha). */
+export function SunRays({ color }: { color: string }) {
+  if (typeof document === "undefined") return null;
+  return createPortal(
+    <div
+      aria-hidden
+      className="pointer-events-none fixed inset-x-0 top-[46%] z-[79] flex h-0 items-center justify-center"
+    >
+      <motion.div
+        initial={{ rotate: 0, opacity: 0 }}
+        animate={{ rotate: 360, opacity: 0.55 }}
+        transition={{
+          rotate: {
+            duration: 50,
+            ease: "linear",
+            repeat: Number.POSITIVE_INFINITY,
+          },
+          opacity: { duration: 0.6 },
+        }}
+        className="size-[min(1100px,150vmin)] shrink-0 rounded-full"
+        style={{
+          backgroundImage: `repeating-conic-gradient(from 0deg, ${color} 0 7deg, transparent 7deg 20deg)`,
+          WebkitMaskImage: "radial-gradient(circle, #000 14%, transparent 66%)",
+          maskImage: "radial-gradient(circle, #000 14%, transparent 66%)",
+        }}
+      />
+    </div>,
+    document.body,
   );
 }
 
@@ -216,6 +252,8 @@ export function JackpotOverlay({
     "locked",
   ]);
   const timers = useRef<number[]>([]);
+  // Stake of the excavation that found the jackpot: the profit percent is taken over it.
+  const { inPlay } = useBoard();
   const stage = view?.stage ?? 0;
   const won = view?.won ?? 0n;
   const jackpot = stage >= 3 && won > 0n;
@@ -358,11 +396,19 @@ export function JackpotOverlay({
             className="text-gradient-gold font-display text-[clamp(52px,14vw,140px)] font-bold leading-none tabular-nums drop-shadow-[0_0_24px_oklch(0.74_0.14_80/0.55)]"
           >
             +
-            <RollingNumber value={toGoldao(won)} from={0} scaled tick />
+            <RollingNumber value={toGoldao(won)} from={0} scaled tick fixed2 />
           </motion.span>
           <span className={cn("font-mono text-sm tracking-[0.2em]", gold)}>
             GOLDAO
           </span>
+          {inPlay > 0n && (
+            <span
+              className="rounded-full border border-[color:var(--term-green-border)] px-3 py-1 font-mono text-xs font-bold text-[color:var(--term-green)]"
+              style={{ background: CHIP_BG }}
+            >
+              +{fmtPct1(won, inPlay)}% profit
+            </span>
+          )}
           {view?.held && (
             <span className="max-w-xs font-mono text-xs text-[color:var(--term-ink)]">
               On hold: it is confirmed from the third pick.
@@ -393,6 +439,7 @@ export function JackpotOverlay({
           />
         )}
       </AnimatePresence>
+      {celebrating && <SunRays color="oklch(0.7 0.14 350 / 0.55)" />}
       {celebrating && <DiamondRain />}
       {typeof document !== "undefined" &&
         createPortal(celebration, document.body)}
