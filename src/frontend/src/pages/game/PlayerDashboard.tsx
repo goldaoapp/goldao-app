@@ -5,7 +5,6 @@ import { Gem, History, LayoutDashboard } from "lucide-react";
 import { Spinner } from "./Spinner";
 import {
   DIAMOND_TEXT,
-  bestPrizeText,
   eyebrow,
   fmtCountdown,
   fmtGoldao,
@@ -17,7 +16,6 @@ import {
   panel,
   panelHeader,
 } from "./game-utils";
-import { useGameConfig } from "./useGame";
 
 interface Props {
   dashboard: Dashboard | undefined;
@@ -25,7 +23,6 @@ interface Props {
 
 export function PlayerDashboard({ dashboard }: Props) {
   const { isAuthenticated } = useAuth();
-  const { data: config } = useGameConfig();
 
   if (!dashboard) {
     return (
@@ -49,10 +46,9 @@ export function PlayerDashboard({ dashboard }: Props) {
 
   const s = dashboard.stats;
   const net = netOf(s);
-  // Same text as the Ranking: prize name and multiplier of the best saved excavation.
-  const bestPrize = config
-    ? bestPrizeText(config.pointsTable.map(Number), Number(s.bestPoints))
-    : "-";
+  // Biggest return of a single excavation in the current tournament (same as the Ranking).
+  const bestPrize =
+    dashboard.bestReturn > 0n ? fmtGoldao(dashboard.bestReturn) : "-";
   const jackpots = s.jackpotWon > 0n ? fmtGoldao(s.jackpotWon) : "-";
 
   return (
@@ -64,7 +60,7 @@ export function PlayerDashboard({ dashboard }: Props) {
         <Kpi
           label="Net result"
           value={fmtSigned(net)}
-          tone={net > 0n ? "up" : net < 0n ? "down" : undefined}
+          tone={net > 0n ? "up" : undefined}
         />
         <Kpi label="Jackpots" value={jackpots} diamond />
         <Kpi label="Collapses" value={String(Number(s.collapses))} />
@@ -153,7 +149,7 @@ function Kpi({
   label: string;
   value: string;
   diamond?: boolean;
-  tone?: "up" | "down";
+  tone?: "up";
 }) {
   return (
     <div className={cn(panel, "flex flex-col gap-1 p-4")}>
@@ -172,7 +168,6 @@ function Kpi({
           "font-display text-2xl font-semibold tabular-nums",
           diamond ? DIAMOND_TEXT : ink,
           tone === "up" && "text-[color:var(--term-green)]",
-          tone === "down" && "text-destructive",
         )}
       >
         {value}
