@@ -44,11 +44,17 @@ module {
   public let CLOSED_MSG : Text = "The tournament has just closed. Your balance was paid out or carried over to the new tournament: check your wallet and To collect, then try again.";
   public let ERR_PAY_FUNDS : Text = "The bank wallet does not cover the payout.";
   public let ERR_PAY_ALLOWANCE : Text = "The payout authorization is too low.";
+  public let ERR_PAY_UNCERTAIN : Text = "This payout got no answer from the ledger and its timestamp expired. Look for it in the ledger before paying again.";
+  public let NEED_CREDIT_MSG : Text = "Load credit first: your To collect balance must cover the stake.";
   public let STAKE_CHANGED_MSG : Text = "The stake amounts changed. Check the new amounts and try again.";
   public let EXC_CHANGED_MSG : Text = "Your excavation changed (another tab or device?). Reload the board and try again.";
   public let LOAD_REJECT_MAX : Nat = 20;
   public let LOAD_REJECT_WINDOW_NS : Int = 60_000_000_000;
   public let PAY_BATCH : Nat = 20;
+  // Paid payouts are kept for this many tournaments: they are the payment record.
+  public let PAYOUT_KEEP : Nat = 10;
+  // The ledger fee is read once per this many ticks (one tick per minute).
+  public let FEE_CHECK_TICKS : Nat = 60;
   public let FAUCET_CAP : Nat = 2_000_000_000_000;
   public let FAUCET_GLOBAL_CAP : Nat = 200_000_000_000_000;
   public let TEST_DEPOSITS : [Nat] = [10_000, 30_000, 100_000, 200_000];
@@ -75,6 +81,7 @@ module {
   public let HALT_MANUAL : Nat = 3;
   public let HALT_BANK : Nat = 4;
   public let HALT_FUND : Nat = 5;
+  public let HALT_FEE : Nat = 6;
 
   // Safeguards. The admin wallet pays a ledger fee for each authorization it signs, which the game
   // cannot see: the bank wallet may hold up to BANK_TOLERANCE less than the game expects, summed
@@ -93,7 +100,7 @@ module {
   public let SECURITY_LOG_MAX_DAY : Nat = 100;
 
   public func haltReason(code : Nat) : Text {
-    if (code == HALT_LEDGER) "ledger failures" else if (code == HALT_MANUAL) "paused by admin" else if (code == HALT_BANK) "unexplained bank withdrawal" else if (code == HALT_FUND) "fund drop" else "unknown";
+    if (code == HALT_LEDGER) "ledger failures" else if (code == HALT_MANUAL) "paused by admin" else if (code == HALT_BANK) "unexplained bank withdrawal" else if (code == HALT_FUND) "fund drop" else if (code == HALT_FEE) "ledger fee changed" else "unknown";
   };
 
   public func isBootstrapAdmin(p : Principal) : Bool {
