@@ -157,6 +157,7 @@ export function RollingNumber({
   tick = false,
   from,
   fixed2 = false,
+  instant = false,
 }: {
   value: number;
   className?: string;
@@ -165,6 +166,8 @@ export function RollingNumber({
   from?: number;
   /** Always 2 decimals at rest too ("105.00"), not only while rolling. */
   fixed2?: boolean;
+  /** Jump to the new value with no roll (used when the number goes down). */
+  instant?: boolean;
 }) {
   const mv = useMotionValue(from ?? value);
   const prev = useRef(from ?? value);
@@ -182,12 +185,16 @@ export function RollingNumber({
   useEffect(() => {
     const delta = Math.abs(value - prev.current);
     prev.current = value;
+    if (instant) {
+      mv.set(value);
+      return;
+    }
     const duration = scaled
       ? Math.min(5, Math.max(1.5, 5 * Math.sqrt(50 / Math.max(delta, 50))))
       : 0.7;
     const controls = animateValue(mv, value, { duration, ease: "easeOut" });
     return () => controls.stop();
-  }, [mv, value, scaled]);
+  }, [mv, value, scaled, instant]);
   useEffect(() => {
     if (!tick) return;
     let lastStep = Math.round(mv.get());
@@ -689,6 +696,7 @@ export function CreditBar({
                   value={credit}
                   scaled={prev.current !== null}
                   tick={prev.current !== null}
+                  instant={prev.current !== null && credit < prev.current}
                   fixed2
                 />
               </span>
