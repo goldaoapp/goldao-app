@@ -60,6 +60,36 @@ export function txUrl(id: bigint): string {
   return `${TX_EXPLORER_URL}${id.toString()}`;
 }
 
+/** GOLDAO amount rounded down, always with 2 decimals: "105.00", "1,234.50". */
+export function fmtGoldao2(e8s: bigint): string {
+  return fmtFixedCents(e8s / CENT);
+}
+
+/** Same as fmtGoldao2 for a number that already has at most 2 decimals (animations). */
+export function fmtFixed2Number(value: number): string {
+  return fmtFixedCents(BigInt(Math.round(value * 100)));
+}
+
+function fmtFixedCents(cents: bigint): string {
+  const abs = cents < 0n ? -cents : cents;
+  const body = `${(abs / 100n).toLocaleString("en-US")}.${(abs % 100n).toString().padStart(2, "0")}`;
+  return cents < 0n ? `-${body}` : body;
+}
+
+/** Percentage of `part` over `whole` with one decimal, rounded down: "5.0", "1,005.0". */
+export function fmtPct1(part: bigint, whole: bigint): string {
+  if (whole <= 0n) return "0.0";
+  const tenths = (part * 1000n) / whole;
+  return `${(tenths / 10n).toLocaleString("en-US")}.${tenths % 10n}`;
+}
+
+/** Best prize of a player as "Ingot · 1.62x", or "-" when there is none yet. Same text everywhere. */
+export function bestPrizeText(table: number[], bestPoints: number): string {
+  if (bestPoints <= 0) return "-";
+  const meta = prizeName(picksForPoints(table, bestPoints));
+  return `${meta.name} · ${fmtMult(bestPoints)}`;
+}
+
 /** Same as fmtGoldao for a number that already has at most 2 decimals (animations). */
 export function fmtGoldaoNumber(value: number): string {
   return fmtCents(BigInt(Math.round(value * 100)));
