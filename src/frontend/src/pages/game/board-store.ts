@@ -58,7 +58,7 @@ export interface BoardState {
   hold: boolean;
   /** Balance to show once the jackpot reveal is closed. */
   heldBalance: HeldBalance | null;
-  /** Stake of the excavation in play. To collect shows it as already spent. */
+  /** Stake of the excavation in play. The Accumulated prize shows it as already spent. */
   inPlay: bigint;
   /** Treasure celebration to show; kept here so it survives leaving the tab. */
   treasure: TreasureView | null;
