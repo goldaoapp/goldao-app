@@ -62,7 +62,7 @@ export function WalletPanel({ dashboard, config }: Props) {
     config && config.creditCapE8s > credit ? config.creditCapE8s - credit : 0n;
   const roomGoldao = Number(room / E8S);
   const loadMin = config ? Number(config.loadMin) : 0;
-  // Most that can be loaded now: the per-load maximum or what is left under the To collect limit.
+  // Most that can be loaded now: the per-load maximum or what is left under the Accumulated prize limit.
   const maxLoad = config ? Math.min(Number(config.loadMax), roomGoldao) : 0;
   const canLoad = !config || maxLoad >= loadMin;
   // Only amounts that fit; "Max" covers the rest (for example 50 left under the limit).
@@ -75,14 +75,14 @@ export function WalletPanel({ dashboard, config }: Props) {
     : dashboard.paused
       ? "Bets are paused."
       : !canLoad
-        ? `To collect is full (limit ${fmtGoldao(config?.creditCapE8s ?? 0n)} GOLDAO). You can load again after you use some of it.`
+        ? `Accumulated prize is full (limit ${fmtGoldao(config?.creditCapE8s ?? 0n)} GOLDAO). You can load again after you use some of it.`
         : amount < loadMin || amount > maxLoad
           ? `Choose between ${loadMin.toLocaleString("en-US")} and ${maxLoad.toLocaleString("en-US")} GOLDAO.`
           : balance < need
             ? "Not enough GOLDAO in your wallet."
             : null;
 
-  // If the chosen amount no longer fits (To collect grew), move it to the biggest one that does.
+  // If the chosen amount no longer fits (the Accumulated prize grew), move it to the biggest one that does.
   useEffect(() => {
     if (!config || !canLoad || amount <= maxLoad) return;
     const fit = [...presets].reverse().find((a) => a <= maxLoad);
@@ -150,7 +150,7 @@ export function WalletPanel({ dashboard, config }: Props) {
       );
       setMsg({
         ok: true,
-        text: `To collect is now ${fmtGoldao(total)} GOLDAO.`,
+        text: `Accumulated prize is now ${fmtGoldao(total)} GOLDAO.`,
       });
     } catch (e) {
       setMsg({ ok: false, text: errorMessage(e) });
@@ -201,7 +201,7 @@ export function WalletPanel({ dashboard, config }: Props) {
 
       <div className="flex flex-col gap-3 border-b border-[color:var(--term-border-faint)] p-5 md:border-b-0 md:border-r">
         <span className={cn(eyebrow, inkFaint, "flex items-center gap-1.5")}>
-          <Coins className="size-3.5" /> To collect
+          <Coins className="size-3.5" /> Load balance
         </span>
         <span
           className={cn(
@@ -215,7 +215,7 @@ export function WalletPanel({ dashboard, config }: Props) {
         <span className={cn("font-mono text-[11px]", inkFaint)}>
           {dashboard && dashboard.pendingPayout > 0n
             ? `Pending payout from last tournament: ${fmtGoldao(dashboard.pendingPayout)}`
-            : "Backs your stakes. Paid when the tournament closes"}
+            : "Accumulated prize. Backs your stakes. Paid when the tournament closes"}
         </span>
         {config && (
           <span className={cn("font-mono text-[11px]", inkFaint)}>
@@ -368,7 +368,7 @@ export function WalletPanel({ dashboard, config }: Props) {
               {dest || sendText
                 ? (sendBlock ??
                   `Network fee ${fmtGoldao(fee)} GOLDAO, paid on top.`)
-                : `Sends GOLDAO from your wallet to any address. Network fee ${fmtGoldao(fee)} GOLDAO, paid on top. To collect is not affected.`}
+                : `Sends GOLDAO from your wallet to any address. Network fee ${fmtGoldao(fee)} GOLDAO, paid on top. Accumulated prize is not affected.`}
             </span>
           </div>
         </div>
