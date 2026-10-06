@@ -6,6 +6,7 @@ import { useMemo, useState } from "react";
 import { Spinner } from "./Spinner";
 import {
   DIAMOND_TEXT,
+  bestPrizeText,
   eyebrow,
   fmtCountdown,
   fmtDate,
@@ -17,8 +18,6 @@ import {
   netOf,
   panel,
   panelHeader,
-  picksForPoints,
-  prizeName,
   shortPrincipal,
 } from "./game-utils";
 import { useGameConfig } from "./useGame";
@@ -85,7 +84,7 @@ export function RankingTable({ ranking, tournaments }: Props) {
                 ["volume", "Volume"],
                 ["net", "Net"],
                 ["points", "Best prize"],
-                ["jackpot", "Jackpot"],
+                ["jackpot", "Jackpots"],
               ] as const
             ).map(([k, l]) => (
               <button
@@ -126,7 +125,7 @@ export function RankingTable({ ranking, tournaments }: Props) {
                   <th className="hidden px-3 py-2 font-medium sm:table-cell">
                     Best prize
                   </th>
-                  <th className="px-5 py-2 text-right font-medium">Jackpot</th>
+                  <th className="px-5 py-2 text-right font-medium">Jackpots</th>
                 </tr>
               </thead>
               <tbody>
@@ -168,11 +167,7 @@ export function RankingTable({ ranking, tournaments }: Props) {
                         {fmtSigned(netOf(p))}
                       </td>
                       <td className="hidden px-3 py-2.5 sm:table-cell">
-                        {Number(p.bestPoints) > 0
-                          ? prizeName(
-                              picksForPoints(table, Number(p.bestPoints)),
-                            ).name
-                          : "-"}
+                        {bestPrizeText(table, Number(p.bestPoints))}
                       </td>
                       <td
                         className={cn(
@@ -180,7 +175,7 @@ export function RankingTable({ ranking, tournaments }: Props) {
                           p.jackpotWon > 0n ? DIAMOND_TEXT : ink,
                         )}
                       >
-                        {fmtGoldao(p.jackpotWon)}
+                        {p.jackpotWon > 0n ? fmtGoldao(p.jackpotWon) : "-"}
                       </td>
                     </tr>
                   );
