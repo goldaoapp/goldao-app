@@ -75,7 +75,7 @@ export function PrizeGuide({ config, stakes }: Props) {
             prize. Every stake comes out of it: wins are added, and if the mine
             collapses you keep GOLDAO secured, about half of your stake or more,
             shown in the If it collapses column; the rest of the stake is
-            deducted. The wallet is only touched when you load credit, and each
+            deducted. The wallet is only touched when you load balance, and each
             load pays the {fmtGoldao(config.feeE8s)} GOLDAO network fee.
           </p>
           <p>
