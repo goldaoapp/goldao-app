@@ -13,7 +13,9 @@ module {
 
   public type WithdrawKind = { #available; #all };
 
-  public type Charge = { #ok; #allowance; #funds; #down };
+  // #down: the ledger refused or failed (nothing was moved). #unknown: no answer, the transfer
+  // may have been executed.
+  public type Charge = { #ok; #allowance; #funds; #down; #unknown };
 
   public type Excavation = {
     tournament : Nat;
@@ -39,6 +41,8 @@ module {
     deepest : Nat;
   };
 
+  // txId is the ledger block index of the payment (null while pending, and in test mode).
+  // uncertain: a payment attempt got no answer from the ledger, so it may have been executed.
   public type Payout = {
     id : Nat;
     tournament : Nat;
@@ -46,7 +50,14 @@ module {
     amount : Nat;
     paid : Bool;
     stamp : Nat64;
+    txId : ?Nat;
+    paidAt : Int;
+    uncertain : Bool;
   };
+
+  // A credit load whose ledger call got no answer. The retry reuses the same stamp so the
+  // ledger answers Duplicate if the first one went through.
+  public type PendingLoad = { amount : Nat; stamp : Nat64 };
 
   public type JackpotWin = {
     tournament : Nat;
@@ -126,6 +137,8 @@ module {
     loaded : Set.Set<Principal>;
     securityLog : Map.Map<Nat, [SecurityEvent]>;
     var fundSamples : [Int];
+    pendingLoads : Map.Map<Principal, PendingLoad>;
+    var saturations : Nat;
   };
 
   // Security log. #info: something happened (admin action, recovery). #warning: worth a look.
