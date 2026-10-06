@@ -11,6 +11,7 @@ import { Gem, Landmark, Shield } from "lucide-react";
 import { useState } from "react";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { CopyField } from "./CopyField";
+import { SecurityLogPanel } from "./SecurityLogPanel";
 import { Spinner } from "./Spinner";
 import {
   DIAMOND_TEXT,
@@ -37,6 +38,8 @@ import {
 const HALT_TEXT: Record<number, string> = {
   2: "ledger failures",
   3: "manual",
+  4: "unexplained bank withdrawal",
+  5: "fund drop",
 };
 
 const E8S = 100_000_000n;
@@ -831,6 +834,8 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
           </div>
         </div>
       )}
+
+      {security && <SecurityLogPanel />}
 
       {view?.lastClose && (
         <div className={panel}>
