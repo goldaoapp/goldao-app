@@ -277,7 +277,7 @@ export function WalletPanel({ dashboard, config }: Props) {
               <ShieldCheck className="size-3.5" /> Wallet play
             </span>
             <span className={cn("text-xs", inkFaint)}>
-              The game authorizes itself the first time you load credit. Your
+              The game authorizes itself the first time you load balance. Your
               wallet is only charged when you load.
             </span>
           </>
