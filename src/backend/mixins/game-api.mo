@@ -702,7 +702,7 @@ mixin (
     gameState.top10 := gSub(gameState.top10, topPaid);
     gameState.lastTop10 := topWinners.toArray();
 
-    // Small balances stay in To collect for the next tournament. A full close
+    // Small balances stay in the Accumulated prize for the next tournament. A full close
     // (payAll) pays everything above the fee and forfeits the rest.
     let pays = func(c : Nat) : Bool { c >= Game.MIN_PAYOUT or (payAll and c > Game.FEE) };
     var payoutTotal = 0;
@@ -965,7 +965,7 @@ mixin (
     #ok(amount);
   };
 
-  // Credit: the player loads To collect from the wallet. It backs every stake.
+  // Credit: the player loads the Accumulated prize from the wallet. It backs every stake.
 
   public shared ({ caller }) func gameLoadCredit(goldao : Nat) : async Result.Result<Nat, Text> {
     gArmTimer<system>();
@@ -978,7 +978,7 @@ mixin (
     };
     let amount = goldao * Game.E8S;
     if (gCredit(caller) + amount > Game.CREDIT_CAP) {
-      return #err("To collect cannot go above " # Nat.toText(Game.CREDIT_CAP / Game.E8S) # " GOLDAO.");
+      return #err("Accumulated prize cannot go above " # Nat.toText(Game.CREDIT_CAP / Game.E8S) # " GOLDAO.");
     };
     if (gLoadBusy(caller)) return #err("A load is already in progress.");
     let pending = gameState.pendingLoads.get(caller);
