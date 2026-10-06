@@ -182,7 +182,7 @@ export function MineBoard({ dashboard }: Props) {
     }
     if (!open && exc && digging === null) {
       // The excavation is gone. If a new tournament started meanwhile, the close settled it
-      // (saved to To collect when it could be): say so instead of silently clearing the board.
+      // (saved to the Accumulated prize when it could be): say so instead of silently clearing the board.
       const closed =
         excTournament.current !== null &&
         excTournament.current !== Number(dashboard.tournament);
@@ -190,7 +190,7 @@ export function MineBoard({ dashboard }: Props) {
         exc: null,
         inPlay: 0n,
         notice: closed
-          ? "The tournament closed. Your excavation was settled: check To collect."
+          ? "The tournament closed. Your excavation was settled: check your Accumulated prize."
           : null,
       });
     }
@@ -222,11 +222,11 @@ export function MineBoard({ dashboard }: Props) {
     return () => window.clearTimeout(t);
   }, [result, exc, treasure, jackpot]);
 
-  // The stake is always covered by To collect: the wallet is only used to load it.
+  // The stake is always covered by the Accumulated prize: the wallet is only used to load it.
   const coversStake = (stake: bigint): boolean => {
     if (credit >= stake) return true;
     setBoard({
-      error: `Load at least ${fmtGoldao(stake - credit)} GOLDAO into To collect to start.`,
+      error: `Load at least ${fmtGoldao(stake - credit)} GOLDAO of balance to start.`,
     });
     return false;
   };
@@ -492,7 +492,7 @@ export function MineBoard({ dashboard }: Props) {
       };
     if (dashboard && credit < (stakes[board.stake] ?? 0n))
       return {
-        text: "Load credit into To collect to start digging.",
+        text: "Load balance to start digging.",
         tone: "mid" as const,
       };
     return {
@@ -517,7 +517,7 @@ export function MineBoard({ dashboard }: Props) {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className={cn(panel, "relative overflow-hidden")}>
+      <div className={cn(panel, "relative overflow-clip")}>
         <div className={panelHeader}>
           <span
             className={cn(
@@ -583,9 +583,9 @@ export function MineBoard({ dashboard }: Props) {
             )}
           </AnimatePresence>
 
-          <div className="grid grid-cols-2 gap-x-5 gap-y-2.5 md:grid-cols-[minmax(0,460px)_minmax(0,1fr)] md:gap-y-10">
+          <div className="grid grid-cols-2 gap-x-5 gap-y-2.5 md:grid-cols-[minmax(0,460px)_minmax(0,1fr)] md:gap-y-4">
             {/* Board */}
-            <div className="relative col-span-2 mx-auto w-full max-w-[460px] md:col-span-1 md:col-start-1 md:row-start-1 md:mx-0">
+            <div className="relative order-2 col-span-2 mx-auto w-full max-w-[460px] md:order-none md:col-span-1 md:col-start-1 md:row-start-1 md:mx-0 md:mb-5">
               {booting && <BoardLoader />}
               {idle && !booting && (
                 <motion.div
@@ -627,31 +627,21 @@ export function MineBoard({ dashboard }: Props) {
               />
             </div>
 
-            {/* Winning now, multiplier, next pick and save */}
-            <RunCard
-              exc={exc}
-              canSave={!!exc?.canSave && !locked}
-              onSave={() => void save()}
-              className="col-span-2 md:col-span-1 md:col-start-1 md:row-start-2"
-            />
-
-            <CreditBar
-              dashboard={dashboard}
-              className="col-span-2 md:col-span-1 md:col-start-2 md:row-start-2"
-            />
-            <JackpotCard
-              pool={dashboard?.pool}
-              className="col-span-2 md:hidden"
-            />
-
-            {/* Stake, progress and extras */}
-            <div className="col-span-2 grid grid-cols-2 gap-2 md:col-span-1 md:col-start-2 md:row-start-1 md:flex md:flex-col md:justify-between md:gap-2.5">
-              <PayoutStep exc={exc} />
-              <JackpotCard pool={dashboard?.pool} className="hidden md:flex" />
-              {/* No stake options while the fund is under its floor, but an open excavation
-                  can still be finished, so the "paused" notice is not shown over it. */}
-              {(stakes.length === 3 || !exc) && (
-                <div className="col-span-2">
+            {/* Next pick, jackpot and setup: one column from md up, flattened into the page order below md */}
+            <div className="contents md:col-start-2 md:row-start-1 md:flex md:flex-col md:gap-3">
+              <PayoutStep
+                exc={exc}
+                className="order-1 col-span-2 md:order-none"
+              />
+              <JackpotCard
+                pool={dashboard?.pool}
+                className="order-3 col-span-2 md:order-none md:flex-1"
+              />
+              {/* Stake and auto dig share one card. No stake options while the fund is under
+                  its floor, but an open excavation can still be finished, so the "paused"
+                  notice is not shown over it. */}
+              <div className="order-4 col-span-2 flex flex-col gap-2.5 rounded-xl border border-[color:var(--term-border)] bg-[var(--term-alt)] p-2.5 md:order-none">
+                {(stakes.length === 3 || !exc) && (
                   <StakeSelector
                     stakes={stakes}
                     value={board.stake}
@@ -659,9 +649,7 @@ export function MineBoard({ dashboard }: Props) {
                     paused={paused}
                     onChange={(v) => setBoard({ stake: v })}
                   />
-                </div>
-              )}
-              <div className="col-span-2">
+                )}
                 <AutoPicker
                   value={autoStop}
                   disabled={locked || !!exc || paused || !dashboard}
@@ -671,6 +659,19 @@ export function MineBoard({ dashboard }: Props) {
                 />
               </div>
             </div>
+
+            <CreditBar
+              dashboard={dashboard}
+              className="order-5 col-span-2 md:order-none md:col-span-1 md:col-start-2 md:row-start-2"
+            />
+
+            {/* Prize now and Save: a card under the board on desktop, a dock above the tab bar on mobile */}
+            <RunCard
+              exc={exc}
+              canSave={!!exc?.canSave && !locked}
+              onSave={() => void save()}
+              className="sticky bottom-[calc(3.4rem+max(env(safe-area-inset-bottom,0px),0.5rem))] z-30 order-6 col-span-2 -mx-2.5 sm:-mx-6 md:static md:order-none md:mx-0 md:col-span-1 md:col-start-1 md:row-start-2"
+            />
           </div>
         </div>
 
@@ -680,8 +681,9 @@ export function MineBoard({ dashboard }: Props) {
       </div>
 
       <p className={cn("text-center font-mono text-[11px]", inkFaint)}>
-        Your stake leaves To collect when you start digging. Every prize shown
-        includes your stake, and the balance is paid when the tournament closes.
+        Your stake leaves your Accumulated prize when you start digging. Every
+        prize shown includes your stake, and the balance is paid when the
+        tournament closes.
       </p>
     </div>
   );
