@@ -71,18 +71,18 @@ export function PrizeGuide({ config, stakes }: Props) {
             below.
           </p>
           <p>
-            Before digging, load credit into To collect from your wallet. Every
-            stake comes out of it: wins are added, and if the mine collapses you
-            keep GOLDAO secured, about half of your stake or more, shown in the
-            If it collapses column; the rest of the stake is deducted. The
-            wallet is only touched when you load credit, and each load pays the{" "}
-            {fmtGoldao(config.feeE8s)} GOLDAO network fee.
+            Before digging, load balance from your wallet into your Accumulated
+            prize. Every stake comes out of it: wins are added, and if the mine
+            collapses you keep GOLDAO secured, about half of your stake or more,
+            shown in the If it collapses column; the rest of the stake is
+            deducted. The wallet is only touched when you load credit, and each
+            load pays the {fmtGoldao(config.feeE8s)} GOLDAO network fee.
           </p>
           <p>
-            When the tournament closes, To collect is paid to your wallet if it
-            is at least {fmtGoldao(config.minPayoutE8s)} GOLDAO (the payment
-            costs the network fee). Smaller balances stay in To collect for the
-            next tournament.
+            When the tournament closes, your Accumulated prize is paid to your
+            wallet if it is at least {fmtGoldao(config.minPayoutE8s)} GOLDAO
+            (the payment costs the network fee). Smaller balances stay in your
+            Accumulated prize for the next tournament.
           </p>
           <p>
             Top 10: {Number(config.top10Bps) / 100}% of every stake goes to a
@@ -92,7 +92,7 @@ export function PrizeGuide({ config, stakes }: Props) {
             pool, from first to tenth). You need at least{" "}
             {fmtGoldao(config.top10MinVolumeE8s)} GOLDAO staked to qualify; the
             shares nobody qualifies for stay in the pool for the next
-            tournament. Your place shows next to To collect.
+            tournament. Your place shows next to your Accumulated prize.
           </p>
         </div>
       </div>
