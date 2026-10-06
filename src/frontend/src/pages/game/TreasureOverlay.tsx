@@ -5,14 +5,20 @@ import { createPortal } from "react-dom";
 import { SunRays } from "./JackpotOverlay";
 import { RollingNumber } from "./MineParts";
 import type { TreasureView } from "./board-store";
-import { TOKENS, fmtPct1, gold, multX100, toGoldao } from "./game-utils";
+import {
+  TOKENS,
+  TREASURE_MIN_PICKS,
+  fmtPct1,
+  gold,
+  toGoldao,
+} from "./game-utils";
 import { playSound } from "./sounds";
 
 export type { TreasureView } from "./board-store";
 
-/** A win shown as x1.62 or more is a Treasure (6 picks or deeper). */
-export function isTreasure(points: number): boolean {
-  return multX100(points) >= 162;
+/** A win saved at 6 picks or deeper is a Treasure (depth, so it never depends on the payout rate). */
+export function isTreasure(picks: number): boolean {
+  return picks >= TREASURE_MIN_PICKS;
 }
 
 /** Gold coins falling over the whole screen while the Treasure is celebrated. */
@@ -110,6 +116,7 @@ export function TreasureOverlay({
             transition={{ duration: 1.4, repeat: Number.POSITIVE_INFINITY }}
             className="text-gradient-gold font-display text-[clamp(48px,13vw,120px)] font-bold leading-none tabular-nums drop-shadow-[0_0_24px_oklch(0.74_0.14_80/0.55)]"
           >
+            +
             <RollingNumber
               value={toGoldao(view.gross)}
               from={0}
