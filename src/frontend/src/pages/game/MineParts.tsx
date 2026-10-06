@@ -45,7 +45,6 @@ import {
   ink,
   inkFaint,
   inkMid,
-  panel,
   prizeName,
   toGoldao,
 } from "./game-utils";
@@ -215,7 +214,13 @@ export function SaveButton({
   canSave,
   onSave,
   amount,
-}: { canSave: boolean; onSave: () => void; amount?: string }) {
+  className,
+}: {
+  canSave: boolean;
+  onSave: () => void;
+  amount?: string;
+  className?: string;
+}) {
   return (
     <motion.button
       type="button"
@@ -243,6 +248,7 @@ export function SaveButton({
         canSave
           ? "gradient-primary text-primary-foreground"
           : "cursor-not-allowed border border-[color:var(--term-border)] bg-[var(--term-alt)] text-[color:var(--term-ink-faint)]",
+        className,
       )}
       aria-label="Save points"
     >
@@ -312,11 +318,52 @@ function pickHint(exc: ExcavationView | null, picks: number): string {
   return "Treasure. Every pick pays more.";
 }
 
-export function PayoutStep({ exc }: { exc: ExcavationView | null }) {
+/** Tailwind `md` is 768px: below it the run card becomes a dock above the tab bar. */
+function useBelowMd(): boolean {
+  const supported =
+    typeof window !== "undefined" && typeof window.matchMedia === "function";
+  const [below, setBelow] = useState(
+    () => supported && window.matchMedia("(max-width: 767px)").matches,
+  );
+  useEffect(() => {
+    if (!supported) return;
+    const mq = window.matchMedia("(max-width: 767px)");
+    const update = () => setBelow(mq.matches);
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, [supported]);
+  return below;
+}
+
+export function PayoutStep({
+  exc,
+  className,
+}: { exc: ExcavationView | null; className?: string }) {
   const picks = exc ? Number(exc.picks) : 0;
   const safe = exc ? Number(exc.safePctX100) / 100 : 100;
+  const tone =
+    safe > 75
+      ? {
+          text: "text-[color:var(--term-green)]",
+          fill: "bg-gradient-to-r from-[oklch(0.6_0.13_160)] to-[color:var(--term-green)] shadow-[0_0_12px_oklch(0.7_0.15_155/0.45)]",
+        }
+      : safe > 60
+        ? {
+            text: "text-primary",
+            fill: "bg-gradient-to-r from-[oklch(0.6_0.12_65)] to-primary shadow-[0_0_12px_oklch(0.71_0.122_83/0.4)]",
+          }
+        : {
+            text: "text-destructive",
+            fill: "bg-gradient-to-r from-[oklch(0.55_0.18_25)] to-destructive shadow-[0_0_12px_oklch(0.65_0.19_22/0.45)]",
+          };
   return (
-    <div className="relative overflow-hidden rounded-xl border border-primary/50 bg-primary/10 px-3 py-2.5 sm:px-4">
+    <div
+      className={cn(
+        "relative overflow-hidden rounded-xl border border-primary/50 bg-primary/10 px-3 py-2 sm:px-4 md:py-3",
+        className,
+      )}
+    >
       <AnimatePresence mode="popLayout" initial={false}>
         <motion.div
           key={picks}
@@ -324,27 +371,40 @@ export function PayoutStep({ exc }: { exc: ExcavationView | null }) {
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -10 }}
           transition={{ type: "spring", stiffness: 340, damping: 24 }}
-          className="flex flex-col gap-1.5"
+          className="flex flex-col gap-1.5 md:gap-2"
         >
-          <span className={cn(eyebrow, gold)}>Next pick {picks + 1}</span>
-          <div
-            className={cn("flex justify-between font-mono text-[11px]", inkMid)}
-          >
-            <span>Safe</span>
-            <span>{safe}%</span>
+          <div className="flex items-baseline justify-between gap-3">
+            <span className={cn(eyebrow, gold)}>Next pick {picks + 1}</span>
+            <span className="flex items-baseline gap-2">
+              <span
+                className={cn(
+                  "font-display text-xl font-bold leading-none tabular-nums md:text-[26px]",
+                  tone.text,
+                )}
+              >
+                {safe}%
+              </span>
+              <span
+                className={cn(
+                  "font-mono text-[10px] font-semibold uppercase tracking-[0.16em]",
+                  inkMid,
+                )}
+              >
+                Safe
+              </span>
+            </span>
           </div>
-          <div className="h-1.5 overflow-hidden rounded-full bg-[color:var(--term-border)]">
+          {/* The track is the risk share (soft red), the fill is the safe share. */}
+          <div className="h-2 overflow-hidden rounded-full bg-destructive/20 ring-1 ring-inset ring-white/5 md:h-2.5">
             <div
               className={cn(
-                "h-full rounded-full transition-all duration-500",
-                safe > 75
-                  ? "bg-[color:var(--term-green)]"
-                  : safe > 60
-                    ? "bg-primary"
-                    : "bg-destructive",
+                "relative h-full rounded-full transition-all duration-500",
+                tone.fill,
               )}
               style={{ width: `${safe}%` }}
-            />
+            >
+              <span className="absolute inset-x-0 top-0 h-1/2 rounded-full bg-white/20" />
+            </div>
           </div>
           <span className={cn("hidden font-mono text-[11px] md:block", inkMid)}>
             {pickHint(exc, picks)}
@@ -363,9 +423,35 @@ export function PayoutStep({ exc }: { exc: ExcavationView | null }) {
   );
 }
 
+/** One thin segment per pick (MAX_PICKS in total). */
+function PickProgress({
+  picks,
+  className,
+}: { picks: number; className?: string }) {
+  return (
+    <div
+      role="img"
+      aria-label={`${Math.min(picks, MAX_PICKS)} of ${MAX_PICKS} picks`}
+      className={cn("flex flex-1 gap-[3px]", className)}
+    >
+      {Array.from({ length: MAX_PICKS }, (_, i) => (
+        <span
+          // biome-ignore lint/suspicious/noArrayIndexKey: fixed list of segments
+          key={i}
+          className={cn(
+            "h-1 flex-1 rounded-sm transition-colors duration-300",
+            i < picks ? "gradient-primary" : "bg-[color:var(--term-border)]",
+          )}
+        />
+      ))}
+    </div>
+  );
+}
+
 /**
- * Winning now, multiplier, what the next pick could add and the Save button,
- * all in one card.
+ * Prize now, multiplier, what the next pick could add and the Save button.
+ * From md up it is a card under the board; below md it is a dock that stays
+ * above the mobile tab bar while the page scrolls.
  */
 export function RunCard({
   exc,
@@ -378,37 +464,101 @@ export function RunCard({
   onSave: () => void;
   className?: string;
 }) {
+  const compact = useBelowMd();
   const picks = exc ? Number(exc.picks) : 0;
   const active = !!exc?.canSave;
   // Prizes include the stake, like the multiplier: 1.05x on 1,000 is 1,050.
   const prize = exc && active ? exc.runGross : 0n;
   const next = exc && exc.nextGross > 0n ? exc.nextGross : null;
   const lastPick = !!exc && picks + 1 >= MAX_PICKS;
+  const mult = exc && active ? fmtMultOf(exc.runGross, exc.stake) : "0.00x";
+
+  const prizeNumber = (
+    <span
+      className={cn(
+        "font-display font-bold leading-none tabular-nums transition-colors",
+        compact ? "text-[38px]" : "text-[64px]",
+        prize > 0n ? "text-[color:var(--term-green)]" : ink,
+      )}
+    >
+      <RollingNumber value={toGoldao(prize)} scaled tick fixed2 />
+    </span>
+  );
+
+  if (compact) {
+    return (
+      <div
+        className={cn(
+          "flex min-w-0 flex-col gap-2.5 border-t border-[color:var(--term-border)] bg-background px-3.5 pb-3 pt-3 shadow-[0_-10px_24px_rgba(0,0,0,0.35)]",
+          className,
+        )}
+      >
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex min-w-0 flex-col gap-1">
+            <span className={cn(eyebrow, "text-[10px]", inkFaint)}>
+              Prize now
+            </span>
+            {prizeNumber}
+          </div>
+          <SaveButton
+            canSave={canSave}
+            onSave={onSave}
+            amount={exc ? fmtGoldao(exc.runGross) : undefined}
+            className="max-w-[12rem] px-4 py-2.5"
+          />
+        </div>
+        <div
+          className={cn(
+            "flex items-center gap-2.5 font-mono text-[11px]",
+            inkMid,
+          )}
+        >
+          {active && (
+            <motion.span
+              key={picks}
+              initial={{ scale: 1.18 }}
+              animate={{ scale: 1 }}
+              transition={{ type: "spring", stiffness: 300, damping: 14 }}
+              className="text-gradient-gold origin-left font-display text-lg font-bold leading-none tabular-nums"
+            >
+              {mult}
+            </motion.span>
+          )}
+          <PickProgress picks={picks} className="min-w-[4.5rem]" />
+          <span className="whitespace-nowrap">
+            {next !== null ? (
+              <>
+                You could win{" "}
+                <b className="font-semibold text-[color:var(--term-green)]">
+                  {fmtGoldao2(next)}
+                </b>
+              </>
+            ) : exc ? (
+              "Maximum reached"
+            ) : (
+              "Save unlocks at pick 3"
+            )}
+          </span>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div
       className={cn(
-        "flex min-w-0 flex-col gap-3 rounded-xl border border-[color:var(--term-border)] bg-[var(--term-alt)] p-3 sm:p-4",
+        "flex min-w-0 flex-col gap-3 rounded-xl border border-[color:var(--term-border)] bg-[var(--term-alt)] p-4",
         className,
       )}
     >
-      <div className="grid grid-cols-2 items-end gap-3">
-        <div className="flex min-w-0 flex-col gap-0.5">
+      <div className="flex items-end justify-between gap-4">
+        <div className="flex min-w-0 flex-col gap-1">
           <span className={cn(eyebrow, "text-[10px]", inkFaint)}>
             Prize now
           </span>
-          <span
-            className={cn(
-              "font-display text-[28px] font-bold leading-none tabular-nums transition-colors sm:text-[40px]",
-              prize > 0n ? "text-[color:var(--term-green)]" : ink,
-            )}
-          >
-            <RollingNumber value={toGoldao(prize)} scaled tick fixed2 />
-          </span>
-          <span className="min-h-3.5 font-mono text-[10px] text-destructive">
-            {exc && active ? "" : "No risk on the first 2 picks"}
-          </span>
+          {prizeNumber}
         </div>
-        <div className="flex min-w-0 flex-col items-start gap-1">
+        <div className="flex min-w-0 flex-col items-end gap-1">
           <span className={cn(eyebrow, "text-[10px]", inkFaint)}>
             Multiplier
           </span>
@@ -417,40 +567,51 @@ export function RunCard({
             initial={{ scale: 1.18 }}
             animate={{ scale: 1 }}
             transition={{ type: "spring", stiffness: 300, damping: 14 }}
-            className="text-gradient-gold origin-left font-display text-[32px] font-bold leading-none tabular-nums sm:text-[44px]"
+            className={cn(
+              "origin-right font-display text-[34px] font-bold leading-none tabular-nums",
+              active ? "text-gradient-gold" : inkFaint,
+            )}
           >
-            {exc && active ? fmtMultOf(exc.runGross, exc.stake) : "0.00x"}
+            {mult}
           </motion.span>
-          <div className="h-1 w-full overflow-hidden rounded-full bg-[color:var(--term-border)]">
-            <motion.div
-              className="gradient-primary h-full rounded-full"
-              animate={{ width: `${Math.min(100, picks * 10)}%` }}
-              transition={{ duration: 0.5 }}
-            />
-          </div>
         </div>
       </div>
+      <div
+        className={cn(
+          "flex items-center gap-2.5 font-mono text-[11px]",
+          inkFaint,
+        )}
+      >
+        <PickProgress picks={picks} />
+        <span>
+          {picks}/{MAX_PICKS}
+        </span>
+      </div>
       <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2.5 rounded-xl border border-primary/50 bg-primary/10 px-3 py-2.5">
-        <div className="flex min-w-0 flex-col gap-0.5">
-          <span className={cn(eyebrow, "text-[10px]", gold)}>
-            You could win
+        {next !== null ? (
+          <div className="flex min-w-0 flex-col gap-0.5">
+            <span className={cn(eyebrow, "text-[10px]", gold)}>
+              You could win
+            </span>
+            <motion.span
+              key={`next-${picks}`}
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="font-display text-[30px] font-bold leading-none tabular-nums text-[color:var(--term-green)]"
+            >
+              {fmtGoldao2(next)}
+            </motion.span>
+            {lastPick && (
+              <span className={cn("font-mono text-[10px]", inkMid)}>
+                Last pick, collected automatically
+              </span>
+            )}
+          </div>
+        ) : (
+          <span className={cn("font-mono text-xs", inkMid)}>
+            {exc ? "Maximum reached" : "Save unlocks at pick 3"}
           </span>
-          <motion.span
-            key={`next-${picks}`}
-            initial={{ opacity: 0, y: 6 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="font-display text-[26px] font-bold leading-none tabular-nums text-[color:var(--term-green)] sm:text-[32px]"
-          >
-            {next !== null ? fmtGoldao2(next) : "-"}
-          </motion.span>
-          <span className={cn("font-mono text-[10px]", inkMid)}>
-            {exc && next !== null
-              ? `${lastPick ? "Last pick, collected automatically" : "If the next pick is safe"} · ${fmtMultOf(exc.nextGross, exc.stake)}`
-              : exc
-                ? "Maximum reached"
-                : "Saving unlocks at pick 3"}
-          </span>
-        </div>
+        )}
         <SaveButton
           canSave={canSave}
           onSave={onSave}
@@ -486,7 +647,7 @@ function RankPanel({ dashboard }: { dashboard: Dashboard | undefined }) {
   else if (dashboard && rank === 0)
     gap = `Stake ${fmtGoldao(dashboard.top10Entry)} to enter`;
   return (
-    <div className="flex min-w-0 flex-col gap-2.5 rounded-[14px] border border-[rgba(92,79,71,.18)] bg-white/20 px-3.5 pb-3.5 pt-3 dark:border-white/[.07] dark:bg-black/[.18]">
+    <div className="flex min-w-0 flex-col justify-center gap-4 rounded-[14px] border border-[rgba(92,79,71,.18)] bg-white/20 px-3.5 pb-3.5 pt-3 dark:border-white/[.07] dark:bg-black/[.18]">
       <div className="flex items-center justify-between">
         <span
           className={cn(
@@ -533,10 +694,10 @@ function RankPanel({ dashboard }: { dashboard: Dashboard | undefined }) {
           </span>
         </span>
       </div>
-      <div className="flex flex-col items-center gap-[9px] text-center">
+      <div className="flex items-center gap-3 text-left">
         <div
           className={cn(
-            "flex h-20 w-[72px] flex-col items-center justify-center gap-px",
+            "flex h-[58px] w-[52px] shrink-0 flex-col items-center justify-center gap-px",
             MEDAL[tier],
           )}
           style={{ clipPath: HEX_CLIP }}
@@ -544,7 +705,7 @@ function RankPanel({ dashboard }: { dashboard: Dashboard | undefined }) {
           {inTop ? (
             <svg
               viewBox="0 0 24 24"
-              className="size-4"
+              className="size-3"
               fill="currentColor"
               aria-hidden
             >
@@ -558,7 +719,7 @@ function RankPanel({ dashboard }: { dashboard: Dashboard | undefined }) {
           ) : (
             <svg
               viewBox="0 0 24 24"
-              className="size-3.5 opacity-80"
+              className="size-3 opacity-80"
               fill="none"
               stroke="currentColor"
               strokeWidth="2.4"
@@ -573,7 +734,7 @@ function RankPanel({ dashboard }: { dashboard: Dashboard | undefined }) {
           <span
             className="font-display font-extrabold leading-none tracking-[-.02em]"
             style={{
-              fontSize: inTop ? 24 : String(rank).length >= 3 ? 17 : 22,
+              fontSize: inTop ? 18 : String(rank).length >= 3 ? 13 : 16,
             }}
           >
             {rank > 0 ? `#${rank}` : "-"}
@@ -582,7 +743,7 @@ function RankPanel({ dashboard }: { dashboard: Dashboard | undefined }) {
         <div>
           <div
             className={cn(
-              "font-display text-[28px] font-extrabold leading-none tracking-[-.01em]",
+              "font-display text-[22px] font-extrabold leading-none tracking-[-.01em]",
               inTop && prize > 0n ? GREEN_RANK : FOOT,
             )}
           >
@@ -591,12 +752,17 @@ function RankPanel({ dashboard }: { dashboard: Dashboard | undefined }) {
           <div className={cn("mt-1 text-[11px]", FOOT)}>
             GOLDAO if it closed now
           </div>
+          {gap && (
+            <div
+              className={cn(
+                "mt-1 text-[11px] font-bold tracking-[.02em]",
+                GOLD,
+              )}
+            >
+              {gap}
+            </div>
+          )}
         </div>
-        {gap && (
-          <div className={cn("text-[11px] font-bold tracking-[.02em]", GOLD)}>
-            {gap}
-          </div>
-        )}
       </div>
     </div>
   );
@@ -606,7 +772,7 @@ export function CreditBar({
   dashboard,
   className,
 }: { dashboard: Dashboard | undefined; className?: string }) {
-  // The stake of an excavation in play is already out of To collect on screen.
+  // The stake of an excavation in play is already out of the Accumulated prize on screen.
   const { inPlay } = useBoard();
   const shown = dashboard
     ? dashboard.credit > inPlay
@@ -622,7 +788,7 @@ export function CreditBar({
     if (!loaded) return;
     const before = prev.current;
     prev.current = credit;
-    // Green only when To collect really goes up. It never turns red, and a value
+    // Green only when the Accumulated prize really goes up. It never turns red, and a value
     // that does not change (a refetch) does nothing.
     if (before === null || credit <= before) return;
     setFlash(true);
@@ -653,13 +819,15 @@ export function CreditBar({
   const wanted = box.wrap * (narrow ? 0.135 : 0.08);
   const room = box.left > 0 ? box.left / em : wanted;
   const size =
-    box.wrap > 0 ? Math.max(20, Math.min(84, wanted, Math.floor(room))) : 40;
+    box.wrap > 0
+      ? Math.max(20, Math.min(narrow ? 40 : 48, wanted, Math.floor(room)))
+      : 40;
 
   return (
-    <div ref={wrapRef} className={cn("min-w-0", className)}>
+    <div ref={wrapRef} className={cn("flex min-w-0 flex-col", className)}>
       <div
         className={cn(
-          "grid items-stretch gap-[22px] rounded-[18px] border border-[rgba(201,160,60,.65)] bg-[#e2cabc] px-[22px] pb-5 pt-[22px] shadow-[0_14px_34px_rgba(92,60,40,.18)] dark:border-[rgba(174,137,58,.5)] dark:bg-[#343433] dark:shadow-[0_14px_34px_rgba(0,0,0,.45)]",
+          "grid flex-1 items-stretch gap-[22px] rounded-[18px] border border-[rgba(201,160,60,.65)] bg-[#e2cabc] px-[22px] pb-5 pt-[22px] shadow-[0_14px_34px_rgba(92,60,40,.18)] dark:border-[rgba(174,137,58,.5)] dark:bg-[#343433] dark:shadow-[0_14px_34px_rgba(0,0,0,.45)]",
           narrow ? "grid-cols-1 gap-4" : "grid-cols-[minmax(0,1fr)_230px]",
         )}
       >
@@ -677,7 +845,7 @@ export function CreditBar({
                 LABEL,
               )}
             >
-              To collect
+              Accumulated prize
             </div>
             <div
               className={cn(
@@ -721,35 +889,48 @@ export function CreditBar({
 export function JackpotCard({
   pool,
   className,
-}: { pool: bigint | undefined; className?: string }) {
+}: {
+  pool: bigint | undefined;
+  className?: string;
+}) {
   return (
     <div
       className={cn(
-        "flex min-w-0 flex-col gap-0.5 rounded-xl border border-[oklch(0.68_0.16_350/0.45)] bg-[oklch(0.7_0.14_350/0.08)] px-3 py-2.5 sm:px-4",
+        "flex min-w-0 items-center justify-between gap-3 rounded-xl border border-[oklch(0.68_0.16_350/0.45)] bg-[oklch(0.7_0.14_350/0.08)] px-3 py-3 sm:px-5",
         className,
       )}
     >
-      <span
-        className={cn(
-          eyebrow,
-          DIAMOND_TEXT,
-          "flex items-center gap-1.5 text-[10px] sm:text-xs",
-        )}
-      >
-        <Gem className="size-3.5" /> Diamond jackpot
-      </span>
-      <span
-        className={cn(
-          "font-display text-[30px] font-bold leading-tight tabular-nums sm:text-[clamp(34px,5vw,46px)]",
-          DIAMOND_TEXT,
-        )}
-      >
-        <RollingNumber value={pool ? toGoldao(pool) : 0} />
-        <span className={cn("ml-2 font-mono text-xs", inkFaint)}>GOLDAO</span>
-      </span>
-      <span className={cn("font-mono text-[11px]", inkMid)}>
-        3 diamonds win it all
-      </span>
+      <div className="flex min-w-0 flex-col gap-0.5">
+        <span
+          className={cn(
+            eyebrow,
+            DIAMOND_TEXT,
+            "flex items-center gap-1.5 text-[10px] sm:text-xs",
+          )}
+        >
+          <Gem className="size-3.5" /> Diamond jackpot
+        </span>
+        <span
+          className={cn(
+            "font-display text-[40px] font-bold leading-[1.05] tabular-nums md:text-[clamp(38px,4.6vw,56px)]",
+            DIAMOND_TEXT,
+          )}
+        >
+          <RollingNumber value={pool ? toGoldao(pool) : 0} />
+          <span className={cn("ml-2 font-mono text-xs", inkFaint)}>GOLDAO</span>
+        </span>
+        <span className={cn("font-mono text-[11px]", inkMid)}>
+          3 diamonds win it all
+        </span>
+      </div>
+      {DIAMOND_IMG && (
+        <img
+          src={DIAMOND_IMG}
+          alt=""
+          aria-hidden
+          className="block w-16 shrink-0 object-contain drop-shadow-[0_6px_18px_oklch(0.7_0.14_350/0.35)] md:hidden xl:block xl:w-24"
+        />
+      )}
     </div>
   );
 }
@@ -1006,12 +1187,7 @@ export function AutoPicker({
   onRun: () => void;
 }) {
   return (
-    <div
-      className={cn(
-        panel,
-        "flex flex-wrap items-center gap-2 bg-[var(--term-alt)] px-3 py-2",
-      )}
-    >
+    <div className="flex flex-wrap items-center gap-2 px-0.5">
       <span className={cn(eyebrow, gold)}>Auto dig</span>
       <span className={cn("font-mono text-xs", inkMid)}>Save at pick</span>
       <div className="inline-flex rounded-md border border-[color:var(--term-border)] p-0.5 font-mono text-xs">
