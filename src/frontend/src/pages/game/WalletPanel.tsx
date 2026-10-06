@@ -46,12 +46,18 @@ export function WalletPanel({ dashboard, config }: Props) {
   const { run, pending } = useGameAction();
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
-  const { balance, real, ensureAllowance } = useWallet(dashboard, config);
+  const { balance, allowance, real, ensureAllowance } = useWallet(
+    dashboard,
+    config,
+  );
   const [amount, setAmount] = useState(500);
   const [loading, setLoading] = useState(false);
   const fee = config?.feeE8s ?? 1_000_000_000n;
   const credit = dashboard?.credit ?? 0n;
   const need = BigInt(amount) * E8S + fee;
+  // Real mode: if the game is not authorized yet (first load, or the authorization expired),
+  // the wallet also pays the fee of that authorization.
+  const needsAuthFee = real && allowance < need;
   const room =
     config && config.creditCapE8s > credit ? config.creditCapE8s - credit : 0n;
   const roomGoldao = Number(room / E8S);
@@ -256,7 +262,9 @@ export function WalletPanel({ dashboard, config }: Props) {
         <span className={cn("font-mono text-[11px]", inkFaint)}>
           {loadBlock && dashboard
             ? loadBlock
-            : `Your wallet pays ${amount.toLocaleString("en-US")} + ${fmtGoldao(fee)} network fee.`}
+            : needsAuthFee
+              ? `Your wallet pays ${amount.toLocaleString("en-US")} + ${fmtGoldao(fee)} network fee, plus ${fmtGoldao(fee)} the first time to authorize the game.`
+              : `Your wallet pays ${amount.toLocaleString("en-US")} + ${fmtGoldao(fee)} network fee.`}
         </span>
       </div>
 
