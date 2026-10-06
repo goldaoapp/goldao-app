@@ -184,9 +184,12 @@ const TREASURE: PrizeMeta = {
   pill: "bg-[oklch(0.6_0.13_70)] text-[oklch(0.98_0.02_85)] border-[oklch(0.55_0.13_70)]",
 };
 
+/** Depth from which a saved win is a Treasure. Same tiers as the prize names below. */
+export const TREASURE_MIN_PICKS = 6;
+
 /** Prize name for a saved depth: 3 Gold dust, 4-5 Ingot, 6-10 Treasure. */
 export function prizeName(picks: number): PrizeMeta {
-  if (picks >= 6) return TREASURE;
+  if (picks >= TREASURE_MIN_PICKS) return TREASURE;
   if (picks >= 4) return INGOT;
   return GOLD_DUST;
 }
