@@ -55,6 +55,8 @@ const EXC_CHANGED = "Your excavation changed";
 const COIN_MULT_X100 = 110;
 /** A collapse that still pays resets the board after this delay. */
 const AUTO_RESET_MS = 5000;
+/** The coin shower is removed from the page after this time. */
+const RAIN_MS = 4200;
 const RESTORE_ORDER = [
   12, 6, 18, 8, 16, 2, 22, 10, 14, 0, 24, 4, 20, 7, 17, 11, 13, 1, 23, 3,
 ];
@@ -108,6 +110,10 @@ export function MineBoard({ dashboard }: Props) {
   const [autoStop, setAutoStop] = useState(3);
   const [bandHost, setBandHost] = useState<HTMLDivElement | null>(null);
   const jackpotResolve = useRef<(() => void) | null>(null);
+  // The coin shower plays once per new `board.rain` value seen while this view is mounted. The
+  // counter lives in the board store, so coming back to the tab must not replay an old shower.
+  const seenRain = useRef(board.rain);
+  const [rainSeed, setRainSeed] = useState(0);
 
   const stakes = dashboard?.stakes ?? [];
   const paused = !!dashboard?.paused;
@@ -128,6 +134,19 @@ export function MineBoard({ dashboard }: Props) {
   useEffect(() => {
     if (getBoard().owner !== principalId) resetBoard(principalId);
   }, [principalId]);
+
+  // Start a shower when the counter went up and no jackpot is covering the board; remove it
+  // from the page when it is over so nothing stays floating.
+  useEffect(() => {
+    if (jackpot || board.rain === seenRain.current) return;
+    seenRain.current = board.rain;
+    setRainSeed(board.rain);
+  }, [board.rain, jackpot]);
+  useEffect(() => {
+    if (rainSeed === 0) return;
+    const t = window.setTimeout(() => setRainSeed(0), RAIN_MS);
+    return () => window.clearTimeout(t);
+  }, [rainSeed]);
 
   // Keeps the board in step with the backend's open excavation: restores it after a reload or
   // from another tab, and rebuilds it when the backend is further along than the screen (a pick
@@ -164,16 +183,19 @@ export function MineBoard({ dashboard }: Props) {
     working,
   ]);
 
-  // A collapse that still pays shows the green result, then clears the board.
+  // A collapse that still pays shows the green result, then clears the board. Only while the
+  // card is really on screen: not behind a jackpot or Treasure celebration, and never after a
+  // jackpot (that card stays until the player closes it).
   useEffect(() => {
-    if (!result || exc) return;
+    if (!result || exc || treasure || jackpot) return;
     if (result.kind !== EndKind.collapsed || result.won <= 0n) return;
+    if (result.jackpotWon > 0n) return;
     const t = window.setTimeout(
       () => setBoard({ cells: {}, result: null, error: null }),
       AUTO_RESET_MS,
     );
     return () => window.clearTimeout(t);
-  }, [result, exc]);
+  }, [result, exc, treasure, jackpot]);
 
   // The stake is always covered by To collect: the wallet is only used to load it.
   const coversStake = (stake: bigint): boolean => {
@@ -194,9 +216,15 @@ export function MineBoard({ dashboard }: Props) {
     });
     clearBoardCells();
     void setOpenExcavation(null);
-    const treasureWin = end.won > 0n && isTreasure(Number(end.points));
+    // One celebration at a time: a jackpot already had its own, so no Treasure on top of it.
+    const treasureWin =
+      end.won > 0n &&
+      end.jackpotWon === 0n &&
+      end.kind !== EndKind.collapsed &&
+      isTreasure(Number(end.points));
     if (end.kind === EndKind.collapsed) playSound("collapse");
-    else if (end.won > 0n && !treasureWin) playSound("success");
+    else if (end.won > 0n && end.jackpotWon === 0n && !treasureWin)
+      playSound("success");
     if (end.gross >= stake * 2n) setBoard((s) => ({ rain: s.rain + 1 }));
     if (treasureWin) {
       setBoard({
@@ -425,6 +453,11 @@ export function MineBoard({ dashboard }: Props) {
         text: "The first two picks are always safe.",
         tone: "mid" as const,
       };
+    if (exc && Number(exc.picks) === 2)
+      return {
+        text: "Pick 3 is the first with real risk. You can save after it.",
+        tone: "mid" as const,
+      };
     if (exc)
       return {
         text: "Keep digging or save your points.",
@@ -509,15 +542,16 @@ export function MineBoard({ dashboard }: Props) {
             onClose={closeTreasure}
           />
           <AnimatePresence>
-            {board.rain > 0 && !jackpot && (
+            {rainSeed > 0 && !jackpot && (
               <motion.div
-                key={board.rain}
+                key={rainSeed}
                 className="pointer-events-none absolute inset-0 z-20"
                 initial={{ opacity: 1 }}
                 animate={{ opacity: 0 }}
+                exit={{ opacity: 0 }}
                 transition={{ duration: 3.4 }}
               >
-                <CoinRain seed={board.rain} />
+                <CoinRain seed={rainSeed} />
               </motion.div>
             )}
           </AnimatePresence>
@@ -556,7 +590,7 @@ export function MineBoard({ dashboard }: Props) {
               >
                 {indexes.slice(SPLIT_AT).map(renderCell)}
               </div>
-              {result && !exc && !treasure && (
+              {result && !exc && !treasure && !jackpot && (
                 <ResultCard result={result} onNew={newGame} />
               )}
               <BoardMessage
