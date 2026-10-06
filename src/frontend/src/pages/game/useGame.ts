@@ -103,6 +103,21 @@ export function useSecurityView(enabled: boolean) {
   });
 }
 
+export function useSecurityLog(day: number, enabled: boolean) {
+  const { actor, principalId } = useAuth();
+  return useQuery({
+    queryKey: [KEY, "security-log", principalId, day],
+    queryFn: async () => {
+      const res = await actor!.gameAdminSecurityLog(BigInt(day));
+      if (res.__kind__ === "err") throw new Error(res.err);
+      return res.ok;
+    },
+    enabled: !!actor && enabled,
+    refetchInterval: (q) => (q.state.status === "error" ? false : 30_000),
+    retry: false,
+  });
+}
+
 type Res<T> = { __kind__: "ok"; ok: T } | { __kind__: "err"; err: string };
 
 /**
