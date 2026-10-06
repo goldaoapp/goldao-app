@@ -67,14 +67,14 @@ export function PrizeGuide({ config, stakes }: Props) {
             them collapse the mine. The first {safe} picks are always safe. From
             the third pick you can save: you receive{" "}
             <span className={ink}>your stake x the multiplier</span> shown
-            below, rounded down to 2 decimals.
+            below.
           </p>
           <p>
             Before digging, load credit into To collect from your wallet. Every
             stake comes out of it: wins are added, and if the mine collapses you
-            get half of the points reached (rounded up), shown in the If it
-            collapses column; the rest of the stake is deducted. The wallet is
-            only touched when you load credit, and each load pays the{" "}
+            keep GOLDAO secured, about half of your stake or more, shown in the
+            If it collapses column; the rest of the stake is deducted. The
+            wallet is only touched when you load credit, and each load pays the{" "}
             {fmtGoldao(config.feeE8s)} GOLDAO network fee.
           </p>
           <p>
