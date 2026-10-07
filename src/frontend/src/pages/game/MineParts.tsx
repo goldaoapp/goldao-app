@@ -10,7 +10,6 @@ import {
   ArrowUp,
   Gem,
   Mountain,
-  Pickaxe,
   RotateCcw,
   Shield,
   ShieldCheck,
@@ -19,10 +18,12 @@ import {
   AnimatePresence,
   animate as animateValue,
   motion,
+  useAnimationControls,
   useMotionValue,
+  useReducedMotion,
   useTransform,
 } from "motion/react";
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { type Cell, useBoard } from "./board-store";
 import {
   DIAMOND_CELL,
@@ -50,64 +51,324 @@ import {
 } from "./game-utils";
 import { playSound } from "./sounds";
 
+/** Covered cell: faceted rock. The vars set the facet tones for the light and dark themes. */
+const SLAB_CLASS = cn(
+  "[--f1:rgba(255,255,255,.4)] [--f2:rgba(90,70,45,.24)] [--f3:rgba(255,255,255,.2)] [--b1:#c6b8a3] [--b2:#a99880]",
+  "dark:[--f1:rgba(255,255,255,.12)] dark:[--f2:rgba(0,0,0,.28)] dark:[--f3:rgba(255,255,255,.06)] dark:[--b1:#4a443d] dark:[--b2:#2f2b27]",
+  "bg-[linear-gradient(135deg,var(--f1)_0_50%,transparent_50%),linear-gradient(45deg,transparent_0_50%,var(--f2)_50%),linear-gradient(160deg,transparent_0_28%,var(--f3)_28%_60%,transparent_60%),linear-gradient(180deg,var(--b1),var(--b2))]",
+  "border border-[rgba(80,65,45,.4)] dark:border-[rgba(199,154,59,.3)]",
+  "shadow-[inset_0_2px_0_rgba(255,255,255,.6),inset_0_-4px_0_rgba(80,65,45,.3),0_3px_6px_rgba(80,55,25,.22)] dark:shadow-[inset_0_1px_0_rgba(255,255,255,.14),inset_0_-4px_0_rgba(0,0,0,.4),0_4px_8px_rgba(0,0,0,.5)]",
+);
+
+/** One pickaxe swing lasts this long; the blow lands at STRIKE_AT of the swing. */
+const SWING_S = 0.4;
+const STRIKE_AT = 0.58;
+
+/** Multiplier of the pick that was just revealed, floating up from its cell. */
+export interface CellPop {
+  index: number;
+  text: string;
+  id: number;
+}
+
 export function MineCell({
   cell,
   digging,
   disabled,
   onClick,
+  enterNo = 0,
+  enterDelay = 0,
+  pop = null,
+  onStrike,
 }: {
   cell: Cell | undefined;
   digging: boolean;
   disabled: boolean;
   onClick: () => void;
+  /** Counts the times the board was loaded; above 0 the cell rises into place. */
+  enterNo?: number;
+  enterDelay?: number;
+  pop?: CellPop | null;
+  /** Called on every pickaxe blow, so the board can shake. */
+  onStrike?: () => void;
 }) {
+  const reduce = useReducedMotion();
+  const hitCtl = useAnimationControls();
+  const [hits, setHits] = useState(0);
+  const strike = useRef(onStrike);
+  strike.current = onStrike;
   const style = !cell
-    ? "border-[color:var(--term-border)] bg-[var(--term-header)] hover:border-primary/60"
+    ? "border-[color:var(--term-border)] bg-[var(--term-header)]"
     : cell.kind === "rock"
       ? ROCK_CELL
       : cell.kind === "diamond"
         ? DIAMOND_CELL
         : TOKENS[cell.token].cell;
+  const picking = digging && !cell;
+
+  // While the pick is being dug: one blow per swing, with its sound, sparks and shake.
+  useEffect(() => {
+    if (!picking) return;
+    let timer = 0;
+    const blow = () => {
+      playSound("hit");
+      strike.current?.();
+      setHits((h) => h + 1);
+      if (!reduce)
+        void hitCtl.start({
+          x: [0, 2, -2, 0],
+          y: [0, 3, -1, 0],
+          scale: [1, 0.95, 1.02, 1],
+          transition: { duration: 0.14 },
+        });
+    };
+    const first = window.setTimeout(
+      () => {
+        blow();
+        timer = window.setInterval(blow, SWING_S * 1000);
+      },
+      SWING_S * STRIKE_AT * 1000,
+    );
+    return () => {
+      window.clearTimeout(first);
+      window.clearInterval(timer);
+      setHits(0);
+    };
+  }, [picking, reduce, hitCtl]);
 
   return (
     <motion.button
       type="button"
       onClick={onClick}
       disabled={disabled || !!cell}
+      initial={
+        enterNo > 0 && !reduce ? { opacity: 0, y: 40, scale: 0.9 } : false
+      }
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      transition={{ duration: 0.55, ease: "easeOut", delay: enterDelay }}
       className={cn(
-        "relative flex aspect-square items-center justify-center overflow-hidden rounded-lg border transition-[transform,colors] duration-200 disabled:cursor-default enabled:hover:-translate-y-[3px] enabled:active:scale-95",
-        style,
+        "relative aspect-square rounded-lg disabled:cursor-default [&:enabled:active_.lift]:scale-95 [&:enabled:hover_.lift]:-translate-y-[3px] [&:enabled:hover_.lift]:brightness-110",
+        (picking || pop) && "z-10",
       )}
       aria-label={cell ? cell.kind : "Dig this cell"}
     >
-      {digging && !cell && (
-        <motion.span
-          animate={{ rotate: [-28, 18, -28] }}
-          transition={{
-            duration: 0.45,
-            repeat: Number.POSITIVE_INFINITY,
-            ease: "easeInOut",
-          }}
-          className={gold}
+      <motion.span
+        animate={hitCtl}
+        className="absolute inset-0 rounded-[inherit]"
+      >
+        <span
+          className={cn(
+            "absolute inset-0 flex items-center justify-center overflow-hidden rounded-[inherit] border-[1.5px]",
+            style,
+          )}
         >
-          <Pickaxe className="size-6" />
-        </motion.span>
-      )}
-      <AnimatePresence>
-        {cell && (
+          <AnimatePresence>
+            {cell && (
+              <motion.span
+                key={cell.kind}
+                initial={{ opacity: 0, y: "-70%", scale: 0.5 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                transition={{
+                  type: "spring",
+                  stiffness: 240,
+                  damping: 13,
+                  delay: 0.15,
+                }}
+                className="flex items-center justify-center"
+              >
+                <CellContent cell={cell} />
+              </motion.span>
+            )}
+          </AnimatePresence>
+        </span>
+        <span className="lift absolute inset-0 rounded-[inherit] transition-[transform,filter] duration-200">
           <motion.span
-            key={cell.kind}
-            initial={{ opacity: 0, scale: 0.4, rotateY: 90 }}
-            animate={{ opacity: 1, scale: 1, rotateY: 0 }}
-            transition={{ type: "spring", stiffness: 320, damping: 20 }}
-            className="flex items-center justify-center"
-          >
-            <CellContent cell={cell} />
-          </motion.span>
-        )}
-      </AnimatePresence>
+            initial={false}
+            animate={
+              cell
+                ? { opacity: 0, y: "46%", scale: 0.9, rotate: 3 }
+                : { opacity: 1, y: 0, scale: 1, rotate: 0 }
+            }
+            transition={
+              cell ? { duration: 0.45, ease: "easeIn" } : { duration: 0 }
+            }
+            className={cn("absolute inset-0 rounded-[inherit]", SLAB_CLASS)}
+          />
+          {picking && !reduce && (
+            <motion.span
+              aria-hidden
+              className="absolute inset-0 rounded-[inherit] bg-[radial-gradient(circle_at_50%_55%,rgba(255,200,90,0.45),transparent_62%)]"
+              animate={{ opacity: [0, 0, 1, 0] }}
+              transition={{
+                duration: SWING_S,
+                times: [0, 0.4, STRIKE_AT, 1],
+                repeat: Number.POSITIVE_INFINITY,
+              }}
+            />
+          )}
+        </span>
+      </motion.span>
+      {picking && <PickaxeSwing still={!!reduce} />}
+      {picking && hits > 0 && !reduce && (
+        <Burst key={hits} sparks={6} chips={5} color="#ffd67a" />
+      )}
       {cell?.kind === "diamond" && <Sparkle />}
+      {pop && !reduce && (
+        <Burst
+          key={`p${pop.id}`}
+          sparks={12}
+          chips={0}
+          color={cell?.kind === "diamond" ? "#ff8fbf" : "#ffcf6b"}
+        />
+      )}
+      {pop && <MultPop key={pop.id} text={pop.text} still={!!reduce} />}
     </motion.button>
+  );
+}
+
+/** Pickaxe that rises and strikes the cell once per swing. */
+function PickaxeSwing({ still }: { still: boolean }) {
+  return (
+    <span
+      aria-hidden
+      className="pointer-events-none absolute left-1/2 top-1/2 z-10 size-0"
+    >
+      <motion.svg
+        viewBox="0 0 64 64"
+        fill="none"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        className="absolute -left-[30px] -top-[52px] size-[60px] drop-shadow-md"
+        style={{ transformOrigin: "50% 88%" }}
+        initial={{ rotate: -40 }}
+        animate={still ? { rotate: -40 } : { rotate: [-62, -70, 14, 8, -62] }}
+        transition={{
+          duration: SWING_S,
+          times: [0, 0.45, STRIKE_AT, 0.68, 1],
+          ease: "linear",
+          repeat: Number.POSITIVE_INFINITY,
+        }}
+      >
+        <title>Pickaxe</title>
+        <path d="M14 58 36 20" stroke="#5b3a1d" strokeWidth="7" />
+        <path d="M14 58 36 20" stroke="#c18a47" strokeWidth="4" />
+        <path
+          d="M8 26C16 10 40 6 58 18c-8-3-14-2-20 2-4-4-14-6-30 6z"
+          fill="#d7dbe0"
+          stroke="#4b525c"
+          strokeWidth="2.5"
+        />
+        <path
+          d="M14 24c10-8 24-10 36-4"
+          stroke="#fff"
+          strokeWidth="2"
+          opacity=".7"
+        />
+      </motion.svg>
+    </span>
+  );
+}
+
+/** Sparks (and rock chips) flying out of the middle of a cell. */
+function Burst({
+  sparks,
+  chips,
+  color,
+}: {
+  sparks: number;
+  chips: number;
+  color: string;
+}) {
+  const parts = useMemo(
+    () =>
+      Array.from({ length: sparks + chips }, (_, i) => {
+        const spark = i < sparks;
+        const a = spark
+          ? Math.random() * Math.PI * 2
+          : -Math.PI / 2 + (Math.random() - 0.5) * 2.2;
+        const sp = 30 + Math.random() * 60;
+        return {
+          spark,
+          dx: Math.cos(a) * sp * (spark ? 1.3 : 1),
+          dy: Math.sin(a) * sp * (spark ? 1.3 : 1),
+          rot: (a * 180) / Math.PI + 90,
+          size: 3 + Math.random() * 5,
+          len: 8 + Math.random() * 8,
+          spin: Math.random() * 540,
+        };
+      }),
+    [sparks, chips],
+  );
+  return (
+    <span
+      aria-hidden
+      className="pointer-events-none absolute left-1/2 top-1/2 z-20 size-0"
+    >
+      {parts.map((p, i) =>
+        p.spark ? (
+          <motion.i
+            // biome-ignore lint/suspicious/noArrayIndexKey: fixed, never reordered
+            key={i}
+            className="absolute block w-[2px] rounded-sm"
+            style={{
+              height: p.len,
+              background: color,
+              boxShadow: `0 0 6px ${color}`,
+              rotate: p.rot,
+            }}
+            initial={{ x: 0, y: 0, opacity: 1, scaleY: 1 }}
+            animate={{ x: p.dx, y: p.dy, opacity: 0, scaleY: 0.3 }}
+            transition={{ duration: 0.45, ease: "easeOut" }}
+          />
+        ) : (
+          <motion.i
+            // biome-ignore lint/suspicious/noArrayIndexKey: fixed, never reordered
+            key={i}
+            className="absolute block rounded-[2px] bg-[#8f7d66]"
+            style={{ width: p.size, height: p.size }}
+            initial={{ x: 0, y: 0, opacity: 1, rotate: 0 }}
+            animate={{
+              x: [0, p.dx, p.dx * 1.2],
+              y: [0, p.dy - 20, p.dy + 60],
+              opacity: [1, 1, 0],
+              rotate: p.spin,
+            }}
+            transition={{ duration: 0.55, ease: "easeOut" }}
+          />
+        ),
+      )}
+    </span>
+  );
+}
+
+/** Multiplier of the pick, big and green, floating up from the revealed cell. */
+function MultPop({ text, still }: { text: string; still: boolean }) {
+  return (
+    <span
+      aria-hidden
+      className="pointer-events-none absolute left-1/2 top-1 z-30 -translate-x-1/2"
+    >
+      <motion.span
+        className="block whitespace-nowrap font-display text-[22px] font-extrabold leading-none tracking-tight text-[color:var(--term-green)] [text-shadow:0_0_3px_rgba(255,255,255,.9),0_2px_8px_rgba(255,255,255,.8)] dark:[text-shadow:0_0_3px_rgba(0,0,0,.85),0_2px_8px_rgba(0,0,0,.8)] sm:text-[26px]"
+        initial={{ opacity: 0, y: 10, scale: 0.4 }}
+        animate={
+          still
+            ? { opacity: [0, 1, 1, 0], y: 0, scale: 1 }
+            : {
+                opacity: [0, 1, 1, 0],
+                y: [10, -6, -14, -48],
+                scale: [0.4, 1.25, 1, 1],
+              }
+        }
+        transition={{
+          duration: 1.7,
+          times: [0, 0.18, 0.6, 1],
+          ease: "easeOut",
+        }}
+      >
+        {text}
+      </motion.span>
+    </span>
   );
 }
 
