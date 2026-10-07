@@ -3,12 +3,18 @@ import type { Dashboard, GameConfig } from "@/backend";
 import { useAuth } from "@/context/AuthContext";
 import { cn } from "@/lib/utils";
 import { Pickaxe, Volume2, VolumeX } from "lucide-react";
-import { AnimatePresence, motion } from "motion/react";
+import {
+  AnimatePresence,
+  motion,
+  useAnimationControls,
+  useReducedMotion,
+} from "motion/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { CoinRain, JackpotOverlay } from "./JackpotOverlay";
 import {
   AutoPicker,
   BoardMessage,
+  type CellPop,
   CreditBar,
   JackpotCard,
   Legend,
@@ -35,6 +41,8 @@ import {
   eyebrow,
   fmtCountdown,
   fmtGoldao,
+  fmtMult,
+  fmtMultOf,
   gold,
   inkFaint,
   multX100,
@@ -42,7 +50,7 @@ import {
   panelHeader,
   tokenForPick,
 } from "./game-utils";
-import { playSound, preloadSounds, useSoundToggle } from "./sounds";
+import { playSound, preloadSounds, revealRate, useSoundToggle } from "./sounds";
 import { errorMessage, useGameAction, useGameConfig } from "./useGame";
 
 const CELLS = 25;
@@ -111,6 +119,14 @@ export function MineBoard({ dashboard }: Props) {
   const [autoStop, setAutoStop] = useState(3);
   const [bandHost, setBandHost] = useState<HTMLDivElement | null>(null);
   const jackpotResolve = useRef<(() => void) | null>(null);
+  const reduceMotion = useReducedMotion();
+  // Counts the times a fresh board was loaded (first visit, new game). Above 0 the board
+  // "descends" into place and the cells rise one row after another.
+  const [enterNo, setEnterNo] = useState(0);
+  const descentCtl = useAnimationControls();
+  const shakeCtl = useAnimationControls();
+  // Multiplier of the pick just revealed, floating up from its cell for a moment.
+  const [pop, setPop] = useState<CellPop | null>(null);
   // The coin shower plays once per new `board.rain` value seen while this view is mounted. The
   // counter lives in the board store, so coming back to the tab must not replay an old shower.
   const seenRain = useRef(board.rain);
@@ -135,6 +151,51 @@ export function MineBoard({ dashboard }: Props) {
       jackpotResolve.current = null;
     };
   }, []);
+
+  // First visit: the board descends into place, unless an excavation is being restored.
+  const entered = useRef(false);
+  useEffect(() => {
+    if (booting || entered.current) return;
+    entered.current = true;
+    if (Object.keys(getBoard().cells).length === 0) setEnterNo((n) => n + 1);
+  }, [booting]);
+  // A used board that gets cleared (new game, automatic reset) is replaced by a fresh one. Not
+  // while a pick or an auto dig is under way: that board is already in use.
+  const cellCount = Object.keys(cells).length;
+  const prevCellCount = useRef(cellCount);
+  useEffect(() => {
+    const was = prevCellCount.current;
+    prevCellCount.current = cellCount;
+    if (was === 0 || cellCount > 0 || booting) return;
+    const b = getBoard();
+    if (b.digging === null && !b.autoRun) setEnterNo((n) => n + 1);
+  }, [cellCount, booting]);
+  useEffect(() => {
+    if (enterNo === 0 || reduceMotion) return;
+    playSound("enter");
+    void descentCtl.start({
+      y: [110, 0],
+      opacity: [0, 1, 1],
+      transition: {
+        duration: 1.3,
+        ease: [0.2, 0.8, 0.2, 1],
+        opacity: { times: [0, 0.5, 1] },
+      },
+    });
+  }, [enterNo, reduceMotion, descentCtl]);
+  useEffect(() => {
+    if (!pop) return;
+    const t = window.setTimeout(() => setPop(null), 1900);
+    return () => window.clearTimeout(t);
+  }, [pop]);
+  const shakeBoard = useCallback(() => {
+    if (reduceMotion) return;
+    void shakeCtl.start({
+      x: [0, -4, 4, -2, 0],
+      y: [0, 3, -3, 2, 0],
+      transition: { duration: 0.22 },
+    });
+  }, [reduceMotion, shakeCtl]);
 
   useEffect(() => {
     if (getBoard().owner !== principalId) resetBoard(principalId);
@@ -312,7 +373,16 @@ export function MineBoard({ dashboard }: Props) {
       } else {
         void setCredit(res.credit, res.pool);
       }
-      if (!res.collapsed) playSound(stage > 0 ? "diamond" : "success");
+      if (!res.collapsed) {
+        playSound(stage > 0 ? "diamond" : "reveal", revealRate(picks));
+        const gross = res.excavation?.runGross ?? res.end?.gross;
+        if (gross !== undefined)
+          setPop({
+            index,
+            text: fmtMultOf(gross, stakeAmount),
+            id: Date.now(),
+          });
+      }
       if (stage > 0) {
         setBoard({
           jackpot: {
@@ -423,7 +493,19 @@ export function MineBoard({ dashboard }: Props) {
             : { kind: "token", token: tokenForPick(Number(step.pick)) };
         setBoard((s) => ({ cells: { ...s.cells, [free[i]]: cell } }));
         // A collapse sound is played once by finish(), not per step.
-        if (!step.collapsed) playSound(stage > 0 ? "diamond" : "success");
+        if (!step.collapsed) {
+          playSound(
+            stage > 0 ? "diamond" : "reveal",
+            revealRate(Number(step.pick)),
+          );
+          const points = config?.pointsTable[Number(step.pick)];
+          if (points !== undefined)
+            setPop({
+              index: free[i],
+              text: fmtMult(Number(points), payoutBps),
+              id: Date.now(),
+            });
+        }
         if (stage > 0) {
           // The auto run waits here until the player opens the three slots.
           await new Promise<void>((resolve) => {
@@ -474,31 +556,12 @@ export function MineBoard({ dashboard }: Props) {
         text: "Bets are paused. Try again later.",
         tone: "err" as const,
       };
-    if (busy) return { text: "Digging…", tone: "mid" as const };
-    if (exc && Number(exc.picks) < 2)
-      return {
-        text: "The first two picks are always safe.",
-        tone: "mid" as const,
-      };
-    if (exc && Number(exc.picks) === 2)
-      return {
-        text: "Pick 3 is the first with real risk. You can save after it.",
-        tone: "mid" as const,
-      };
-    if (exc)
-      return {
-        text: "Keep digging or save your points.",
-        tone: "mid" as const,
-      };
     if (dashboard && credit < (stakes[board.stake] ?? 0n))
       return {
         text: "Load balance to start digging.",
         tone: "mid" as const,
       };
-    return {
-      text: "Pick any cell to start an excavation.",
-      tone: "mid" as const,
-    };
+    return null;
   })();
 
   const idle = !exc && !result && !locked;
@@ -506,8 +569,12 @@ export function MineBoard({ dashboard }: Props) {
 
   const renderCell = (i: number) => (
     <MineCell
-      key={i}
+      key={`${i}-${enterNo}`}
       cell={cells[i]}
+      enterNo={enterNo}
+      enterDelay={Math.floor(i / 5) * 0.14 + (i % 5) * 0.02}
+      pop={pop?.index === i ? pop : null}
+      onStrike={shakeBoard}
       digging={digging === i}
       disabled={locked || paused || !dashboard}
       onClick={() => void dig(i)}
@@ -600,31 +667,55 @@ export function MineBoard({ dashboard }: Props) {
                   }}
                 />
               )}
-              <div
-                className={cn(
-                  "grid grid-cols-5 gap-1.5 transition-[transform,opacity] duration-700 sm:gap-2.5",
-                  split && "-translate-y-1.5 opacity-40",
-                )}
-              >
-                {indexes.slice(0, SPLIT_AT).map(renderCell)}
-              </div>
-              <div ref={setBandHost} />
-              <div
-                className={cn(
-                  "mt-1.5 grid grid-cols-5 gap-1.5 transition-[transform,opacity] duration-700 sm:mt-2.5 sm:gap-2.5",
-                  split && "translate-y-1.5 opacity-40",
-                )}
-              >
-                {indexes.slice(SPLIT_AT).map(renderCell)}
-              </div>
+              {enterNo > 0 && !reduceMotion && (
+                <div
+                  aria-hidden
+                  className="pointer-events-none absolute -inset-1.5 z-[1] overflow-hidden rounded-xl"
+                >
+                  <motion.div
+                    key={enterNo}
+                    className="absolute inset-x-0 -inset-y-24 bg-[repeating-linear-gradient(180deg,rgba(120,90,50,.28)_0_34px,rgba(176,136,48,.3)_34px_52px,transparent_52px_70px,rgba(120,90,50,.28)_70px_96px)] dark:bg-[repeating-linear-gradient(180deg,rgba(0,0,0,.55)_0_34px,rgba(199,154,59,.2)_34px_52px,transparent_52px_70px,rgba(0,0,0,.55)_70px_96px)]"
+                    initial={{ opacity: 0, y: 0 }}
+                    animate={{ opacity: [0, 1, 1, 0], y: -96 }}
+                    transition={{
+                      duration: 1.5,
+                      ease: [0.5, 0, 0.2, 1],
+                      opacity: { times: [0, 0.2, 0.8, 1] },
+                    }}
+                  />
+                </div>
+              )}
+              <motion.div animate={descentCtl} className="relative z-[2]">
+                <motion.div animate={shakeCtl}>
+                  <div
+                    className={cn(
+                      "grid grid-cols-5 gap-1.5 transition-[transform,opacity] duration-700 sm:gap-2.5",
+                      split && "-translate-y-1.5 opacity-40",
+                    )}
+                  >
+                    {indexes.slice(0, SPLIT_AT).map(renderCell)}
+                  </div>
+                  <div ref={setBandHost} />
+                  <div
+                    className={cn(
+                      "mt-1.5 grid grid-cols-5 gap-1.5 transition-[transform,opacity] duration-700 sm:mt-2.5 sm:gap-2.5",
+                      split && "translate-y-1.5 opacity-40",
+                    )}
+                  >
+                    {indexes.slice(SPLIT_AT).map(renderCell)}
+                  </div>
+                </motion.div>
+              </motion.div>
               {result && !exc && !treasure && !jackpot && (
                 <ResultCard result={result} onNew={newGame} />
               )}
-              <BoardMessage
-                text={message.text}
-                tone={message.tone}
-                className="mt-1 md:absolute md:inset-x-0 md:top-[calc(100%+4px)] md:mt-0"
-              />
+              {message && (
+                <BoardMessage
+                  text={message.text}
+                  tone={message.tone}
+                  className="mt-1 md:absolute md:inset-x-0 md:top-[calc(100%+4px)] md:mt-0"
+                />
+              )}
             </div>
 
             {/* Next pick, jackpot and setup: one column from md up, flattened into the page order below md */}
