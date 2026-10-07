@@ -23,7 +23,7 @@ module {
   public let POOL_BPS : Nat = 250;
   public let RESERVE_BPS : Nat = 250;
   public let CYCLES_BPS : Nat = 50;
-  public let TOP10_BPS : Nat = 95;
+  public let TOP10_BPS : Nat = 135;
   public let TOP10_WEIGHTS : [Nat] = [25, 18, 14, 11, 9, 7, 6, 4, 3, 3];
   public let TOP10_MIN_VOLUME : Nat = 100_000_000_000;
   public let POOL_SEED : Nat = 500_000_000_000;
