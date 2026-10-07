@@ -3,12 +3,7 @@ import type { Dashboard, GameConfig } from "@/backend";
 import { useAuth } from "@/context/AuthContext";
 import { cn } from "@/lib/utils";
 import { Pickaxe, Volume2, VolumeX } from "lucide-react";
-import {
-  AnimatePresence,
-  motion,
-  useAnimationControls,
-  useReducedMotion,
-} from "motion/react";
+import { AnimatePresence, motion, useAnimationControls } from "motion/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { CoinRain, JackpotOverlay } from "./JackpotOverlay";
 import {
@@ -124,7 +119,6 @@ export function MineBoard({ dashboard }: Props) {
   const [autoStop, setAutoStop] = useState(3);
   const [bandHost, setBandHost] = useState<HTMLDivElement | null>(null);
   const jackpotResolve = useRef<(() => void) | null>(null);
-  const reduceMotion = useReducedMotion();
   // Counts the times a fresh board was loaded (first visit, new game). Above 0 the board
   // "descends" into place and the cells rise one row after another.
   const [enterNo, setEnterNo] = useState(0);
@@ -176,7 +170,7 @@ export function MineBoard({ dashboard }: Props) {
     if (b.digging === null && !b.autoRun) setEnterNo((n) => n + 1);
   }, [cellCount, booting]);
   useEffect(() => {
-    if (enterNo === 0 || reduceMotion) return;
+    if (enterNo === 0) return;
     playSound("enter");
     void descentCtl.start({
       y: [110, 0],
@@ -187,20 +181,19 @@ export function MineBoard({ dashboard }: Props) {
         opacity: { times: [0, 0.5, 1] },
       },
     });
-  }, [enterNo, reduceMotion, descentCtl]);
+  }, [enterNo, descentCtl]);
   useEffect(() => {
     if (!pop) return;
     const t = window.setTimeout(() => setPop(null), 1900);
     return () => window.clearTimeout(t);
   }, [pop]);
   const shakeBoard = useCallback(() => {
-    if (reduceMotion) return;
     void shakeCtl.start({
       x: [0, -4, 4, -2, 0],
       y: [0, 3, -3, 2, 0],
       transition: { duration: 0.22 },
     });
-  }, [reduceMotion, shakeCtl]);
+  }, [shakeCtl]);
 
   useEffect(() => {
     if (getBoard().owner !== principalId) resetBoard(principalId);
@@ -669,7 +662,7 @@ export function MineBoard({ dashboard }: Props) {
                   }}
                 />
               )}
-              {enterNo > 0 && !reduceMotion && (
+              {enterNo > 0 && (
                 <div
                   aria-hidden
                   className="pointer-events-none absolute -inset-1.5 z-[1] overflow-hidden rounded-xl"
