@@ -11,7 +11,16 @@ export type SoundKey =
   | "treasure"
   | "miss"
   | "jackpot"
-  | "reveal"
+  | "reveal1"
+  | "reveal2"
+  | "reveal3"
+  | "reveal4"
+  | "reveal5"
+  | "reveal6"
+  | "reveal7"
+  | "reveal8"
+  | "reveal9"
+  | "reveal10"
   | "hit"
   | "enter";
 
@@ -25,7 +34,16 @@ const SOURCES: Record<SoundKey, string> = {
   treasure: "/sounds/treasure.mp3",
   miss: "/sounds/miss.mp3",
   jackpot: "/sounds/jackpot.mp3",
-  reveal: "/sounds/reveal.mp3",
+  reveal1: "/sounds/reveal-1.mp3",
+  reveal2: "/sounds/reveal-2.mp3",
+  reveal3: "/sounds/reveal-3.mp3",
+  reveal4: "/sounds/reveal-4.mp3",
+  reveal5: "/sounds/reveal-5.mp3",
+  reveal6: "/sounds/reveal-6.mp3",
+  reveal7: "/sounds/reveal-7.mp3",
+  reveal8: "/sounds/reveal-8.mp3",
+  reveal9: "/sounds/reveal-9.mp3",
+  reveal10: "/sounds/reveal-10.mp3",
   hit: "/sounds/hit.mp3",
   enter: "/sounds/enter.mp3",
 };
@@ -132,18 +150,14 @@ export function preloadSounds() {
   for (const key of Object.keys(SOURCES) as SoundKey[]) void loadBuffer(key);
 }
 
-/** Playback speed of the "reveal" sound for the n-th pick: one pentatonic step up per pick. */
-const REVEAL_RATES = [1, 1.12, 1.26, 1.5, 1.68, 2, 2.25, 2.52, 3, 3.37];
-export function revealRate(pick: number): number {
-  const i = Math.min(REVEAL_RATES.length, Math.max(1, Math.round(pick))) - 1;
-  return REVEAL_RATES[i];
+/** "reveal" sound of the n-th pick: each pick has its own note, one pentatonic step above the last. */
+export function revealSound(pick: number): SoundKey {
+  const n = Math.min(10, Math.max(1, Math.round(pick)));
+  return `reveal${n}` as SoundKey;
 }
 
-/**
- * Plays a sound; overlapping plays are allowed up to a small limit per sound.
- * `rate` changes the playback speed (and so the pitch), 1 by default.
- */
-export function playSound(key: SoundKey, rate = 1) {
+/** Plays a sound; overlapping plays are allowed up to a small limit per sound. */
+export function playSound(key: SoundKey) {
   if (muted) return;
   const ctx = getContext();
   if (!ctx) return;
@@ -163,7 +177,6 @@ export function playSound(key: SoundKey, rate = 1) {
     const source = ctx.createBufferSource();
     const gain = ctx.createGain();
     source.buffer = buffer;
-    source.playbackRate.value = rate;
     gain.gain.value = VOLUME * (GAIN[key] ?? 1);
     source.connect(gain);
     gain.connect(ctx.destination);
