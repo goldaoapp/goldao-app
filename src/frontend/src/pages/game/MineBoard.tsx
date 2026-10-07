@@ -58,6 +58,8 @@ const CELLS = 25;
 const SPLIT_AT = 15;
 const STAKE_KEYS = [StakeOption.min, StakeOption.mid, StakeOption.max];
 const AUTO_STEP_MS = 450;
+/** The multiplier pops up over a revealed cell from this pick on (the first two are free). */
+const POP_FROM_PICK = 3;
 /** Start of the backend message sent when the open excavation is not the one on screen. */
 const EXC_CHANGED = "Your excavation changed";
 /** Coins fall from this multiplier up. */
@@ -374,7 +376,7 @@ export function MineBoard({ dashboard }: Props) {
       if (!res.collapsed) {
         playSound(stage > 0 ? "diamond" : revealSound(picks));
         const gross = res.excavation?.runGross ?? res.end?.gross;
-        if (gross !== undefined)
+        if (gross !== undefined && picks >= POP_FROM_PICK)
           setPop({
             index,
             text: fmtMultOf(gross, stakeAmount),
@@ -494,7 +496,7 @@ export function MineBoard({ dashboard }: Props) {
         if (!step.collapsed) {
           playSound(stage > 0 ? "diamond" : revealSound(Number(step.pick)));
           const points = config?.pointsTable[Number(step.pick)];
-          if (points !== undefined)
+          if (points !== undefined && Number(step.pick) >= POP_FROM_PICK)
             setPop({
               index: free[i],
               text: fmtMult(Number(points), payoutBps),
