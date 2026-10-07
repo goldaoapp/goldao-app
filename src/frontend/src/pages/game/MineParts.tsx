@@ -1330,6 +1330,11 @@ export function ResultCard({
             {prize.name}
           </span>
         )}
+        {collapsed && (
+          <span className={cn("font-mono text-[11px]", inkFaint)}>
+            Collapsed on pick {Number(result.picks) + 1}
+          </span>
+        )}
         <FitNumber value={total} className={numberColor} plus={total > 0n} />
         {jackpot ? (
           <>
