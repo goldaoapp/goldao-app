@@ -980,7 +980,7 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
               label="Excavations"
               value={String(Number(view.lastClose.excavations))}
             />
-            <Item label="Staked" value={fmtGoldao(view.lastClose.staked)} />
+            <Item label="Volume" value={fmtGoldao(view.lastClose.staked)} />
             <Item label="Returned" value={fmtGoldao(view.lastClose.returned)} />
             <Item
               label="Jackpots"
