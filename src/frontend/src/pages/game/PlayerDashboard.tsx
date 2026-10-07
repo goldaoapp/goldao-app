@@ -57,7 +57,7 @@ export function PlayerDashboard({ dashboard }: Props) {
     <div className="flex flex-col gap-6">
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         <Kpi label="Excavations" value={String(Number(s.excavations))} />
-        <Kpi label="Staked" value={fmtGoldao(s.staked)} />
+        <Kpi label="Volume" value={fmtGoldao(s.staked)} />
         <Kpi label="Returned" value={fmtGoldao(s.returned)} />
         <Kpi
           label="Net result"
@@ -110,7 +110,7 @@ export function PlayerDashboard({ dashboard }: Props) {
                 <tr className={cn("text-left", inkFaint)}>
                   <th className="px-5 py-2 font-medium">Tournament</th>
                   <th className="px-3 py-2 font-medium">Excavations</th>
-                  <th className="px-3 py-2 font-medium">Staked</th>
+                  <th className="px-3 py-2 font-medium">Volume</th>
                   <th className="px-3 py-2 font-medium">Net result</th>
                   <th className="px-5 py-2 text-right font-medium">Paid out</th>
                 </tr>
