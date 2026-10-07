@@ -162,7 +162,7 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
       );
       if (cur.__kind__ === "ok" && cur.ok >= reuseMin) return;
     }
-    await approveSpender(identity, envId, required, windowMs);
+    await approveSpender(identity, envId, required, windowMs, config?.ledgerId);
   };
 
   // Asks the backend (a free query) whether it would refuse the action, before the wallet signs
@@ -191,7 +191,7 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
         Principal.fromText(envId),
       );
       if (cur.__kind__ === "ok" && cur.ok > GOLDAO_FEE_E8S) {
-        await approveSpender(identity, envId, 0n);
+        await approveSpender(identity, envId, 0n, undefined, config?.ledgerId);
       }
     } catch {
       // The expiry set when it was granted still applies.
@@ -833,6 +833,78 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
               Release busy
             </Button>
           </Row>
+
+          {view && (
+            <div className="flex flex-col gap-2 border-b border-[color:var(--term-border-faint)] pb-5">
+              <span className={cn("text-sm font-medium", ink)}>
+                Switching ledger (test token to real GOLDAO)
+              </span>
+              <ol
+                className={cn(
+                  "list-decimal space-y-1 pl-5 font-mono text-[11px]",
+                  inkFaint,
+                )}
+              >
+                <li>
+                  Check your admin principal: it must be the same one that holds
+                  the bank. A different login origin gives a different
+                  principal.
+                </li>
+                <li>
+                  Pause new excavations by hand, wait for the tournament to
+                  close, and pay or mark as paid every payout.
+                </li>
+                <li>
+                  Withdraw everything (all) to the treasury. Owed, credits and
+                  open excavations must be zero.
+                </li>
+                <li>
+                  Change the ledger id in the backend code and deploy. Nothing
+                  changes in the game until step 5.
+                </li>
+                <li>
+                  Run the ledger change below with the bank wallet. It checks
+                  the fee, reads the bank balance and erases all game data.
+                </li>
+                <li>
+                  Fund the pool again, check the bank balance and the ledger id
+                  shown here, then resume the game.
+                </li>
+              </ol>
+            </div>
+          )}
+
+          {view && real && (
+            <Row
+              title="Change ledger"
+              hint={`The game uses ${config?.ledgerId ?? "-"}. After changing the ledger code, pause the game, close the tournament, pay everything and withdraw everything. This re-reads the bank, checks the fee and erases all game data.`}
+            >
+              <span className="font-mono text-xs">
+                {envId ? `Game account ${envId}` : "Game account unknown"}
+              </span>
+              <Button
+                variant="outline"
+                disabled={working || !parsePrincipal(envId)}
+                onClick={() =>
+                  confirmThen({
+                    title: "Change the ledger?",
+                    detail:
+                      "The game must be paused and empty. All game data is erased and the bank is read from the new ledger.",
+                    word: "CHANGE LEDGER",
+                    go: () =>
+                      act(
+                        "real",
+                        () =>
+                          actor!.gameAdminSetRealLedger(parsePrincipal(envId)!),
+                        (v) => `Ledger changed. Bank is ${fmtGoldao(v)}.`,
+                      ),
+                  })
+                }
+              >
+                Change
+              </Button>
+            </Row>
+          )}
 
           {view && !real && (
             <Row
