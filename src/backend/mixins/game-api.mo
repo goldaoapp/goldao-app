@@ -1804,8 +1804,17 @@ mixin (
 
   public shared ({ caller }) func gameAdminSetRealLedger(selfId : Principal) : async Result.Result<Nat, Text> {
     if (not gIsAdmin(caller)) return #err("Admin only.");
-    if (gameState.realLedger) return #err("Already using the real ledger.");
     if (Principal.isAnonymous(selfId)) return #err("Invalid principal.");
+    // Running it again (to move to another ledger, e.g. from a test token to the real one) is
+    // only allowed with the game paused by the admin, nothing in flight and nothing owed.
+    if (gameState.realLedger) {
+      if (not gameState.halted) return #err("Pause new excavations first.");
+      if (gAnyBusy()) return #err("Excavations in progress. Try again in a few seconds.");
+      if (gameState.payingSince != 0 and Time.now() - gameState.payingSince < Game.BUSY_STALE_NS) {
+        return #err("A money movement is in progress.");
+      };
+      if (gameState.bankAccount != ?caller) return #err("Only the current bank wallet can change the ledger.");
+    };
     let idle = func() : Bool {
       gameState.owed == 0 and gameState.open.size() == 0 and gameState.credits.size() == 0
       and gameState.pendingLoads.size() == 0
@@ -1845,8 +1854,9 @@ mixin (
     gameState.bank := balance;
     gameState.bankAllowance := 0;
     gameState.realLedger := true;
+    gameState.ledgerFails := 0;
     gFundReset();
-    gLogAction("real_ledger", "Real ledger enabled", "The game now uses real GOLDAO. Bank balance: " # SecLog.fmt(balance) # " GOLDAO.");
+    gLogAction("real_ledger", "Ledger set", "The game now uses the ledger " # Ledger.GOLDAO_LEDGER # ". Bank balance: " # SecLog.fmt(balance) # " GOLDAO.");
     #ok(balance);
   };
 };
