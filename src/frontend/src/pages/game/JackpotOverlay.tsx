@@ -71,24 +71,32 @@ export function SunRays({ color }: { color: string }) {
       aria-hidden
       className="pointer-events-none fixed inset-x-0 top-[46%] z-[79] flex h-0 items-center justify-center"
     >
-      <motion.div
-        initial={{ rotate: 0, opacity: 0 }}
-        animate={{ rotate: 360, opacity: 0.55 }}
-        transition={{
-          rotate: {
-            duration: 50,
-            ease: "linear",
-            repeat: Number.POSITIVE_INFINITY,
-          },
-          opacity: { duration: 0.6 },
-        }}
-        className="size-[min(1100px,150vmin)] shrink-0 rounded-full"
+      {/* The mask stays on the still wrapper; only the rays inside turn */}
+      <div
+        className="size-[min(1100px,150vmin)] shrink-0"
         style={{
-          backgroundImage: `repeating-conic-gradient(from 0deg, ${color} 0 7deg, transparent 7deg 20deg)`,
           WebkitMaskImage: "radial-gradient(circle, #000 14%, transparent 66%)",
           maskImage: "radial-gradient(circle, #000 14%, transparent 66%)",
         }}
-      />
+      >
+        <motion.div
+          initial={{ rotate: 0, opacity: 0 }}
+          animate={{ rotate: 360, opacity: 0.55 }}
+          transition={{
+            rotate: {
+              duration: 50,
+              ease: "linear",
+              repeat: Number.POSITIVE_INFINITY,
+            },
+            opacity: { duration: 0.6 },
+          }}
+          className="size-full rounded-full"
+          style={{
+            backgroundImage: `repeating-conic-gradient(from 0deg, ${color} 0 7deg, transparent 7deg 20deg)`,
+            willChange: "transform",
+          }}
+        />
+      </div>
     </div>,
     document.body,
   );
@@ -96,9 +104,16 @@ export function SunRays({ color }: { color: string }) {
 
 /** Diamonds falling over the whole screen while the jackpot is celebrated. */
 function DiamondRain() {
-  const items = useMemo(
-    () =>
-      Array.from({ length: 44 }, (_, i) => ({
+  // Fewer diamonds and no per-diamond blur filter on small screens, and the fall distance in
+  // plain pixels: mixing px and vh makes the animation library measure every diamond.
+  const { items, fall, light } = useMemo(() => {
+    const w = typeof window === "undefined" ? 1024 : window.innerWidth;
+    const h = typeof window === "undefined" ? 800 : window.innerHeight;
+    const light = w < 768;
+    return {
+      light,
+      fall: h + 180,
+      items: Array.from({ length: light ? 20 : 44 }, (_, i) => ({
         id: i,
         left: Math.random() * 100,
         delay: Math.random() * 3,
@@ -106,8 +121,8 @@ function DiamondRain() {
         size: 26 + Math.round(Math.random() * 48),
         spin: Math.random() > 0.5 ? 540 : -540,
       })),
-    [],
-  );
+    };
+  }, []);
   if (typeof document === "undefined") return null;
   return createPortal(
     <div
@@ -118,15 +133,23 @@ function DiamondRain() {
         <motion.div
           key={d.id}
           initial={{ y: -140, rotate: 0 }}
-          animate={{ y: "115vh", rotate: d.spin }}
+          animate={{ y: fall, rotate: d.spin }}
           transition={{
             duration: d.duration,
             delay: d.delay,
             ease: "linear",
             repeat: Number.POSITIVE_INFINITY,
           }}
-          style={{ left: `${d.left}%`, width: d.size, height: d.size }}
-          className="absolute top-0 drop-shadow-[0_4px_12px_oklch(0.8_0.12_350/0.6)]"
+          style={{
+            left: `${d.left}%`,
+            width: d.size,
+            height: d.size,
+            willChange: "transform",
+          }}
+          className={cn(
+            "absolute top-0",
+            !light && "drop-shadow-[0_4px_12px_oklch(0.8_0.12_350/0.6)]",
+          )}
         >
           <DiamondIcon fill />
         </motion.div>
@@ -367,7 +390,7 @@ export function JackpotOverlay({
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="pointer-events-none fixed inset-0 z-[90] flex flex-col items-center justify-center gap-3 p-4 text-center"
+          className="pointer-events-none fixed inset-0 z-[90] flex transform-gpu flex-col items-center justify-center gap-3 p-4 text-center"
         >
           <div className="flex items-center gap-2">
             {[0, 0.2, 0.4].map((delay, i) => (
@@ -390,14 +413,27 @@ export function JackpotOverlay({
           <span className="text-gradient-gold font-display text-[clamp(44px,12vw,120px)] font-bold leading-none tracking-wide">
             JACKPOT
           </span>
-          <motion.span
-            animate={{ scale: [1, 1.04, 1] }}
-            transition={{ duration: 1.4, repeat: Number.POSITIVE_INFINITY }}
-            className="text-gradient-gold font-display text-[clamp(52px,14vw,140px)] font-bold leading-none tabular-nums drop-shadow-[0_0_24px_oklch(0.74_0.14_80/0.55)]"
-          >
-            +
-            <RollingNumber value={toGoldao(won)} from={0} scaled tick fixed2 />
-          </motion.span>
+          <span className="relative inline-flex">
+            {/* Static glow behind the number: a blur filter on the animated number is repainted every frame */}
+            <span
+              aria-hidden
+              className="pointer-events-none absolute -inset-x-[12%] -inset-y-[30%] -z-10 rounded-full bg-[radial-gradient(closest-side,oklch(0.74_0.14_80/0.35),transparent)]"
+            />
+            <motion.span
+              animate={{ scale: [1, 1.04, 1] }}
+              transition={{ duration: 1.4, repeat: Number.POSITIVE_INFINITY }}
+              className="text-gradient-gold font-display text-[clamp(52px,14vw,140px)] font-bold leading-none tabular-nums"
+            >
+              +
+              <RollingNumber
+                value={toGoldao(won)}
+                from={0}
+                scaled
+                tick
+                fixed2
+              />
+            </motion.span>
+          </span>
           <span className={cn("font-mono text-sm tracking-[0.2em]", gold)}>
             GOLDAO
           </span>
@@ -435,7 +471,7 @@ export function JackpotOverlay({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="absolute inset-0 z-40 rounded-xl bg-black/30 backdrop-blur-[2px]"
+            className="absolute inset-0 z-40 rounded-xl bg-black/30"
           />
         )}
       </AnimatePresence>
