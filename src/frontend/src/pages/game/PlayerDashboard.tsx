@@ -49,6 +49,8 @@ export function PlayerDashboard({ dashboard }: Props) {
   // Biggest return of a single excavation in the current tournament (same as the Ranking).
   const bestPrize =
     dashboard.bestReturn > 0n ? fmtGoldao(dashboard.bestReturn) : "-";
+  // Prize the player would get if the tournament closed now. Paid as credit at the close.
+  const top10Prize = dashboard.top10Prize;
   const jackpots = s.jackpotWon > 0n ? fmtGoldao(s.jackpotWon) : "-";
 
   return (
@@ -61,6 +63,11 @@ export function PlayerDashboard({ dashboard }: Props) {
           label="Net result"
           value={fmtSigned(net)}
           tone={net > 0n ? "up" : undefined}
+        />
+        <Kpi
+          label="Top 10 prize"
+          value={top10Prize > 0n ? `+${fmtGoldao(top10Prize)}` : "-"}
+          tone={top10Prize > 0n ? "up" : undefined}
         />
         <Kpi label="Jackpots" value={jackpots} diamond />
         <Kpi label="Collapses" value={String(Number(s.collapses))} />
