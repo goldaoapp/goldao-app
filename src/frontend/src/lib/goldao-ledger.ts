@@ -71,7 +71,11 @@ const ledgerIdlFactory = (({ IDL }: { IDL: typeof IDLType }) => {
   });
   const TransactionRange = IDL.Record({ transactions: IDL.Vec(Transaction) });
   const ArchivedRange = IDL.Record({
-    callback: IDL.Func([GetTransactionsRequest], [TransactionRange], ["query"]),
+    callback: IDL.Func(
+      [GetTransactionsRequest],
+      [TransactionRange],
+      ["query"],
+    ),
     start: IDL.Nat,
     length: IDL.Nat,
   });
