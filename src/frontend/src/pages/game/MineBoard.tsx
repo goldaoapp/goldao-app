@@ -64,8 +64,6 @@ const POP_FROM_PICK = 3;
 const EXC_CHANGED = "Your excavation changed";
 /** Coins fall from this multiplier up. */
 const COIN_MULT_X100 = 110;
-/** A collapse that still pays resets the board after this delay. */
-const AUTO_RESET_MS = 5000;
 /** The coin shower is removed from the page after this time. */
 const RAIN_MS = 4200;
 const RESTORE_ORDER = [
@@ -268,20 +266,6 @@ export function MineBoard({ dashboard }: Props) {
     autoRun,
     working,
   ]);
-
-  // A collapse that still pays shows the green result, then clears the board. Only while the
-  // card is really on screen: not behind a jackpot or Treasure celebration, and never after a
-  // jackpot (that card stays until the player closes it).
-  useEffect(() => {
-    if (!result || exc || treasure || jackpot) return;
-    if (result.kind !== EndKind.collapsed || result.won <= 0n) return;
-    if (result.jackpotWon > 0n) return;
-    const t = window.setTimeout(
-      () => setBoard({ cells: {}, result: null, error: null }),
-      AUTO_RESET_MS,
-    );
-    return () => window.clearTimeout(t);
-  }, [result, exc, treasure, jackpot]);
 
   // The stake is always covered by the Accumulated prize: the wallet is only used to load it.
   const coversStake = (stake: bigint): boolean => {
