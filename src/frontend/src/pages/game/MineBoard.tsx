@@ -50,7 +50,12 @@ import {
   panelHeader,
   tokenForPick,
 } from "./game-utils";
-import { playSound, preloadSounds, revealRate, useSoundToggle } from "./sounds";
+import {
+  playSound,
+  preloadSounds,
+  revealSound,
+  useSoundToggle,
+} from "./sounds";
 import { errorMessage, useGameAction, useGameConfig } from "./useGame";
 
 const CELLS = 25;
@@ -374,7 +379,7 @@ export function MineBoard({ dashboard }: Props) {
         void setCredit(res.credit, res.pool);
       }
       if (!res.collapsed) {
-        playSound(stage > 0 ? "diamond" : "reveal", revealRate(picks));
+        playSound(stage > 0 ? "diamond" : revealSound(picks));
         const gross = res.excavation?.runGross ?? res.end?.gross;
         if (gross !== undefined)
           setPop({
@@ -494,10 +499,7 @@ export function MineBoard({ dashboard }: Props) {
         setBoard((s) => ({ cells: { ...s.cells, [free[i]]: cell } }));
         // A collapse sound is played once by finish(), not per step.
         if (!step.collapsed) {
-          playSound(
-            stage > 0 ? "diamond" : "reveal",
-            revealRate(Number(step.pick)),
-          );
+          playSound(stage > 0 ? "diamond" : revealSound(Number(step.pick)));
           const points = config?.pointsTable[Number(step.pick)];
           if (points !== undefined)
             setPop({
