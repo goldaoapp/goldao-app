@@ -71,11 +71,7 @@ const ledgerIdlFactory = (({ IDL }: { IDL: typeof IDLType }) => {
   });
   const TransactionRange = IDL.Record({ transactions: IDL.Vec(Transaction) });
   const ArchivedRange = IDL.Record({
-    callback: IDL.Func(
-      [GetTransactionsRequest],
-      [TransactionRange],
-      ["query"],
-    ),
+    callback: IDL.Func([GetTransactionsRequest], [TransactionRange], ["query"]),
     start: IDL.Nat,
     length: IDL.Nat,
   });
@@ -225,6 +221,26 @@ function getLedger(): Promise<LedgerActor> {
   return actorPromise;
 }
 
+// The game can run on a ledger other than GOLDAO (a test token), so its wallet calls take the
+// ledger id reported by the backend. Without one they use the real GOLDAO ledger.
+const gameLedgers = new Map<string, Promise<LedgerActor>>();
+
+function getGameLedger(ledgerId?: string): Promise<LedgerActor> {
+  if (!ledgerId || ledgerId === GOLDAO_LEDGER) return getLedger();
+  let l = gameLedgers.get(ledgerId);
+  if (!l) {
+    l = HttpAgent.create({ host: "https://icp-api.io" }).then(
+      (agent) =>
+        Actor.createActor(ledgerIdlFactory, {
+          agent,
+          canisterId: ledgerId,
+        }) as unknown as LedgerActor,
+    );
+    gameLedgers.set(ledgerId, l);
+  }
+  return l;
+}
+
 /* ── Public API ─────────────────────────────────────────────────────────── */
 
 /** Effect of one ledger block on supply, in whole GOLDAO. */
@@ -347,8 +363,11 @@ const acct = (p: string): Icrc1Account => ({
 });
 
 /** Wallet balance (e8s) of a principal. */
-export async function fetchWalletBalance(owner: string): Promise<bigint> {
-  const l = await getLedger();
+export async function fetchWalletBalance(
+  owner: string,
+  ledgerId?: string,
+): Promise<bigint> {
+  const l = await getGameLedger(ledgerId);
   return l.icrc1_balance_of(acct(owner));
 }
 
@@ -356,8 +375,9 @@ export async function fetchWalletBalance(owner: string): Promise<bigint> {
 export async function fetchAllowance(
   owner: string,
   spender: string,
+  ledgerId?: string,
 ): Promise<bigint> {
-  const l = await getLedger();
+  const l = await getGameLedger(ledgerId);
   const r = await l.icrc2_allowance({
     account: acct(owner),
     spender: acct(spender),
@@ -365,14 +385,17 @@ export async function fetchAllowance(
   return r.allowance;
 }
 
-async function signedLedger(identity: unknown): Promise<LedgerActor> {
+async function signedLedger(
+  identity: unknown,
+  ledgerId?: string,
+): Promise<LedgerActor> {
   const agent = await SignedAgent.create({
     identity: identity as never,
     host: "https://icp-api.io",
   });
   return Actor.createActor(ledgerIdlFactory, {
     agent: agent as never,
-    canisterId: GOLDAO_LEDGER,
+    canisterId: ledgerId || GOLDAO_LEDGER,
   }) as unknown as LedgerActor;
 }
 
@@ -386,8 +409,9 @@ export async function approveSpender(
   spender: string,
   amount: bigint,
   expiresInMs?: number,
+  ledgerId?: string,
 ): Promise<void> {
-  const l = await signedLedger(identity);
+  const l = await signedLedger(identity, ledgerId);
   const res = await l.icrc2_approve({
     from_subaccount: [],
     spender: acct(spender),
@@ -411,8 +435,9 @@ export async function transferGoldao(
   identity: unknown,
   to: string,
   amount: bigint,
+  ledgerId?: string,
 ): Promise<void> {
-  const l = await signedLedger(identity);
+  const l = await signedLedger(identity, ledgerId);
   const res = await l.icrc1_transfer({
     to: acct(to),
     fee: [GOLDAO_FEE_E8S],
