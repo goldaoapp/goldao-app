@@ -63,7 +63,7 @@ export function RankingTable({ ranking, tournaments }: Props) {
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
           <Kpi label="Jackpot pool" value={fmtGoldao(ranking.pool)} diamond />
           <Kpi label="Top 10 pool" value={fmtGoldao(ranking.top10Pool)} />
-          <Kpi label="Staked" value={fmtGoldao(ranking.staked)} />
+          <Kpi label="Volume" value={fmtGoldao(ranking.staked)} />
           <Kpi label="Players" value={String(Number(ranking.totalPlayers))} />
           <Kpi label="Ends in" value={fmtCountdown(ranking.endsAt)} />
         </div>
@@ -114,7 +114,7 @@ export function RankingTable({ ranking, tournaments }: Props) {
                     Excavations
                   </th>
                   <th className="hidden px-3 py-2 font-medium sm:table-cell">
-                    Staked
+                    Volume
                   </th>
                   <th className="px-3 py-2 font-medium">Top 10</th>
                   <th className="px-3 py-2 font-medium">Net result</th>
@@ -213,7 +213,7 @@ export function RankingTable({ ranking, tournaments }: Props) {
                 <span className={ink}>
                   #{Number(w.rank)} {shortPrincipal(w.player.toText())}
                 </span>
-                <span className={inkFaint}>{fmtGoldao(w.volume)} staked</span>
+                <span className={inkFaint}>{fmtGoldao(w.volume)} volume</span>
                 <span className={cn("tabular-nums", gold)}>
                   +{fmtGoldao(w.prize)}
                 </span>
@@ -266,7 +266,7 @@ export function RankingTable({ ranking, tournaments }: Props) {
                   <th className="px-5 py-2 font-medium">#</th>
                   <th className="px-3 py-2 font-medium">Players</th>
                   <th className="px-3 py-2 font-medium">Excavations</th>
-                  <th className="px-3 py-2 font-medium">Staked</th>
+                  <th className="px-3 py-2 font-medium">Volume</th>
                   <th className="px-5 py-2 text-right font-medium">Jackpots</th>
                 </tr>
               </thead>
