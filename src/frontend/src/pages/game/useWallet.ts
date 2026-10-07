@@ -26,6 +26,7 @@ export function useWallet(
   const { identity } = useInternetIdentity();
   const queryClient = useQueryClient();
   const real = config?.realLedger ?? false;
+  const ledgerId = config?.ledgerId;
 
   const spender = useQuery({
     queryKey: ["game", "spender"],
@@ -35,11 +36,11 @@ export function useWallet(
   });
 
   const ledger = useQuery({
-    queryKey: ["game", "wallet", principalId, spender.data],
+    queryKey: ["game", "wallet", principalId, spender.data, ledgerId],
     queryFn: async () => {
       const [balance, allowance] = await Promise.all([
-        fetchWalletBalance(principalId as string),
-        fetchAllowance(principalId as string, spender.data as string),
+        fetchWalletBalance(principalId as string, ledgerId),
+        fetchAllowance(principalId as string, spender.data as string, ledgerId),
       ]);
       return { balance, allowance };
     },
@@ -76,6 +77,7 @@ export function useWallet(
           spender.data,
           BigInt(AUTHORIZE_GOLDAO) * E8S,
           AUTHORIZE_DAYS * 24 * 60 * 60 * 1000,
+          ledgerId,
         );
         await ledger.refetch();
       } else {
@@ -94,6 +96,7 @@ export function useWallet(
       allowance,
       identity,
       spender.data,
+      ledgerId,
       actor,
       queryClient,
     ],
