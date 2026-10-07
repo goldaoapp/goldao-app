@@ -96,6 +96,15 @@ mixin (
     t;
   };
 
+  // True while any payout of a closed tournament is still unpaid. Derived from the payouts
+  // themselves (nothing extra to store), so it survives upgrades.
+  func gAnyUnpaid() : Bool {
+    for ((_, po) in gameState.payouts.entries()) {
+      if (not po.paid) return true;
+    };
+    false;
+  };
+
   func gAccountingOk() : Bool {
     var credits = 0;
     for ((_, c) in gameState.credits.entries()) { credits += c };
@@ -209,7 +218,8 @@ mixin (
   };
 
   func gPaused() : Bool {
-    gameState.halted or gStakes().size() == 0;
+    // A new tournament does not start while the previous one still has unpaid payouts.
+    gameState.halted or gStakes().size() == 0 or gAnyUnpaid();
   };
 
   // Halts new bets and records why. The event is logged even if the game was already halted.
@@ -677,9 +687,10 @@ mixin (
         let f = gFlush(p, e);
         ignore gSettle(p, f, Game.pointsAt(f.picks), #saved);
       } else {
-        // A jackpot found on the first two picks is not lost when the tournament closes:
-        // it is credited to the player.
-        if (e.held > 0) ignore gFlush(p, e);
+        // An excavation that never got past the free picks costs the player nothing, so it must
+        // not pay anything either: a jackpot found on the first two picks goes back to the pool.
+        // Otherwise two risk-free picks per account and tournament would be a free jackpot roll.
+        gReleaseHeld(e);
         gameState.open.remove(p);
       };
     };
@@ -775,6 +786,12 @@ mixin (
   // Closes the tournament when its time is up and nothing is in flight. True if it closed now.
   func gCloseIfDue() : Bool {
     if (gameState.endsAt == 0) {
+      gameState.endsAt := Time.now() + gameState.durationDays * Game.DAY_NS;
+      return false;
+    };
+    // While payouts are pending the new tournament's clock does not run: its full duration
+    // starts from the moment the last payout is paid or marked paid.
+    if (gAnyUnpaid()) {
       gameState.endsAt := Time.now() + gameState.durationDays * Game.DAY_NS;
       return false;
     };
@@ -1405,6 +1422,7 @@ mixin (
   public shared ({ caller }) func gameAdminCloseTournament() : async Result.Result<(), Text> {
     gArmTimer<system>();
     if (not gIsAdmin(caller)) return #err("Admin only.");
+    if (gAnyUnpaid()) return #err("Pay or resolve the pending payouts of the previous tournament first.");
     if (gAnyBusy()) return #err("Excavations in progress. Try again in a few seconds.");
     gCloseTournament(false);
     #ok(());
