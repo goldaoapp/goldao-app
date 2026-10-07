@@ -10,7 +10,10 @@ export type SoundKey =
   | "suspense"
   | "treasure"
   | "miss"
-  | "jackpot";
+  | "jackpot"
+  | "reveal"
+  | "hit"
+  | "enter";
 
 const SOURCES: Record<SoundKey, string> = {
   success: "/sounds/success.mp3",
@@ -22,13 +25,16 @@ const SOURCES: Record<SoundKey, string> = {
   treasure: "/sounds/treasure.mp3",
   miss: "/sounds/miss.mp3",
   jackpot: "/sounds/jackpot.mp3",
+  reveal: "/sounds/reveal.mp3",
+  hit: "/sounds/hit.mp3",
+  enter: "/sounds/enter.mp3",
 };
 
 const VOLUME = 0.6;
 /** Relative volume per sound (1 when missing). */
-const GAIN: Partial<Record<SoundKey, number>> = { count: 0.5 };
+const GAIN: Partial<Record<SoundKey, number>> = { count: 0.5, hit: 0.8 };
 /** Most voices of the same sound playing at once (the rest are skipped). */
-const MAX_VOICES: Partial<Record<SoundKey, number>> = { count: 3 };
+const MAX_VOICES: Partial<Record<SoundKey, number>> = { count: 3, hit: 2 };
 const DEFAULT_VOICES = 6;
 const STORAGE_KEY = "goldao.game.muted";
 
@@ -126,8 +132,18 @@ export function preloadSounds() {
   for (const key of Object.keys(SOURCES) as SoundKey[]) void loadBuffer(key);
 }
 
-/** Plays a sound; overlapping plays are allowed up to a small limit per sound. */
-export function playSound(key: SoundKey) {
+/** Playback speed of the "reveal" sound for the n-th pick: one pentatonic step up per pick. */
+const REVEAL_RATES = [1, 1.12, 1.26, 1.5, 1.68, 2, 2.25, 2.52, 3, 3.37];
+export function revealRate(pick: number): number {
+  const i = Math.min(REVEAL_RATES.length, Math.max(1, Math.round(pick))) - 1;
+  return REVEAL_RATES[i];
+}
+
+/**
+ * Plays a sound; overlapping plays are allowed up to a small limit per sound.
+ * `rate` changes the playback speed (and so the pitch), 1 by default.
+ */
+export function playSound(key: SoundKey, rate = 1) {
   if (muted) return;
   const ctx = getContext();
   if (!ctx) return;
@@ -147,6 +163,7 @@ export function playSound(key: SoundKey) {
     const source = ctx.createBufferSource();
     const gain = ctx.createGain();
     source.buffer = buffer;
+    source.playbackRate.value = rate;
     gain.gain.value = VOLUME * (GAIN[key] ?? 1);
     source.connect(gain);
     gain.connect(ctx.destination);
