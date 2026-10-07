@@ -20,7 +20,6 @@ import {
   motion,
   useAnimationControls,
   useMotionValue,
-  useReducedMotion,
   useTransform,
 } from "motion/react";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
@@ -92,7 +91,6 @@ export function MineCell({
   /** Called on every pickaxe blow, so the board can shake. */
   onStrike?: () => void;
 }) {
-  const reduce = useReducedMotion();
   const hitCtl = useAnimationControls();
   const [hits, setHits] = useState(0);
   const strike = useRef(onStrike);
@@ -114,13 +112,12 @@ export function MineCell({
       playSound("hit");
       strike.current?.();
       setHits((h) => h + 1);
-      if (!reduce)
-        void hitCtl.start({
-          x: [0, 2, -2, 0],
-          y: [0, 3, -1, 0],
-          scale: [1, 0.95, 1.02, 1],
-          transition: { duration: 0.14 },
-        });
+      void hitCtl.start({
+        x: [0, 2, -2, 0],
+        y: [0, 3, -1, 0],
+        scale: [1, 0.95, 1.02, 1],
+        transition: { duration: 0.14 },
+      });
     };
     const first = window.setTimeout(
       () => {
@@ -134,16 +131,14 @@ export function MineCell({
       window.clearInterval(timer);
       setHits(0);
     };
-  }, [picking, reduce, hitCtl]);
+  }, [picking, hitCtl]);
 
   return (
     <motion.button
       type="button"
       onClick={onClick}
       disabled={disabled || !!cell}
-      initial={
-        enterNo > 0 && !reduce ? { opacity: 0, y: 40, scale: 0.9 } : false
-      }
+      initial={enterNo > 0 ? { opacity: 0, y: 40, scale: 0.9 } : false}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       transition={{ duration: 0.55, ease: "easeOut", delay: enterDelay }}
       className={cn(
@@ -174,7 +169,7 @@ export function MineCell({
                   damping: 13,
                   delay: 0.15,
                 }}
-                className="flex items-center justify-center"
+                className="flex size-full items-center justify-center"
               >
                 <CellContent cell={cell} />
               </motion.span>
@@ -192,9 +187,14 @@ export function MineCell({
             transition={
               cell ? { duration: 0.45, ease: "easeIn" } : { duration: 0 }
             }
-            className={cn("absolute inset-0 rounded-[inherit]", SLAB_CLASS)}
-          />
-          {picking && !reduce && (
+            className={cn(
+              "absolute inset-0 overflow-hidden rounded-[inherit]",
+              SLAB_CLASS,
+            )}
+          >
+            <Glint />
+          </motion.span>
+          {picking && (
             <motion.span
               aria-hidden
               className="absolute inset-0 rounded-[inherit] bg-[radial-gradient(circle_at_50%_55%,rgba(255,200,90,0.45),transparent_62%)]"
@@ -208,12 +208,12 @@ export function MineCell({
           )}
         </span>
       </motion.span>
-      {picking && <PickaxeSwing still={!!reduce} />}
-      {picking && hits > 0 && !reduce && (
+      {picking && <PickaxeSwing />}
+      {picking && hits > 0 && (
         <Burst key={hits} sparks={6} chips={5} color="#ffd67a" />
       )}
       {cell?.kind === "diamond" && <Sparkle />}
-      {pop && !reduce && (
+      {pop && (
         <Burst
           key={`p${pop.id}`}
           sparks={12}
@@ -221,13 +221,49 @@ export function MineCell({
           color={cell?.kind === "diamond" ? "#ff8fbf" : "#ffcf6b"}
         />
       )}
-      {pop && <MultPop key={pop.id} text={pop.text} still={!!reduce} />}
+      {pop && <MultPop key={pop.id} text={pop.text} />}
     </motion.button>
   );
 }
 
+/**
+ * Gold sheen that crosses a covered cell now and then, each cell on its own timing. It only moves
+ * a transform (run by the browser, off the main thread), so 25 of them cost almost nothing.
+ */
+function Glint() {
+  const ref = useRef<HTMLSpanElement>(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || typeof el.animate !== "function") return;
+    const from = "translateX(-160%) skewX(-18deg)";
+    const to = "translateX(340%) skewX(-18deg)";
+    const anim = el.animate(
+      [
+        { transform: from, offset: 0 },
+        { transform: to, offset: 0.3 },
+        { transform: to, offset: 1 },
+      ],
+      {
+        duration: 6000,
+        iterations: Number.POSITIVE_INFINITY,
+        delay: -Math.random() * 6000,
+        easing: "linear",
+      },
+    );
+    return () => anim.cancel();
+  }, []);
+  return (
+    <span
+      ref={ref}
+      aria-hidden
+      className="pointer-events-none absolute inset-y-0 left-0 w-[45%] bg-[linear-gradient(90deg,transparent,rgba(224,178,70,.5),transparent)] will-change-transform"
+      style={{ transform: "translateX(-160%) skewX(-18deg)" }}
+    />
+  );
+}
+
 /** Pickaxe that rises and strikes the cell once per swing. */
-function PickaxeSwing({ still }: { still: boolean }) {
+function PickaxeSwing() {
   return (
     <span
       aria-hidden
@@ -241,7 +277,7 @@ function PickaxeSwing({ still }: { still: boolean }) {
         className="absolute -left-[30px] -top-[52px] size-[60px] drop-shadow-md"
         style={{ transformOrigin: "50% 88%" }}
         initial={{ rotate: -40 }}
-        animate={still ? { rotate: -40 } : { rotate: [-62, -70, 14, 8, -62] }}
+        animate={{ rotate: [-62, -70, 14, 8, -62] }}
         transition={{
           duration: SWING_S,
           times: [0, 0.45, STRIKE_AT, 0.68, 1],
@@ -342,24 +378,20 @@ function Burst({
 }
 
 /** Multiplier of the pick, big and green, floating up from the revealed cell. */
-function MultPop({ text, still }: { text: string; still: boolean }) {
+function MultPop({ text }: { text: string }) {
   return (
     <span
       aria-hidden
       className="pointer-events-none absolute left-1/2 top-1 z-30 -translate-x-1/2"
     >
       <motion.span
-        className="block whitespace-nowrap font-display text-[22px] font-extrabold leading-none tracking-tight text-[color:var(--term-green)] [text-shadow:0_0_3px_rgba(255,255,255,.9),0_2px_8px_rgba(255,255,255,.8)] dark:[text-shadow:0_0_3px_rgba(0,0,0,.85),0_2px_8px_rgba(0,0,0,.8)] sm:text-[26px]"
+        className="block whitespace-nowrap font-display text-[26px] font-extrabold leading-none tracking-tight text-[color:var(--term-green)] [text-shadow:0_0_3px_rgba(255,255,255,.9),0_2px_8px_rgba(255,255,255,.8)] dark:[text-shadow:0_0_3px_rgba(0,0,0,.85),0_2px_8px_rgba(0,0,0,.8)] sm:text-[30px]"
         initial={{ opacity: 0, y: 10, scale: 0.4 }}
-        animate={
-          still
-            ? { opacity: [0, 1, 1, 0], y: 0, scale: 1 }
-            : {
-                opacity: [0, 1, 1, 0],
-                y: [10, -6, -14, -48],
-                scale: [0.4, 1.25, 1, 1],
-              }
-        }
+        animate={{
+          opacity: [0, 1, 1, 0],
+          y: [10, -6, -14, -48],
+          scale: [0.4, 1.25, 1, 1],
+        }}
         transition={{
           duration: 1.7,
           times: [0, 0.18, 0.6, 1],
@@ -374,20 +406,24 @@ function MultPop({ text, still }: { text: string; still: boolean }) {
 
 function CellContent({ cell }: { cell: Cell }) {
   if (cell.kind === "rock") {
-    return <Mountain className="size-7 text-[color:var(--term-ink-mid)]" />;
+    return <Mountain className="size-[56%] text-[color:var(--term-ink-mid)]" />;
   }
   if (cell.kind === "diamond") {
     return DIAMOND_IMG ? (
-      <img src={DIAMOND_IMG} alt="Diamond" className="size-9 object-contain" />
+      <img
+        src={DIAMOND_IMG}
+        alt="Diamond"
+        className="size-[72%] object-contain"
+      />
     ) : (
-      <Gem className={cn("size-7", DIAMOND_TEXT)} />
+      <Gem className={cn("size-[56%]", DIAMOND_TEXT)} />
     );
   }
   return (
     <img
       src={TOKENS[cell.token].logo}
       alt={cell.token}
-      className="size-8 rounded-full object-contain sm:size-9"
+      className="size-[62%] rounded-full object-contain"
     />
   );
 }
@@ -1004,7 +1040,7 @@ function RankPanel({ dashboard }: { dashboard: Dashboard | undefined }) {
         <div>
           <div
             className={cn(
-              "font-display text-[22px] font-extrabold leading-none tracking-[-.01em]",
+              "font-display text-[26px] font-extrabold leading-none tracking-[-.01em]",
               inTop && prize > 0n ? GREEN_RANK : FOOT,
             )}
           >
