@@ -19,8 +19,11 @@ import { TEST_TOKEN_LABEL, isTestLedger } from "./ledger-mode";
 
 /**
  * Which ledger the game runs on, and whether it is safe to switch. Read-only: the mode is the
- * MODE constant in the backend (lib/ledger.mo), changed with a deploy, and the switch itself is
- * done with "Change ledger" further down. This card never changes anything.
+ * MODE constant in the backend (lib/ledger.mo), changed only with a deploy, and the switch itself
+ * is done with "Change ledger" further down. This card never changes anything.
+ *
+ * Temporary, like the test faucet: delete this file and its line in AdminGamePanel.tsx when the
+ * game is on the real GOLDAO ledger.
  */
 export function ModeStatusCard({
   view,
@@ -136,7 +139,7 @@ export function ModeStatusCard({
           />
         )}
 
-        {checks.length > 0 && (
+        {checks.length > 0 && (test || !real) && (
           <div className="flex flex-col gap-2">
             <span className={cn(eyebrow, inkFaint)}>
               Before switching ledger
@@ -153,10 +156,37 @@ export function ModeStatusCard({
                 </li>
               ))}
             </ul>
-            <span className={cn("text-[11px]", inkFaint)}>
-              To switch: change MODE in the backend (lib/ledger.mo), deploy,
-              then use "Change ledger" below. The switch erases all game data.
+          </div>
+        )}
+
+        {test && (
+          <div className="flex flex-col gap-2">
+            <span className={cn(eyebrow, inkFaint)}>
+              Switching to real GOLDAO
             </span>
+            <span className={cn("text-[11px]", inkFaint)}>
+              The order matters: the ledger id is in the backend code, and only
+              a deploy can change it.
+            </span>
+            <ol
+              className={cn(
+                "list-decimal space-y-1 pl-5 font-mono text-[11px]",
+                inkMid,
+              )}
+            >
+              <li>
+                With MODE still #test: close the tournament, pay everything,
+                withdraw the bank and pause the game.
+              </li>
+              <li>
+                Deploy the version with MODE = #production and without the test
+                faucet files. Keep the game paused.
+              </li>
+              <li>
+                Only then use "Change ledger" below. It erases all game data and
+                starts clean on the real ledger.
+              </li>
+            </ol>
           </div>
         )}
       </div>
