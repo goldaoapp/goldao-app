@@ -1814,7 +1814,6 @@ mixin (
     gameState.endsAt := Time.now() + gameState.durationDays * Game.DAY_NS;
     Map.clear(gameState.balances);
     Map.clear(gameState.allowances);
-    Map.clear(gameState.faucet);
     gameState.bank := balance;
     gameState.bankAllowance := 0;
     gameState.realLedger := true;
