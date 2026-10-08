@@ -185,7 +185,11 @@ export default function GamePage() {
         </TabsContent>
         <TabsContent value="guide">
           <Fade>
-            <PrizeGuide config={config} stakes={dashboard?.stakes} />
+            <PrizeGuide
+              config={config}
+              stakes={dashboard?.stakes}
+              pool={dashboard?.pool ?? ranking?.pool}
+            />
           </Fade>
         </TabsContent>
         {adminView && (
