@@ -1756,28 +1756,34 @@ mixin (
 
   // Connection at start: only a game that was never connected, and only in a canister that has
   // a bank in Game.BANKS. It runs on every tick of the game timer until it works.
-  func gAutoConnect() : async () {
-    if (gameState.realLedger or gameState.bankAccount != null) return;
-    if (gAutoBusy) return;
+  func gTryConnect() : async Result.Result<Nat, Text> {
+    if (gameState.realLedger) return #err("Already connected.");
+    if (gAutoBusy) return #err("A connection attempt is already running.");
     let me = Prim.getSelfPrincipal();
     switch (Game.bankFor(me)) {
       case (?bank) {
         gAutoBusy := true;
-        try { ignore await gConnect(bank, me) } finally { gAutoBusy := false };
+        try { await gConnect(bank, me) } finally { gAutoBusy := false };
       };
-      case null {};
+      case null #err("This canister has no bank configured: " # Principal.toText(me));
     };
   };
+
+  func gAutoConnect() : async () { ignore await gTryConnect() };
 
   transient var gAutoBusy = false;
 
   // The admin panel calls this when the game is not connected yet: it starts the game timer (which
-  // keeps retrying the connection) and tries the connection right away.
+  // keeps retrying the connection) and tries the connection right away. The error is the reason
+  // why it could not connect.
   public shared ({ caller }) func gameAdminEnsureConnected() : async Result.Result<Bool, Text> {
     gArmTimer<system>();
     if (not gIsAdmin(caller)) return #err("Admin only.");
-    await gAutoConnect();
-    #ok(gameState.realLedger);
+    if (gameState.realLedger) return #ok(true);
+    switch (await gTryConnect()) {
+      case (#ok _) #ok(true);
+      case (#err e) #err(e);
+    };
   };
 
   // Moves the game to the ledger set in the backend code (MODE in lib/ledger.mo). Only the bank
