@@ -220,6 +220,15 @@ export interface GameConfig {
     stakeMinE8s: bigint;
     realLedger: boolean;
 }
+export interface GameSummary {
+    top10Pool: bigint;
+    staked: bigint;
+    totalPlayers: bigint;
+    pool: bigint;
+    tournament: bigint;
+    paused: boolean;
+    endsAt: bigint;
+}
 export interface JackpotWin {
     at: bigint;
     player: Principal;
@@ -248,13 +257,13 @@ export interface PickResult {
     excavation?: ExcavationView;
 }
 export interface PlayerRow {
+    net: bigint;
+    pos: bigint;
     staked: bigint;
     jackpotWon: bigint;
-    deepest: bigint;
     player: Principal;
     excavations: bigint;
     rank: bigint;
-    bestPoints: bigint;
     bestReturn: bigint;
     prize: bigint;
     returned: bigint;
@@ -265,16 +274,15 @@ export interface PlayerTournamentResult {
     stats: TournamentStats;
     payout: bigint;
 }
-export interface Ranking {
-    top10Pool: bigint;
-    staked: bigint;
+export interface RankingPage {
     totalPlayers: bigint;
-    pool: bigint;
-    tournament: bigint;
+    mine?: PlayerRow;
+    page: bigint;
+    rows: Array<PlayerRow>;
+    sort: RankingSort;
+    pageSize: bigint;
     lastTop10: Array<TopPrize>;
-    players: Array<PlayerRow>;
     jackpots: Array<JackpotWin>;
-    endsAt: bigint;
 }
 export type Result = {
     __kind__: "ok";
@@ -478,6 +486,12 @@ export enum EndKind {
     collapsed = "collapsed",
     saved = "saved"
 }
+export enum RankingSort {
+    net = "net",
+    jackpot = "jackpot",
+    volume = "volume",
+    bestPrize = "bestPrize"
+}
 export enum SecurityLevel {
     warning = "warning",
     info = "info",
@@ -534,8 +548,9 @@ export interface backendInterface {
     gameLoadCredit(goldao: bigint): Promise<Result>;
     gameMyDashboard(): Promise<Dashboard>;
     gamePick(stake: StakeOption | null, expectedStake: bigint, expectedPicks: bigint): Promise<Result_2>;
-    gameRanking(): Promise<Ranking>;
+    gameRankingPage(sort: RankingSort, page: bigint): Promise<RankingPage>;
     gameSave(): Promise<Result_1>;
+    gameSummary(): Promise<GameSummary>;
     gameTournaments(): Promise<Array<TournamentSummary>>;
     getCallerUserRole(): Promise<UserRole>;
     /**
@@ -556,7 +571,7 @@ export interface backendInterface {
     testFaucetConfig(): Promise<FaucetConfig>;
     whoAmI(): Promise<string>;
 }
-import type { AdminView as _AdminView, AutoResult as _AutoResult, AutoStep as _AutoStep, Cell as _Cell, Dashboard as _Dashboard, DiamondResult as _DiamondResult, EndKind as _EndKind, EndResult as _EndResult, Error as _Error, ExcavationView as _ExcavationView, Payout as _Payout, PickResult as _PickResult, PlayerTournamentResult as _PlayerTournamentResult, Result as _Result, Result_1 as _Result_1, Result_10 as _Result_10, Result_11 as _Result_11, Result_12 as _Result_12, Result_13 as _Result_13, Result_2 as _Result_2, Result_3 as _Result_3, Result_4 as _Result_4, Result_5 as _Result_5, Result_6 as _Result_6, Result_7 as _Result_7, Result_8 as _Result_8, Result_9 as _Result_9, Result__1 as _Result__1, SecurityDay as _SecurityDay, SecurityEvent as _SecurityEvent, SecurityLevel as _SecurityLevel, SecurityLogView as _SecurityLogView, SecurityView as _SecurityView, StakeOption as _StakeOption, TournamentStats as _TournamentStats, TournamentSummary as _TournamentSummary, UserRole as _UserRole, Value as _Value, WithdrawKind as _WithdrawKind } from "./declarations/backend.did.d.ts";
+import type { AdminView as _AdminView, AutoResult as _AutoResult, AutoStep as _AutoStep, Cell as _Cell, Dashboard as _Dashboard, DiamondResult as _DiamondResult, EndKind as _EndKind, EndResult as _EndResult, Error as _Error, ExcavationView as _ExcavationView, JackpotWin as _JackpotWin, Payout as _Payout, PickResult as _PickResult, PlayerRow as _PlayerRow, PlayerTournamentResult as _PlayerTournamentResult, RankingPage as _RankingPage, RankingSort as _RankingSort, Result as _Result, Result_1 as _Result_1, Result_10 as _Result_10, Result_11 as _Result_11, Result_12 as _Result_12, Result_13 as _Result_13, Result_2 as _Result_2, Result_3 as _Result_3, Result_4 as _Result_4, Result_5 as _Result_5, Result_6 as _Result_6, Result_7 as _Result_7, Result_8 as _Result_8, Result_9 as _Result_9, Result__1 as _Result__1, SecurityDay as _SecurityDay, SecurityEvent as _SecurityEvent, SecurityLevel as _SecurityLevel, SecurityLogView as _SecurityLogView, SecurityView as _SecurityView, StakeOption as _StakeOption, TopPrize as _TopPrize, TournamentStats as _TournamentStats, TournamentSummary as _TournamentSummary, UserRole as _UserRole, Value as _Value, WithdrawKind as _WithdrawKind } from "./declarations/backend.did.d.ts";
 export class Backend implements backendInterface {
     constructor(private actor: ActorSubclass<_SERVICE>, private _uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, private _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, private processError?: (error: unknown) => never){}
     async _initialize_access_control(): Promise<void> {
@@ -1063,32 +1078,46 @@ export class Backend implements backendInterface {
             return from_candid_Result_2_n64(this._uploadFile, this._downloadFile, result);
         }
     }
-    async gameRanking(): Promise<Ranking> {
+    async gameRankingPage(arg0: RankingSort, arg1: bigint): Promise<RankingPage> {
         if (this.processError) {
             try {
-                const result = await this.actor.gameRanking();
-                return result;
+                const result = await this.actor.gameRankingPage(to_candid_RankingSort_n69(this._uploadFile, this._downloadFile, arg0), arg1);
+                return from_candid_RankingPage_n70(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
-            const result = await this.actor.gameRanking();
-            return result;
+            const result = await this.actor.gameRankingPage(to_candid_RankingSort_n69(this._uploadFile, this._downloadFile, arg0), arg1);
+            return from_candid_RankingPage_n70(this._uploadFile, this._downloadFile, result);
         }
     }
     async gameSave(): Promise<Result_1> {
         if (this.processError) {
             try {
                 const result = await this.actor.gameSave();
-                return from_candid_Result_1_n69(this._uploadFile, this._downloadFile, result);
+                return from_candid_Result_1_n74(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
             const result = await this.actor.gameSave();
-            return from_candid_Result_1_n69(this._uploadFile, this._downloadFile, result);
+            return from_candid_Result_1_n74(this._uploadFile, this._downloadFile, result);
+        }
+    }
+    async gameSummary(): Promise<GameSummary> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.gameSummary();
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.gameSummary();
+            return result;
         }
     }
     async gameTournaments(): Promise<Array<TournamentSummary>> {
@@ -1259,6 +1288,12 @@ function from_candid_Payout_n34(_uploadFile: (file: ExternalBlob) => Promise<Uin
 function from_candid_PickResult_n66(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _PickResult): PickResult {
     return from_candid_record_n67(_uploadFile, _downloadFile, value);
 }
+function from_candid_RankingPage_n70(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _RankingPage): RankingPage {
+    return from_candid_record_n71(_uploadFile, _downloadFile, value);
+}
+function from_candid_RankingSort_n73(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _RankingSort): RankingSort {
+    return "net" in value ? RankingSort.net : "jackpot" in value ? RankingSort.jackpot : "volume" in value ? RankingSort.volume : "bestPrize" in value ? RankingSort.bestPrize : value;
+}
 function from_candid_Result_10_n26(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _Result_10): Result_10 {
     return from_candid_variant_n27(_uploadFile, _downloadFile, value);
 }
@@ -1271,8 +1306,8 @@ function from_candid_Result_12_n5(_uploadFile: (file: ExternalBlob) => Promise<U
 function from_candid_Result_13_n1(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _Result_13): Result_13 {
     return from_candid_variant_n2(_uploadFile, _downloadFile, value);
 }
-function from_candid_Result_1_n69(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _Result_1): Result_1 {
-    return from_candid_variant_n70(_uploadFile, _downloadFile, value);
+function from_candid_Result_1_n74(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _Result_1): Result_1 {
+    return from_candid_variant_n75(_uploadFile, _downloadFile, value);
 }
 function from_candid_Result_2_n64(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _Result_2): Result_2 {
     return from_candid_variant_n65(_uploadFile, _downloadFile, value);
@@ -1333,6 +1368,9 @@ function from_candid_opt_n62(_uploadFile: (file: ExternalBlob) => Promise<Uint8A
 }
 function from_candid_opt_n68(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [_EndResult]): EndResult | null {
     return value.length === 0 ? null : from_candid_EndResult_n57(_uploadFile, _downloadFile, value[0]);
+}
+function from_candid_opt_n72(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [_PlayerRow]): PlayerRow | null {
+    return value.length === 0 ? null : value[0];
 }
 function from_candid_record_n12(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
     hasMore: boolean;
@@ -1653,6 +1691,36 @@ function from_candid_record_n67(_uploadFile: (file: ExternalBlob) => Promise<Uin
         credit: value.credit,
         picks: value.picks,
         excavation: record_opt_to_undefined(from_candid_opt_n62(_uploadFile, _downloadFile, value.excavation))
+    };
+}
+function from_candid_record_n71(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
+    totalPlayers: bigint;
+    mine: [] | [_PlayerRow];
+    page: bigint;
+    rows: Array<_PlayerRow>;
+    sort: _RankingSort;
+    pageSize: bigint;
+    lastTop10: Array<_TopPrize>;
+    jackpots: Array<_JackpotWin>;
+}): {
+    totalPlayers: bigint;
+    mine?: PlayerRow;
+    page: bigint;
+    rows: Array<PlayerRow>;
+    sort: RankingSort;
+    pageSize: bigint;
+    lastTop10: Array<TopPrize>;
+    jackpots: Array<JackpotWin>;
+} {
+    return {
+        totalPlayers: value.totalPlayers,
+        mine: record_opt_to_undefined(from_candid_opt_n72(_uploadFile, _downloadFile, value.mine)),
+        page: value.page,
+        rows: value.rows,
+        sort: from_candid_RankingSort_n73(_uploadFile, _downloadFile, value.sort),
+        pageSize: value.pageSize,
+        lastTop10: value.lastTop10,
+        jackpots: value.jackpots
     };
 }
 function from_candid_tuple_n8(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [Principal, _UserRole]): [Principal, UserRole] {
@@ -2076,7 +2144,7 @@ function from_candid_variant_n65(_uploadFile: (file: ExternalBlob) => Promise<Ui
         err: value.err
     } : value;
 }
-function from_candid_variant_n70(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
+function from_candid_variant_n75(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
     ok: _EndResult;
 } | {
     err: string;
@@ -2109,6 +2177,17 @@ function from_candid_vec_n42(_uploadFile: (file: ExternalBlob) => Promise<Uint8A
 }
 function from_candid_vec_n7(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: Array<[Principal, _UserRole]>): Array<[Principal, UserRole]> {
     return value.map((x)=>from_candid_tuple_n8(_uploadFile, _downloadFile, x));
+}
+function to_candid_RankingSort_n69(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: RankingSort): _RankingSort {
+    return value == RankingSort.net ? {
+        net: null
+    } : value == RankingSort.jackpot ? {
+        jackpot: null
+    } : value == RankingSort.volume ? {
+        volume: null
+    } : value == RankingSort.bestPrize ? {
+        bestPrize: null
+    } : value;
 }
 function to_candid_StakeOption_n52(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: StakeOption): _StakeOption {
     return value == StakeOption.max ? {
