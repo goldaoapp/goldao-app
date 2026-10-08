@@ -24,6 +24,8 @@ module {
     diamonds : Nat;
     jackpotWon : Nat;
     held : Nat;
+    // Part of `held` that came from a mini jackpot (the rest is a full jackpot).
+    heldMini : Nat;
     busy : Bool;
     token : Nat;
     busyAt : Int;
@@ -33,8 +35,12 @@ module {
     excavations : Nat;
     staked : Nat;
     returned : Nat;
+    // Jackpot prizes of both kinds (full and mini) are counted together in jackpotWon and jackpots.
     jackpotWon : Nat;
     jackpots : Nat;
+    // Internal counters: how many of `jackpots` and how much of `jackpotWon` were mini jackpots.
+    minis : Nat;
+    miniWon : Nat;
     charged : Nat;
     collapses : Nat;
     bestPoints : Nat;
@@ -80,8 +86,11 @@ module {
     excavations : Nat;
     staked : Nat;
     returned : Nat;
+    // Full and mini jackpots together. minis and miniPaid are the mini part of both.
     jackpots : Nat;
     jackpotPaid : Nat;
+    minis : Nat;
+    miniPaid : Nat;
     payoutTotal : Nat;
     forfeited : Nat;
     closedAt : Int;
@@ -275,8 +284,12 @@ module {
     stakeMinE8s : Nat;
     stakeCapE8s : Nat;
     diamond1Bps : Nat;
-    diamond2Bps : Nat;
-    diamond3PerGoldao : Nat;
+    // Second diamond: chance per whole GOLDAO staked, out of 100_000_000.
+    diamond2PerGoldao : Nat;
+    // Third diamond: 1 in diamond3Odds, once the second one hit.
+    diamond3Odds : Nat;
+    // Mini jackpot (exactly two diamonds): share of the pool, in basis points.
+    miniBps : Nat;
     loadMin : Nat;
     loadMax : Nat;
     creditCapE8s : Nat;
