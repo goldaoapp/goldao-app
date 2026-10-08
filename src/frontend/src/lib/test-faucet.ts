@@ -9,9 +9,8 @@
  */
 
 import { loadEnv } from "@/hooks/useBackendActor";
-import { Actor } from "@dfinity/agent";
-import type { IDL as IDLType } from "@dfinity/candid";
-import { HttpAgent as SignedAgent } from "@icp-sdk/core/agent";
+import { Actor, HttpAgent } from "@icp-sdk/core/agent";
+import type { IDL as IDLType } from "@icp-sdk/core/candid";
 
 export interface FaucetConfig {
   enabled: boolean;
@@ -76,7 +75,7 @@ function getActor(identity: unknown): Promise<FaucetActor> {
         throw new Error("The game canister is not configured.");
       }
       const isLocal = env.backend_host === "local";
-      const agent = await SignedAgent.create({
+      const agent = await HttpAgent.create({
         identity: identity as never,
         host: isLocal ? "http://localhost:4943" : "https://icp-api.io",
         // Same setting the game actor uses: the canister runs on a subnet whose query
@@ -85,7 +84,7 @@ function getActor(identity: unknown): Promise<FaucetActor> {
       });
       if (isLocal) await agent.fetchRootKey().catch(() => {});
       return Actor.createActor(faucetIdl, {
-        agent: agent as never,
+        agent,
         canisterId,
       }) as unknown as FaucetActor;
     })();
