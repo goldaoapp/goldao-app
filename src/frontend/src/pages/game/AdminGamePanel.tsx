@@ -11,6 +11,7 @@ import { Gem, Landmark, Shield } from "lucide-react";
 import { useState } from "react";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { CopyField } from "./CopyField";
+import { ModeStatusCard } from "./ModeStatusCard";
 import { PayoutLogPanel } from "./PayoutLogPanel";
 import { SecurityLogPanel } from "./SecurityLogPanel";
 import { Spinner } from "./Spinner";
@@ -356,6 +357,7 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
             : "play was halted."}
         </div>
       )}
+      <ModeStatusCard view={view} config={config} />
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <Kpi
           label="Tournament"
