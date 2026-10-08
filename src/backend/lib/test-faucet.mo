@@ -5,7 +5,7 @@
 //   2. mixins/test-faucet-api.mo
 //   3. the import and the include of TestFaucetMixin in main.mo
 //   4. in the frontend: lib/test-faucet.ts and pages/game/TestFaucetCard.tsx
-//      (and its line in WalletPanel.tsx)
+//      (and its button and line in WalletPanel.tsx)
 //
 // Safety rules of this module:
 //   - It holds its own copy of the TEST ledger id and builds its ledger actor only from it. It
