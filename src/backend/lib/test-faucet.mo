@@ -1,70 +1,117 @@
-// TEST FAUCET. Temporary: it exists only to try the game with the GOLDAO TEST token.
-//
-// Before the game moves to the real GOLDAO ledger, delete:
-//   1. this file
-//   2. mixins/test-faucet-api.mo
-//   3. the import and the include of TestFaucetMixin in main.mo
-//   4. in the frontend: lib/test-faucet.ts and pages/game/TestFaucetCard.tsx
-//      (and its line in WalletPanel.tsx)
-//
-// Safety rules of this module:
-//   - It holds its own copy of the TEST ledger id and builds its ledger actor only from it. It
-//     never refers to the real GOLDAO ledger, so it cannot move real GOLDAO even if it is left
-//     in by mistake.
-//   - The mixin also refuses to run unless the ledger the game uses is exactly this test ledger.
-//   - The tokens it hands out come from this canister's own account on the test ledger, never
-//     from the admin (bank) wallet, so the bank audit is not affected.
-//   - It keeps no stable state: nothing here needs a migration, and nothing here is part of the
-//     game books.
-module {
-  // GOLDAO TEST ledger (symbol GOLDAOT).
-  public let TEST_LEDGER : Text = "q4yq5-miaaa-aaaaj-qsjca-cai";
+/**
+ * TEST FAUCET client (GOLDAO TEST only). Temporary.
+ *
+ * Before the game moves to the real GOLDAO ledger, delete this file, pages/game/TestFaucetCard.tsx
+ * and the card's line in pages/game/WalletPanel.tsx (see lib/test-faucet.mo in the backend).
+ *
+ * It talks to the backend through its own small Candid interface, so it does not depend on the
+ * generated bindings and removing it leaves nothing behind.
+ */
 
-  public let E8S : Nat = 100_000_000;
+import { loadEnv } from "@/hooks/useBackendActor";
+import { Actor, HttpAgent } from "@icp-sdk/core/agent";
+import type { IDL as IDLType } from "@icp-sdk/core/candid";
 
-  // Whole tokens that can be requested per click.
-  public let PRESETS : [Nat] = [1_000, 5_000, 10_000, 20_000];
+export interface FaucetConfig {
+  enabled: boolean;
+  /** Whole tokens that can be requested per click. */
+  presets: number[];
+  /** Most one player can receive per tournament (e8s). */
+  capE8s: bigint;
+  /** Already received by the caller in this tournament (e8s). */
+  usedE8s: bigint;
+}
 
-  // Most a single player can receive per tournament (e8s): 20,000 tokens.
-  public let CAP_PER_TOURNAMENT : Nat = 2_000_000_000_000;
+interface FaucetActor {
+  testFaucetConfig: () => Promise<{
+    enabled: boolean;
+    presets: bigint[];
+    capE8s: bigint;
+    usedE8s: bigint;
+  }>;
+  testFaucetClaim: (
+    goldao: bigint,
+  ) => Promise<{ ok: bigint } | { err: string }>;
+}
 
-  // A claim lock older than this is ignored, so a lost continuation can never block a player.
-  public let LOCK_STALE_NS : Int = 120_000_000_000;
+const faucetIdl = (({ IDL }: { IDL: typeof IDLType }) => {
+  const Config = IDL.Record({
+    enabled: IDL.Bool,
+    presets: IDL.Vec(IDL.Nat),
+    capE8s: IDL.Nat,
+    usedE8s: IDL.Nat,
+  });
+  return IDL.Service({
+    testFaucetConfig: IDL.Func([], [Config], ["query"]),
+    testFaucetClaim: IDL.Func(
+      [IDL.Nat],
+      [IDL.Variant({ ok: IDL.Nat, err: IDL.Text })],
+      [],
+    ),
+  });
+}) as unknown as Parameters<typeof Actor.createActor>[0];
 
-  public type FaucetConfig = {
-    enabled : Bool;
-    presets : [Nat];
-    capE8s : Nat;
-    usedE8s : Nat;
+// One actor per signed-in principal.
+const actors = new Map<string, Promise<FaucetActor>>();
+
+function principalKey(identity: unknown): string {
+  try {
+    return (identity as { getPrincipal(): { toText(): string } })
+      .getPrincipal()
+      .toText();
+  } catch {
+    return "anon";
+  }
+}
+
+function getActor(identity: unknown): Promise<FaucetActor> {
+  const key = principalKey(identity);
+  let a = actors.get(key);
+  if (!a) {
+    a = (async () => {
+      const env = await loadEnv();
+      const canisterId = env.backend_canister_id ?? "";
+      if (!canisterId || canisterId === "undefined") {
+        throw new Error("The game canister is not configured.");
+      }
+      const isLocal = env.backend_host === "local";
+      const agent = await HttpAgent.create({
+        identity: identity as never,
+        host: isLocal ? "http://localhost:4943" : "https://icp-api.io",
+        // Same setting the game actor uses: the canister runs on a subnet whose query
+        // signatures the SDK does not verify. Claims are update calls, which are certified.
+        verifyQuerySignatures: false,
+      });
+      if (isLocal) await agent.fetchRootKey().catch(() => {});
+      return Actor.createActor(faucetIdl, {
+        agent,
+        canisterId,
+      }) as unknown as FaucetActor;
+    })();
+    actors.set(key, a);
+    a.catch(() => actors.delete(key));
+  }
+  return a;
+}
+
+export async function fetchFaucetConfig(
+  identity: unknown,
+): Promise<FaucetConfig> {
+  const c = await (await getActor(identity)).testFaucetConfig();
+  return {
+    enabled: c.enabled,
+    presets: c.presets.map(Number),
+    capE8s: c.capE8s,
+    usedE8s: c.usedE8s,
   };
+}
 
-  public type Account = { owner : Principal; subaccount : ?Blob };
-
-  public type TransferArg = {
-    from_subaccount : ?Blob;
-    to : Account;
-    amount : Nat;
-    fee : ?Nat;
-    memo : ?Blob;
-    created_at_time : ?Nat64;
-  };
-
-  public type TransferError = {
-    #BadFee : { expected_fee : Nat };
-    #BadBurn : { min_burn_amount : Nat };
-    #InsufficientFunds : { balance : Nat };
-    #TooOld;
-    #CreatedInFuture : { ledger_time : Nat64 };
-    #Duplicate : { duplicate_of : Nat };
-    #TemporarilyUnavailable;
-    #GenericError : { error_code : Nat; message : Text };
-  };
-
-  public type TestLedger = actor {
-    icrc1_transfer : shared TransferArg -> async { #Ok : Nat; #Err : TransferError };
-  };
-
-  public func ledger() : TestLedger { actor (TEST_LEDGER) : TestLedger };
-
-  public func account(p : Principal) : Account { { owner = p; subaccount = null } };
-};
+/** Asks for `goldao` whole test tokens. Resolves with the ledger block index. */
+export async function claimTestTokens(
+  identity: unknown,
+  goldao: number,
+): Promise<bigint> {
+  const res = await (await getActor(identity)).testFaucetClaim(BigInt(goldao));
+  if ("err" in res) throw new Error(res.err);
+  return res.ok;
+}
