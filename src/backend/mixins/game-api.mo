@@ -800,7 +800,7 @@ mixin (
 
   func gTick() : async () {
     gTicks += 1;
-    await gAutoConnect();
+    if (not gameState.realLedger) await gAutoConnect();
     gMaybeClose();
     gWatchFund();
     gExpireLoads();
