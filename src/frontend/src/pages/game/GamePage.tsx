@@ -18,6 +18,7 @@ import { type ReactNode, useState } from "react";
 import { AdminGamePanel } from "./AdminGamePanel";
 import { BurnedCounter } from "./BurnedCounter";
 import { GameStatus } from "./GameStatus";
+import { JackpotNotice } from "./JackpotNotice";
 import { MineBoard } from "./MineBoard";
 import { PlayerDashboard } from "./PlayerDashboard";
 import { PrizeGuide } from "./PrizeGuide";
@@ -29,7 +30,7 @@ import {
   useBurned,
   useDashboard,
   useGameConfig,
-  useRanking,
+  useSummary,
   useTournaments,
 } from "./useGame";
 
@@ -39,13 +40,7 @@ import {
 export default function GamePage() {
   const { actor, isAuthenticated, isLoading, login } = useAuth();
   const configQuery = useGameConfig();
-  const dashboardQuery = useDashboard();
-  const rankingQuery = useRanking();
-  const config = configQuery.data;
-  const dashboard = dashboardQuery.data;
-  const ranking = rankingQuery.data;
-  const { data: tournaments } = useTournaments();
-  const { data: burned } = useBurned();
+  const summaryQuery = useSummary();
   const { data: adminView } = useAdminView(isAuthenticated);
 
   const isAdmin = !!adminView;
@@ -53,11 +48,19 @@ export default function GamePage() {
   const [picked, setPicked] = useState<string | null>(null);
   const tab = picked ?? (isAdmin ? "admin" : "mine");
 
+  // The personal dashboard is kept fresh only where it is shown (Mine and My stats).
+  const dashboardQuery = useDashboard(tab === "mine" || tab === "stats");
+  const config = configQuery.data;
+  const dashboard = dashboardQuery.data;
+  const summary = summaryQuery.data;
+  const { data: tournaments } = useTournaments();
+  const { data: burned } = useBurned();
+
   // Data the page cannot do without: the session and the first answers. The dashboard only
   // counts for a signed-in player.
   const needed = isAuthenticated
-    ? [configQuery, rankingQuery, dashboardQuery]
-    : [configQuery, rankingQuery];
+    ? [configQuery, summaryQuery, dashboardQuery]
+    : [configQuery, summaryQuery];
   const failed = needed.some((q) => q.isError && q.data === undefined);
   const waiting =
     !failed &&
@@ -66,8 +69,8 @@ export default function GamePage() {
     for (const q of needed) if (q.isError) void q.refetch();
   };
 
-  const tournament = dashboard?.tournament ?? ranking?.tournament;
-  const paused = dashboard?.paused ?? false;
+  const tournament = summary?.tournament;
+  const paused = summary?.paused ?? false;
 
   return (
     <section className="mx-auto flex max-w-6xl flex-col gap-6 px-4 py-10 sm:px-6 lg:px-10">
@@ -105,8 +108,8 @@ export default function GamePage() {
             <span className={gold}>
               {paused
                 ? "paused"
-                : dashboard
-                  ? `ends in ${fmtCountdown(dashboard.endsAt)}`
+                : summary
+                  ? `ends in ${fmtCountdown(summary.endsAt)}`
                   : "open"}
             </span>
           </motion.span>
@@ -180,7 +183,7 @@ export default function GamePage() {
         )}
         <TabsContent value="ranking">
           <Fade>
-            <RankingTable ranking={ranking} tournaments={tournaments} />
+            <RankingTable summary={summary} tournaments={tournaments} />
           </Fade>
         </TabsContent>
         <TabsContent value="guide">
@@ -188,7 +191,7 @@ export default function GamePage() {
             <PrizeGuide
               config={config}
               stakes={dashboard?.stakes}
-              pool={dashboard?.pool ?? ranking?.pool}
+              pool={summary?.pool}
             />
           </Fade>
         </TabsContent>
@@ -200,6 +203,13 @@ export default function GamePage() {
           </TabsContent>
         )}
       </Tabs>
+
+      {tab === "mine" && (
+        <JackpotNotice
+          dashboard={dashboard}
+          readAt={dashboardQuery.dataUpdatedAt}
+        />
+      )}
 
       <p className={cn("text-center font-mono text-[11px]", inkFaint)}>
         Every pick is resolved on chain with ICP randomness (raw_rand). The page
