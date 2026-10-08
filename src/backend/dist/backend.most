@@ -14,18 +14,21 @@ type AccessControlState__731777866 =
     var adminAssigned : Bool;
     userRoles : Map__386906547<Principal, UserRole__981234465>
   };
-type Chip__673928551 =
-  {
-    diamonds : Nat;
-    finishedAt : Int;
-    id : Nat;
-    owner : Principal;
-    points : Nat;
-    used : Nat
-  };
 type Data__265875254<K, V> = {var count : Nat__58649523; kvs : [var ?(K, V)]};
+type Data__859131645<T> = {var count : Nat__58649523; elements : [var ?T]};
 type Excavation__240008859 =
-  {busy : Bool; chipId : Nat; diamonds : Nat; picks : Nat};
+  {
+    busy : Bool;
+    busyAt : Int;
+    diamonds : Nat;
+    held : Nat;
+    heldMini : Nat;
+    jackpotWon : Nat;
+    picks : Nat;
+    stake : Nat;
+    token : Nat;
+    tournament : Nat
+  };
 type Excavation__504915220 =
   {busy : Bool; diamonds : Nat; fichaId : Nat; picks : Nat};
 type Ficha__1025827944 =
@@ -59,7 +62,12 @@ type GameState__608663671 =
   };
 type Internal__161573640<K, V> =
   {children : [var ?Node__430031793<K, V>]; data : Data__265875254<K, V>};
+type Internal__778364379<T> =
+  {children : [var ?Node__1045371124<T>]; data : Data__859131645<T>};
+type JackpotWin__241778244 =
+  {amount : Nat; at : Int; player : Principal; stake : Nat; tournament : Nat};
 type Leaf__1045638083<K, V> = {data : Data__265875254<K, V>};
+type Leaf__776840865<T> = {data : Data__859131645<T>};
 type List__1004628775<T> =
   {
     var blockIndex : Nat__58649523;
@@ -73,10 +81,51 @@ type Map__386906547<K, V> = Map__670138087<K, V>;
 type Map__670138087<K, V> = Map__13625999<K, V>;
 type Nat__58649523 = Nat__920180692;
 type Nat__920180692 = Nat;
+type NewAccessControlState__217517275 =
+  {
+    var adminAssigned : Bool;
+    userRoles : Map__386906547<Principal, NewUserRole__236998778>
+  };
+type NewAccessControlState__320554275 =
+  {
+    var adminAssigned : Bool;
+    userRoles : Map__386906547<Principal, NewUserRole__104746643>
+  };
+type NewAccessControlState__351085372 =
+  {
+    var adminAssigned : Bool;
+    userRoles : Map__386906547<Principal, NewUserRole__422752340>
+  };
+type NewAccessControlState__525674226 =
+  {
+    var adminAssigned : Bool;
+    userRoles : Map__386906547<Principal, NewUserRole__548402883>
+  };
+type NewAccessControlState__706097136 =
+  {
+    var adminAssigned : Bool;
+    userRoles : Map__386906547<Principal, NewUserRole__154753515>
+  };
 type NewAccessControlState__775215549 =
   {
     var adminAssigned : Bool;
     userRoles : Map__386906547<Principal, NewUserRole__495470669>
+  };
+type NewAccessControlState__777186883 =
+  {
+    var adminAssigned : Bool;
+    userRoles : Map__386906547<Principal, NewUserRole__3288868>
+  };
+type NewAccessControlState__949664605 =
+  {
+    var adminAssigned : Bool;
+    userRoles : Map__386906547<Principal, NewUserRole__1071575567>
+  };
+type NewActor__103977974 =
+  {
+    accessControlState : NewAccessControlState__777186883;
+    gameState : NewGameState__912309854;
+    treasurySnapshots : Map__386906547<Text, NewTreasurySnapshot__1007338375>
   };
 type NewActor__1045774320 =
   {
@@ -84,14 +133,50 @@ type NewActor__1045774320 =
     gameState : GameState__608663671;
     treasurySnapshots : Map__386906547<Text, TreasurySnapshot__11170842>
   };
+type NewActor__234756626 =
+  {
+    accessControlState : NewAccessControlState__351085372;
+    gameState : NewGameState__942285825;
+    treasurySnapshots : Map__386906547<Text, NewTreasurySnapshot__339303524>
+  };
 type NewActor__302184456 =
   {
     accessControlState : NewAccessControlState__775215549;
     gameState : NewGameState__728065770;
     treasurySnapshots : Map__386906547<Text, NewTreasurySnapshot__1036647812>
   };
+type NewActor__311590964 =
+  {
+    accessControlState : NewAccessControlState__320554275;
+    gameState : NewGameState__463645556;
+    treasurySnapshots : Map__386906547<Text, NewTreasurySnapshot__381240743>
+  };
 type NewActor__506023031 =
   {accessControlState : AccessControlState__313657439};
+type NewActor__610444896 =
+  {
+    accessControlState : NewAccessControlState__949664605;
+    gameState : NewGameState__987875667;
+    treasurySnapshots : Map__386906547<Text, NewTreasurySnapshot__243257167>
+  };
+type NewActor__660689200 =
+  {
+    accessControlState : NewAccessControlState__525674226;
+    gameState : NewGameState__614577184;
+    treasurySnapshots : Map__386906547<Text, NewTreasurySnapshot__497636780>
+  };
+type NewActor__668983775 =
+  {
+    accessControlState : NewAccessControlState__706097136;
+    gameState : NewGameState__927971225;
+    treasurySnapshots : Map__386906547<Text, NewTreasurySnapshot__533826210>
+  };
+type NewActor__68623567 =
+  {
+    accessControlState : NewAccessControlState__217517275;
+    gameState : NewGameState__492296838;
+    treasurySnapshots : Map__386906547<Text, NewTreasurySnapshot__536762241>
+  };
 type NewActor__729643281 =
   {
     accessControlState : AccessControlState__731777866;
@@ -106,8 +191,222 @@ type NewChip__125972654 =
     points : Nat;
     used : Nat
   };
+type NewExcavation__124080227 =
+  {
+    busy : Bool;
+    busyAt : Int;
+    diamonds : Nat;
+    held : Nat;
+    jackpotWon : Nat;
+    picks : Nat;
+    stake : Nat;
+    token : Nat;
+    tournament : Nat
+  };
+type NewExcavation__273110462 =
+  {
+    busy : Bool;
+    busyAt : Int;
+    diamonds : Nat;
+    held : Nat;
+    jackpotWon : Nat;
+    picks : Nat;
+    stake : Nat;
+    token : Nat;
+    tournament : Nat
+  };
 type NewExcavation__477473542 =
   {busy : Bool; chipId : Nat; diamonds : Nat; picks : Nat};
+type NewExcavation__514188819 =
+  {
+    busy : Bool;
+    busyAt : Int;
+    diamonds : Nat;
+    held : Nat;
+    heldMini : Nat;
+    jackpotWon : Nat;
+    picks : Nat;
+    stake : Nat;
+    token : Nat;
+    tournament : Nat
+  };
+type NewExcavation__665245161 =
+  {
+    busy : Bool;
+    busyAt : Int;
+    diamonds : Nat;
+    held : Nat;
+    jackpotWon : Nat;
+    picks : Nat;
+    stake : Nat;
+    token : Nat;
+    tournament : Nat
+  };
+type NewExcavation__719953525 =
+  {
+    busy : Bool;
+    busyAt : Int;
+    diamonds : Nat;
+    held : Nat;
+    jackpotWon : Nat;
+    picks : Nat;
+    stake : Nat;
+    token : Nat;
+    tournament : Nat
+  };
+type NewExcavation__917796603 =
+  {
+    busy : Bool;
+    busyAt : Int;
+    diamonds : Nat;
+    held : Nat;
+    jackpotWon : Nat;
+    picks : Nat;
+    stake : Nat;
+    token : Nat;
+    tournament : Nat
+  };
+type NewExcavation__988645860 =
+  {
+    busy : Bool;
+    busyAt : Int;
+    diamonds : Nat;
+    held : Nat;
+    jackpotWon : Nat;
+    picks : Nat;
+    stake : Nat;
+    token : Nat;
+    tournament : Nat
+  };
+type NewGameState__463645556 =
+  {
+    allowances : Map__386906547<Principal, Nat>;
+    balances : Map__386906547<Principal, Nat>;
+    var bank : Nat;
+    var bankAccount : ?Principal;
+    var bankAllowance : Nat;
+    blocked : Map__386906547<Principal, Nat>;
+    var breakerMax : Nat;
+    var breakerWindowNs : Int;
+    var burned : Nat;
+    credits : Map__386906547<Principal, Nat>;
+    var cycles : Nat;
+    var durationDays : Nat;
+    var endsAt : Int;
+    faucet : Map__386906547<Principal, (Nat, Nat)>;
+    var haltCode : Nat;
+    var halted : Bool;
+    var haltedAt : Int;
+    history :
+      Map__386906547<Principal,
+                      List__89170296<NewPlayerTournamentResult__127051437>>;
+    var jackpots : [NewJackpotWin__423106798];
+    var lastTop10 : [NewTopPrize__732845457];
+    var ledgerFails : Nat;
+    var movSeq : Nat;
+    var nextPayoutId : Nat;
+    open : Map__386906547<Principal, NewExcavation__273110462>;
+    var owed : Nat;
+    var payingSince : Int;
+    payouts : Map__386906547<Nat, NewPayout__597149062>;
+    var pool : Nat;
+    var realLedger : Bool;
+    var reserve : Nat;
+    var resumedAt : Int;
+    var selfId : ?Principal;
+    var seq : Nat;
+    stats : Map__386906547<Principal, NewTournamentStats__105821691>;
+    var top10 : Nat;
+    var tournament : Nat;
+    tournaments : List__89170296<NewTournamentSummary__46460858>
+  };
+type NewGameState__492296838 =
+  {
+    allowances : Map__386906547<Principal, Nat>;
+    balances : Map__386906547<Principal, Nat>;
+    var bank : Nat;
+    var bankAccount : ?Principal;
+    var bankAllowance : Nat;
+    blocked : Map__386906547<Principal, Nat>;
+    var breakerMax : Nat;
+    var breakerWindowNs : Int;
+    var burned : Nat;
+    credits : Map__386906547<Principal, Nat>;
+    var cycles : Nat;
+    var durationDays : Nat;
+    var endsAt : Int;
+    faucet : Map__386906547<Principal, (Nat, Nat)>;
+    var haltCode : Nat;
+    var halted : Bool;
+    var haltedAt : Int;
+    history :
+      Map__386906547<Principal,
+                      List__89170296<NewPlayerTournamentResult__988089487>>;
+    var jackpots : [NewJackpotWin__810961088];
+    var ledgerFails : Nat;
+    var movSeq : Nat;
+    var nextPayoutId : Nat;
+    open : Map__386906547<Principal, NewExcavation__124080227>;
+    var owed : Nat;
+    var payingSince : Int;
+    payouts : Map__386906547<Nat, NewPayout__110508187>;
+    var pool : Nat;
+    var realLedger : Bool;
+    var reserve : Nat;
+    var resumedAt : Int;
+    var selfId : ?Principal;
+    var seq : Nat;
+    stats : Map__386906547<Principal, NewTournamentStats__299486358>;
+    var tournament : Nat;
+    tournaments : List__89170296<NewTournamentSummary__124691680>
+  };
+type NewGameState__614577184 =
+  {
+    allowances : Map__386906547<Principal, Nat>;
+    balances : Map__386906547<Principal, Nat>;
+    var bank : Nat;
+    var bankAccount : ?Principal;
+    var bankAllowance : Nat;
+    best : Map__386906547<Principal, Nat>;
+    blocked : Map__386906547<Principal, Nat>;
+    var breakerMax : Nat;
+    var breakerWindowNs : Int;
+    var burned : Nat;
+    credits : Map__386906547<Principal, Nat>;
+    var cycles : Nat;
+    var durationDays : Nat;
+    var endsAt : Int;
+    var fundSamples : [Int];
+    var haltCode : Nat;
+    var halted : Bool;
+    var haltedAt : Int;
+    history :
+      Map__386906547<Principal,
+                      List__89170296<NewPlayerTournamentResult__594749753>>;
+    var jackpots : [NewJackpotWin__722987408];
+    var lastTop10 : [NewTopPrize__939975653];
+    var ledgerFails : Nat;
+    loaded : Set__195681557<Principal>;
+    var movSeq : Nat;
+    var nextPayoutId : Nat;
+    open : Map__386906547<Principal, NewExcavation__665245161>;
+    var owed : Nat;
+    var payingSince : Int;
+    payouts : Map__386906547<Nat, NewPayout__577407482>;
+    pendingLoads : Map__386906547<Principal, NewPendingLoad__866116192>;
+    var pool : Nat;
+    var realLedger : Bool;
+    var reserve : Nat;
+    var resumedAt : Int;
+    var saturations : Nat;
+    securityLog : Map__386906547<Nat, [NewSecurityEvent__662534564]>;
+    var selfId : ?Principal;
+    var seq : Nat;
+    stats : Map__386906547<Principal, NewTournamentStats__1036398678>;
+    var top10 : Nat;
+    var tournament : Nat;
+    tournaments : List__89170296<NewTournamentSummary__189550195>
+  };
 type NewGameState__728065770 =
   {
     balances : Map__386906547<Principal, Nat>;
@@ -128,13 +427,336 @@ type NewGameState__728065770 =
     var week : Nat;
     weeks : List__89170296<NewWeekSummary__692746832>
   };
+type NewGameState__912309854 =
+  {
+    allowances : Map__386906547<Principal, Nat>;
+    balances : Map__386906547<Principal, Nat>;
+    var bank : Nat;
+    var bankAccount : ?Principal;
+    var bankAllowance : Nat;
+    best : Map__386906547<Principal, Nat>;
+    blocked : Map__386906547<Principal, Nat>;
+    var breakerMax : Nat;
+    var breakerWindowNs : Int;
+    var burned : Nat;
+    credits : Map__386906547<Principal, Nat>;
+    var cycles : Nat;
+    var durationDays : Nat;
+    var endsAt : Int;
+    faucet : Map__386906547<Principal, (Nat, Nat)>;
+    var haltCode : Nat;
+    var halted : Bool;
+    var haltedAt : Int;
+    history :
+      Map__386906547<Principal,
+                      List__89170296<NewPlayerTournamentResult__407173792>>;
+    var jackpots : [NewJackpotWin__285266645];
+    var lastTop10 : [NewTopPrize__1062540468];
+    var ledgerFails : Nat;
+    loaded : Set__195681557<Principal>;
+    var movSeq : Nat;
+    var nextPayoutId : Nat;
+    open : Map__386906547<Principal, NewExcavation__988645860>;
+    var owed : Nat;
+    var payingSince : Int;
+    payouts : Map__386906547<Nat, NewPayout__1070015905>;
+    var pool : Nat;
+    var realLedger : Bool;
+    var reserve : Nat;
+    var resumedAt : Int;
+    var selfId : ?Principal;
+    var seq : Nat;
+    stats : Map__386906547<Principal, NewTournamentStats__439953384>;
+    var top10 : Nat;
+    var tournament : Nat;
+    tournaments : List__89170296<NewTournamentSummary__382031454>
+  };
+type NewGameState__927971225 =
+  {
+    allowances : Map__386906547<Principal, Nat>;
+    balances : Map__386906547<Principal, Nat>;
+    var bank : Nat;
+    var bankAccount : ?Principal;
+    var bankAllowance : Nat;
+    best : Map__386906547<Principal, Nat>;
+    blocked : Map__386906547<Principal, Nat>;
+    var breakerMax : Nat;
+    var breakerWindowNs : Int;
+    var burned : Nat;
+    credits : Map__386906547<Principal, Nat>;
+    var cycles : Nat;
+    var durationDays : Nat;
+    var endsAt : Int;
+    faucet : Map__386906547<Principal, (Nat, Nat)>;
+    var fundSamples : [Int];
+    var haltCode : Nat;
+    var halted : Bool;
+    var haltedAt : Int;
+    history :
+      Map__386906547<Principal,
+                      List__89170296<NewPlayerTournamentResult__214335851>>;
+    var jackpots : [NewJackpotWin__314168402];
+    var lastTop10 : [NewTopPrize__442787815];
+    var ledgerFails : Nat;
+    loaded : Set__195681557<Principal>;
+    var movSeq : Nat;
+    var nextPayoutId : Nat;
+    open : Map__386906547<Principal, NewExcavation__719953525>;
+    var owed : Nat;
+    var payingSince : Int;
+    payouts : Map__386906547<Nat, NewPayout__282945288>;
+    var pool : Nat;
+    var realLedger : Bool;
+    var reserve : Nat;
+    var resumedAt : Int;
+    securityLog : Map__386906547<Nat, [NewSecurityEvent__1066041711]>;
+    var selfId : ?Principal;
+    var seq : Nat;
+    stats : Map__386906547<Principal, NewTournamentStats__788592977>;
+    var top10 : Nat;
+    var tournament : Nat;
+    tournaments : List__89170296<NewTournamentSummary__503643842>
+  };
+type NewGameState__942285825 =
+  {
+    allowances : Map__386906547<Principal, Nat>;
+    balances : Map__386906547<Principal, Nat>;
+    var bank : Nat;
+    var bankAccount : ?Principal;
+    var bankAllowance : Nat;
+    best : Map__386906547<Principal, Nat>;
+    blocked : Map__386906547<Principal, Nat>;
+    var breakerMax : Nat;
+    var breakerWindowNs : Int;
+    var burned : Nat;
+    credits : Map__386906547<Principal, Nat>;
+    var cycles : Nat;
+    var durationDays : Nat;
+    var endsAt : Int;
+    faucet : Map__386906547<Principal, (Nat, Nat)>;
+    var fundSamples : [Int];
+    var haltCode : Nat;
+    var halted : Bool;
+    var haltedAt : Int;
+    history :
+      Map__386906547<Principal,
+                      List__89170296<NewPlayerTournamentResult__847739474>>;
+    var jackpots : [NewJackpotWin__483171482];
+    var lastTop10 : [NewTopPrize__396522843];
+    var ledgerFails : Nat;
+    loaded : Set__195681557<Principal>;
+    var movSeq : Nat;
+    var nextPayoutId : Nat;
+    open : Map__386906547<Principal, NewExcavation__917796603>;
+    var owed : Nat;
+    var payingSince : Int;
+    payouts : Map__386906547<Nat, NewPayout__698168523>;
+    pendingLoads : Map__386906547<Principal, NewPendingLoad__247587199>;
+    var pool : Nat;
+    var realLedger : Bool;
+    var reserve : Nat;
+    var resumedAt : Int;
+    var saturations : Nat;
+    securityLog : Map__386906547<Nat, [NewSecurityEvent__433270321]>;
+    var selfId : ?Principal;
+    var seq : Nat;
+    stats : Map__386906547<Principal, NewTournamentStats__262568678>;
+    var top10 : Nat;
+    var tournament : Nat;
+    tournaments : List__89170296<NewTournamentSummary__187600544>
+  };
+type NewGameState__987875667 =
+  {
+    allowances : Map__386906547<Principal, Nat>;
+    balances : Map__386906547<Principal, Nat>;
+    var bank : Nat;
+    var bankAccount : ?Principal;
+    var bankAllowance : Nat;
+    best : Map__386906547<Principal, Nat>;
+    blocked : Map__386906547<Principal, Nat>;
+    var breakerMax : Nat;
+    var breakerWindowNs : Int;
+    var burned : Nat;
+    credits : Map__386906547<Principal, Nat>;
+    var cycles : Nat;
+    var durationDays : Nat;
+    var endsAt : Int;
+    var fundSamples : [Int];
+    var haltCode : Nat;
+    var halted : Bool;
+    var haltedAt : Int;
+    history :
+      Map__386906547<Principal,
+                      List__89170296<NewPlayerTournamentResult__978260590>>;
+    var jackpots : [NewJackpotWin__706248150];
+    var lastTop10 : [NewTopPrize__856358980];
+    var ledgerFails : Nat;
+    loaded : Set__195681557<Principal>;
+    var movSeq : Nat;
+    var nextPayoutId : Nat;
+    open : Map__386906547<Principal, NewExcavation__514188819>;
+    var owed : Nat;
+    var payingSince : Int;
+    payouts : Map__386906547<Nat, NewPayout__197078532>;
+    pendingLoads : Map__386906547<Principal, NewPendingLoad__136672855>;
+    var pool : Nat;
+    var realLedger : Bool;
+    var reserve : Nat;
+    var resumedAt : Int;
+    var saturations : Nat;
+    securityLog : Map__386906547<Nat, [NewSecurityEvent__724276691]>;
+    var selfId : ?Principal;
+    var seq : Nat;
+    stats : Map__386906547<Principal, NewTournamentStats__295650012>;
+    var top10 : Nat;
+    var tournament : Nat;
+    tournaments : List__89170296<NewTournamentSummary__703223177>
+  };
+type NewJackpotWin__285266645 =
+  {amount : Nat; at : Int; player : Principal; stake : Nat; tournament : Nat};
+type NewJackpotWin__314168402 =
+  {amount : Nat; at : Int; player : Principal; stake : Nat; tournament : Nat};
+type NewJackpotWin__423106798 =
+  {amount : Nat; at : Int; player : Principal; stake : Nat; tournament : Nat};
+type NewJackpotWin__483171482 =
+  {amount : Nat; at : Int; player : Principal; stake : Nat; tournament : Nat};
+type NewJackpotWin__706248150 =
+  {amount : Nat; at : Int; player : Principal; stake : Nat; tournament : Nat};
+type NewJackpotWin__722987408 =
+  {amount : Nat; at : Int; player : Principal; stake : Nat; tournament : Nat};
+type NewJackpotWin__810961088 =
+  {amount : Nat; at : Int; player : Principal; stake : Nat; tournament : Nat};
 type NewPayoutConcept__468607743 = {#draw; #prize};
+type NewPayout__1070015905 =
+  {
+    amount : Nat;
+    id : Nat;
+    paid : Bool;
+    stamp : Nat64;
+    to : Principal;
+    tournament : Nat
+  };
+type NewPayout__110508187 =
+  {
+    amount : Nat;
+    id : Nat;
+    paid : Bool;
+    stamp : Nat64;
+    to : Principal;
+    tournament : Nat
+  };
+type NewPayout__197078532 =
+  {
+    amount : Nat;
+    id : Nat;
+    paid : Bool;
+    paidAt : Int;
+    stamp : Nat64;
+    to : Principal;
+    tournament : Nat;
+    txId : ?Nat;
+    uncertain : Bool
+  };
+type NewPayout__282945288 =
+  {
+    amount : Nat;
+    id : Nat;
+    paid : Bool;
+    stamp : Nat64;
+    to : Principal;
+    tournament : Nat
+  };
+type NewPayout__577407482 =
+  {
+    amount : Nat;
+    id : Nat;
+    paid : Bool;
+    paidAt : Int;
+    stamp : Nat64;
+    to : Principal;
+    tournament : Nat;
+    txId : ?Nat;
+    uncertain : Bool
+  };
+type NewPayout__597149062 =
+  {
+    amount : Nat;
+    id : Nat;
+    paid : Bool;
+    stamp : Nat64;
+    to : Principal;
+    tournament : Nat
+  };
 type NewPayout__692264998 =
   {
     amount : Nat;
     concept : NewPayoutConcept__468607743;
     tiers : [Nat];
     to : Principal
+  };
+type NewPayout__698168523 =
+  {
+    amount : Nat;
+    id : Nat;
+    paid : Bool;
+    paidAt : Int;
+    stamp : Nat64;
+    to : Principal;
+    tournament : Nat;
+    txId : ?Nat;
+    uncertain : Bool
+  };
+type NewPendingLoad__136672855 = {amount : Nat; stamp : Nat64};
+type NewPendingLoad__247587199 = {amount : Nat; stamp : Nat64};
+type NewPendingLoad__866116192 = {amount : Nat; stamp : Nat64};
+type NewPlayerTournamentResult__127051437 =
+  {
+    credit : Nat;
+    payout : Nat;
+    stats : NewTournamentStats__105821691;
+    tournament : Nat
+  };
+type NewPlayerTournamentResult__214335851 =
+  {
+    credit : Nat;
+    payout : Nat;
+    stats : NewTournamentStats__788592977;
+    tournament : Nat
+  };
+type NewPlayerTournamentResult__407173792 =
+  {
+    credit : Nat;
+    payout : Nat;
+    stats : NewTournamentStats__439953384;
+    tournament : Nat
+  };
+type NewPlayerTournamentResult__594749753 =
+  {
+    credit : Nat;
+    payout : Nat;
+    stats : NewTournamentStats__1036398678;
+    tournament : Nat
+  };
+type NewPlayerTournamentResult__847739474 =
+  {
+    credit : Nat;
+    payout : Nat;
+    stats : NewTournamentStats__262568678;
+    tournament : Nat
+  };
+type NewPlayerTournamentResult__978260590 =
+  {
+    credit : Nat;
+    payout : Nat;
+    stats : NewTournamentStats__295650012;
+    tournament : Nat
+  };
+type NewPlayerTournamentResult__988089487 =
+  {
+    credit : Nat;
+    payout : Nat;
+    stats : NewTournamentStats__299486358;
+    tournament : Nat
   };
 type NewPlayerWeekResult__20461693 =
   {
@@ -149,6 +771,289 @@ type NewPlayerWeekResult__20461693 =
     tiers : [Nat];
     week : Nat
   };
+type NewSecurityEvent__1066041711 =
+  {
+    at : Int;
+    code : Text;
+    count : Nat;
+    description : Text;
+    lastAt : Int;
+    level : NewSecurityLevel__388220575;
+    title : Text
+  };
+type NewSecurityEvent__433270321 =
+  {
+    at : Int;
+    code : Text;
+    count : Nat;
+    description : Text;
+    lastAt : Int;
+    level : NewSecurityLevel__83242423;
+    title : Text
+  };
+type NewSecurityEvent__662534564 =
+  {
+    at : Int;
+    code : Text;
+    count : Nat;
+    description : Text;
+    lastAt : Int;
+    level : NewSecurityLevel__469128037;
+    title : Text
+  };
+type NewSecurityEvent__724276691 =
+  {
+    at : Int;
+    code : Text;
+    count : Nat;
+    description : Text;
+    lastAt : Int;
+    level : NewSecurityLevel__897801372;
+    title : Text
+  };
+type NewSecurityLevel__388220575 = {#critical; #info; #warning};
+type NewSecurityLevel__469128037 = {#critical; #info; #warning};
+type NewSecurityLevel__83242423 = {#critical; #info; #warning};
+type NewSecurityLevel__897801372 = {#critical; #info; #warning};
+type NewTopPrize__1062540468 =
+  {
+    player : Principal;
+    prize : Nat;
+    rank : Nat;
+    tournament : Nat;
+    volume : Nat
+  };
+type NewTopPrize__396522843 =
+  {
+    player : Principal;
+    prize : Nat;
+    rank : Nat;
+    tournament : Nat;
+    volume : Nat
+  };
+type NewTopPrize__442787815 =
+  {
+    player : Principal;
+    prize : Nat;
+    rank : Nat;
+    tournament : Nat;
+    volume : Nat
+  };
+type NewTopPrize__732845457 =
+  {
+    player : Principal;
+    prize : Nat;
+    rank : Nat;
+    tournament : Nat;
+    volume : Nat
+  };
+type NewTopPrize__856358980 =
+  {
+    player : Principal;
+    prize : Nat;
+    rank : Nat;
+    tournament : Nat;
+    volume : Nat
+  };
+type NewTopPrize__939975653 =
+  {
+    player : Principal;
+    prize : Nat;
+    rank : Nat;
+    tournament : Nat;
+    volume : Nat
+  };
+type NewTournamentStats__1036398678 =
+  {
+    bestPoints : Nat;
+    charged : Nat;
+    collapses : Nat;
+    deepest : Nat;
+    excavations : Nat;
+    jackpotWon : Nat;
+    jackpots : Nat;
+    returned : Nat;
+    staked : Nat
+  };
+type NewTournamentStats__105821691 =
+  {
+    bestPoints : Nat;
+    charged : Nat;
+    collapses : Nat;
+    deepest : Nat;
+    excavations : Nat;
+    jackpotWon : Nat;
+    jackpots : Nat;
+    returned : Nat;
+    staked : Nat
+  };
+type NewTournamentStats__262568678 =
+  {
+    bestPoints : Nat;
+    charged : Nat;
+    collapses : Nat;
+    deepest : Nat;
+    excavations : Nat;
+    jackpotWon : Nat;
+    jackpots : Nat;
+    returned : Nat;
+    staked : Nat
+  };
+type NewTournamentStats__295650012 =
+  {
+    bestPoints : Nat;
+    charged : Nat;
+    collapses : Nat;
+    deepest : Nat;
+    excavations : Nat;
+    jackpotWon : Nat;
+    jackpots : Nat;
+    miniWon : Nat;
+    minis : Nat;
+    returned : Nat;
+    staked : Nat
+  };
+type NewTournamentStats__299486358 =
+  {
+    bestPoints : Nat;
+    charged : Nat;
+    collapses : Nat;
+    deepest : Nat;
+    excavations : Nat;
+    jackpotWon : Nat;
+    jackpots : Nat;
+    returned : Nat;
+    staked : Nat
+  };
+type NewTournamentStats__439953384 =
+  {
+    bestPoints : Nat;
+    charged : Nat;
+    collapses : Nat;
+    deepest : Nat;
+    excavations : Nat;
+    jackpotWon : Nat;
+    jackpots : Nat;
+    returned : Nat;
+    staked : Nat
+  };
+type NewTournamentStats__788592977 =
+  {
+    bestPoints : Nat;
+    charged : Nat;
+    collapses : Nat;
+    deepest : Nat;
+    excavations : Nat;
+    jackpotWon : Nat;
+    jackpots : Nat;
+    returned : Nat;
+    staked : Nat
+  };
+type NewTournamentSummary__124691680 =
+  {
+    closedAt : Int;
+    excavations : Nat;
+    forfeited : Nat;
+    jackpotPaid : Nat;
+    jackpots : Nat;
+    payoutTotal : Nat;
+    players : Nat;
+    returned : Nat;
+    staked : Nat;
+    tournament : Nat
+  };
+type NewTournamentSummary__187600544 =
+  {
+    closedAt : Int;
+    excavations : Nat;
+    forfeited : Nat;
+    jackpotPaid : Nat;
+    jackpots : Nat;
+    payoutTotal : Nat;
+    players : Nat;
+    returned : Nat;
+    staked : Nat;
+    tournament : Nat
+  };
+type NewTournamentSummary__189550195 =
+  {
+    closedAt : Int;
+    excavations : Nat;
+    forfeited : Nat;
+    jackpotPaid : Nat;
+    jackpots : Nat;
+    payoutTotal : Nat;
+    players : Nat;
+    returned : Nat;
+    staked : Nat;
+    tournament : Nat
+  };
+type NewTournamentSummary__382031454 =
+  {
+    closedAt : Int;
+    excavations : Nat;
+    forfeited : Nat;
+    jackpotPaid : Nat;
+    jackpots : Nat;
+    payoutTotal : Nat;
+    players : Nat;
+    returned : Nat;
+    staked : Nat;
+    tournament : Nat
+  };
+type NewTournamentSummary__46460858 =
+  {
+    closedAt : Int;
+    excavations : Nat;
+    forfeited : Nat;
+    jackpotPaid : Nat;
+    jackpots : Nat;
+    payoutTotal : Nat;
+    players : Nat;
+    returned : Nat;
+    staked : Nat;
+    tournament : Nat
+  };
+type NewTournamentSummary__503643842 =
+  {
+    closedAt : Int;
+    excavations : Nat;
+    forfeited : Nat;
+    jackpotPaid : Nat;
+    jackpots : Nat;
+    payoutTotal : Nat;
+    players : Nat;
+    returned : Nat;
+    staked : Nat;
+    tournament : Nat
+  };
+type NewTournamentSummary__703223177 =
+  {
+    closedAt : Int;
+    excavations : Nat;
+    forfeited : Nat;
+    jackpotPaid : Nat;
+    jackpots : Nat;
+    miniPaid : Nat;
+    minis : Nat;
+    payoutTotal : Nat;
+    players : Nat;
+    returned : Nat;
+    staked : Nat;
+    tournament : Nat
+  };
+type NewTreasurySnapshot__1007338375 =
+  {
+    date : Text;
+    icp_amount : Float;
+    icp_usd : Float;
+    ogy_amount : Float;
+    ogy_usd : Float;
+    timestamp : Nat64;
+    total_usd : Float;
+    wtn_amount : Float;
+    wtn_usd : Float
+  };
 type NewTreasurySnapshot__1036647812 =
   {
     date : Text;
@@ -161,7 +1066,86 @@ type NewTreasurySnapshot__1036647812 =
     wtn_amount : Float;
     wtn_usd : Float
   };
+type NewTreasurySnapshot__243257167 =
+  {
+    date : Text;
+    icp_amount : Float;
+    icp_usd : Float;
+    ogy_amount : Float;
+    ogy_usd : Float;
+    timestamp : Nat64;
+    total_usd : Float;
+    wtn_amount : Float;
+    wtn_usd : Float
+  };
+type NewTreasurySnapshot__339303524 =
+  {
+    date : Text;
+    icp_amount : Float;
+    icp_usd : Float;
+    ogy_amount : Float;
+    ogy_usd : Float;
+    timestamp : Nat64;
+    total_usd : Float;
+    wtn_amount : Float;
+    wtn_usd : Float
+  };
+type NewTreasurySnapshot__381240743 =
+  {
+    date : Text;
+    icp_amount : Float;
+    icp_usd : Float;
+    ogy_amount : Float;
+    ogy_usd : Float;
+    timestamp : Nat64;
+    total_usd : Float;
+    wtn_amount : Float;
+    wtn_usd : Float
+  };
+type NewTreasurySnapshot__497636780 =
+  {
+    date : Text;
+    icp_amount : Float;
+    icp_usd : Float;
+    ogy_amount : Float;
+    ogy_usd : Float;
+    timestamp : Nat64;
+    total_usd : Float;
+    wtn_amount : Float;
+    wtn_usd : Float
+  };
+type NewTreasurySnapshot__533826210 =
+  {
+    date : Text;
+    icp_amount : Float;
+    icp_usd : Float;
+    ogy_amount : Float;
+    ogy_usd : Float;
+    timestamp : Nat64;
+    total_usd : Float;
+    wtn_amount : Float;
+    wtn_usd : Float
+  };
+type NewTreasurySnapshot__536762241 =
+  {
+    date : Text;
+    icp_amount : Float;
+    icp_usd : Float;
+    ogy_amount : Float;
+    ogy_usd : Float;
+    timestamp : Nat64;
+    total_usd : Float;
+    wtn_amount : Float;
+    wtn_usd : Float
+  };
+type NewUserRole__104746643 = {#admin; #guest; #user};
+type NewUserRole__1071575567 = {#admin; #guest; #user};
+type NewUserRole__154753515 = {#admin; #guest; #user};
+type NewUserRole__236998778 = {#admin; #guest; #user};
+type NewUserRole__3288868 = {#admin; #guest; #user};
+type NewUserRole__422752340 = {#admin; #guest; #user};
 type NewUserRole__495470669 = {#admin; #guest; #user};
+type NewUserRole__548402883 = {#admin; #guest; #user};
 type NewWeekStats__551922593 =
   {best : Nat; collapses : Nat; deepest : Nat; playTx : Nat};
 type NewWeekStatus__52531198 = {#closed; #closing; #open};
@@ -180,29 +1164,191 @@ type NewWeekSummary__692746832 =
     treasuryKeep : Nat;
     week : Nat
   };
+type Node__1045371124<T> =
+  {#internal : Internal__778364379<T>; #leaf : Leaf__776840865<T>};
 type Node__430031793<K, V> =
   {#internal : Internal__161573640<K, V>; #leaf : Leaf__1045638083<K, V>};
+type OldAccessControlState__176034933 =
+  {
+    var adminAssigned : Bool;
+    userRoles : Map__386906547<Principal, OldUserRole__463985278>
+  };
+type OldAccessControlState__184371952 =
+  {
+    var adminAssigned : Bool;
+    userRoles : Map__386906547<Principal, OldUserRole__878733327>
+  };
 type OldAccessControlState__318915640 =
   {
     var adminAssigned : Bool;
     userRoles : Map__386906547<Principal, OldUserRole__713914495>
   };
+type OldAccessControlState__359780707 =
+  {
+    var adminAssigned : Bool;
+    userRoles : Map__386906547<Principal, OldUserRole__150437123>
+  };
+type OldAccessControlState__705829627 =
+  {
+    var adminAssigned : Bool;
+    userRoles : Map__386906547<Principal, OldUserRole__126233019>
+  };
+type OldAccessControlState__72693551 =
+  {
+    var adminAssigned : Bool;
+    userRoles : Map__386906547<Principal, OldUserRole__1009797619>
+  };
+type OldAccessControlState__882911587 =
+  {
+    var adminAssigned : Bool;
+    userRoles : Map__386906547<Principal, OldUserRole__114831468>
+  };
+type OldAccessControlState__907259115 =
+  {
+    var adminAssigned : Bool;
+    userRoles : Map__386906547<Principal, OldUserRole__1017030955>
+  };
+type OldActor__1015423726 =
+  {
+    accessControlState : OldAccessControlState__882911587;
+    gameState : OldGameState__548700289;
+    treasurySnapshots : Map__386906547<Text, OldTreasurySnapshot__815843497>
+  };
 type OldActor__1018259084 =
   {accessControlState : AccessControlState__731777866};
+type OldActor__1037757592 =
+  {
+    accessControlState : OldAccessControlState__705829627;
+    gameState : OldGameState__160221325;
+    treasurySnapshots : Map__386906547<Text, OldTreasurySnapshot__223255410>
+  };
 type OldActor__112540865 =
   {
     accessControlState : AccessControlState__517198284;
     treasurySnapshots : Map__386906547<Text, TreasurySnapshot__11170842>
   };
+type OldActor__204222165 =
+  {
+    accessControlState : OldAccessControlState__907259115;
+    gameState : OldGameState__217700382;
+    treasurySnapshots : Map__386906547<Text, OldTreasurySnapshot__850831786>
+  };
 type OldActor__224245412 = {};
+type OldActor__453222978 =
+  {
+    accessControlState : OldAccessControlState__184371952;
+    gameState : OldGameState__279275680;
+    treasurySnapshots : Map__386906547<Text, OldTreasurySnapshot__850655450>
+  };
+type OldActor__506210915 =
+  {
+    accessControlState : OldAccessControlState__176034933;
+    gameState : OldGameState__903105516;
+    treasurySnapshots : Map__386906547<Text, OldTreasurySnapshot__815583422>
+  };
+type OldActor__588950638 =
+  {
+    accessControlState : OldAccessControlState__72693551;
+    gameState : OldGameState__957197194;
+    treasurySnapshots : Map__386906547<Text, OldTreasurySnapshot__756518272>
+  };
 type OldActor__602207383 =
   {
     accessControlState : OldAccessControlState__318915640;
     gameState : OldGameState__1070935553;
     treasurySnapshots : Map__386906547<Text, OldTreasurySnapshot__938323386>
   };
+type OldActor__793083398 =
+  {
+    accessControlState : OldAccessControlState__359780707;
+    gameState : OldGameState__539106992;
+    treasurySnapshots : Map__386906547<Text, OldTreasurySnapshot__633628443>
+  };
+type OldChip__825617491 =
+  {
+    diamonds : Nat;
+    finishedAt : Int;
+    id : Nat;
+    owner : Principal;
+    points : Nat;
+    used : Nat
+  };
+type OldExcavation__1043150916 =
+  {
+    busy : Bool;
+    busyAt : Int;
+    diamonds : Nat;
+    held : Nat;
+    jackpotWon : Nat;
+    picks : Nat;
+    stake : Nat;
+    token : Nat;
+    tournament : Nat
+  };
+type OldExcavation__200665246 =
+  {
+    busy : Bool;
+    busyAt : Int;
+    diamonds : Nat;
+    held : Nat;
+    jackpotWon : Nat;
+    picks : Nat;
+    stake : Nat;
+    token : Nat;
+    tournament : Nat
+  };
+type OldExcavation__310946024 =
+  {
+    busy : Bool;
+    busyAt : Int;
+    diamonds : Nat;
+    held : Nat;
+    jackpotWon : Nat;
+    picks : Nat;
+    stake : Nat;
+    token : Nat;
+    tournament : Nat
+  };
+type OldExcavation__3323958 =
+  {
+    busy : Bool;
+    busyAt : Int;
+    diamonds : Nat;
+    held : Nat;
+    jackpotWon : Nat;
+    picks : Nat;
+    stake : Nat;
+    token : Nat;
+    tournament : Nat
+  };
 type OldExcavation__593863626 =
   {busy : Bool; diamonds : Nat; fichaId : Nat; picks : Nat};
+type OldExcavation__617505519 =
+  {
+    busy : Bool;
+    busyAt : Int;
+    diamonds : Nat;
+    held : Nat;
+    jackpotWon : Nat;
+    picks : Nat;
+    stake : Nat;
+    token : Nat;
+    tournament : Nat
+  };
+type OldExcavation__796822331 =
+  {busy : Bool; chipId : Nat; diamonds : Nat; picks : Nat};
+type OldExcavation__893033463 =
+  {
+    busy : Bool;
+    busyAt : Int;
+    diamonds : Nat;
+    held : Nat;
+    jackpotWon : Nat;
+    picks : Nat;
+    stake : Nat;
+    token : Nat;
+    tournament : Nat
+  };
 type OldFicha__148734898 =
   {
     diamonds : Nat;
@@ -233,13 +1379,438 @@ type OldGameState__1070935553 =
     var week : Nat;
     weeks : List__89170296<OldWeekSummary__205863332>
   };
+type OldGameState__160221325 =
+  {
+    allowances : Map__386906547<Principal, Nat>;
+    balances : Map__386906547<Principal, Nat>;
+    var bank : Nat;
+    var bankAccount : ?Principal;
+    var bankAllowance : Nat;
+    best : Map__386906547<Principal, Nat>;
+    blocked : Map__386906547<Principal, Nat>;
+    var breakerMax : Nat;
+    var breakerWindowNs : Int;
+    var burned : Nat;
+    credits : Map__386906547<Principal, Nat>;
+    var cycles : Nat;
+    var durationDays : Nat;
+    var endsAt : Int;
+    faucet : Map__386906547<Principal, (Nat, Nat)>;
+    var haltCode : Nat;
+    var halted : Bool;
+    var haltedAt : Int;
+    history :
+      Map__386906547<Principal,
+                      List__89170296<OldPlayerTournamentResult__970618403>>;
+    var jackpots : [OldJackpotWin__216558227];
+    var lastTop10 : [OldTopPrize__649840289];
+    var ledgerFails : Nat;
+    loaded : Set__195681557<Principal>;
+    var movSeq : Nat;
+    var nextPayoutId : Nat;
+    open : Map__386906547<Principal, OldExcavation__1043150916>;
+    var owed : Nat;
+    var payingSince : Int;
+    payouts : Map__386906547<Nat, OldPayout__662884939>;
+    var pool : Nat;
+    var realLedger : Bool;
+    var reserve : Nat;
+    var resumedAt : Int;
+    var selfId : ?Principal;
+    var seq : Nat;
+    stats : Map__386906547<Principal, OldTournamentStats__276339258>;
+    var top10 : Nat;
+    var tournament : Nat;
+    tournaments : List__89170296<OldTournamentSummary__90771420>
+  };
+type OldGameState__217700382 =
+  {
+    balances : Map__386906547<Principal, Nat>;
+    var burned : Nat;
+    chips : Map__386906547<Nat, OldChip__825617491>;
+    var drawCarry : Nat;
+    faucet : Map__386906547<Principal, (Nat, Nat)>;
+    history :
+      Map__386906547<Principal,
+                      List__89170296<OldPlayerWeekResult__139301778>>;
+    var lastClose : ?OldWeekSummary__343420084;
+    var nextChipId : Nat;
+    open : Map__386906547<Principal, OldExcavation__796822331>;
+    var payouts : [OldPayout__502474754];
+    var pendingResults : [(Principal, OldPlayerWeekResult__139301778)];
+    stats : Map__386906547<Principal, OldWeekStats__212999181>;
+    var status : OldWeekStatus__645256003;
+    var treasury : Nat;
+    var week : Nat;
+    weeks : List__89170296<OldWeekSummary__343420084>
+  };
+type OldGameState__279275680 =
+  {
+    allowances : Map__386906547<Principal, Nat>;
+    balances : Map__386906547<Principal, Nat>;
+    var bank : Nat;
+    var bankAccount : ?Principal;
+    var bankAllowance : Nat;
+    blocked : Map__386906547<Principal, Nat>;
+    var breakerMax : Nat;
+    var breakerWindowNs : Int;
+    var burned : Nat;
+    credits : Map__386906547<Principal, Nat>;
+    var cycles : Nat;
+    var durationDays : Nat;
+    var endsAt : Int;
+    faucet : Map__386906547<Principal, (Nat, Nat)>;
+    var haltCode : Nat;
+    var halted : Bool;
+    var haltedAt : Int;
+    history :
+      Map__386906547<Principal,
+                      List__89170296<OldPlayerTournamentResult__355735261>>;
+    var jackpots : [OldJackpotWin__493799966];
+    var ledgerFails : Nat;
+    var movSeq : Nat;
+    var nextPayoutId : Nat;
+    open : Map__386906547<Principal, OldExcavation__200665246>;
+    var owed : Nat;
+    var payingSince : Int;
+    payouts : Map__386906547<Nat, OldPayout__621655671>;
+    var pool : Nat;
+    var realLedger : Bool;
+    var reserve : Nat;
+    var resumedAt : Int;
+    var selfId : ?Principal;
+    var seq : Nat;
+    stats : Map__386906547<Principal, OldTournamentStats__79066366>;
+    var tournament : Nat;
+    tournaments : List__89170296<OldTournamentSummary__874193723>
+  };
+type OldGameState__539106992 =
+  {
+    allowances : Map__386906547<Principal, Nat>;
+    balances : Map__386906547<Principal, Nat>;
+    var bank : Nat;
+    var bankAccount : ?Principal;
+    var bankAllowance : Nat;
+    best : Map__386906547<Principal, Nat>;
+    blocked : Map__386906547<Principal, Nat>;
+    var breakerMax : Nat;
+    var breakerWindowNs : Int;
+    var burned : Nat;
+    credits : Map__386906547<Principal, Nat>;
+    var cycles : Nat;
+    var durationDays : Nat;
+    var endsAt : Int;
+    faucet : Map__386906547<Principal, (Nat, Nat)>;
+    var fundSamples : [Int];
+    var haltCode : Nat;
+    var halted : Bool;
+    var haltedAt : Int;
+    history :
+      Map__386906547<Principal,
+                      List__89170296<OldPlayerTournamentResult__841308264>>;
+    var jackpots : [OldJackpotWin__920058142];
+    var lastTop10 : [OldTopPrize__637411383];
+    var ledgerFails : Nat;
+    loaded : Set__195681557<Principal>;
+    var movSeq : Nat;
+    var nextPayoutId : Nat;
+    open : Map__386906547<Principal, OldExcavation__3323958>;
+    var owed : Nat;
+    var payingSince : Int;
+    payouts : Map__386906547<Nat, OldPayout__526029885>;
+    var pool : Nat;
+    var realLedger : Bool;
+    var reserve : Nat;
+    var resumedAt : Int;
+    securityLog : Map__386906547<Nat, [OldSecurityEvent__459642669]>;
+    var selfId : ?Principal;
+    var seq : Nat;
+    stats : Map__386906547<Principal, OldTournamentStats__338777370>;
+    var top10 : Nat;
+    var tournament : Nat;
+    tournaments : List__89170296<OldTournamentSummary__135605133>
+  };
+type OldGameState__548700289 =
+  {
+    allowances : Map__386906547<Principal, Nat>;
+    balances : Map__386906547<Principal, Nat>;
+    var bank : Nat;
+    var bankAccount : ?Principal;
+    var bankAllowance : Nat;
+    best : Map__386906547<Principal, Nat>;
+    blocked : Map__386906547<Principal, Nat>;
+    var breakerMax : Nat;
+    var breakerWindowNs : Int;
+    var burned : Nat;
+    credits : Map__386906547<Principal, Nat>;
+    var cycles : Nat;
+    var durationDays : Nat;
+    var endsAt : Int;
+    faucet : Map__386906547<Principal, (Nat, Nat)>;
+    var fundSamples : [Int];
+    var haltCode : Nat;
+    var halted : Bool;
+    var haltedAt : Int;
+    history :
+      Map__386906547<Principal,
+                      List__89170296<OldPlayerTournamentResult__315127495>>;
+    var jackpots : [OldJackpotWin__1061182968];
+    var lastTop10 : [OldTopPrize__790128798];
+    var ledgerFails : Nat;
+    loaded : Set__195681557<Principal>;
+    var movSeq : Nat;
+    var nextPayoutId : Nat;
+    open : Map__386906547<Principal, OldExcavation__893033463>;
+    var owed : Nat;
+    var payingSince : Int;
+    payouts : Map__386906547<Nat, OldPayout__366356862>;
+    pendingLoads : Map__386906547<Principal, OldPendingLoad__1067846473>;
+    var pool : Nat;
+    var realLedger : Bool;
+    var reserve : Nat;
+    var resumedAt : Int;
+    var saturations : Nat;
+    securityLog : Map__386906547<Nat, [OldSecurityEvent__382168304]>;
+    var selfId : ?Principal;
+    var seq : Nat;
+    stats : Map__386906547<Principal, OldTournamentStats__606287604>;
+    var top10 : Nat;
+    var tournament : Nat;
+    tournaments : List__89170296<OldTournamentSummary__640545079>
+  };
+type OldGameState__903105516 =
+  {
+    allowances : Map__386906547<Principal, Nat>;
+    balances : Map__386906547<Principal, Nat>;
+    var bank : Nat;
+    var bankAccount : ?Principal;
+    var bankAllowance : Nat;
+    blocked : Map__386906547<Principal, Nat>;
+    var breakerMax : Nat;
+    var breakerWindowNs : Int;
+    var burned : Nat;
+    credits : Map__386906547<Principal, Nat>;
+    var cycles : Nat;
+    var durationDays : Nat;
+    var endsAt : Int;
+    faucet : Map__386906547<Principal, (Nat, Nat)>;
+    var haltCode : Nat;
+    var halted : Bool;
+    var haltedAt : Int;
+    history :
+      Map__386906547<Principal,
+                      List__89170296<OldPlayerTournamentResult__472013502>>;
+    var jackpots : [OldJackpotWin__817834780];
+    var lastTop10 : [OldTopPrize__418118605];
+    var ledgerFails : Nat;
+    var movSeq : Nat;
+    var nextPayoutId : Nat;
+    open : Map__386906547<Principal, OldExcavation__617505519>;
+    var owed : Nat;
+    var payingSince : Int;
+    payouts : Map__386906547<Nat, OldPayout__604910224>;
+    var pool : Nat;
+    var realLedger : Bool;
+    var reserve : Nat;
+    var resumedAt : Int;
+    var selfId : ?Principal;
+    var seq : Nat;
+    stats : Map__386906547<Principal, OldTournamentStats__557569250>;
+    var top10 : Nat;
+    var tournament : Nat;
+    tournaments : List__89170296<OldTournamentSummary__562770419>
+  };
+type OldGameState__957197194 =
+  {
+    allowances : Map__386906547<Principal, Nat>;
+    balances : Map__386906547<Principal, Nat>;
+    var bank : Nat;
+    var bankAccount : ?Principal;
+    var bankAllowance : Nat;
+    best : Map__386906547<Principal, Nat>;
+    blocked : Map__386906547<Principal, Nat>;
+    var breakerMax : Nat;
+    var breakerWindowNs : Int;
+    var burned : Nat;
+    credits : Map__386906547<Principal, Nat>;
+    var cycles : Nat;
+    var durationDays : Nat;
+    var endsAt : Int;
+    var fundSamples : [Int];
+    var haltCode : Nat;
+    var halted : Bool;
+    var haltedAt : Int;
+    history :
+      Map__386906547<Principal,
+                      List__89170296<OldPlayerTournamentResult__908391399>>;
+    var jackpots : [OldJackpotWin__263233565];
+    var lastTop10 : [OldTopPrize__782847773];
+    var ledgerFails : Nat;
+    loaded : Set__195681557<Principal>;
+    var movSeq : Nat;
+    var nextPayoutId : Nat;
+    open : Map__386906547<Principal, OldExcavation__310946024>;
+    var owed : Nat;
+    var payingSince : Int;
+    payouts : Map__386906547<Nat, OldPayout__505299827>;
+    pendingLoads : Map__386906547<Principal, OldPendingLoad__1009055946>;
+    var pool : Nat;
+    var realLedger : Bool;
+    var reserve : Nat;
+    var resumedAt : Int;
+    var saturations : Nat;
+    securityLog : Map__386906547<Nat, [OldSecurityEvent__858694426]>;
+    var selfId : ?Principal;
+    var seq : Nat;
+    stats : Map__386906547<Principal, OldTournamentStats__899727522>;
+    var top10 : Nat;
+    var tournament : Nat;
+    tournaments : List__89170296<OldTournamentSummary__355322491>
+  };
+type OldJackpotWin__1061182968 =
+  {amount : Nat; at : Int; player : Principal; stake : Nat; tournament : Nat};
+type OldJackpotWin__216558227 =
+  {amount : Nat; at : Int; player : Principal; stake : Nat; tournament : Nat};
+type OldJackpotWin__263233565 =
+  {amount : Nat; at : Int; player : Principal; stake : Nat; tournament : Nat};
+type OldJackpotWin__493799966 =
+  {amount : Nat; at : Int; player : Principal; stake : Nat; tournament : Nat};
+type OldJackpotWin__817834780 =
+  {amount : Nat; at : Int; player : Principal; stake : Nat; tournament : Nat};
+type OldJackpotWin__920058142 =
+  {amount : Nat; at : Int; player : Principal; stake : Nat; tournament : Nat};
 type OldPayoutConcept__199056819 = {#premio; #sorteo};
+type OldPayoutConcept__344904218 = {#draw; #prize};
+type OldPayout__366356862 =
+  {
+    amount : Nat;
+    id : Nat;
+    paid : Bool;
+    paidAt : Int;
+    stamp : Nat64;
+    to : Principal;
+    tournament : Nat;
+    txId : ?Nat;
+    uncertain : Bool
+  };
+type OldPayout__502474754 =
+  {
+    amount : Nat;
+    concept : OldPayoutConcept__344904218;
+    tiers : [Nat];
+    to : Principal
+  };
+type OldPayout__505299827 =
+  {
+    amount : Nat;
+    id : Nat;
+    paid : Bool;
+    paidAt : Int;
+    stamp : Nat64;
+    to : Principal;
+    tournament : Nat;
+    txId : ?Nat;
+    uncertain : Bool
+  };
+type OldPayout__526029885 =
+  {
+    amount : Nat;
+    id : Nat;
+    paid : Bool;
+    stamp : Nat64;
+    to : Principal;
+    tournament : Nat
+  };
+type OldPayout__604910224 =
+  {
+    amount : Nat;
+    id : Nat;
+    paid : Bool;
+    stamp : Nat64;
+    to : Principal;
+    tournament : Nat
+  };
+type OldPayout__621655671 =
+  {
+    amount : Nat;
+    id : Nat;
+    paid : Bool;
+    stamp : Nat64;
+    to : Principal;
+    tournament : Nat
+  };
+type OldPayout__662884939 =
+  {
+    amount : Nat;
+    id : Nat;
+    paid : Bool;
+    stamp : Nat64;
+    to : Principal;
+    tournament : Nat
+  };
 type OldPayout__887931726 =
   {
     amount : Nat;
     concept : OldPayoutConcept__199056819;
     tiers : [Nat];
     to : Principal
+  };
+type OldPendingLoad__1009055946 = {amount : Nat; stamp : Nat64};
+type OldPendingLoad__1067846473 = {amount : Nat; stamp : Nat64};
+type OldPlayerTournamentResult__315127495 =
+  {
+    credit : Nat;
+    payout : Nat;
+    stats : OldTournamentStats__606287604;
+    tournament : Nat
+  };
+type OldPlayerTournamentResult__355735261 =
+  {
+    credit : Nat;
+    payout : Nat;
+    stats : OldTournamentStats__79066366;
+    tournament : Nat
+  };
+type OldPlayerTournamentResult__472013502 =
+  {
+    credit : Nat;
+    payout : Nat;
+    stats : OldTournamentStats__557569250;
+    tournament : Nat
+  };
+type OldPlayerTournamentResult__841308264 =
+  {
+    credit : Nat;
+    payout : Nat;
+    stats : OldTournamentStats__338777370;
+    tournament : Nat
+  };
+type OldPlayerTournamentResult__908391399 =
+  {
+    credit : Nat;
+    payout : Nat;
+    stats : OldTournamentStats__899727522;
+    tournament : Nat
+  };
+type OldPlayerTournamentResult__970618403 =
+  {
+    credit : Nat;
+    payout : Nat;
+    stats : OldTournamentStats__276339258;
+    tournament : Nat
+  };
+type OldPlayerWeekResult__139301778 =
+  {
+    best : Nat;
+    chips : Nat;
+    collapses : Nat;
+    deepest : Nat;
+    diamonds : Nat;
+    drawWon : Bool;
+    paid : Nat;
+    received : Nat;
+    tiers : [Nat];
+    week : Nat
   };
 type OldPlayerWeekResult__610757006 =
   {
@@ -254,6 +1825,313 @@ type OldPlayerWeekResult__610757006 =
     tiers : [Nat];
     week : Nat
   };
+type OldSecurityEvent__382168304 =
+  {
+    at : Int;
+    code : Text;
+    count : Nat;
+    description : Text;
+    lastAt : Int;
+    level : OldSecurityLevel__680663292;
+    title : Text
+  };
+type OldSecurityEvent__459642669 =
+  {
+    at : Int;
+    code : Text;
+    count : Nat;
+    description : Text;
+    lastAt : Int;
+    level : OldSecurityLevel__711183474;
+    title : Text
+  };
+type OldSecurityEvent__858694426 =
+  {
+    at : Int;
+    code : Text;
+    count : Nat;
+    description : Text;
+    lastAt : Int;
+    level : OldSecurityLevel__416474471;
+    title : Text
+  };
+type OldSecurityLevel__416474471 = {#critical; #info; #warning};
+type OldSecurityLevel__680663292 = {#critical; #info; #warning};
+type OldSecurityLevel__711183474 = {#critical; #info; #warning};
+type OldTopPrize__418118605 =
+  {
+    player : Principal;
+    prize : Nat;
+    rank : Nat;
+    tournament : Nat;
+    volume : Nat
+  };
+type OldTopPrize__637411383 =
+  {
+    player : Principal;
+    prize : Nat;
+    rank : Nat;
+    tournament : Nat;
+    volume : Nat
+  };
+type OldTopPrize__649840289 =
+  {
+    player : Principal;
+    prize : Nat;
+    rank : Nat;
+    tournament : Nat;
+    volume : Nat
+  };
+type OldTopPrize__782847773 =
+  {
+    player : Principal;
+    prize : Nat;
+    rank : Nat;
+    tournament : Nat;
+    volume : Nat
+  };
+type OldTopPrize__790128798 =
+  {
+    player : Principal;
+    prize : Nat;
+    rank : Nat;
+    tournament : Nat;
+    volume : Nat
+  };
+type OldTournamentStats__276339258 =
+  {
+    bestPoints : Nat;
+    charged : Nat;
+    collapses : Nat;
+    deepest : Nat;
+    excavations : Nat;
+    jackpotWon : Nat;
+    jackpots : Nat;
+    returned : Nat;
+    staked : Nat
+  };
+type OldTournamentStats__338777370 =
+  {
+    bestPoints : Nat;
+    charged : Nat;
+    collapses : Nat;
+    deepest : Nat;
+    excavations : Nat;
+    jackpotWon : Nat;
+    jackpots : Nat;
+    returned : Nat;
+    staked : Nat
+  };
+type OldTournamentStats__557569250 =
+  {
+    bestPoints : Nat;
+    charged : Nat;
+    collapses : Nat;
+    deepest : Nat;
+    excavations : Nat;
+    jackpotWon : Nat;
+    jackpots : Nat;
+    returned : Nat;
+    staked : Nat
+  };
+type OldTournamentStats__606287604 =
+  {
+    bestPoints : Nat;
+    charged : Nat;
+    collapses : Nat;
+    deepest : Nat;
+    excavations : Nat;
+    jackpotWon : Nat;
+    jackpots : Nat;
+    returned : Nat;
+    staked : Nat
+  };
+type OldTournamentStats__79066366 =
+  {
+    bestPoints : Nat;
+    charged : Nat;
+    collapses : Nat;
+    deepest : Nat;
+    excavations : Nat;
+    jackpotWon : Nat;
+    jackpots : Nat;
+    returned : Nat;
+    staked : Nat
+  };
+type OldTournamentStats__899727522 =
+  {
+    bestPoints : Nat;
+    charged : Nat;
+    collapses : Nat;
+    deepest : Nat;
+    excavations : Nat;
+    jackpotWon : Nat;
+    jackpots : Nat;
+    returned : Nat;
+    staked : Nat
+  };
+type OldTournamentSummary__135605133 =
+  {
+    closedAt : Int;
+    excavations : Nat;
+    forfeited : Nat;
+    jackpotPaid : Nat;
+    jackpots : Nat;
+    payoutTotal : Nat;
+    players : Nat;
+    returned : Nat;
+    staked : Nat;
+    tournament : Nat
+  };
+type OldTournamentSummary__355322491 =
+  {
+    closedAt : Int;
+    excavations : Nat;
+    forfeited : Nat;
+    jackpotPaid : Nat;
+    jackpots : Nat;
+    payoutTotal : Nat;
+    players : Nat;
+    returned : Nat;
+    staked : Nat;
+    tournament : Nat
+  };
+type OldTournamentSummary__562770419 =
+  {
+    closedAt : Int;
+    excavations : Nat;
+    forfeited : Nat;
+    jackpotPaid : Nat;
+    jackpots : Nat;
+    payoutTotal : Nat;
+    players : Nat;
+    returned : Nat;
+    staked : Nat;
+    tournament : Nat
+  };
+type OldTournamentSummary__640545079 =
+  {
+    closedAt : Int;
+    excavations : Nat;
+    forfeited : Nat;
+    jackpotPaid : Nat;
+    jackpots : Nat;
+    payoutTotal : Nat;
+    players : Nat;
+    returned : Nat;
+    staked : Nat;
+    tournament : Nat
+  };
+type OldTournamentSummary__874193723 =
+  {
+    closedAt : Int;
+    excavations : Nat;
+    forfeited : Nat;
+    jackpotPaid : Nat;
+    jackpots : Nat;
+    payoutTotal : Nat;
+    players : Nat;
+    returned : Nat;
+    staked : Nat;
+    tournament : Nat
+  };
+type OldTournamentSummary__90771420 =
+  {
+    closedAt : Int;
+    excavations : Nat;
+    forfeited : Nat;
+    jackpotPaid : Nat;
+    jackpots : Nat;
+    payoutTotal : Nat;
+    players : Nat;
+    returned : Nat;
+    staked : Nat;
+    tournament : Nat
+  };
+type OldTreasurySnapshot__223255410 =
+  {
+    date : Text;
+    icp_amount : Float;
+    icp_usd : Float;
+    ogy_amount : Float;
+    ogy_usd : Float;
+    timestamp : Nat64;
+    total_usd : Float;
+    wtn_amount : Float;
+    wtn_usd : Float
+  };
+type OldTreasurySnapshot__633628443 =
+  {
+    date : Text;
+    icp_amount : Float;
+    icp_usd : Float;
+    ogy_amount : Float;
+    ogy_usd : Float;
+    timestamp : Nat64;
+    total_usd : Float;
+    wtn_amount : Float;
+    wtn_usd : Float
+  };
+type OldTreasurySnapshot__756518272 =
+  {
+    date : Text;
+    icp_amount : Float;
+    icp_usd : Float;
+    ogy_amount : Float;
+    ogy_usd : Float;
+    timestamp : Nat64;
+    total_usd : Float;
+    wtn_amount : Float;
+    wtn_usd : Float
+  };
+type OldTreasurySnapshot__815583422 =
+  {
+    date : Text;
+    icp_amount : Float;
+    icp_usd : Float;
+    ogy_amount : Float;
+    ogy_usd : Float;
+    timestamp : Nat64;
+    total_usd : Float;
+    wtn_amount : Float;
+    wtn_usd : Float
+  };
+type OldTreasurySnapshot__815843497 =
+  {
+    date : Text;
+    icp_amount : Float;
+    icp_usd : Float;
+    ogy_amount : Float;
+    ogy_usd : Float;
+    timestamp : Nat64;
+    total_usd : Float;
+    wtn_amount : Float;
+    wtn_usd : Float
+  };
+type OldTreasurySnapshot__850655450 =
+  {
+    date : Text;
+    icp_amount : Float;
+    icp_usd : Float;
+    ogy_amount : Float;
+    ogy_usd : Float;
+    timestamp : Nat64;
+    total_usd : Float;
+    wtn_amount : Float;
+    wtn_usd : Float
+  };
+type OldTreasurySnapshot__850831786 =
+  {
+    date : Text;
+    icp_amount : Float;
+    icp_usd : Float;
+    ogy_amount : Float;
+    ogy_usd : Float;
+    timestamp : Nat64;
+    total_usd : Float;
+    wtn_amount : Float;
+    wtn_usd : Float
+  };
 type OldTreasurySnapshot__938323386 =
   {
     date : Text;
@@ -266,10 +2144,20 @@ type OldTreasurySnapshot__938323386 =
     wtn_amount : Float;
     wtn_usd : Float
   };
+type OldUserRole__1009797619 = {#admin; #guest; #user};
+type OldUserRole__1017030955 = {#admin; #guest; #user};
+type OldUserRole__114831468 = {#admin; #guest; #user};
+type OldUserRole__126233019 = {#admin; #guest; #user};
+type OldUserRole__150437123 = {#admin; #guest; #user};
+type OldUserRole__463985278 = {#admin; #guest; #user};
 type OldUserRole__713914495 = {#admin; #guest; #user};
+type OldUserRole__878733327 = {#admin; #guest; #user};
+type OldWeekStats__212999181 =
+  {best : Nat; collapses : Nat; deepest : Nat; playTx : Nat};
 type OldWeekStats__478247183 =
   {best : Nat; deepest : Nat; derrumbes : Nat; jugarTx : Nat};
 type OldWeekStatus__452273688 = {#closed; #closing; #open};
+type OldWeekStatus__645256003 = {#closed; #closing; #open};
 type OldWeekSummary__205863332 =
   {
     closedAt : Int;
@@ -285,14 +2173,33 @@ type OldWeekSummary__205863332 =
     treasuryKeep : Nat;
     week : Nat
   };
+type OldWeekSummary__343420084 =
+  {
+    chips : Nat;
+    closedAt : Int;
+    drawPrize : Nat;
+    drawRandom : Nat;
+    drawTicket : Nat;
+    drawTickets : Nat;
+    drawWinner : ?Principal;
+    players : Nat;
+    pot : Nat;
+    treasurePerChip : Nat;
+    treasuryKeep : Nat;
+    week : Nat
+  };
 type PayoutConcept__790932910 = {#premio; #sorteo};
-type PayoutConcept__858087065 = {#draw; #prize};
 type Payout__473874471 =
   {
     amount : Nat;
-    concept : PayoutConcept__858087065;
-    tiers : [Nat];
-    to : Principal
+    id : Nat;
+    paid : Bool;
+    paidAt : Int;
+    stamp : Nat64;
+    to : Principal;
+    tournament : Nat;
+    txId : ?Nat;
+    uncertain : Bool
   };
 type Payout__534748512 =
   {
@@ -301,18 +2208,13 @@ type Payout__534748512 =
     tiers : [Nat];
     to : Principal
   };
-type PlayerWeekResult__207304040 =
+type PendingLoad__691752095 = {amount : Nat; stamp : Nat64};
+type PlayerTournamentResult__198789483 =
   {
-    best : Nat;
-    chips : Nat;
-    collapses : Nat;
-    deepest : Nat;
-    diamonds : Nat;
-    drawWon : Bool;
-    paid : Nat;
-    received : Nat;
-    tiers : [Nat];
-    week : Nat
+    credit : Nat;
+    payout : Nat;
+    stats : TournamentStats__675658398;
+    tournament : Nat
   };
 type PlayerWeekResult__438732493 =
   {
@@ -326,6 +2228,57 @@ type PlayerWeekResult__438732493 =
     received : Nat;
     tiers : [Nat];
     week : Nat
+  };
+type SecurityEvent__839429396 =
+  {
+    at : Int;
+    code : Text;
+    count : Nat;
+    description : Text;
+    lastAt : Int;
+    level : SecurityLevel__772905120;
+    title : Text
+  };
+type SecurityLevel__772905120 = {#critical; #info; #warning};
+type Set__195681557<T> = Set__29061695<T>;
+type Set__29061695<T> =
+  {var root : Node__1045371124<T>; var size : Nat__58649523};
+type TopPrize__199975521 =
+  {
+    player : Principal;
+    prize : Nat;
+    rank : Nat;
+    tournament : Nat;
+    volume : Nat
+  };
+type TournamentStats__675658398 =
+  {
+    bestPoints : Nat;
+    charged : Nat;
+    collapses : Nat;
+    deepest : Nat;
+    excavations : Nat;
+    jackpotWon : Nat;
+    jackpots : Nat;
+    miniWon : Nat;
+    minis : Nat;
+    returned : Nat;
+    staked : Nat
+  };
+type TournamentSummary__817602861 =
+  {
+    closedAt : Int;
+    excavations : Nat;
+    forfeited : Nat;
+    jackpotPaid : Nat;
+    jackpots : Nat;
+    miniPaid : Nat;
+    minis : Nat;
+    payoutTotal : Nat;
+    players : Nat;
+    returned : Nat;
+    staked : Nat;
+    tournament : Nat
   };
 type TreasurySnapshot__11170842 =
   {
@@ -369,25 +2322,7 @@ type UserRole__940285103 = {#admin; #guest; #user};
 type UserRole__981234465 = {#admin; #guest; #user};
 type WeekStats__664896732 =
   {best : Nat; deepest : Nat; derrumbes : Nat; jugarTx : Nat};
-type WeekStats__753789258 =
-  {best : Nat; collapses : Nat; deepest : Nat; playTx : Nat};
 type WeekStatus__73284130 = {#closed; #closing; #open};
-type WeekStatus__748549823 = {#closed; #closing; #open};
-type WeekSummary__398654781 =
-  {
-    chips : Nat;
-    closedAt : Int;
-    drawPrize : Nat;
-    drawRandom : Nat;
-    drawTicket : Nat;
-    drawTickets : Nat;
-    drawWinner : ?Principal;
-    players : Nat;
-    pot : Nat;
-    treasurePerChip : Nat;
-    treasuryKeep : Nat;
-    week : Nat
-  };
 type WeekSummary__708473198 =
   {
     closedAt : Int;
@@ -407,7 +2342,14 @@ type WeekSummary__708473198 =
   "20260810_154449" : (_old : OldActor__224245412) -> NewActor__506023031;
   "20260820_120000" : (_old : OldActor__1018259084) -> NewActor__729643281;
   "20261001_120000" : (_old : OldActor__112540865) -> NewActor__1045774320;
-  "20261001_130000" : (old : OldActor__602207383) -> NewActor__302184456
+  "20261001_130000" : (old : OldActor__602207383) -> NewActor__302184456;
+  "20261004_120000" : (old : OldActor__204222165) -> NewActor__68623567;
+  "20261005_120000" : (old : OldActor__453222978) -> NewActor__311590964;
+  "20261006_120000" : (old : OldActor__506210915) -> NewActor__103977974;
+  "20261007_120000" : (old : OldActor__1037757592) -> NewActor__668983775;
+  "20261008_120000" : (old : OldActor__793083398) -> NewActor__234756626;
+  "20261009_120000" : (old : OldActor__1015423726) -> NewActor__660689200;
+  "20261010_120000" : (old : OldActor__588950638) -> NewActor__610444896
 }
 actor  {
   stable accessControlState :
@@ -417,23 +2359,50 @@ actor  {
     };
   stable gameState :
     {
+      allowances : Map__386906547<Principal, Nat>;
       balances : Map__386906547<Principal, Nat>;
+      var bank : Nat;
+      var bankAccount : ?Principal;
+      var bankAllowance : Nat;
+      best : Map__386906547<Principal, Nat>;
+      blocked : Map__386906547<Principal, Nat>;
+      var breakerMax : Nat;
+      var breakerWindowNs : Int;
       var burned : Nat;
-      chips : Map__386906547<Nat, Chip__673928551>;
-      var drawCarry : Nat;
-      faucet : Map__386906547<Principal, (Nat, Nat)>;
+      credits : Map__386906547<Principal, Nat>;
+      var cycles : Nat;
+      var durationDays : Nat;
+      var endsAt : Int;
+      var fundSamples : [Int];
+      var haltCode : Nat;
+      var halted : Bool;
+      var haltedAt : Int;
       history :
-        Map__386906547<Principal, List__89170296<PlayerWeekResult__207304040>>;
-      var lastClose : ?WeekSummary__398654781;
-      var nextChipId : Nat;
+        Map__386906547<Principal,
+                        List__89170296<PlayerTournamentResult__198789483>>;
+      var jackpots : [JackpotWin__241778244];
+      var lastTop10 : [TopPrize__199975521];
+      var ledgerFails : Nat;
+      loaded : Set__195681557<Principal>;
+      var movSeq : Nat;
+      var nextPayoutId : Nat;
       open : Map__386906547<Principal, Excavation__240008859>;
-      var payouts : [Payout__473874471];
-      var pendingResults : [(Principal, PlayerWeekResult__207304040)];
-      stats : Map__386906547<Principal, WeekStats__753789258>;
-      var status : WeekStatus__748549823;
-      var treasury : Nat;
-      var week : Nat;
-      weeks : List__89170296<WeekSummary__398654781>
+      var owed : Nat;
+      var payingSince : Int;
+      payouts : Map__386906547<Nat, Payout__473874471>;
+      pendingLoads : Map__386906547<Principal, PendingLoad__691752095>;
+      var pool : Nat;
+      var realLedger : Bool;
+      var reserve : Nat;
+      var resumedAt : Int;
+      var saturations : Nat;
+      securityLog : Map__386906547<Nat, [SecurityEvent__839429396]>;
+      var selfId : ?Principal;
+      var seq : Nat;
+      stats : Map__386906547<Principal, TournamentStats__675658398>;
+      var top10 : Nat;
+      var tournament : Nat;
+      tournaments : List__89170296<TournamentSummary__817602861>
     };
   stable treasurySnapshots :
     {

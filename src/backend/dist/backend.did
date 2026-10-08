@@ -1,30 +1,7 @@
-type WeekSummary = 
- record {
-   chips: nat;
-   closedAt: int;
-   drawPrize: nat;
-   drawRandom: nat;
-   drawTicket: nat;
-   drawTickets: nat;
-   drawWinner: opt principal;
-   players: nat;
-   pot: nat;
-   treasurePerChip: nat;
-   treasuryKeep: nat;
-   week: nat;
- };
-type WeekStatus = 
+type WithdrawKind = 
  variant {
-   closed;
-   closing;
-   open;
- };
-type WeekStats = 
- record {
-   best: nat;
-   collapses: nat;
-   deepest: nat;
-   playTx: nat;
+   all;
+   available;
  };
 type Value = 
  variant {
@@ -53,18 +30,137 @@ type TreasurySnapshot =
    wtn_amount: float64;
    wtn_usd: float64;
  };
-type TierIndex = nat;
+type TournamentSummary = 
+ record {
+   closedAt: int;
+   excavations: nat;
+   forfeited: nat;
+   jackpotPaid: nat;
+   jackpots: nat;
+   miniPaid: nat;
+   minis: nat;
+   payoutTotal: nat;
+   players: nat;
+   returned: nat;
+   staked: nat;
+   tournament: nat;
+ };
+type TournamentStats = 
+ record {
+   bestPoints: nat;
+   charged: nat;
+   collapses: nat;
+   deepest: nat;
+   excavations: nat;
+   jackpotWon: nat;
+   jackpots: nat;
+   miniWon: nat;
+   minis: nat;
+   returned: nat;
+   staked: nat;
+ };
+type TopPrize = 
+ record {
+   player: principal;
+   prize: nat;
+   rank: nat;
+   tournament: nat;
+   volume: nat;
+ };
+type StakeOption = 
+ variant {
+   max;
+   mid;
+   min;
+ };
+type SecurityView = 
+ record {
+   accountingOk: bool;
+   haltCode: nat;
+   halted: bool;
+   haltedAt: int;
+   ledgerFails: nat;
+   saturations: nat;
+ };
+type SecurityLogView = 
+ record {
+   day: nat;
+   days: vec SecurityDay;
+   events: vec SecurityEvent;
+ };
+type SecurityLevel = 
+ variant {
+   critical;
+   info;
+   warning;
+ };
+type SecurityEvent = 
+ record {
+   at: int;
+   code: text;
+   count: nat;
+   description: text;
+   lastAt: int;
+   level: SecurityLevel;
+   title: text;
+ };
+type SecurityDay = 
+ record {
+   attention: nat;
+   day: nat;
+   events: nat;
+ };
 type Result__1 = 
  record {
    hasMore: bool;
    rows: vec vec Cell;
  };
+type Result_9 = 
+ variant {
+   err: text;
+   ok: opt nat;
+ };
+type Result_8 = 
+ variant {
+   err: text;
+   ok: vec Payout;
+ };
 type Result_7 = 
+ variant {
+   err: text;
+   ok: SecurityView;
+ };
+type Result_6 = 
+ variant {
+   err: text;
+   ok: SecurityLogView;
+ };
+type Result_5 = 
+ variant {
+   err: text;
+   ok;
+ };
+type Result_4 = 
+ variant {
+   err: text;
+   ok: AdminView;
+ };
+type Result_3 = 
+ variant {
+   err: text;
+   ok: AutoResult;
+ };
+type Result_2 = 
+ variant {
+   err: text;
+   ok: PickResult;
+ };
+type Result_13 = 
  variant {
    err: Error;
    ok;
  };
-type Result_6 = 
+type Result_12 = 
  variant {
    err: text;
    ok: vec record {
@@ -72,124 +168,139 @@ type Result_6 =
              UserRole;
            };
  };
-type Result_5 = 
+type Result_11 = 
  variant {
    err: text;
-   ok: WeekSummary;
+   ok: bool;
  };
-type Result_4 = 
+type Result_10 = 
  variant {
    err: text;
-   ok;
- };
-type Result_3 = 
- variant {
-   err: text;
-   ok: AdminView;
- };
-type Result_2 = 
- variant {
-   err: text;
-   ok: PickResult;
+   ok: record {
+         failed: nat;
+         paid: nat;
+         remaining: nat;
+       };
  };
 type Result_1 = 
  variant {
    err: text;
-   ok: nat;
+   ok: EndResult;
  };
 type Result = 
  variant {
    err: text;
-   ok: ExcavationView;
+   ok: nat;
  };
 type Ranking = 
  record {
-   chips: nat;
-   cutsX100: vec opt nat;
-   drawPrize: nat;
+   endsAt: int;
+   jackpots: vec JackpotWin;
+   lastTop10: vec TopPrize;
    players: vec PlayerRow;
-   pot: nat;
-   status: WeekStatus;
-   totalDiamonds: nat;
-   treasurePerChip: nat;
-   treasuryKeep: nat;
-   week: nat;
+   pool: nat;
+   staked: nat;
+   top10Pool: nat;
+   totalPlayers: nat;
+   tournament: nat;
  };
-type PlayerWeekResult = 
+type PlayerTournamentResult = 
  record {
-   best: nat;
-   chips: nat;
-   collapses: nat;
-   deepest: nat;
-   diamonds: nat;
-   drawWon: bool;
-   paid: nat;
-   received: nat;
-   tiers: vec nat;
-   week: nat;
+   credit: nat;
+   payout: nat;
+   stats: TournamentStats;
+   tournament: nat;
  };
 type PlayerRow = 
  record {
-   avgX100: nat;
-   chips: nat;
-   diamonds: nat;
-   estimatedReceive: nat;
-   paid: nat;
+   bestPoints: nat;
+   bestReturn: nat;
+   deepest: nat;
+   excavations: nat;
+   jackpotWon: nat;
    player: principal;
-   playing: bool;
-   tiers: vec nat;
+   prize: nat;
+   rank: nat;
+   returned: nat;
+   staked: nat;
  };
 type PickResult = 
  record {
    collapsed: bool;
-   diamond: bool;
-   ended: bool;
+   credit: nat;
+   diamond: DiamondResult;
+   end: opt EndResult;
    excavation: opt ExcavationView;
    picks: nat;
-   pointsSaved: nat;
- };
-type PayoutConcept = 
- variant {
-   draw;
-   prize;
+   pool: nat;
  };
 type Payout = 
  record {
    amount: nat;
-   concept: PayoutConcept;
-   tiers: vec nat;
+   id: nat;
+   paid: bool;
+   paidAt: int;
+   stamp: nat64;
    to: principal;
+   tournament: nat;
+   txId: opt nat;
+   uncertain: bool;
+ };
+type JackpotWin = 
+ record {
+   amount: nat;
+   at: int;
+   player: principal;
+   stake: nat;
+   tournament: nat;
  };
 type GameConfig = 
  record {
    cells: nat;
-   chipPriceE8s: nat;
-   diamondBps: nat;
-   drawBps: nat;
-   excavationsPerChip: nat;
-   faucetCapE8s: nat;
+   creditCapE8s: nat;
+   diamond1Bps: nat;
+   diamond2PerGoldao: nat;
+   diamond3Odds: nat;
    feeE8s: nat;
-   minChips: nat;
-   minPlayers: nat;
+   ledgerId: text;
+   loadMax: nat;
+   loadMin: nat;
+   maxPicks: nat;
+   minPayoutE8s: nat;
    mines: nat;
+   miniBps: nat;
+   payoutBps: nat;
    pointsTable: vec nat;
+   poolSeedE8s: nat;
+   poolSeedMaxE8s: nat;
+   realLedger: bool;
    safePicks: nat;
-   status: WeekStatus;
-   tierCutsPct: vec nat;
-   tierMultBps: vec nat;
-   treasuryBps: nat;
-   week: nat;
+   stakeCapE8s: nat;
+   stakeMinE8s: nat;
+   top10Bps: nat;
+   top10MinVolumeE8s: nat;
+   top10Weights: vec nat;
+ };
+type FaucetConfig = 
+ record {
+   capE8s: nat;
+   enabled: bool;
+   presets: vec nat;
+   usedE8s: nat;
  };
 type ExcavationView = 
  record {
    canSave: bool;
-   chipId: nat;
+   collapseGross: nat;
    diamonds: nat;
-   ifCollapse: nat;
-   nextPoints: nat;
+   held: nat;
+   jackpotWon: nat;
+   nextGross: nat;
    picks: nat;
+   runGross: nat;
    runPoints: nat;
    safePctX100: nat;
+   stake: nat;
  };
 type Error = 
  variant {
@@ -213,90 +324,149 @@ type Error =
    UnknownNonce;
    UntrustedSsoSource: record {domain: text;};
  };
-type Dashboard = 
+type EndResult = 
  record {
    balance: nat;
-   chips: vec ChipView;
-   diamonds: nat;
-   estimatedReceive: nat;
-   excavationsLeft: nat;
-   faucetRemaining: nat;
-   history: vec PlayerWeekResult;
-   open: opt ExcavationView;
-   paid: nat;
-   stats: WeekStats;
-   status: WeekStatus;
-   tiers: vec nat;
-   totalDiamonds: nat;
-   week: nat;
- };
-type ChipView = 
- record {
-   avgX100: nat;
-   diamonds: nat;
-   gapToNextX100: opt nat;
-   id: nat;
+   credit: nat;
+   gross: nat;
+   jackpotWon: nat;
+   kind: EndKind;
+   lost: nat;
+   picks: nat;
    points: nat;
-   projectedX100: nat;
-   tier: TierIndex;
-   used: nat;
+   stake: nat;
+   won: nat;
+ };
+type EndKind = 
+ variant {
+   collapsed;
+   maxed;
+   saved;
+ };
+type DiamondResult = 
+ record {
+   stage: nat;
+   won: nat;
+ };
+type Dashboard = 
+ record {
+   allowance: nat;
+   balance: nat;
+   bestReturn: nat;
+   credit: nat;
+   endsAt: int;
+   history: vec PlayerTournamentResult;
+   open: opt ExcavationView;
+   paused: bool;
+   pendingPayout: nat;
+   pool: nat;
+   stakes: vec nat;
+   stats: TournamentStats;
+   top10Entry: nat;
+   top10Pool: nat;
+   top10Prize: nat;
+   top10Rank: nat;
+   tournament: nat;
  };
 type Cell = 
  record {
    name: text;
    value: Value;
  };
+type AutoStep = 
+ record {
+   collapsed: bool;
+   diamond: DiamondResult;
+   pick: nat;
+ };
+type AutoResult = 
+ record {
+   end: EndResult;
+   pool: nat;
+   steps: vec AutoStep;
+ };
 type AdminView = 
  record {
+   bank: nat;
+   bankAccount: opt principal;
+   bankAllowance: nat;
    burned: nat;
-   drawCarry: nat;
-   lastClose: opt WeekSummary;
+   cycles: nat;
+   durationDays: nat;
+   endsAt: int;
+   fund: int;
+   heldJackpots: nat;
+   lastClose: opt TournamentSummary;
+   owed: nat;
+   paused: bool;
    payouts: vec Payout;
-   status: WeekStatus;
-   treasury: nat;
-   week: nat;
+   pool: nat;
+   realLedger: bool;
+   reserve: nat;
+   selfId: opt principal;
+   smallBalances: nat;
+   smallPlayers: nat;
+   staked: nat;
+   stakes: vec nat;
+   toCollect: nat;
+   toCollectPlayers: nat;
+   top10: nat;
+   tournament: nat;
+   unpaidPayouts: nat;
+   withdrawable: nat;
  };
 service : {
   _initialize_access_control: () -> ();
-  _internet_identity_sign_in_finish: () -> (Result_7);
+  _internet_identity_sign_in_finish: () -> (Result_13);
   _internet_identity_sign_in_start: () -> (blob);
-  /// Lists every principal that has a role. Admin only.
-  adminListRoles: () -> (Result_6) query;
-  /// Syncs the app-wide admin role for the hardcoded bootstrap principals (Game.BOOTSTRAP_ADMINS).
-  /// Returns true only when the caller is one of them; does nothing otherwise.
+  adminListRoles: () -> (Result_12) query;
   adminSyncBootstrap: () -> (bool);
   assignCallerUserRole: (user: principal, role: UserRole) -> ();
   execute: (qJson: text) -> (Result__1) query;
-  /// Closes the week: saves open excavations, auto-plays the remaining ones
-  /// saving at 3, ranks chips, computes payouts and runs the diamond draw.
-  gameAdminCloseWeek: () -> (Result_5);
-  /// Credits all payouts (simulated), archives the week and opens the next one.
-  gameAdminPayAndOpenNext: () -> (Result_1);
-  /// Recovery: if a close was interrupted (status stuck in #closing), reopens the week
-  /// so the admin can run the close again. Open excavations were already saved.
-  gameAdminRecoverClosing: () -> (Result_4);
-  gameAdminView: () -> (Result_3) query;
-  /// Buys chips: sends n x 1,000 to the treasury + 10 fee.
-  gameBuyChips: (n: nat) -> (Result_1);
+  gameAdminAckAccounting: () -> (Result_5);
+  gameAdminChangeLedger: () -> (Result);
+  gameAdminCheckPay: () -> (Result_5) query;
+  gameAdminCheckWithdraw: (kind: WithdrawKind) -> (Result_5) query;
+  gameAdminCloseAll: () -> (Result_5);
+  gameAdminCloseTournament: () -> (Result_5);
+  gameAdminEnsureConnected: () -> (Result_11);
+  gameAdminHalt: () -> (Result_5);
+  gameAdminLedgerAllowance: (who: principal, spender: principal) -> (Result);
+  gameAdminLedgerBalance: (who: principal) -> (Result);
+  gameAdminMarkPaid: (id: nat, txId: nat) -> (Result_5);
+  gameAdminPay: (max: nat) -> (Result_10);
+  gameAdminPayOne: (id: nat, renew: bool) -> (Result_9);
+  gameAdminPayouts: (tournament: nat) -> (Result_8) query;
+  gameAdminRefreshBank: () -> (Result);
+  gameAdminReleaseBusy: (player: principal) -> (Result_5);
+  gameAdminResume: () -> (Result_5);
+  gameAdminSecurity: () -> (Result_7) query;
+  gameAdminSecurityLog: (day: nat) -> (Result_6) query;
+  gameAdminSeedPool: (goldao: nat) -> (Result);
+  gameAdminSetDuration: (days: nat) -> (Result_5);
+  gameAdminView: () -> (Result_4) query;
+  gameAdminWithdraw: (kind: WithdrawKind) -> (Result);
+  gameAuto: (stake: StakeOption, stopAt: nat, expectedStake: nat) ->
+   (Result_3);
+  gameBurned: () -> (nat) query;
   gameConfig: () -> (GameConfig) query;
+  gameLoadCredit: (goldao: nat) -> (Result);
   gameMyDashboard: () -> (Dashboard) query;
-  /// One pick. Calls raw_rand to resolve collapse (from the 3rd pick) and diamond.
-  gamePick: () -> (Result_2);
+  gamePick: (stake: opt StakeOption, expectedStake: nat, expectedPicks:
+   nat) -> (Result_2);
   gameRanking: () -> (Ranking) query;
-  /// Test GOLDAO: up to FAUCET_CAP per principal per week.
-  gameRequestTestTokens: (goldao: nat) -> (Result_1);
   gameSave: () -> (Result_1);
-  gameStartExcavation: () -> (Result);
-  gameWeeks: () -> (vec WeekSummary) query;
+  gameTournaments: () -> (vec TournamentSummary) query;
   getCallerUserRole: () -> (UserRole) query;
   /// Full history sorted by date ascending.
   getTreasuryHistory: () -> (vec TreasurySnapshot) query;
   /// Check if a snapshot for the given date exists (cheap query).
   hasSnapshot: (date: text) -> (bool) query;
   isCallerAdmin: () -> (bool) query;
-  /// Save a daily snapshot. Write-once per day — rejects if date exists.
+  /// Save a daily snapshot. Write-once per day, only for today's date (UTC), validated in the lib.
   saveTreasurySnapshot: (snapshot: TreasurySnapshot) -> (bool);
   schema: () -> (text) query;
-  /// Returns the caller's principal as text.
+  testFaucetClaim: (goldao: nat) -> (Result);
+  testFaucetConfig: () -> (FaucetConfig) query;
   whoAmI: () -> (text) query;
 }

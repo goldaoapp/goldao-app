@@ -669,11 +669,11 @@ class HashMD extends Hash$1 {
     if (len % 4)
       throw new Error("_sha2: outputLen should be aligned to 32bit");
     const outLen = len / 4;
-    const state = this.get();
-    if (outLen > state.length)
+    const state2 = this.get();
+    if (outLen > state2.length)
       throw new Error("_sha2: outputLen bigger than state");
     for (let i = 0; i < outLen; i++)
-      oview.setUint32(4 * i, state[i], isLE);
+      oview.setUint32(4 * i, state2[i], isLE);
   }
   digest() {
     const { buffer, outputLen } = this;
@@ -4654,14 +4654,14 @@ function ct(t) {
 function T$1(t, e2) {
   E$1(t, e2.length), r$1 > a$1.length - e2.length && k(r$1 + e2.length), a$1.set(e2, r$1), r$1 += e2.length;
 }
-function X(t, e2) {
+function X$1(t, e2) {
   E$1(t, e2);
 }
 function it(t) {
-  X(c.UnsignedInteger, t);
+  X$1(c.UnsignedInteger, t);
 }
 function st(t) {
-  X(
+  X$1(
     c.NegativeInteger,
     typeof t == "bigint" ? -1n - t : -1 - t
   );
@@ -9091,9 +9091,9 @@ function eddsa(Point, cHash, eddsaOpts = {}) {
   function getPublicKey(secretKey) {
     return getExtendedPublicKey(secretKey).pointBytes;
   }
-  function hashDomainToScalar(context = Uint8Array.of(), ...msgs) {
+  function hashDomainToScalar(context2 = Uint8Array.of(), ...msgs) {
     const msg = concatBytes(...msgs);
-    return modN_LE(cHash(domain(msg, ensureBytes("context", context), !!prehash)));
+    return modN_LE(cHash(domain(msg, ensureBytes("context", context2), !!prehash)));
   }
   function sign(msg, secretKey, options = {}) {
     msg = ensureBytes("message", msg);
@@ -9111,7 +9111,7 @@ function eddsa(Point, cHash, eddsaOpts = {}) {
   }
   const verifyOpts = { zip215: true };
   function verify(sig, msg, publicKey, options = verifyOpts) {
-    const { context, zip215 } = options;
+    const { context: context2, zip215 } = options;
     const len = lengths.signature;
     sig = ensureBytes("signature", sig, len);
     msg = ensureBytes("message", msg);
@@ -9133,7 +9133,7 @@ function eddsa(Point, cHash, eddsaOpts = {}) {
     }
     if (!zip215 && A2.isSmallOrder())
       return false;
-    const k2 = hashDomainToScalar(context, R2.toBytes(), A2.toBytes(), msg);
+    const k2 = hashDomainToScalar(context2, R2.toBytes(), A2.toBytes(), msg);
     const RkA = R2.add(A2.multiplyUnsafe(k2));
     return RkA.subtract(SB).clearCofactor().is0();
   }
@@ -9838,7 +9838,7 @@ function isSignedReadStateRequestWithExpiry$1(value) {
 }
 async function pollForResponse$1(agent, canisterId, requestId, options = {}) {
   const path = [utf8ToBytes("request_status"), requestId];
-  let state;
+  let state2;
   let currentRequest;
   const preSignReadStateRequest = options.preSignReadStateRequest ?? false;
   if (preSignReadStateRequest) {
@@ -9847,15 +9847,15 @@ async function pollForResponse$1(agent, canisterId, requestId, options = {}) {
       agent,
       pollingOptions: options
     });
-    state = await agent.readState(canisterId, { paths: [path] }, void 0, currentRequest);
+    state2 = await agent.readState(canisterId, { paths: [path] }, void 0, currentRequest);
   } else {
-    state = await agent.readState(canisterId, { paths: [path] });
+    state2 = await agent.readState(canisterId, { paths: [path] });
   }
   if (agent.rootKey == null) {
     throw ExternalError$1.fromCode(new MissingRootKeyErrorCode$1());
   }
   const cert = await Certificate$1.create({
-    certificate: state.certificate,
+    certificate: state2.certificate,
     rootKey: agent.rootKey,
     principal: { canisterId },
     blsVerify: options.blsVerify,
@@ -9873,7 +9873,7 @@ async function pollForResponse$1(agent, canisterId, requestId, options = {}) {
       return {
         reply: lookupResultToBuffer$1(cert.lookup_path([...path, "reply"])),
         certificate: cert,
-        rawCertificate: state.certificate
+        rawCertificate: state2.certificate
       };
     }
     case RequestStatusResponseStatus$1.Received:
@@ -12024,11 +12024,11 @@ class Signer {
         return scopes2.map((item) => {
           const obj = asRecord(item);
           const scope = asRecord(obj == null ? void 0 : obj.scope);
-          const state = asString$1(obj == null ? void 0 : obj.state);
-          if (!scope || typeof scope.method !== "string" || !state) {
+          const state2 = asString$1(obj == null ? void 0 : obj.state);
+          if (!scope || typeof scope.method !== "string" || !state2) {
             throw new Error("Expected { scope: { method }, state }");
           }
-          return { scope, state };
+          return { scope, state: state2 };
         });
       }
     });
@@ -12049,11 +12049,11 @@ class Signer {
         return scopes.map((item) => {
           const obj = asRecord(item);
           const scope = asRecord(obj == null ? void 0 : obj.scope);
-          const state = asString$1(obj == null ? void 0 : obj.state);
-          if (!scope || typeof scope.method !== "string" || !state) {
+          const state2 = asString$1(obj == null ? void 0 : obj.state);
+          if (!scope || typeof scope.method !== "string" || !state2) {
             throw new Error("Expected { scope: { method }, state }");
           }
-          return { scope, state };
+          return { scope, state: state2 };
         });
       }
     });
@@ -12247,15 +12247,15 @@ _options2 = new WeakMap();
 _status = new WeakMap();
 _HeartbeatClient_instances = new WeakSet();
 establish_fn = function() {
-  let pending = [];
+  let pending2 = [];
   const create = () => {
     const id2 = __privateGet(this, _options2).crypto.randomUUID();
-    pending.push(id2);
+    pending2.push(id2);
     return id2;
   };
   const listener = __privateMethod(this, _HeartbeatClient_instances, receiveStatusResponse_fn).call(this, (response) => {
-    if ("result" in response.data && response.data.id !== null && pending.includes(response.data.id)) {
-      pending = [];
+    if ("result" in response.data && response.data.id !== null && pending2.includes(response.data.id)) {
+      pending2 = [];
       listener();
       clearInterval(interval);
       clearTimeout(timeout2);
@@ -12273,19 +12273,19 @@ establish_fn = function() {
 };
 maintain_fn = function(origin, status) {
   let timeout2;
-  let pending = [];
+  let pending2 = [];
   const consume = (id2) => {
-    const index2 = pending.findIndex((entry) => entry.id === id2);
+    const index2 = pending2.findIndex((entry) => entry.id === id2);
     if (index2 > -1) {
-      pending.splice(index2, 1);
+      pending2.splice(index2, 1);
     }
     return index2 > -1;
   };
   const create = () => {
     const id2 = __privateGet(this, _options2).crypto.randomUUID();
     const time2 = Date.now();
-    pending = pending.filter((entry) => time2 - __privateGet(this, _options2).disconnectTimeout > entry.time);
-    pending.push({ id: id2, time: time2 });
+    pending2 = pending2.filter((entry) => time2 - __privateGet(this, _options2).disconnectTimeout > entry.time);
+    pending2.push({ id: id2, time: time2 });
     return id2;
   };
   const resetTimeout = (status2) => {
@@ -12529,10 +12529,10 @@ const _IdleManager = class _IdleManager {
     const debounce = (func, wait) => {
       let timeout2;
       return (...args) => {
-        const context = this;
+        const context2 = this;
         const later = () => {
           timeout2 = void 0;
-          func.apply(context, args);
+          func.apply(context2, args);
         };
         clearTimeout(timeout2);
         timeout2 = window.setTimeout(later, wait);
@@ -13312,9 +13312,9 @@ var ReactNoopUpdateQueue = {
   enqueueSetState: function() {
   }
 }, assign$1 = Object.assign, emptyObject = {};
-function Component(props, context, updater) {
+function Component(props, context2, updater) {
   this.props = props;
-  this.context = context;
+  this.context = context2;
   this.refs = emptyObject;
   this.updater = updater || ReactNoopUpdateQueue;
 }
@@ -13332,9 +13332,9 @@ Component.prototype.forceUpdate = function(callback) {
 function ComponentDummy() {
 }
 ComponentDummy.prototype = Component.prototype;
-function PureComponent(props, context, updater) {
+function PureComponent(props, context2, updater) {
   this.props = props;
-  this.context = context;
+  this.context = context2;
   this.refs = emptyObject;
   this.updater = updater || ReactNoopUpdateQueue;
 }
@@ -13475,11 +13475,11 @@ function mapIntoArray(children, array, escapedPrefix, nameSoFar, callback) {
   }
   return invokeCallback;
 }
-function mapChildren(children, func, context) {
+function mapChildren(children, func, context2) {
   if (null == children) return children;
   var result = [], count2 = 0;
   mapIntoArray(children, result, "", "", function(child) {
-    return func.call(context, child, count2++);
+    return func.call(context2, child, count2++);
   });
   return result;
 }
@@ -13855,13 +13855,13 @@ const Error$1 = Variant$1({
     "expected": Vec$1(Text$1)
   })
 });
-const Result_7 = Variant$1({ "ok": Null$1, "err": Error$1 });
+const Result_13 = Variant$1({ "ok": Null$1, "err": Error$1 });
 const UserRole$1 = Variant$1({
   "admin": Null$1,
   "user": Null$1,
   "guest": Null$1
 });
-const Result_6 = Variant$1({
+const Result_12 = Variant$1({
   "ok": Vec$1(Tuple$1(Principal$2, UserRole$1)),
   "err": Text$1
 });
@@ -13878,154 +13878,280 @@ const Result__1 = Record$1({
   "hasMore": Bool$1,
   "rows": Vec$1(Vec$1(Cell$1))
 });
-const WeekSummary = Record$1({
-  "pot": Nat$1,
-  "treasurePerChip": Nat$1,
-  "treasuryKeep": Nat$1,
-  "chips": Nat$1,
-  "week": Nat$1,
-  "drawTicket": Nat$1,
-  "drawTickets": Nat$1,
-  "closedAt": Int$1,
-  "players": Nat$1,
-  "drawPrize": Nat$1,
-  "drawWinner": Opt$1(Principal$2),
-  "drawRandom": Nat$1
+const Result_5 = Variant$1({ "ok": Null$1, "err": Text$1 });
+const Result = Variant$1({ "ok": Nat$1, "err": Text$1 });
+const WithdrawKind$1 = Variant$1({
+  "all": Null$1,
+  "available": Null$1
 });
-const Result_5 = Variant$1({ "ok": WeekSummary, "err": Text$1 });
-const Result_1 = Variant$1({ "ok": Nat$1, "err": Text$1 });
-const Result_4 = Variant$1({ "ok": Null$1, "err": Text$1 });
-const WeekStatus = Variant$1({
-  "closed": Null$1,
-  "open": Null$1,
-  "closing": Null$1
+const Result_11 = Variant$1({ "ok": Bool$1, "err": Text$1 });
+const Result_10 = Variant$1({
+  "ok": Record$1({
+    "paid": Nat$1,
+    "remaining": Nat$1,
+    "failed": Nat$1
+  }),
+  "err": Text$1
 });
-const PayoutConcept = Variant$1({
-  "draw": Null$1,
-  "prize": Null$1
+const Result_9 = Variant$1({
+  "ok": Opt$1(Nat$1),
+  "err": Text$1
 });
 const Payout = Record$1({
+  "id": Nat$1,
   "to": Principal$2,
-  "concept": PayoutConcept,
-  "tiers": Vec$1(Nat$1),
-  "amount": Nat$1
+  "paid": Bool$1,
+  "txId": Opt$1(Nat$1),
+  "tournament": Nat$1,
+  "uncertain": Bool$1,
+  "stamp": Nat64$1,
+  "amount": Nat$1,
+  "paidAt": Int$1
+});
+const Result_8 = Variant$1({
+  "ok": Vec$1(Payout),
+  "err": Text$1
+});
+const SecurityView = Record$1({
+  "haltCode": Nat$1,
+  "ledgerFails": Nat$1,
+  "haltedAt": Int$1,
+  "accountingOk": Bool$1,
+  "halted": Bool$1,
+  "saturations": Nat$1
+});
+const Result_7 = Variant$1({ "ok": SecurityView, "err": Text$1 });
+const SecurityDay = Record$1({
+  "day": Nat$1,
+  "events": Nat$1,
+  "attention": Nat$1
+});
+const SecurityLevel$1 = Variant$1({
+  "warning": Null$1,
+  "info": Null$1,
+  "critical": Null$1
+});
+const SecurityEvent = Record$1({
+  "at": Int$1,
+  "title": Text$1,
+  "code": Text$1,
+  "count": Nat$1,
+  "lastAt": Int$1,
+  "description": Text$1,
+  "level": SecurityLevel$1
+});
+const SecurityLogView = Record$1({
+  "day": Nat$1,
+  "days": Vec$1(SecurityDay),
+  "events": Vec$1(SecurityEvent)
+});
+const Result_6 = Variant$1({
+  "ok": SecurityLogView,
+  "err": Text$1
+});
+const TournamentSummary = Record$1({
+  "staked": Nat$1,
+  "minis": Nat$1,
+  "miniPaid": Nat$1,
+  "excavations": Nat$1,
+  "jackpotPaid": Nat$1,
+  "tournament": Nat$1,
+  "closedAt": Int$1,
+  "players": Nat$1,
+  "forfeited": Nat$1,
+  "payoutTotal": Nat$1,
+  "returned": Nat$1,
+  "jackpots": Nat$1
 });
 const AdminView = Record$1({
-  "status": WeekStatus,
-  "drawCarry": Nat$1,
-  "week": Nat$1,
-  "lastClose": Opt$1(WeekSummary),
+  "durationDays": Nat$1,
+  "staked": Nat$1,
+  "stakes": Vec$1(Nat$1),
+  "top10": Nat$1,
+  "smallBalances": Nat$1,
+  "toCollect": Nat$1,
+  "bankAccount": Opt$1(Principal$2),
+  "bank": Nat$1,
+  "fund": Int$1,
+  "owed": Nat$1,
+  "pool": Nat$1,
+  "tournament": Nat$1,
+  "reserve": Nat$1,
+  "selfId": Opt$1(Principal$2),
+  "cycles": Nat$1,
+  "lastClose": Opt$1(TournamentSummary),
+  "withdrawable": Nat$1,
+  "smallPlayers": Nat$1,
+  "bankAllowance": Nat$1,
   "burned": Nat$1,
+  "heldJackpots": Nat$1,
+  "toCollectPlayers": Nat$1,
+  "realLedger": Bool$1,
   "payouts": Vec$1(Payout),
-  "treasury": Nat$1
+  "paused": Bool$1,
+  "unpaidPayouts": Nat$1,
+  "endsAt": Int$1
 });
-const Result_3 = Variant$1({ "ok": AdminView, "err": Text$1 });
-const GameConfig = Record$1({
-  "status": WeekStatus,
-  "mines": Nat$1,
-  "feeE8s": Nat$1,
-  "minChips": Nat$1,
-  "cells": Nat$1,
-  "pointsTable": Vec$1(Nat$1),
-  "week": Nat$1,
-  "minPlayers": Nat$1,
-  "treasuryBps": Nat$1,
-  "chipPriceE8s": Nat$1,
-  "tierCutsPct": Vec$1(Nat$1),
-  "safePicks": Nat$1,
-  "tierMultBps": Vec$1(Nat$1),
-  "faucetCapE8s": Nat$1,
-  "excavationsPerChip": Nat$1,
-  "drawBps": Nat$1,
-  "diamondBps": Nat$1
+const Result_4 = Variant$1({ "ok": AdminView, "err": Text$1 });
+const StakeOption$1 = Variant$1({
+  "max": Null$1,
+  "mid": Null$1,
+  "min": Null$1
 });
-const TierIndex = Nat$1;
-const ChipView = Record$1({
-  "id": Nat$1,
-  "diamonds": Nat$1,
-  "tier": TierIndex,
-  "used": Nat$1,
-  "avgX100": Nat$1,
-  "projectedX100": Nat$1,
-  "gapToNextX100": Opt$1(Nat$1),
+const EndKind$1 = Variant$1({
+  "maxed": Null$1,
+  "collapsed": Null$1,
+  "saved": Null$1
+});
+const EndResult = Record$1({
+  "won": Nat$1,
+  "jackpotWon": Nat$1,
+  "balance": Nat$1,
+  "kind": EndKind$1,
+  "lost": Nat$1,
+  "credit": Nat$1,
+  "stake": Nat$1,
+  "gross": Nat$1,
+  "picks": Nat$1,
   "points": Nat$1
 });
+const DiamondResult = Record$1({ "won": Nat$1, "stage": Nat$1 });
+const AutoStep = Record$1({
+  "collapsed": Bool$1,
+  "pick": Nat$1,
+  "diamond": DiamondResult
+});
+const AutoResult = Record$1({
+  "end": EndResult,
+  "pool": Nat$1,
+  "steps": Vec$1(AutoStep)
+});
+const Result_3 = Variant$1({ "ok": AutoResult, "err": Text$1 });
+const GameConfig = Record$1({
+  "mines": Nat$1,
+  "loadMax": Nat$1,
+  "loadMin": Nat$1,
+  "top10Bps": Nat$1,
+  "ledgerId": Text$1,
+  "top10Weights": Vec$1(Nat$1),
+  "diamond2PerGoldao": Nat$1,
+  "stakeCapE8s": Nat$1,
+  "feeE8s": Nat$1,
+  "diamond1Bps": Nat$1,
+  "cells": Nat$1,
+  "pointsTable": Vec$1(Nat$1),
+  "miniBps": Nat$1,
+  "creditCapE8s": Nat$1,
+  "maxPicks": Nat$1,
+  "diamond3Odds": Nat$1,
+  "top10MinVolumeE8s": Nat$1,
+  "poolSeedMaxE8s": Nat$1,
+  "poolSeedE8s": Nat$1,
+  "payoutBps": Nat$1,
+  "safePicks": Nat$1,
+  "minPayoutE8s": Nat$1,
+  "stakeMinE8s": Nat$1,
+  "realLedger": Bool$1
+});
 const ExcavationView = Record$1({
+  "jackpotWon": Nat$1,
   "runPoints": Nat$1,
+  "collapseGross": Nat$1,
   "diamonds": Nat$1,
+  "nextGross": Nat$1,
+  "held": Nat$1,
   "canSave": Bool$1,
-  "ifCollapse": Nat$1,
-  "nextPoints": Nat$1,
-  "chipId": Nat$1,
+  "stake": Nat$1,
+  "runGross": Nat$1,
   "picks": Nat$1,
   "safePctX100": Nat$1
 });
-const PlayerWeekResult = Record$1({
-  "tiers": Vec$1(Nat$1),
+const TournamentStats = Record$1({
+  "staked": Nat$1,
+  "minis": Nat$1,
+  "jackpotWon": Nat$1,
   "deepest": Nat$1,
-  "diamonds": Nat$1,
+  "excavations": Nat$1,
   "collapses": Nat$1,
-  "best": Nat$1,
-  "chips": Nat$1,
-  "paid": Nat$1,
-  "week": Nat$1,
-  "received": Nat$1,
-  "drawWon": Bool$1
+  "miniWon": Nat$1,
+  "bestPoints": Nat$1,
+  "charged": Nat$1,
+  "returned": Nat$1,
+  "jackpots": Nat$1
 });
-const WeekStats = Record$1({
-  "deepest": Nat$1,
-  "playTx": Nat$1,
-  "collapses": Nat$1,
-  "best": Nat$1
+const PlayerTournamentResult = Record$1({
+  "tournament": Nat$1,
+  "credit": Nat$1,
+  "stats": TournamentStats,
+  "payout": Nat$1
 });
 const Dashboard = Record$1({
-  "status": WeekStatus,
-  "tiers": Vec$1(Nat$1),
+  "top10Pool": Nat$1,
+  "top10Rank": Nat$1,
+  "stakes": Vec$1(Nat$1),
+  "top10Prize": Nat$1,
   "balance": Nat$1,
-  "diamonds": Nat$1,
-  "chips": Vec$1(ChipView),
   "open": Opt$1(ExcavationView),
-  "paid": Nat$1,
-  "week": Nat$1,
-  "history": Vec$1(PlayerWeekResult),
-  "totalDiamonds": Nat$1,
-  "stats": WeekStats,
-  "excavationsLeft": Nat$1,
-  "faucetRemaining": Nat$1,
-  "estimatedReceive": Nat$1
+  "pool": Nat$1,
+  "tournament": Nat$1,
+  "history": Vec$1(PlayerTournamentResult),
+  "credit": Nat$1,
+  "stats": TournamentStats,
+  "bestReturn": Nat$1,
+  "allowance": Nat$1,
+  "top10Entry": Nat$1,
+  "pendingPayout": Nat$1,
+  "paused": Bool$1,
+  "endsAt": Int$1
 });
 const PickResult = Record$1({
+  "end": Opt$1(EndResult),
   "collapsed": Bool$1,
-  "diamond": Bool$1,
-  "ended": Bool$1,
-  "pointsSaved": Nat$1,
+  "pool": Nat$1,
+  "diamond": DiamondResult,
+  "credit": Nat$1,
   "picks": Nat$1,
   "excavation": Opt$1(ExcavationView)
 });
 const Result_2 = Variant$1({ "ok": PickResult, "err": Text$1 });
-const PlayerRow = Record$1({
-  "tiers": Vec$1(Nat$1),
+const TopPrize = Record$1({
   "player": Principal$2,
-  "diamonds": Nat$1,
-  "chips": Nat$1,
-  "paid": Nat$1,
-  "avgX100": Nat$1,
-  "playing": Bool$1,
-  "estimatedReceive": Nat$1
+  "rank": Nat$1,
+  "tournament": Nat$1,
+  "volume": Nat$1,
+  "prize": Nat$1
+});
+const PlayerRow = Record$1({
+  "staked": Nat$1,
+  "jackpotWon": Nat$1,
+  "deepest": Nat$1,
+  "player": Principal$2,
+  "excavations": Nat$1,
+  "rank": Nat$1,
+  "bestPoints": Nat$1,
+  "bestReturn": Nat$1,
+  "prize": Nat$1,
+  "returned": Nat$1
+});
+const JackpotWin = Record$1({
+  "at": Int$1,
+  "player": Principal$2,
+  "tournament": Nat$1,
+  "stake": Nat$1,
+  "amount": Nat$1
 });
 const Ranking = Record$1({
-  "pot": Nat$1,
-  "status": WeekStatus,
-  "treasurePerChip": Nat$1,
-  "treasuryKeep": Nat$1,
-  "chips": Nat$1,
-  "week": Nat$1,
-  "totalDiamonds": Nat$1,
+  "top10Pool": Nat$1,
+  "staked": Nat$1,
+  "totalPlayers": Nat$1,
+  "pool": Nat$1,
+  "tournament": Nat$1,
+  "lastTop10": Vec$1(TopPrize),
   "players": Vec$1(PlayerRow),
-  "drawPrize": Nat$1,
-  "cutsX100": Vec$1(Opt$1(Nat$1))
+  "jackpots": Vec$1(JackpotWin),
+  "endsAt": Int$1
 });
-const Result = Variant$1({ "ok": ExcavationView, "err": Text$1 });
+const Result_1 = Variant$1({ "ok": EndResult, "err": Text$1 });
 const TreasurySnapshot = Record$1({
   "ogy_usd": Float64$1,
   "date": Text$1,
@@ -14037,33 +14163,68 @@ const TreasurySnapshot = Record$1({
   "icp_amount": Float64$1,
   "wtn_amount": Float64$1
 });
+const FaucetConfig = Record$1({
+  "presets": Vec$1(Nat$1),
+  "usedE8s": Nat$1,
+  "enabled": Bool$1,
+  "capE8s": Nat$1
+});
 Service$1({
   "_initialize_access_control": Func$1([], [], []),
-  "_internet_identity_sign_in_finish": Func$1([], [Result_7], []),
+  "_internet_identity_sign_in_finish": Func$1([], [Result_13], []),
   "_internet_identity_sign_in_start": Func$1([], [Vec$1(Nat8$1)], []),
-  "adminListRoles": Func$1([], [Result_6], ["query"]),
+  "adminListRoles": Func$1([], [Result_12], ["query"]),
   "adminSyncBootstrap": Func$1([], [Bool$1], []),
   "assignCallerUserRole": Func$1([Principal$2, UserRole$1], [], []),
   "execute": Func$1([Text$1], [Result__1], ["query"]),
-  "gameAdminCloseWeek": Func$1([], [Result_5], []),
-  "gameAdminPayAndOpenNext": Func$1([], [Result_1], []),
-  "gameAdminRecoverClosing": Func$1([], [Result_4], []),
-  "gameAdminView": Func$1([], [Result_3], ["query"]),
-  "gameBuyChips": Func$1([Nat$1], [Result_1], []),
+  "gameAdminAckAccounting": Func$1([], [Result_5], []),
+  "gameAdminChangeLedger": Func$1([], [Result], []),
+  "gameAdminCheckPay": Func$1([], [Result_5], ["query"]),
+  "gameAdminCheckWithdraw": Func$1([WithdrawKind$1], [Result_5], ["query"]),
+  "gameAdminCloseAll": Func$1([], [Result_5], []),
+  "gameAdminCloseTournament": Func$1([], [Result_5], []),
+  "gameAdminEnsureConnected": Func$1([], [Result_11], []),
+  "gameAdminHalt": Func$1([], [Result_5], []),
+  "gameAdminLedgerAllowance": Func$1(
+    [Principal$2, Principal$2],
+    [Result],
+    []
+  ),
+  "gameAdminLedgerBalance": Func$1([Principal$2], [Result], []),
+  "gameAdminMarkPaid": Func$1([Nat$1, Nat$1], [Result_5], []),
+  "gameAdminPay": Func$1([Nat$1], [Result_10], []),
+  "gameAdminPayOne": Func$1([Nat$1, Bool$1], [Result_9], []),
+  "gameAdminPayouts": Func$1([Nat$1], [Result_8], ["query"]),
+  "gameAdminRefreshBank": Func$1([], [Result], []),
+  "gameAdminReleaseBusy": Func$1([Principal$2], [Result_5], []),
+  "gameAdminResume": Func$1([], [Result_5], []),
+  "gameAdminSecurity": Func$1([], [Result_7], ["query"]),
+  "gameAdminSecurityLog": Func$1([Nat$1], [Result_6], ["query"]),
+  "gameAdminSeedPool": Func$1([Nat$1], [Result], []),
+  "gameAdminSetDuration": Func$1([Nat$1], [Result_5], []),
+  "gameAdminView": Func$1([], [Result_4], ["query"]),
+  "gameAdminWithdraw": Func$1([WithdrawKind$1], [Result], []),
+  "gameAuto": Func$1([StakeOption$1, Nat$1, Nat$1], [Result_3], []),
+  "gameBurned": Func$1([], [Nat$1], ["query"]),
   "gameConfig": Func$1([], [GameConfig], ["query"]),
+  "gameLoadCredit": Func$1([Nat$1], [Result], []),
   "gameMyDashboard": Func$1([], [Dashboard], ["query"]),
-  "gamePick": Func$1([], [Result_2], []),
+  "gamePick": Func$1(
+    [Opt$1(StakeOption$1), Nat$1, Nat$1],
+    [Result_2],
+    []
+  ),
   "gameRanking": Func$1([], [Ranking], ["query"]),
-  "gameRequestTestTokens": Func$1([Nat$1], [Result_1], []),
   "gameSave": Func$1([], [Result_1], []),
-  "gameStartExcavation": Func$1([], [Result], []),
-  "gameWeeks": Func$1([], [Vec$1(WeekSummary)], ["query"]),
+  "gameTournaments": Func$1([], [Vec$1(TournamentSummary)], ["query"]),
   "getCallerUserRole": Func$1([], [UserRole$1], ["query"]),
   "getTreasuryHistory": Func$1([], [Vec$1(TreasurySnapshot)], ["query"]),
   "hasSnapshot": Func$1([Text$1], [Bool$1], ["query"]),
   "isCallerAdmin": Func$1([], [Bool$1], ["query"]),
   "saveTreasurySnapshot": Func$1([TreasurySnapshot], [Bool$1], []),
   "schema": Func$1([], [Text$1], ["query"]),
+  "testFaucetClaim": Func$1([Nat$1], [Result], []),
+  "testFaucetConfig": Func$1([], [FaucetConfig], ["query"]),
   "whoAmI": Func$1([], [Text$1], ["query"])
 });
 const idlFactory$1 = ({ IDL: IDL2 }) => {
@@ -14088,13 +14249,13 @@ const idlFactory$1 = ({ IDL: IDL2 }) => {
       "expected": IDL2.Vec(IDL2.Text)
     })
   });
-  const Result_72 = IDL2.Variant({ "ok": IDL2.Null, "err": Error2 });
+  const Result_132 = IDL2.Variant({ "ok": IDL2.Null, "err": Error2 });
   const UserRole2 = IDL2.Variant({
     "admin": IDL2.Null,
     "user": IDL2.Null,
     "guest": IDL2.Null
   });
-  const Result_62 = IDL2.Variant({
+  const Result_122 = IDL2.Variant({
     "ok": IDL2.Vec(IDL2.Tuple(IDL2.Principal, UserRole2)),
     "err": IDL2.Text
   });
@@ -14111,151 +14272,271 @@ const idlFactory$1 = ({ IDL: IDL2 }) => {
     "hasMore": IDL2.Bool,
     "rows": IDL2.Vec(IDL2.Vec(Cell2))
   });
-  const WeekSummary2 = IDL2.Record({
-    "pot": IDL2.Nat,
-    "treasurePerChip": IDL2.Nat,
-    "treasuryKeep": IDL2.Nat,
-    "chips": IDL2.Nat,
-    "week": IDL2.Nat,
-    "drawTicket": IDL2.Nat,
-    "drawTickets": IDL2.Nat,
+  const Result_52 = IDL2.Variant({ "ok": IDL2.Null, "err": IDL2.Text });
+  const Result2 = IDL2.Variant({ "ok": IDL2.Nat, "err": IDL2.Text });
+  const WithdrawKind2 = IDL2.Variant({
+    "all": IDL2.Null,
+    "available": IDL2.Null
+  });
+  const Result_112 = IDL2.Variant({ "ok": IDL2.Bool, "err": IDL2.Text });
+  const Result_102 = IDL2.Variant({
+    "ok": IDL2.Record({
+      "paid": IDL2.Nat,
+      "remaining": IDL2.Nat,
+      "failed": IDL2.Nat
+    }),
+    "err": IDL2.Text
+  });
+  const Result_92 = IDL2.Variant({ "ok": IDL2.Opt(IDL2.Nat), "err": IDL2.Text });
+  const Payout2 = IDL2.Record({
+    "id": IDL2.Nat,
+    "to": IDL2.Principal,
+    "paid": IDL2.Bool,
+    "txId": IDL2.Opt(IDL2.Nat),
+    "tournament": IDL2.Nat,
+    "uncertain": IDL2.Bool,
+    "stamp": IDL2.Nat64,
+    "amount": IDL2.Nat,
+    "paidAt": IDL2.Int
+  });
+  const Result_82 = IDL2.Variant({ "ok": IDL2.Vec(Payout2), "err": IDL2.Text });
+  const SecurityView2 = IDL2.Record({
+    "haltCode": IDL2.Nat,
+    "ledgerFails": IDL2.Nat,
+    "haltedAt": IDL2.Int,
+    "accountingOk": IDL2.Bool,
+    "halted": IDL2.Bool,
+    "saturations": IDL2.Nat
+  });
+  const Result_72 = IDL2.Variant({ "ok": SecurityView2, "err": IDL2.Text });
+  const SecurityDay2 = IDL2.Record({
+    "day": IDL2.Nat,
+    "events": IDL2.Nat,
+    "attention": IDL2.Nat
+  });
+  const SecurityLevel2 = IDL2.Variant({
+    "warning": IDL2.Null,
+    "info": IDL2.Null,
+    "critical": IDL2.Null
+  });
+  const SecurityEvent2 = IDL2.Record({
+    "at": IDL2.Int,
+    "title": IDL2.Text,
+    "code": IDL2.Text,
+    "count": IDL2.Nat,
+    "lastAt": IDL2.Int,
+    "description": IDL2.Text,
+    "level": SecurityLevel2
+  });
+  const SecurityLogView2 = IDL2.Record({
+    "day": IDL2.Nat,
+    "days": IDL2.Vec(SecurityDay2),
+    "events": IDL2.Vec(SecurityEvent2)
+  });
+  const Result_62 = IDL2.Variant({ "ok": SecurityLogView2, "err": IDL2.Text });
+  const TournamentSummary2 = IDL2.Record({
+    "staked": IDL2.Nat,
+    "minis": IDL2.Nat,
+    "miniPaid": IDL2.Nat,
+    "excavations": IDL2.Nat,
+    "jackpotPaid": IDL2.Nat,
+    "tournament": IDL2.Nat,
     "closedAt": IDL2.Int,
     "players": IDL2.Nat,
-    "drawPrize": IDL2.Nat,
-    "drawWinner": IDL2.Opt(IDL2.Principal),
-    "drawRandom": IDL2.Nat
-  });
-  const Result_52 = IDL2.Variant({ "ok": WeekSummary2, "err": IDL2.Text });
-  const Result_12 = IDL2.Variant({ "ok": IDL2.Nat, "err": IDL2.Text });
-  const Result_42 = IDL2.Variant({ "ok": IDL2.Null, "err": IDL2.Text });
-  const WeekStatus2 = IDL2.Variant({
-    "closed": IDL2.Null,
-    "open": IDL2.Null,
-    "closing": IDL2.Null
-  });
-  const PayoutConcept2 = IDL2.Variant({ "draw": IDL2.Null, "prize": IDL2.Null });
-  const Payout2 = IDL2.Record({
-    "to": IDL2.Principal,
-    "concept": PayoutConcept2,
-    "tiers": IDL2.Vec(IDL2.Nat),
-    "amount": IDL2.Nat
+    "forfeited": IDL2.Nat,
+    "payoutTotal": IDL2.Nat,
+    "returned": IDL2.Nat,
+    "jackpots": IDL2.Nat
   });
   const AdminView2 = IDL2.Record({
-    "status": WeekStatus2,
-    "drawCarry": IDL2.Nat,
-    "week": IDL2.Nat,
-    "lastClose": IDL2.Opt(WeekSummary2),
+    "durationDays": IDL2.Nat,
+    "staked": IDL2.Nat,
+    "stakes": IDL2.Vec(IDL2.Nat),
+    "top10": IDL2.Nat,
+    "smallBalances": IDL2.Nat,
+    "toCollect": IDL2.Nat,
+    "bankAccount": IDL2.Opt(IDL2.Principal),
+    "bank": IDL2.Nat,
+    "fund": IDL2.Int,
+    "owed": IDL2.Nat,
+    "pool": IDL2.Nat,
+    "tournament": IDL2.Nat,
+    "reserve": IDL2.Nat,
+    "selfId": IDL2.Opt(IDL2.Principal),
+    "cycles": IDL2.Nat,
+    "lastClose": IDL2.Opt(TournamentSummary2),
+    "withdrawable": IDL2.Nat,
+    "smallPlayers": IDL2.Nat,
+    "bankAllowance": IDL2.Nat,
     "burned": IDL2.Nat,
+    "heldJackpots": IDL2.Nat,
+    "toCollectPlayers": IDL2.Nat,
+    "realLedger": IDL2.Bool,
     "payouts": IDL2.Vec(Payout2),
-    "treasury": IDL2.Nat
+    "paused": IDL2.Bool,
+    "unpaidPayouts": IDL2.Nat,
+    "endsAt": IDL2.Int
   });
-  const Result_32 = IDL2.Variant({ "ok": AdminView2, "err": IDL2.Text });
-  const GameConfig2 = IDL2.Record({
-    "status": WeekStatus2,
-    "mines": IDL2.Nat,
-    "feeE8s": IDL2.Nat,
-    "minChips": IDL2.Nat,
-    "cells": IDL2.Nat,
-    "pointsTable": IDL2.Vec(IDL2.Nat),
-    "week": IDL2.Nat,
-    "minPlayers": IDL2.Nat,
-    "treasuryBps": IDL2.Nat,
-    "chipPriceE8s": IDL2.Nat,
-    "tierCutsPct": IDL2.Vec(IDL2.Nat),
-    "safePicks": IDL2.Nat,
-    "tierMultBps": IDL2.Vec(IDL2.Nat),
-    "faucetCapE8s": IDL2.Nat,
-    "excavationsPerChip": IDL2.Nat,
-    "drawBps": IDL2.Nat,
-    "diamondBps": IDL2.Nat
+  const Result_42 = IDL2.Variant({ "ok": AdminView2, "err": IDL2.Text });
+  const StakeOption2 = IDL2.Variant({
+    "max": IDL2.Null,
+    "mid": IDL2.Null,
+    "min": IDL2.Null
   });
-  const TierIndex2 = IDL2.Nat;
-  const ChipView2 = IDL2.Record({
-    "id": IDL2.Nat,
-    "diamonds": IDL2.Nat,
-    "tier": TierIndex2,
-    "used": IDL2.Nat,
-    "avgX100": IDL2.Nat,
-    "projectedX100": IDL2.Nat,
-    "gapToNextX100": IDL2.Opt(IDL2.Nat),
+  const EndKind2 = IDL2.Variant({
+    "maxed": IDL2.Null,
+    "collapsed": IDL2.Null,
+    "saved": IDL2.Null
+  });
+  const EndResult2 = IDL2.Record({
+    "won": IDL2.Nat,
+    "jackpotWon": IDL2.Nat,
+    "balance": IDL2.Nat,
+    "kind": EndKind2,
+    "lost": IDL2.Nat,
+    "credit": IDL2.Nat,
+    "stake": IDL2.Nat,
+    "gross": IDL2.Nat,
+    "picks": IDL2.Nat,
     "points": IDL2.Nat
   });
+  const DiamondResult2 = IDL2.Record({ "won": IDL2.Nat, "stage": IDL2.Nat });
+  const AutoStep2 = IDL2.Record({
+    "collapsed": IDL2.Bool,
+    "pick": IDL2.Nat,
+    "diamond": DiamondResult2
+  });
+  const AutoResult2 = IDL2.Record({
+    "end": EndResult2,
+    "pool": IDL2.Nat,
+    "steps": IDL2.Vec(AutoStep2)
+  });
+  const Result_32 = IDL2.Variant({ "ok": AutoResult2, "err": IDL2.Text });
+  const GameConfig2 = IDL2.Record({
+    "mines": IDL2.Nat,
+    "loadMax": IDL2.Nat,
+    "loadMin": IDL2.Nat,
+    "top10Bps": IDL2.Nat,
+    "ledgerId": IDL2.Text,
+    "top10Weights": IDL2.Vec(IDL2.Nat),
+    "diamond2PerGoldao": IDL2.Nat,
+    "stakeCapE8s": IDL2.Nat,
+    "feeE8s": IDL2.Nat,
+    "diamond1Bps": IDL2.Nat,
+    "cells": IDL2.Nat,
+    "pointsTable": IDL2.Vec(IDL2.Nat),
+    "miniBps": IDL2.Nat,
+    "creditCapE8s": IDL2.Nat,
+    "maxPicks": IDL2.Nat,
+    "diamond3Odds": IDL2.Nat,
+    "top10MinVolumeE8s": IDL2.Nat,
+    "poolSeedMaxE8s": IDL2.Nat,
+    "poolSeedE8s": IDL2.Nat,
+    "payoutBps": IDL2.Nat,
+    "safePicks": IDL2.Nat,
+    "minPayoutE8s": IDL2.Nat,
+    "stakeMinE8s": IDL2.Nat,
+    "realLedger": IDL2.Bool
+  });
   const ExcavationView2 = IDL2.Record({
+    "jackpotWon": IDL2.Nat,
     "runPoints": IDL2.Nat,
+    "collapseGross": IDL2.Nat,
     "diamonds": IDL2.Nat,
+    "nextGross": IDL2.Nat,
+    "held": IDL2.Nat,
     "canSave": IDL2.Bool,
-    "ifCollapse": IDL2.Nat,
-    "nextPoints": IDL2.Nat,
-    "chipId": IDL2.Nat,
+    "stake": IDL2.Nat,
+    "runGross": IDL2.Nat,
     "picks": IDL2.Nat,
     "safePctX100": IDL2.Nat
   });
-  const PlayerWeekResult2 = IDL2.Record({
-    "tiers": IDL2.Vec(IDL2.Nat),
+  const TournamentStats2 = IDL2.Record({
+    "staked": IDL2.Nat,
+    "minis": IDL2.Nat,
+    "jackpotWon": IDL2.Nat,
     "deepest": IDL2.Nat,
-    "diamonds": IDL2.Nat,
+    "excavations": IDL2.Nat,
     "collapses": IDL2.Nat,
-    "best": IDL2.Nat,
-    "chips": IDL2.Nat,
-    "paid": IDL2.Nat,
-    "week": IDL2.Nat,
-    "received": IDL2.Nat,
-    "drawWon": IDL2.Bool
+    "miniWon": IDL2.Nat,
+    "bestPoints": IDL2.Nat,
+    "charged": IDL2.Nat,
+    "returned": IDL2.Nat,
+    "jackpots": IDL2.Nat
   });
-  const WeekStats2 = IDL2.Record({
-    "deepest": IDL2.Nat,
-    "playTx": IDL2.Nat,
-    "collapses": IDL2.Nat,
-    "best": IDL2.Nat
+  const PlayerTournamentResult2 = IDL2.Record({
+    "tournament": IDL2.Nat,
+    "credit": IDL2.Nat,
+    "stats": TournamentStats2,
+    "payout": IDL2.Nat
   });
   const Dashboard2 = IDL2.Record({
-    "status": WeekStatus2,
-    "tiers": IDL2.Vec(IDL2.Nat),
+    "top10Pool": IDL2.Nat,
+    "top10Rank": IDL2.Nat,
+    "stakes": IDL2.Vec(IDL2.Nat),
+    "top10Prize": IDL2.Nat,
     "balance": IDL2.Nat,
-    "diamonds": IDL2.Nat,
-    "chips": IDL2.Vec(ChipView2),
     "open": IDL2.Opt(ExcavationView2),
-    "paid": IDL2.Nat,
-    "week": IDL2.Nat,
-    "history": IDL2.Vec(PlayerWeekResult2),
-    "totalDiamonds": IDL2.Nat,
-    "stats": WeekStats2,
-    "excavationsLeft": IDL2.Nat,
-    "faucetRemaining": IDL2.Nat,
-    "estimatedReceive": IDL2.Nat
+    "pool": IDL2.Nat,
+    "tournament": IDL2.Nat,
+    "history": IDL2.Vec(PlayerTournamentResult2),
+    "credit": IDL2.Nat,
+    "stats": TournamentStats2,
+    "bestReturn": IDL2.Nat,
+    "allowance": IDL2.Nat,
+    "top10Entry": IDL2.Nat,
+    "pendingPayout": IDL2.Nat,
+    "paused": IDL2.Bool,
+    "endsAt": IDL2.Int
   });
   const PickResult2 = IDL2.Record({
+    "end": IDL2.Opt(EndResult2),
     "collapsed": IDL2.Bool,
-    "diamond": IDL2.Bool,
-    "ended": IDL2.Bool,
-    "pointsSaved": IDL2.Nat,
+    "pool": IDL2.Nat,
+    "diamond": DiamondResult2,
+    "credit": IDL2.Nat,
     "picks": IDL2.Nat,
     "excavation": IDL2.Opt(ExcavationView2)
   });
   const Result_22 = IDL2.Variant({ "ok": PickResult2, "err": IDL2.Text });
-  const PlayerRow2 = IDL2.Record({
-    "tiers": IDL2.Vec(IDL2.Nat),
+  const TopPrize2 = IDL2.Record({
     "player": IDL2.Principal,
-    "diamonds": IDL2.Nat,
-    "chips": IDL2.Nat,
-    "paid": IDL2.Nat,
-    "avgX100": IDL2.Nat,
-    "playing": IDL2.Bool,
-    "estimatedReceive": IDL2.Nat
+    "rank": IDL2.Nat,
+    "tournament": IDL2.Nat,
+    "volume": IDL2.Nat,
+    "prize": IDL2.Nat
+  });
+  const PlayerRow2 = IDL2.Record({
+    "staked": IDL2.Nat,
+    "jackpotWon": IDL2.Nat,
+    "deepest": IDL2.Nat,
+    "player": IDL2.Principal,
+    "excavations": IDL2.Nat,
+    "rank": IDL2.Nat,
+    "bestPoints": IDL2.Nat,
+    "bestReturn": IDL2.Nat,
+    "prize": IDL2.Nat,
+    "returned": IDL2.Nat
+  });
+  const JackpotWin2 = IDL2.Record({
+    "at": IDL2.Int,
+    "player": IDL2.Principal,
+    "tournament": IDL2.Nat,
+    "stake": IDL2.Nat,
+    "amount": IDL2.Nat
   });
   const Ranking2 = IDL2.Record({
-    "pot": IDL2.Nat,
-    "status": WeekStatus2,
-    "treasurePerChip": IDL2.Nat,
-    "treasuryKeep": IDL2.Nat,
-    "chips": IDL2.Nat,
-    "week": IDL2.Nat,
-    "totalDiamonds": IDL2.Nat,
+    "top10Pool": IDL2.Nat,
+    "staked": IDL2.Nat,
+    "totalPlayers": IDL2.Nat,
+    "pool": IDL2.Nat,
+    "tournament": IDL2.Nat,
+    "lastTop10": IDL2.Vec(TopPrize2),
     "players": IDL2.Vec(PlayerRow2),
-    "drawPrize": IDL2.Nat,
-    "cutsX100": IDL2.Vec(IDL2.Opt(IDL2.Nat))
+    "jackpots": IDL2.Vec(JackpotWin2),
+    "endsAt": IDL2.Int
   });
-  const Result2 = IDL2.Variant({ "ok": ExcavationView2, "err": IDL2.Text });
+  const Result_14 = IDL2.Variant({ "ok": EndResult2, "err": IDL2.Text });
   const TreasurySnapshot2 = IDL2.Record({
     "ogy_usd": IDL2.Float64,
     "date": IDL2.Text,
@@ -14267,48 +14548,114 @@ const idlFactory$1 = ({ IDL: IDL2 }) => {
     "icp_amount": IDL2.Float64,
     "wtn_amount": IDL2.Float64
   });
+  const FaucetConfig2 = IDL2.Record({
+    "presets": IDL2.Vec(IDL2.Nat),
+    "usedE8s": IDL2.Nat,
+    "enabled": IDL2.Bool,
+    "capE8s": IDL2.Nat
+  });
   return IDL2.Service({
     "_initialize_access_control": IDL2.Func([], [], []),
-    "_internet_identity_sign_in_finish": IDL2.Func([], [Result_72], []),
+    "_internet_identity_sign_in_finish": IDL2.Func([], [Result_132], []),
     "_internet_identity_sign_in_start": IDL2.Func([], [IDL2.Vec(IDL2.Nat8)], []),
-    "adminListRoles": IDL2.Func([], [Result_62], ["query"]),
+    "adminListRoles": IDL2.Func([], [Result_122], ["query"]),
     "adminSyncBootstrap": IDL2.Func([], [IDL2.Bool], []),
     "assignCallerUserRole": IDL2.Func([IDL2.Principal, UserRole2], [], []),
     "execute": IDL2.Func([IDL2.Text], [Result__12], ["query"]),
-    "gameAdminCloseWeek": IDL2.Func([], [Result_52], []),
-    "gameAdminPayAndOpenNext": IDL2.Func([], [Result_12], []),
-    "gameAdminRecoverClosing": IDL2.Func([], [Result_42], []),
-    "gameAdminView": IDL2.Func([], [Result_32], ["query"]),
-    "gameBuyChips": IDL2.Func([IDL2.Nat], [Result_12], []),
+    "gameAdminAckAccounting": IDL2.Func([], [Result_52], []),
+    "gameAdminChangeLedger": IDL2.Func([], [Result2], []),
+    "gameAdminCheckPay": IDL2.Func([], [Result_52], ["query"]),
+    "gameAdminCheckWithdraw": IDL2.Func([WithdrawKind2], [Result_52], ["query"]),
+    "gameAdminCloseAll": IDL2.Func([], [Result_52], []),
+    "gameAdminCloseTournament": IDL2.Func([], [Result_52], []),
+    "gameAdminEnsureConnected": IDL2.Func([], [Result_112], []),
+    "gameAdminHalt": IDL2.Func([], [Result_52], []),
+    "gameAdminLedgerAllowance": IDL2.Func(
+      [IDL2.Principal, IDL2.Principal],
+      [Result2],
+      []
+    ),
+    "gameAdminLedgerBalance": IDL2.Func([IDL2.Principal], [Result2], []),
+    "gameAdminMarkPaid": IDL2.Func([IDL2.Nat, IDL2.Nat], [Result_52], []),
+    "gameAdminPay": IDL2.Func([IDL2.Nat], [Result_102], []),
+    "gameAdminPayOne": IDL2.Func([IDL2.Nat, IDL2.Bool], [Result_92], []),
+    "gameAdminPayouts": IDL2.Func([IDL2.Nat], [Result_82], ["query"]),
+    "gameAdminRefreshBank": IDL2.Func([], [Result2], []),
+    "gameAdminReleaseBusy": IDL2.Func([IDL2.Principal], [Result_52], []),
+    "gameAdminResume": IDL2.Func([], [Result_52], []),
+    "gameAdminSecurity": IDL2.Func([], [Result_72], ["query"]),
+    "gameAdminSecurityLog": IDL2.Func([IDL2.Nat], [Result_62], ["query"]),
+    "gameAdminSeedPool": IDL2.Func([IDL2.Nat], [Result2], []),
+    "gameAdminSetDuration": IDL2.Func([IDL2.Nat], [Result_52], []),
+    "gameAdminView": IDL2.Func([], [Result_42], ["query"]),
+    "gameAdminWithdraw": IDL2.Func([WithdrawKind2], [Result2], []),
+    "gameAuto": IDL2.Func([StakeOption2, IDL2.Nat, IDL2.Nat], [Result_32], []),
+    "gameBurned": IDL2.Func([], [IDL2.Nat], ["query"]),
     "gameConfig": IDL2.Func([], [GameConfig2], ["query"]),
+    "gameLoadCredit": IDL2.Func([IDL2.Nat], [Result2], []),
     "gameMyDashboard": IDL2.Func([], [Dashboard2], ["query"]),
-    "gamePick": IDL2.Func([], [Result_22], []),
+    "gamePick": IDL2.Func(
+      [IDL2.Opt(StakeOption2), IDL2.Nat, IDL2.Nat],
+      [Result_22],
+      []
+    ),
     "gameRanking": IDL2.Func([], [Ranking2], ["query"]),
-    "gameRequestTestTokens": IDL2.Func([IDL2.Nat], [Result_12], []),
-    "gameSave": IDL2.Func([], [Result_12], []),
-    "gameStartExcavation": IDL2.Func([], [Result2], []),
-    "gameWeeks": IDL2.Func([], [IDL2.Vec(WeekSummary2)], ["query"]),
+    "gameSave": IDL2.Func([], [Result_14], []),
+    "gameTournaments": IDL2.Func([], [IDL2.Vec(TournamentSummary2)], ["query"]),
     "getCallerUserRole": IDL2.Func([], [UserRole2], ["query"]),
     "getTreasuryHistory": IDL2.Func([], [IDL2.Vec(TreasurySnapshot2)], ["query"]),
     "hasSnapshot": IDL2.Func([IDL2.Text], [IDL2.Bool], ["query"]),
     "isCallerAdmin": IDL2.Func([], [IDL2.Bool], ["query"]),
     "saveTreasurySnapshot": IDL2.Func([TreasurySnapshot2], [IDL2.Bool], []),
     "schema": IDL2.Func([], [IDL2.Text], ["query"]),
+    "testFaucetClaim": IDL2.Func([IDL2.Nat], [Result2], []),
+    "testFaucetConfig": IDL2.Func([], [FaucetConfig2], ["query"]),
     "whoAmI": IDL2.Func([], [IDL2.Text], ["query"])
   });
 };
 new TextEncoder().encode("icfs-chunk/");
 new TextEncoder().encode("icfs-metadata/");
 new TextEncoder().encode("ynode/");
+function candid_some(value) {
+  return [
+    value
+  ];
+}
+function candid_none() {
+  return [];
+}
 function record_opt_to_undefined(arg) {
   return arg == null ? void 0 : arg;
 }
+var EndKind = /* @__PURE__ */ ((EndKind2) => {
+  EndKind2["maxed"] = "maxed";
+  EndKind2["collapsed"] = "collapsed";
+  EndKind2["saved"] = "saved";
+  return EndKind2;
+})(EndKind || {});
+var SecurityLevel = /* @__PURE__ */ ((SecurityLevel2) => {
+  SecurityLevel2["warning"] = "warning";
+  SecurityLevel2["info"] = "info";
+  SecurityLevel2["critical"] = "critical";
+  return SecurityLevel2;
+})(SecurityLevel || {});
+var StakeOption = /* @__PURE__ */ ((StakeOption2) => {
+  StakeOption2["max"] = "max";
+  StakeOption2["mid"] = "mid";
+  StakeOption2["min"] = "min";
+  return StakeOption2;
+})(StakeOption || {});
 var UserRole = /* @__PURE__ */ ((UserRole2) => {
   UserRole2["admin"] = "admin";
   UserRole2["user"] = "user";
   UserRole2["guest"] = "guest";
   return UserRole2;
 })(UserRole || {});
+var WithdrawKind = /* @__PURE__ */ ((WithdrawKind2) => {
+  WithdrawKind2["all"] = "all";
+  WithdrawKind2["available"] = "available";
+  return WithdrawKind2;
+})(WithdrawKind || {});
 class Backend {
   constructor(actor, _uploadFile, _downloadFile, processError) {
     this.actor = actor;
@@ -14334,14 +14681,14 @@ class Backend {
     if (this.processError) {
       try {
         const result = await this.actor._internet_identity_sign_in_finish();
-        return from_candid_Result_7_n1(this._uploadFile, this._downloadFile, result);
+        return from_candid_Result_13_n1(this._uploadFile, this._downloadFile, result);
       } catch (e2) {
         this.processError(e2);
         throw new Error("unreachable");
       }
     } else {
       const result = await this.actor._internet_identity_sign_in_finish();
-      return from_candid_Result_7_n1(this._uploadFile, this._downloadFile, result);
+      return from_candid_Result_13_n1(this._uploadFile, this._downloadFile, result);
     }
   }
   async _internet_identity_sign_in_start() {
@@ -14362,14 +14709,14 @@ class Backend {
     if (this.processError) {
       try {
         const result = await this.actor.adminListRoles();
-        return from_candid_Result_6_n5(this._uploadFile, this._downloadFile, result);
+        return from_candid_Result_12_n5(this._uploadFile, this._downloadFile, result);
       } catch (e2) {
         this.processError(e2);
         throw new Error("unreachable");
       }
     } else {
       const result = await this.actor.adminListRoles();
-      return from_candid_Result_6_n5(this._uploadFile, this._downloadFile, result);
+      return from_candid_Result_12_n5(this._uploadFile, this._downloadFile, result);
     }
   }
   async adminSyncBootstrap() {
@@ -14414,186 +14761,452 @@ class Backend {
       return from_candid_Result__1_n11(this._uploadFile, this._downloadFile, result);
     }
   }
-  async gameAdminCloseWeek() {
+  async gameAdminAckAccounting() {
     if (this.processError) {
       try {
-        const result = await this.actor.gameAdminCloseWeek();
+        const result = await this.actor.gameAdminAckAccounting();
         return from_candid_Result_5_n19(this._uploadFile, this._downloadFile, result);
       } catch (e2) {
         this.processError(e2);
         throw new Error("unreachable");
       }
     } else {
-      const result = await this.actor.gameAdminCloseWeek();
+      const result = await this.actor.gameAdminAckAccounting();
       return from_candid_Result_5_n19(this._uploadFile, this._downloadFile, result);
     }
   }
-  async gameAdminPayAndOpenNext() {
+  async gameAdminChangeLedger() {
     if (this.processError) {
       try {
-        const result = await this.actor.gameAdminPayAndOpenNext();
-        return from_candid_Result_1_n24(this._uploadFile, this._downloadFile, result);
+        const result = await this.actor.gameAdminChangeLedger();
+        return from_candid_Result_n21(this._uploadFile, this._downloadFile, result);
       } catch (e2) {
         this.processError(e2);
         throw new Error("unreachable");
       }
     } else {
-      const result = await this.actor.gameAdminPayAndOpenNext();
-      return from_candid_Result_1_n24(this._uploadFile, this._downloadFile, result);
+      const result = await this.actor.gameAdminChangeLedger();
+      return from_candid_Result_n21(this._uploadFile, this._downloadFile, result);
     }
   }
-  async gameAdminRecoverClosing() {
+  async gameAdminCheckPay() {
     if (this.processError) {
       try {
-        const result = await this.actor.gameAdminRecoverClosing();
-        return from_candid_Result_4_n26(this._uploadFile, this._downloadFile, result);
+        const result = await this.actor.gameAdminCheckPay();
+        return from_candid_Result_5_n19(this._uploadFile, this._downloadFile, result);
       } catch (e2) {
         this.processError(e2);
         throw new Error("unreachable");
       }
     } else {
-      const result = await this.actor.gameAdminRecoverClosing();
-      return from_candid_Result_4_n26(this._uploadFile, this._downloadFile, result);
+      const result = await this.actor.gameAdminCheckPay();
+      return from_candid_Result_5_n19(this._uploadFile, this._downloadFile, result);
+    }
+  }
+  async gameAdminCheckWithdraw(arg0) {
+    if (this.processError) {
+      try {
+        const result = await this.actor.gameAdminCheckWithdraw(to_candid_WithdrawKind_n23(this._uploadFile, this._downloadFile, arg0));
+        return from_candid_Result_5_n19(this._uploadFile, this._downloadFile, result);
+      } catch (e2) {
+        this.processError(e2);
+        throw new Error("unreachable");
+      }
+    } else {
+      const result = await this.actor.gameAdminCheckWithdraw(to_candid_WithdrawKind_n23(this._uploadFile, this._downloadFile, arg0));
+      return from_candid_Result_5_n19(this._uploadFile, this._downloadFile, result);
+    }
+  }
+  async gameAdminCloseAll() {
+    if (this.processError) {
+      try {
+        const result = await this.actor.gameAdminCloseAll();
+        return from_candid_Result_5_n19(this._uploadFile, this._downloadFile, result);
+      } catch (e2) {
+        this.processError(e2);
+        throw new Error("unreachable");
+      }
+    } else {
+      const result = await this.actor.gameAdminCloseAll();
+      return from_candid_Result_5_n19(this._uploadFile, this._downloadFile, result);
+    }
+  }
+  async gameAdminCloseTournament() {
+    if (this.processError) {
+      try {
+        const result = await this.actor.gameAdminCloseTournament();
+        return from_candid_Result_5_n19(this._uploadFile, this._downloadFile, result);
+      } catch (e2) {
+        this.processError(e2);
+        throw new Error("unreachable");
+      }
+    } else {
+      const result = await this.actor.gameAdminCloseTournament();
+      return from_candid_Result_5_n19(this._uploadFile, this._downloadFile, result);
+    }
+  }
+  async gameAdminEnsureConnected() {
+    if (this.processError) {
+      try {
+        const result = await this.actor.gameAdminEnsureConnected();
+        return from_candid_Result_11_n24(this._uploadFile, this._downloadFile, result);
+      } catch (e2) {
+        this.processError(e2);
+        throw new Error("unreachable");
+      }
+    } else {
+      const result = await this.actor.gameAdminEnsureConnected();
+      return from_candid_Result_11_n24(this._uploadFile, this._downloadFile, result);
+    }
+  }
+  async gameAdminHalt() {
+    if (this.processError) {
+      try {
+        const result = await this.actor.gameAdminHalt();
+        return from_candid_Result_5_n19(this._uploadFile, this._downloadFile, result);
+      } catch (e2) {
+        this.processError(e2);
+        throw new Error("unreachable");
+      }
+    } else {
+      const result = await this.actor.gameAdminHalt();
+      return from_candid_Result_5_n19(this._uploadFile, this._downloadFile, result);
+    }
+  }
+  async gameAdminLedgerAllowance(arg0, arg1) {
+    if (this.processError) {
+      try {
+        const result = await this.actor.gameAdminLedgerAllowance(arg0, arg1);
+        return from_candid_Result_n21(this._uploadFile, this._downloadFile, result);
+      } catch (e2) {
+        this.processError(e2);
+        throw new Error("unreachable");
+      }
+    } else {
+      const result = await this.actor.gameAdminLedgerAllowance(arg0, arg1);
+      return from_candid_Result_n21(this._uploadFile, this._downloadFile, result);
+    }
+  }
+  async gameAdminLedgerBalance(arg0) {
+    if (this.processError) {
+      try {
+        const result = await this.actor.gameAdminLedgerBalance(arg0);
+        return from_candid_Result_n21(this._uploadFile, this._downloadFile, result);
+      } catch (e2) {
+        this.processError(e2);
+        throw new Error("unreachable");
+      }
+    } else {
+      const result = await this.actor.gameAdminLedgerBalance(arg0);
+      return from_candid_Result_n21(this._uploadFile, this._downloadFile, result);
+    }
+  }
+  async gameAdminMarkPaid(arg0, arg1) {
+    if (this.processError) {
+      try {
+        const result = await this.actor.gameAdminMarkPaid(arg0, arg1);
+        return from_candid_Result_5_n19(this._uploadFile, this._downloadFile, result);
+      } catch (e2) {
+        this.processError(e2);
+        throw new Error("unreachable");
+      }
+    } else {
+      const result = await this.actor.gameAdminMarkPaid(arg0, arg1);
+      return from_candid_Result_5_n19(this._uploadFile, this._downloadFile, result);
+    }
+  }
+  async gameAdminPay(arg0) {
+    if (this.processError) {
+      try {
+        const result = await this.actor.gameAdminPay(arg0);
+        return from_candid_Result_10_n26(this._uploadFile, this._downloadFile, result);
+      } catch (e2) {
+        this.processError(e2);
+        throw new Error("unreachable");
+      }
+    } else {
+      const result = await this.actor.gameAdminPay(arg0);
+      return from_candid_Result_10_n26(this._uploadFile, this._downloadFile, result);
+    }
+  }
+  async gameAdminPayOne(arg0, arg1) {
+    if (this.processError) {
+      try {
+        const result = await this.actor.gameAdminPayOne(arg0, arg1);
+        return from_candid_Result_9_n28(this._uploadFile, this._downloadFile, result);
+      } catch (e2) {
+        this.processError(e2);
+        throw new Error("unreachable");
+      }
+    } else {
+      const result = await this.actor.gameAdminPayOne(arg0, arg1);
+      return from_candid_Result_9_n28(this._uploadFile, this._downloadFile, result);
+    }
+  }
+  async gameAdminPayouts(arg0) {
+    if (this.processError) {
+      try {
+        const result = await this.actor.gameAdminPayouts(arg0);
+        return from_candid_Result_8_n31(this._uploadFile, this._downloadFile, result);
+      } catch (e2) {
+        this.processError(e2);
+        throw new Error("unreachable");
+      }
+    } else {
+      const result = await this.actor.gameAdminPayouts(arg0);
+      return from_candid_Result_8_n31(this._uploadFile, this._downloadFile, result);
+    }
+  }
+  async gameAdminRefreshBank() {
+    if (this.processError) {
+      try {
+        const result = await this.actor.gameAdminRefreshBank();
+        return from_candid_Result_n21(this._uploadFile, this._downloadFile, result);
+      } catch (e2) {
+        this.processError(e2);
+        throw new Error("unreachable");
+      }
+    } else {
+      const result = await this.actor.gameAdminRefreshBank();
+      return from_candid_Result_n21(this._uploadFile, this._downloadFile, result);
+    }
+  }
+  async gameAdminReleaseBusy(arg0) {
+    if (this.processError) {
+      try {
+        const result = await this.actor.gameAdminReleaseBusy(arg0);
+        return from_candid_Result_5_n19(this._uploadFile, this._downloadFile, result);
+      } catch (e2) {
+        this.processError(e2);
+        throw new Error("unreachable");
+      }
+    } else {
+      const result = await this.actor.gameAdminReleaseBusy(arg0);
+      return from_candid_Result_5_n19(this._uploadFile, this._downloadFile, result);
+    }
+  }
+  async gameAdminResume() {
+    if (this.processError) {
+      try {
+        const result = await this.actor.gameAdminResume();
+        return from_candid_Result_5_n19(this._uploadFile, this._downloadFile, result);
+      } catch (e2) {
+        this.processError(e2);
+        throw new Error("unreachable");
+      }
+    } else {
+      const result = await this.actor.gameAdminResume();
+      return from_candid_Result_5_n19(this._uploadFile, this._downloadFile, result);
+    }
+  }
+  async gameAdminSecurity() {
+    if (this.processError) {
+      try {
+        const result = await this.actor.gameAdminSecurity();
+        return from_candid_Result_7_n36(this._uploadFile, this._downloadFile, result);
+      } catch (e2) {
+        this.processError(e2);
+        throw new Error("unreachable");
+      }
+    } else {
+      const result = await this.actor.gameAdminSecurity();
+      return from_candid_Result_7_n36(this._uploadFile, this._downloadFile, result);
+    }
+  }
+  async gameAdminSecurityLog(arg0) {
+    if (this.processError) {
+      try {
+        const result = await this.actor.gameAdminSecurityLog(arg0);
+        return from_candid_Result_6_n38(this._uploadFile, this._downloadFile, result);
+      } catch (e2) {
+        this.processError(e2);
+        throw new Error("unreachable");
+      }
+    } else {
+      const result = await this.actor.gameAdminSecurityLog(arg0);
+      return from_candid_Result_6_n38(this._uploadFile, this._downloadFile, result);
+    }
+  }
+  async gameAdminSeedPool(arg0) {
+    if (this.processError) {
+      try {
+        const result = await this.actor.gameAdminSeedPool(arg0);
+        return from_candid_Result_n21(this._uploadFile, this._downloadFile, result);
+      } catch (e2) {
+        this.processError(e2);
+        throw new Error("unreachable");
+      }
+    } else {
+      const result = await this.actor.gameAdminSeedPool(arg0);
+      return from_candid_Result_n21(this._uploadFile, this._downloadFile, result);
+    }
+  }
+  async gameAdminSetDuration(arg0) {
+    if (this.processError) {
+      try {
+        const result = await this.actor.gameAdminSetDuration(arg0);
+        return from_candid_Result_5_n19(this._uploadFile, this._downloadFile, result);
+      } catch (e2) {
+        this.processError(e2);
+        throw new Error("unreachable");
+      }
+    } else {
+      const result = await this.actor.gameAdminSetDuration(arg0);
+      return from_candid_Result_5_n19(this._uploadFile, this._downloadFile, result);
     }
   }
   async gameAdminView() {
     if (this.processError) {
       try {
         const result = await this.actor.gameAdminView();
-        return from_candid_Result_3_n28(this._uploadFile, this._downloadFile, result);
+        return from_candid_Result_4_n46(this._uploadFile, this._downloadFile, result);
       } catch (e2) {
         this.processError(e2);
         throw new Error("unreachable");
       }
     } else {
       const result = await this.actor.gameAdminView();
-      return from_candid_Result_3_n28(this._uploadFile, this._downloadFile, result);
+      return from_candid_Result_4_n46(this._uploadFile, this._downloadFile, result);
     }
   }
-  async gameBuyChips(arg0) {
+  async gameAdminWithdraw(arg0) {
     if (this.processError) {
       try {
-        const result = await this.actor.gameBuyChips(arg0);
-        return from_candid_Result_1_n24(this._uploadFile, this._downloadFile, result);
+        const result = await this.actor.gameAdminWithdraw(to_candid_WithdrawKind_n23(this._uploadFile, this._downloadFile, arg0));
+        return from_candid_Result_n21(this._uploadFile, this._downloadFile, result);
       } catch (e2) {
         this.processError(e2);
         throw new Error("unreachable");
       }
     } else {
-      const result = await this.actor.gameBuyChips(arg0);
-      return from_candid_Result_1_n24(this._uploadFile, this._downloadFile, result);
+      const result = await this.actor.gameAdminWithdraw(to_candid_WithdrawKind_n23(this._uploadFile, this._downloadFile, arg0));
+      return from_candid_Result_n21(this._uploadFile, this._downloadFile, result);
+    }
+  }
+  async gameAuto(arg0, arg1, arg2) {
+    if (this.processError) {
+      try {
+        const result = await this.actor.gameAuto(to_candid_StakeOption_n52(this._uploadFile, this._downloadFile, arg0), arg1, arg2);
+        return from_candid_Result_3_n53(this._uploadFile, this._downloadFile, result);
+      } catch (e2) {
+        this.processError(e2);
+        throw new Error("unreachable");
+      }
+    } else {
+      const result = await this.actor.gameAuto(to_candid_StakeOption_n52(this._uploadFile, this._downloadFile, arg0), arg1, arg2);
+      return from_candid_Result_3_n53(this._uploadFile, this._downloadFile, result);
+    }
+  }
+  async gameBurned() {
+    if (this.processError) {
+      try {
+        const result = await this.actor.gameBurned();
+        return result;
+      } catch (e2) {
+        this.processError(e2);
+        throw new Error("unreachable");
+      }
+    } else {
+      const result = await this.actor.gameBurned();
+      return result;
     }
   }
   async gameConfig() {
     if (this.processError) {
       try {
         const result = await this.actor.gameConfig();
-        return from_candid_GameConfig_n38(this._uploadFile, this._downloadFile, result);
+        return result;
       } catch (e2) {
         this.processError(e2);
         throw new Error("unreachable");
       }
     } else {
       const result = await this.actor.gameConfig();
-      return from_candid_GameConfig_n38(this._uploadFile, this._downloadFile, result);
+      return result;
+    }
+  }
+  async gameLoadCredit(arg0) {
+    if (this.processError) {
+      try {
+        const result = await this.actor.gameLoadCredit(arg0);
+        return from_candid_Result_n21(this._uploadFile, this._downloadFile, result);
+      } catch (e2) {
+        this.processError(e2);
+        throw new Error("unreachable");
+      }
+    } else {
+      const result = await this.actor.gameLoadCredit(arg0);
+      return from_candid_Result_n21(this._uploadFile, this._downloadFile, result);
     }
   }
   async gameMyDashboard() {
     if (this.processError) {
       try {
         const result = await this.actor.gameMyDashboard();
-        return from_candid_Dashboard_n40(this._uploadFile, this._downloadFile, result);
+        return from_candid_Dashboard_n60(this._uploadFile, this._downloadFile, result);
       } catch (e2) {
         this.processError(e2);
         throw new Error("unreachable");
       }
     } else {
       const result = await this.actor.gameMyDashboard();
-      return from_candid_Dashboard_n40(this._uploadFile, this._downloadFile, result);
+      return from_candid_Dashboard_n60(this._uploadFile, this._downloadFile, result);
     }
   }
-  async gamePick() {
+  async gamePick(arg0, arg1, arg2) {
     if (this.processError) {
       try {
-        const result = await this.actor.gamePick();
-        return from_candid_Result_2_n47(this._uploadFile, this._downloadFile, result);
+        const result = await this.actor.gamePick(to_candid_opt_n63(this._uploadFile, this._downloadFile, arg0), arg1, arg2);
+        return from_candid_Result_2_n64(this._uploadFile, this._downloadFile, result);
       } catch (e2) {
         this.processError(e2);
         throw new Error("unreachable");
       }
     } else {
-      const result = await this.actor.gamePick();
-      return from_candid_Result_2_n47(this._uploadFile, this._downloadFile, result);
+      const result = await this.actor.gamePick(to_candid_opt_n63(this._uploadFile, this._downloadFile, arg0), arg1, arg2);
+      return from_candid_Result_2_n64(this._uploadFile, this._downloadFile, result);
     }
   }
   async gameRanking() {
     if (this.processError) {
       try {
         const result = await this.actor.gameRanking();
-        return from_candid_Ranking_n51(this._uploadFile, this._downloadFile, result);
+        return result;
       } catch (e2) {
         this.processError(e2);
         throw new Error("unreachable");
       }
     } else {
       const result = await this.actor.gameRanking();
-      return from_candid_Ranking_n51(this._uploadFile, this._downloadFile, result);
-    }
-  }
-  async gameRequestTestTokens(arg0) {
-    if (this.processError) {
-      try {
-        const result = await this.actor.gameRequestTestTokens(arg0);
-        return from_candid_Result_1_n24(this._uploadFile, this._downloadFile, result);
-      } catch (e2) {
-        this.processError(e2);
-        throw new Error("unreachable");
-      }
-    } else {
-      const result = await this.actor.gameRequestTestTokens(arg0);
-      return from_candid_Result_1_n24(this._uploadFile, this._downloadFile, result);
+      return result;
     }
   }
   async gameSave() {
     if (this.processError) {
       try {
         const result = await this.actor.gameSave();
-        return from_candid_Result_1_n24(this._uploadFile, this._downloadFile, result);
+        return from_candid_Result_1_n69(this._uploadFile, this._downloadFile, result);
       } catch (e2) {
         this.processError(e2);
         throw new Error("unreachable");
       }
     } else {
       const result = await this.actor.gameSave();
-      return from_candid_Result_1_n24(this._uploadFile, this._downloadFile, result);
+      return from_candid_Result_1_n69(this._uploadFile, this._downloadFile, result);
     }
   }
-  async gameStartExcavation() {
+  async gameTournaments() {
     if (this.processError) {
       try {
-        const result = await this.actor.gameStartExcavation();
-        return from_candid_Result_n54(this._uploadFile, this._downloadFile, result);
+        const result = await this.actor.gameTournaments();
+        return result;
       } catch (e2) {
         this.processError(e2);
         throw new Error("unreachable");
       }
     } else {
-      const result = await this.actor.gameStartExcavation();
-      return from_candid_Result_n54(this._uploadFile, this._downloadFile, result);
-    }
-  }
-  async gameWeeks() {
-    if (this.processError) {
-      try {
-        const result = await this.actor.gameWeeks();
-        return from_candid_vec_n56(this._uploadFile, this._downloadFile, result);
-      } catch (e2) {
-        this.processError(e2);
-        throw new Error("unreachable");
-      }
-    } else {
-      const result = await this.actor.gameWeeks();
-      return from_candid_vec_n56(this._uploadFile, this._downloadFile, result);
+      const result = await this.actor.gameTournaments();
+      return result;
     }
   }
   async getCallerUserRole() {
@@ -14680,6 +15293,34 @@ class Backend {
       return result;
     }
   }
+  async testFaucetClaim(arg0) {
+    if (this.processError) {
+      try {
+        const result = await this.actor.testFaucetClaim(arg0);
+        return from_candid_Result_n21(this._uploadFile, this._downloadFile, result);
+      } catch (e2) {
+        this.processError(e2);
+        throw new Error("unreachable");
+      }
+    } else {
+      const result = await this.actor.testFaucetClaim(arg0);
+      return from_candid_Result_n21(this._uploadFile, this._downloadFile, result);
+    }
+  }
+  async testFaucetConfig() {
+    if (this.processError) {
+      try {
+        const result = await this.actor.testFaucetConfig();
+        return result;
+      } catch (e2) {
+        this.processError(e2);
+        throw new Error("unreachable");
+      }
+    } else {
+      const result = await this.actor.testFaucetConfig();
+      return result;
+    }
+  }
   async whoAmI() {
     if (this.processError) {
       try {
@@ -14695,62 +15336,86 @@ class Backend {
     }
   }
 }
-function from_candid_AdminView_n30(_uploadFile, _downloadFile, value) {
-  return from_candid_record_n31(_uploadFile, _downloadFile, value);
+function from_candid_AdminView_n48(_uploadFile, _downloadFile, value) {
+  return from_candid_record_n49(_uploadFile, _downloadFile, value);
+}
+function from_candid_AutoResult_n55(_uploadFile, _downloadFile, value) {
+  return from_candid_record_n56(_uploadFile, _downloadFile, value);
 }
 function from_candid_Cell_n15(_uploadFile, _downloadFile, value) {
   return from_candid_record_n16(_uploadFile, _downloadFile, value);
 }
-function from_candid_ChipView_n43(_uploadFile, _downloadFile, value) {
-  return from_candid_record_n44(_uploadFile, _downloadFile, value);
+function from_candid_Dashboard_n60(_uploadFile, _downloadFile, value) {
+  return from_candid_record_n61(_uploadFile, _downloadFile, value);
 }
-function from_candid_Dashboard_n40(_uploadFile, _downloadFile, value) {
-  return from_candid_record_n41(_uploadFile, _downloadFile, value);
+function from_candid_EndKind_n59(_uploadFile, _downloadFile, value) {
+  return "maxed" in value ? "maxed" : "collapsed" in value ? "collapsed" : "saved" in value ? "saved" : value;
+}
+function from_candid_EndResult_n57(_uploadFile, _downloadFile, value) {
+  return from_candid_record_n58(_uploadFile, _downloadFile, value);
 }
 function from_candid_Error_n3(_uploadFile, _downloadFile, value) {
   return from_candid_variant_n4(_uploadFile, _downloadFile, value);
 }
-function from_candid_GameConfig_n38(_uploadFile, _downloadFile, value) {
-  return from_candid_record_n39(_uploadFile, _downloadFile, value);
+function from_candid_Payout_n34(_uploadFile, _downloadFile, value) {
+  return from_candid_record_n35(_uploadFile, _downloadFile, value);
 }
-function from_candid_PayoutConcept_n37(_uploadFile, _downloadFile, value) {
-  return "draw" in value ? "draw" : "prize" in value ? "prize" : value;
+function from_candid_PickResult_n66(_uploadFile, _downloadFile, value) {
+  return from_candid_record_n67(_uploadFile, _downloadFile, value);
 }
-function from_candid_Payout_n35(_uploadFile, _downloadFile, value) {
-  return from_candid_record_n36(_uploadFile, _downloadFile, value);
+function from_candid_Result_10_n26(_uploadFile, _downloadFile, value) {
+  return from_candid_variant_n27(_uploadFile, _downloadFile, value);
 }
-function from_candid_PickResult_n49(_uploadFile, _downloadFile, value) {
-  return from_candid_record_n50(_uploadFile, _downloadFile, value);
-}
-function from_candid_Ranking_n51(_uploadFile, _downloadFile, value) {
-  return from_candid_record_n52(_uploadFile, _downloadFile, value);
-}
-function from_candid_Result_1_n24(_uploadFile, _downloadFile, value) {
+function from_candid_Result_11_n24(_uploadFile, _downloadFile, value) {
   return from_candid_variant_n25(_uploadFile, _downloadFile, value);
 }
-function from_candid_Result_2_n47(_uploadFile, _downloadFile, value) {
-  return from_candid_variant_n48(_uploadFile, _downloadFile, value);
+function from_candid_Result_12_n5(_uploadFile, _downloadFile, value) {
+  return from_candid_variant_n6(_uploadFile, _downloadFile, value);
 }
-function from_candid_Result_3_n28(_uploadFile, _downloadFile, value) {
-  return from_candid_variant_n29(_uploadFile, _downloadFile, value);
+function from_candid_Result_13_n1(_uploadFile, _downloadFile, value) {
+  return from_candid_variant_n2(_uploadFile, _downloadFile, value);
 }
-function from_candid_Result_4_n26(_uploadFile, _downloadFile, value) {
-  return from_candid_variant_n27(_uploadFile, _downloadFile, value);
+function from_candid_Result_1_n69(_uploadFile, _downloadFile, value) {
+  return from_candid_variant_n70(_uploadFile, _downloadFile, value);
+}
+function from_candid_Result_2_n64(_uploadFile, _downloadFile, value) {
+  return from_candid_variant_n65(_uploadFile, _downloadFile, value);
+}
+function from_candid_Result_3_n53(_uploadFile, _downloadFile, value) {
+  return from_candid_variant_n54(_uploadFile, _downloadFile, value);
+}
+function from_candid_Result_4_n46(_uploadFile, _downloadFile, value) {
+  return from_candid_variant_n47(_uploadFile, _downloadFile, value);
 }
 function from_candid_Result_5_n19(_uploadFile, _downloadFile, value) {
   return from_candid_variant_n20(_uploadFile, _downloadFile, value);
 }
-function from_candid_Result_6_n5(_uploadFile, _downloadFile, value) {
-  return from_candid_variant_n6(_uploadFile, _downloadFile, value);
+function from_candid_Result_6_n38(_uploadFile, _downloadFile, value) {
+  return from_candid_variant_n39(_uploadFile, _downloadFile, value);
 }
-function from_candid_Result_7_n1(_uploadFile, _downloadFile, value) {
-  return from_candid_variant_n2(_uploadFile, _downloadFile, value);
+function from_candid_Result_7_n36(_uploadFile, _downloadFile, value) {
+  return from_candid_variant_n37(_uploadFile, _downloadFile, value);
+}
+function from_candid_Result_8_n31(_uploadFile, _downloadFile, value) {
+  return from_candid_variant_n32(_uploadFile, _downloadFile, value);
+}
+function from_candid_Result_9_n28(_uploadFile, _downloadFile, value) {
+  return from_candid_variant_n29(_uploadFile, _downloadFile, value);
 }
 function from_candid_Result__1_n11(_uploadFile, _downloadFile, value) {
   return from_candid_record_n12(_uploadFile, _downloadFile, value);
 }
-function from_candid_Result_n54(_uploadFile, _downloadFile, value) {
-  return from_candid_variant_n55(_uploadFile, _downloadFile, value);
+function from_candid_Result_n21(_uploadFile, _downloadFile, value) {
+  return from_candid_variant_n22(_uploadFile, _downloadFile, value);
+}
+function from_candid_SecurityEvent_n43(_uploadFile, _downloadFile, value) {
+  return from_candid_record_n44(_uploadFile, _downloadFile, value);
+}
+function from_candid_SecurityLevel_n45(_uploadFile, _downloadFile, value) {
+  return "warning" in value ? "warning" : "info" in value ? "info" : "critical" in value ? "critical" : value;
+}
+function from_candid_SecurityLogView_n40(_uploadFile, _downloadFile, value) {
+  return from_candid_record_n41(_uploadFile, _downloadFile, value);
 }
 function from_candid_UserRole_n9(_uploadFile, _downloadFile, value) {
   return "admin" in value ? "admin" : "user" in value ? "user" : "guest" in value ? "guest" : value;
@@ -14758,23 +15423,20 @@ function from_candid_UserRole_n9(_uploadFile, _downloadFile, value) {
 function from_candid_Value_n17(_uploadFile, _downloadFile, value) {
   return from_candid_variant_n18(_uploadFile, _downloadFile, value);
 }
-function from_candid_WeekStatus_n32(_uploadFile, _downloadFile, value) {
-  return "closed" in value ? "closed" : "open" in value ? "open" : "closing" in value ? "closing" : value;
-}
-function from_candid_WeekSummary_n21(_uploadFile, _downloadFile, value) {
-  return from_candid_record_n22(_uploadFile, _downloadFile, value);
-}
-function from_candid_opt_n23(_uploadFile, _downloadFile, value) {
+function from_candid_opt_n30(_uploadFile, _downloadFile, value) {
   return value.length === 0 ? null : value[0];
 }
-function from_candid_opt_n33(_uploadFile, _downloadFile, value) {
-  return value.length === 0 ? null : from_candid_WeekSummary_n21(_uploadFile, _downloadFile, value[0]);
-}
-function from_candid_opt_n45(_uploadFile, _downloadFile, value) {
+function from_candid_opt_n50(_uploadFile, _downloadFile, value) {
   return value.length === 0 ? null : value[0];
 }
-function from_candid_opt_n46(_uploadFile, _downloadFile, value) {
+function from_candid_opt_n51(_uploadFile, _downloadFile, value) {
   return value.length === 0 ? null : value[0];
+}
+function from_candid_opt_n62(_uploadFile, _downloadFile, value) {
+  return value.length === 0 ? null : value[0];
+}
+function from_candid_opt_n68(_uploadFile, _downloadFile, value) {
+  return value.length === 0 ? null : from_candid_EndResult_n57(_uploadFile, _downloadFile, value[0]);
 }
 function from_candid_record_n12(_uploadFile, _downloadFile, value) {
   return {
@@ -14788,114 +15450,119 @@ function from_candid_record_n16(_uploadFile, _downloadFile, value) {
     name: value.name
   };
 }
-function from_candid_record_n22(_uploadFile, _downloadFile, value) {
+function from_candid_record_n35(_uploadFile, _downloadFile, value) {
   return {
-    pot: value.pot,
-    treasurePerChip: value.treasurePerChip,
-    treasuryKeep: value.treasuryKeep,
-    chips: value.chips,
-    week: value.week,
-    drawTicket: value.drawTicket,
-    drawTickets: value.drawTickets,
-    closedAt: value.closedAt,
-    players: value.players,
-    drawPrize: value.drawPrize,
-    drawWinner: record_opt_to_undefined(from_candid_opt_n23(_uploadFile, _downloadFile, value.drawWinner)),
-    drawRandom: value.drawRandom
-  };
-}
-function from_candid_record_n31(_uploadFile, _downloadFile, value) {
-  return {
-    status: from_candid_WeekStatus_n32(_uploadFile, _downloadFile, value.status),
-    drawCarry: value.drawCarry,
-    week: value.week,
-    lastClose: record_opt_to_undefined(from_candid_opt_n33(_uploadFile, _downloadFile, value.lastClose)),
-    burned: value.burned,
-    payouts: from_candid_vec_n34(_uploadFile, _downloadFile, value.payouts),
-    treasury: value.treasury
-  };
-}
-function from_candid_record_n36(_uploadFile, _downloadFile, value) {
-  return {
+    id: value.id,
     to: value.to,
-    concept: from_candid_PayoutConcept_n37(_uploadFile, _downloadFile, value.concept),
-    tiers: value.tiers,
-    amount: value.amount
-  };
-}
-function from_candid_record_n39(_uploadFile, _downloadFile, value) {
-  return {
-    status: from_candid_WeekStatus_n32(_uploadFile, _downloadFile, value.status),
-    mines: value.mines,
-    feeE8s: value.feeE8s,
-    minChips: value.minChips,
-    cells: value.cells,
-    pointsTable: value.pointsTable,
-    week: value.week,
-    minPlayers: value.minPlayers,
-    treasuryBps: value.treasuryBps,
-    chipPriceE8s: value.chipPriceE8s,
-    tierCutsPct: value.tierCutsPct,
-    safePicks: value.safePicks,
-    tierMultBps: value.tierMultBps,
-    faucetCapE8s: value.faucetCapE8s,
-    excavationsPerChip: value.excavationsPerChip,
-    drawBps: value.drawBps,
-    diamondBps: value.diamondBps
+    paid: value.paid,
+    txId: record_opt_to_undefined(from_candid_opt_n30(_uploadFile, _downloadFile, value.txId)),
+    tournament: value.tournament,
+    uncertain: value.uncertain,
+    stamp: value.stamp,
+    amount: value.amount,
+    paidAt: value.paidAt
   };
 }
 function from_candid_record_n41(_uploadFile, _downloadFile, value) {
   return {
-    status: from_candid_WeekStatus_n32(_uploadFile, _downloadFile, value.status),
-    tiers: value.tiers,
-    balance: value.balance,
-    diamonds: value.diamonds,
-    chips: from_candid_vec_n42(_uploadFile, _downloadFile, value.chips),
-    open: record_opt_to_undefined(from_candid_opt_n46(_uploadFile, _downloadFile, value.open)),
-    paid: value.paid,
-    week: value.week,
-    history: value.history,
-    totalDiamonds: value.totalDiamonds,
-    stats: value.stats,
-    excavationsLeft: value.excavationsLeft,
-    faucetRemaining: value.faucetRemaining,
-    estimatedReceive: value.estimatedReceive
+    day: value.day,
+    days: value.days,
+    events: from_candid_vec_n42(_uploadFile, _downloadFile, value.events)
   };
 }
 function from_candid_record_n44(_uploadFile, _downloadFile, value) {
   return {
-    id: value.id,
-    diamonds: value.diamonds,
-    tier: value.tier,
-    used: value.used,
-    avgX100: value.avgX100,
-    projectedX100: value.projectedX100,
-    gapToNextX100: record_opt_to_undefined(from_candid_opt_n45(_uploadFile, _downloadFile, value.gapToNextX100)),
+    at: value.at,
+    title: value.title,
+    code: value.code,
+    count: value.count,
+    lastAt: value.lastAt,
+    description: value.description,
+    level: from_candid_SecurityLevel_n45(_uploadFile, _downloadFile, value.level)
+  };
+}
+function from_candid_record_n49(_uploadFile, _downloadFile, value) {
+  return {
+    durationDays: value.durationDays,
+    staked: value.staked,
+    stakes: value.stakes,
+    top10: value.top10,
+    smallBalances: value.smallBalances,
+    toCollect: value.toCollect,
+    bankAccount: record_opt_to_undefined(from_candid_opt_n50(_uploadFile, _downloadFile, value.bankAccount)),
+    bank: value.bank,
+    fund: value.fund,
+    owed: value.owed,
+    pool: value.pool,
+    tournament: value.tournament,
+    reserve: value.reserve,
+    selfId: record_opt_to_undefined(from_candid_opt_n50(_uploadFile, _downloadFile, value.selfId)),
+    cycles: value.cycles,
+    lastClose: record_opt_to_undefined(from_candid_opt_n51(_uploadFile, _downloadFile, value.lastClose)),
+    withdrawable: value.withdrawable,
+    smallPlayers: value.smallPlayers,
+    bankAllowance: value.bankAllowance,
+    burned: value.burned,
+    heldJackpots: value.heldJackpots,
+    toCollectPlayers: value.toCollectPlayers,
+    realLedger: value.realLedger,
+    payouts: from_candid_vec_n33(_uploadFile, _downloadFile, value.payouts),
+    paused: value.paused,
+    unpaidPayouts: value.unpaidPayouts,
+    endsAt: value.endsAt
+  };
+}
+function from_candid_record_n56(_uploadFile, _downloadFile, value) {
+  return {
+    end: from_candid_EndResult_n57(_uploadFile, _downloadFile, value.end),
+    pool: value.pool,
+    steps: value.steps
+  };
+}
+function from_candid_record_n58(_uploadFile, _downloadFile, value) {
+  return {
+    won: value.won,
+    jackpotWon: value.jackpotWon,
+    balance: value.balance,
+    kind: from_candid_EndKind_n59(_uploadFile, _downloadFile, value.kind),
+    lost: value.lost,
+    credit: value.credit,
+    stake: value.stake,
+    gross: value.gross,
+    picks: value.picks,
     points: value.points
   };
 }
-function from_candid_record_n50(_uploadFile, _downloadFile, value) {
+function from_candid_record_n61(_uploadFile, _downloadFile, value) {
   return {
-    collapsed: value.collapsed,
-    diamond: value.diamond,
-    ended: value.ended,
-    pointsSaved: value.pointsSaved,
-    picks: value.picks,
-    excavation: record_opt_to_undefined(from_candid_opt_n46(_uploadFile, _downloadFile, value.excavation))
+    top10Pool: value.top10Pool,
+    top10Rank: value.top10Rank,
+    stakes: value.stakes,
+    top10Prize: value.top10Prize,
+    balance: value.balance,
+    open: record_opt_to_undefined(from_candid_opt_n62(_uploadFile, _downloadFile, value.open)),
+    pool: value.pool,
+    tournament: value.tournament,
+    history: value.history,
+    credit: value.credit,
+    stats: value.stats,
+    bestReturn: value.bestReturn,
+    allowance: value.allowance,
+    top10Entry: value.top10Entry,
+    pendingPayout: value.pendingPayout,
+    paused: value.paused,
+    endsAt: value.endsAt
   };
 }
-function from_candid_record_n52(_uploadFile, _downloadFile, value) {
+function from_candid_record_n67(_uploadFile, _downloadFile, value) {
   return {
-    pot: value.pot,
-    status: from_candid_WeekStatus_n32(_uploadFile, _downloadFile, value.status),
-    treasurePerChip: value.treasurePerChip,
-    treasuryKeep: value.treasuryKeep,
-    chips: value.chips,
-    week: value.week,
-    totalDiamonds: value.totalDiamonds,
-    players: value.players,
-    drawPrize: value.drawPrize,
-    cutsX100: from_candid_vec_n53(_uploadFile, _downloadFile, value.cutsX100)
+    end: record_opt_to_undefined(from_candid_opt_n68(_uploadFile, _downloadFile, value.end)),
+    collapsed: value.collapsed,
+    pool: value.pool,
+    diamond: value.diamond,
+    credit: value.credit,
+    picks: value.picks,
+    excavation: record_opt_to_undefined(from_candid_opt_n62(_uploadFile, _downloadFile, value.excavation))
   };
 }
 function from_candid_tuple_n8(_uploadFile, _downloadFile, value) {
@@ -14937,7 +15604,16 @@ function from_candid_variant_n2(_uploadFile, _downloadFile, value) {
 function from_candid_variant_n20(_uploadFile, _downloadFile, value) {
   return "ok" in value ? {
     __kind__: "ok",
-    ok: from_candid_WeekSummary_n21(_uploadFile, _downloadFile, value.ok)
+    ok: value.ok
+  } : "err" in value ? {
+    __kind__: "err",
+    err: value.err
+  } : value;
+}
+function from_candid_variant_n22(_uploadFile, _downloadFile, value) {
+  return "ok" in value ? {
+    __kind__: "ok",
+    ok: value.ok
   } : "err" in value ? {
     __kind__: "err",
     err: value.err
@@ -14964,7 +15640,34 @@ function from_candid_variant_n27(_uploadFile, _downloadFile, value) {
 function from_candid_variant_n29(_uploadFile, _downloadFile, value) {
   return "ok" in value ? {
     __kind__: "ok",
-    ok: from_candid_AdminView_n30(_uploadFile, _downloadFile, value.ok)
+    ok: from_candid_opt_n30(_uploadFile, _downloadFile, value.ok)
+  } : "err" in value ? {
+    __kind__: "err",
+    err: value.err
+  } : value;
+}
+function from_candid_variant_n32(_uploadFile, _downloadFile, value) {
+  return "ok" in value ? {
+    __kind__: "ok",
+    ok: from_candid_vec_n33(_uploadFile, _downloadFile, value.ok)
+  } : "err" in value ? {
+    __kind__: "err",
+    err: value.err
+  } : value;
+}
+function from_candid_variant_n37(_uploadFile, _downloadFile, value) {
+  return "ok" in value ? {
+    __kind__: "ok",
+    ok: value.ok
+  } : "err" in value ? {
+    __kind__: "err",
+    err: value.err
+  } : value;
+}
+function from_candid_variant_n39(_uploadFile, _downloadFile, value) {
+  return "ok" in value ? {
+    __kind__: "ok",
+    ok: from_candid_SecurityLogView_n40(_uploadFile, _downloadFile, value.ok)
   } : "err" in value ? {
     __kind__: "err",
     err: value.err
@@ -15003,19 +15706,19 @@ function from_candid_variant_n4(_uploadFile, _downloadFile, value) {
     FrontendOriginMismatch: value.FrontendOriginMismatch
   } : value;
 }
-function from_candid_variant_n48(_uploadFile, _downloadFile, value) {
+function from_candid_variant_n47(_uploadFile, _downloadFile, value) {
   return "ok" in value ? {
     __kind__: "ok",
-    ok: from_candid_PickResult_n49(_uploadFile, _downloadFile, value.ok)
+    ok: from_candid_AdminView_n48(_uploadFile, _downloadFile, value.ok)
   } : "err" in value ? {
     __kind__: "err",
     err: value.err
   } : value;
 }
-function from_candid_variant_n55(_uploadFile, _downloadFile, value) {
+function from_candid_variant_n54(_uploadFile, _downloadFile, value) {
   return "ok" in value ? {
     __kind__: "ok",
-    ok: value.ok
+    ok: from_candid_AutoResult_n55(_uploadFile, _downloadFile, value.ok)
   } : "err" in value ? {
     __kind__: "err",
     err: value.err
@@ -15030,26 +15733,47 @@ function from_candid_variant_n6(_uploadFile, _downloadFile, value) {
     err: value.err
   } : value;
 }
+function from_candid_variant_n65(_uploadFile, _downloadFile, value) {
+  return "ok" in value ? {
+    __kind__: "ok",
+    ok: from_candid_PickResult_n66(_uploadFile, _downloadFile, value.ok)
+  } : "err" in value ? {
+    __kind__: "err",
+    err: value.err
+  } : value;
+}
+function from_candid_variant_n70(_uploadFile, _downloadFile, value) {
+  return "ok" in value ? {
+    __kind__: "ok",
+    ok: from_candid_EndResult_n57(_uploadFile, _downloadFile, value.ok)
+  } : "err" in value ? {
+    __kind__: "err",
+    err: value.err
+  } : value;
+}
 function from_candid_vec_n13(_uploadFile, _downloadFile, value) {
   return value.map((x2) => from_candid_vec_n14(_uploadFile, _downloadFile, x2));
 }
 function from_candid_vec_n14(_uploadFile, _downloadFile, value) {
   return value.map((x2) => from_candid_Cell_n15(_uploadFile, _downloadFile, x2));
 }
-function from_candid_vec_n34(_uploadFile, _downloadFile, value) {
-  return value.map((x2) => from_candid_Payout_n35(_uploadFile, _downloadFile, x2));
+function from_candid_vec_n33(_uploadFile, _downloadFile, value) {
+  return value.map((x2) => from_candid_Payout_n34(_uploadFile, _downloadFile, x2));
 }
 function from_candid_vec_n42(_uploadFile, _downloadFile, value) {
-  return value.map((x2) => from_candid_ChipView_n43(_uploadFile, _downloadFile, x2));
-}
-function from_candid_vec_n53(_uploadFile, _downloadFile, value) {
-  return value.map((x2) => from_candid_opt_n45(_uploadFile, _downloadFile, x2));
-}
-function from_candid_vec_n56(_uploadFile, _downloadFile, value) {
-  return value.map((x2) => from_candid_WeekSummary_n21(_uploadFile, _downloadFile, x2));
+  return value.map((x2) => from_candid_SecurityEvent_n43(_uploadFile, _downloadFile, x2));
 }
 function from_candid_vec_n7(_uploadFile, _downloadFile, value) {
   return value.map((x2) => from_candid_tuple_n8(_uploadFile, _downloadFile, x2));
+}
+function to_candid_StakeOption_n52(_uploadFile, _downloadFile, value) {
+  return value == "max" ? {
+    max: null
+  } : value == "mid" ? {
+    mid: null
+  } : value == "min" ? {
+    min: null
+  } : value;
 }
 function to_candid_UserRole_n10(_uploadFile, _downloadFile, value) {
   return value == "admin" ? {
@@ -15059,6 +15783,16 @@ function to_candid_UserRole_n10(_uploadFile, _downloadFile, value) {
   } : value == "guest" ? {
     guest: null
   } : value;
+}
+function to_candid_WithdrawKind_n23(_uploadFile, _downloadFile, value) {
+  return value == "all" ? {
+    all: null
+  } : value == "available" ? {
+    available: null
+  } : value;
+}
+function to_candid_opt_n63(_uploadFile, _downloadFile, value) {
+  return value === null ? candid_none() : candid_some(to_candid_StakeOption_n52(_uploadFile, _downloadFile, value));
 }
 function createActor(canisterId, _uploadFile, _downloadFile, options = {}) {
   const agent = options.agent || HttpAgent$1.createSync({
@@ -15086,13 +15820,26 @@ async function loadEnv() {
   }
   return envPromise;
 }
+function identityKey(identity) {
+  if (!identity) return "anon";
+  try {
+    return identity.getPrincipal().toString();
+  } catch {
+    return "anon";
+  }
+}
 function useBackendActor() {
   const { identity } = useInternetIdentity();
-  const [actor, setActor] = reactExports.useState(null);
+  const key = identityKey(identity);
+  const [built, setBuilt] = reactExports.useState(null);
   const [isFetching, setIsFetching] = reactExports.useState(true);
-  const builtForRef = reactExports.useRef(null);
-  const actorRef = reactExports.useRef(null);
+  const builtRef = reactExports.useRef(null);
   reactExports.useEffect(() => {
+    var _a3;
+    if (((_a3 = builtRef.current) == null ? void 0 : _a3.key) === key) {
+      setIsFetching(false);
+      return;
+    }
     let cancelled = false;
     async function build() {
       setIsFetching(true);
@@ -15102,17 +15849,6 @@ function useBackendActor() {
         const network = env.backend_host ?? "ic";
         const isLocal = network === "local";
         if (!canisterId || canisterId === "undefined") {
-          if (!cancelled) setIsFetching(false);
-          return;
-        }
-        const identityKey = identity ? (() => {
-          try {
-            return identity.getPrincipal().toString();
-          } catch {
-            return "anon";
-          }
-        })() : "anon";
-        if (builtForRef.current === identityKey && actorRef.current !== null) {
           if (!cancelled) setIsFetching(false);
           return;
         }
@@ -15139,9 +15875,9 @@ function useBackendActor() {
           agent
         });
         if (!cancelled) {
-          builtForRef.current = identityKey;
-          actorRef.current = newActor;
-          setActor(newActor);
+          const next = { key, actor: newActor };
+          builtRef.current = next;
+          setBuilt(next);
           setIsFetching(false);
         }
       } catch {
@@ -15152,8 +15888,8 @@ function useBackendActor() {
     return () => {
       cancelled = true;
     };
-  }, [identity]);
-  return { actor, isFetching };
+  }, [identity, key]);
+  return { actor: (built == null ? void 0 : built.key) === key ? built.actor : null, isFetching };
 }
 var Subscribable = class {
   constructor() {
@@ -15904,8 +16640,8 @@ var Query = (_l = class extends Removable {
     });
     return data;
   }
-  setState(state, setStateOptions) {
-    __privateMethod(this, _Query_instances, dispatch_fn).call(this, { type: "setState", state, setStateOptions });
+  setState(state2, setStateOptions) {
+    __privateMethod(this, _Query_instances, dispatch_fn).call(this, { type: "setState", state: state2, setStateOptions });
   }
   cancel(options) {
     var _a3, _b3;
@@ -16064,7 +16800,7 @@ var Query = (_l = class extends Removable {
       return queryFn(queryFnContext);
     };
     const createFetchContext = () => {
-      const context2 = {
+      const context22 = {
         fetchOptions,
         options: this.options,
         queryKey: this.queryKey,
@@ -16072,18 +16808,18 @@ var Query = (_l = class extends Removable {
         state: this.state,
         fetchFn
       };
-      addSignalProperty(context2);
-      return context2;
+      addSignalProperty(context22);
+      return context22;
     };
-    const context = createFetchContext();
-    (_b3 = this.options.behavior) == null ? void 0 : _b3.onFetch(context, this);
+    const context2 = createFetchContext();
+    (_b3 = this.options.behavior) == null ? void 0 : _b3.onFetch(context2, this);
     __privateSet(this, _revertState, this.state);
-    if (this.state.fetchStatus === "idle" || this.state.fetchMeta !== ((_c2 = context.fetchOptions) == null ? void 0 : _c2.meta)) {
-      __privateMethod(this, _Query_instances, dispatch_fn).call(this, { type: "fetch", meta: (_d2 = context.fetchOptions) == null ? void 0 : _d2.meta });
+    if (this.state.fetchStatus === "idle" || this.state.fetchMeta !== ((_c2 = context2.fetchOptions) == null ? void 0 : _c2.meta)) {
+      __privateMethod(this, _Query_instances, dispatch_fn).call(this, { type: "fetch", meta: (_d2 = context2.fetchOptions) == null ? void 0 : _d2.meta });
     }
     __privateSet(this, _retryer, createRetryer({
       initialPromise: fetchOptions == null ? void 0 : fetchOptions.initialPromise,
-      fn: context.fetchFn,
+      fn: context2.fetchFn,
       onCancel: (error) => {
         if (error instanceof CancelledError && error.revert) {
           this.setState({
@@ -16102,9 +16838,9 @@ var Query = (_l = class extends Removable {
       onContinue: () => {
         __privateMethod(this, _Query_instances, dispatch_fn).call(this, { type: "continue" });
       },
-      retry: context.options.retry,
-      retryDelay: context.options.retryDelay,
-      networkMode: context.options.networkMode,
+      retry: context2.options.retry,
+      retryDelay: context2.options.retryDelay,
+      networkMode: context2.options.networkMode,
       canRun: () => true
     }));
     try {
@@ -16156,35 +16892,35 @@ var Query = (_l = class extends Removable {
 }, _initialState = new WeakMap(), _revertState = new WeakMap(), _cache = new WeakMap(), _client = new WeakMap(), _retryer = new WeakMap(), _defaultOptions = new WeakMap(), _abortSignalConsumed = new WeakMap(), _Query_instances = new WeakSet(), isInitialPausedFetch_fn = function() {
   return this.state.fetchStatus === "paused" && this.state.status === "pending";
 }, dispatch_fn = function(action) {
-  const reducer = (state) => {
+  const reducer = (state2) => {
     switch (action.type) {
       case "failed":
         return {
-          ...state,
+          ...state2,
           fetchFailureCount: action.failureCount,
           fetchFailureReason: action.error
         };
       case "pause":
         return {
-          ...state,
+          ...state2,
           fetchStatus: "paused"
         };
       case "continue":
         return {
-          ...state,
+          ...state2,
           fetchStatus: "fetching"
         };
       case "fetch":
         return {
-          ...state,
-          ...fetchState(state.data, this.options),
+          ...state2,
+          ...fetchState(state2.data, this.options),
           fetchMeta: action.meta ?? null
         };
       case "success":
         const newState = {
-          ...state,
+          ...state2,
           ...successState(action.data, action.dataUpdatedAt),
-          dataUpdateCount: state.dataUpdateCount + 1,
+          dataUpdateCount: state2.dataUpdateCount + 1,
           ...!action.manual && {
             fetchStatus: "idle",
             fetchFailureCount: 0,
@@ -16196,11 +16932,11 @@ var Query = (_l = class extends Removable {
       case "error":
         const error = action.error;
         return {
-          ...state,
+          ...state2,
           error,
-          errorUpdateCount: state.errorUpdateCount + 1,
+          errorUpdateCount: state2.errorUpdateCount + 1,
           errorUpdatedAt: Date.now(),
-          fetchFailureCount: state.fetchFailureCount + 1,
+          fetchFailureCount: state2.fetchFailureCount + 1,
           fetchFailureReason: error,
           fetchStatus: "idle",
           status: "error",
@@ -16210,12 +16946,12 @@ var Query = (_l = class extends Removable {
         };
       case "invalidate":
         return {
-          ...state,
+          ...state2,
           isInvalidated: true
         };
       case "setState":
         return {
-          ...state,
+          ...state2,
           ...action.state
         };
     }
@@ -16436,8 +17172,8 @@ var QueryObserver = (_m = class extends Subscribable {
     const prevResultOptions = __privateGet(this, _currentResultOptions);
     const queryChange = query !== prevQuery;
     const queryInitialState = queryChange ? query.state : __privateGet(this, _currentQueryInitialState);
-    const { state } = query;
-    let newState = { ...state };
+    const { state: state2 } = query;
+    let newState = { ...state2 };
     let isPlaceholderData = false;
     let data;
     if (options._optimisticResults) {
@@ -16447,7 +17183,7 @@ var QueryObserver = (_m = class extends Subscribable {
       if (fetchOnMount || fetchOptionally) {
         newState = {
           ...newState,
-          ...fetchState(state.data, query.options)
+          ...fetchState(state2.data, query.options)
         };
       }
       if (options._optimisticResults === "isRestoring") {
@@ -16544,8 +17280,8 @@ var QueryObserver = (_m = class extends Subscribable {
         }
       };
       const recreateThenable = () => {
-        const pending = __privateSet(this, _currentThenable, nextResult.promise = pendingThenable());
-        finalizeThenableIfPossible(pending);
+        const pending2 = __privateSet(this, _currentThenable, nextResult.promise = pendingThenable());
+        finalizeThenableIfPossible(pending2);
       };
       const prevThenable = __privateGet(this, _currentThenable);
       switch (prevThenable.status) {
@@ -16713,12 +17449,12 @@ function shouldAssignObserverCurrentProperties(observer2, optimisticResult) {
 }
 function infiniteQueryBehavior(pages) {
   return {
-    onFetch: (context, query) => {
+    onFetch: (context2, query) => {
       var _a3, _b3, _c2, _d2, _e2;
-      const options = context.options;
-      const direction2 = (_c2 = (_b3 = (_a3 = context.fetchOptions) == null ? void 0 : _a3.meta) == null ? void 0 : _b3.fetchMore) == null ? void 0 : _c2.direction;
-      const oldPages = ((_d2 = context.state.data) == null ? void 0 : _d2.pages) || [];
-      const oldPageParams = ((_e2 = context.state.data) == null ? void 0 : _e2.pageParams) || [];
+      const options = context2.options;
+      const direction2 = (_c2 = (_b3 = (_a3 = context2.fetchOptions) == null ? void 0 : _a3.meta) == null ? void 0 : _b3.fetchMore) == null ? void 0 : _c2.direction;
+      const oldPages = ((_d2 = context2.state.data) == null ? void 0 : _d2.pages) || [];
+      const oldPageParams = ((_e2 = context2.state.data) == null ? void 0 : _e2.pageParams) || [];
       let result = { pages: [], pageParams: [] };
       let currentPage = 0;
       const fetchFn = async () => {
@@ -16726,11 +17462,11 @@ function infiniteQueryBehavior(pages) {
         const addSignalProperty = (object) => {
           addConsumeAwareSignal(
             object,
-            () => context.signal,
+            () => context2.signal,
             () => cancelled = true
           );
         };
-        const queryFn = ensureQueryFn(context.options, context.fetchOptions);
+        const queryFn = ensureQueryFn(context2.options, context2.fetchOptions);
         const fetchPage = async (data, param, previous) => {
           if (cancelled) {
             return Promise.reject();
@@ -16740,18 +17476,18 @@ function infiniteQueryBehavior(pages) {
           }
           const createQueryFnContext = () => {
             const queryFnContext2 = {
-              client: context.client,
-              queryKey: context.queryKey,
+              client: context2.client,
+              queryKey: context2.queryKey,
               pageParam: param,
               direction: previous ? "backward" : "forward",
-              meta: context.options.meta
+              meta: context2.options.meta
             };
             addSignalProperty(queryFnContext2);
             return queryFnContext2;
           };
           const queryFnContext = createQueryFnContext();
           const page = await queryFn(queryFnContext);
-          const { maxPages } = context.options;
+          const { maxPages } = context2.options;
           const addTo = previous ? addToStart : addToEnd;
           return {
             pages: addTo(data.pages, page, maxPages),
@@ -16780,23 +17516,23 @@ function infiniteQueryBehavior(pages) {
         }
         return result;
       };
-      if (context.options.persister) {
-        context.fetchFn = () => {
+      if (context2.options.persister) {
+        context2.fetchFn = () => {
           var _a4, _b4;
-          return (_b4 = (_a4 = context.options).persister) == null ? void 0 : _b4.call(
+          return (_b4 = (_a4 = context2.options).persister) == null ? void 0 : _b4.call(
             _a4,
             fetchFn,
             {
-              client: context.client,
-              queryKey: context.queryKey,
-              meta: context.options.meta,
-              signal: context.signal
+              client: context2.client,
+              queryKey: context2.queryKey,
+              meta: context2.options.meta,
+              signal: context2.signal
             },
             query
           );
         };
       } else {
-        context.fetchFn = fetchFn;
+        context2.fetchFn = fetchFn;
       }
     }
   };
@@ -16914,15 +17650,15 @@ var Mutation = (_n = class extends Removable {
             mutationFnContext
           );
         }
-        const context = await ((_b3 = (_a3 = this.options).onMutate) == null ? void 0 : _b3.call(
+        const context2 = await ((_b3 = (_a3 = this.options).onMutate) == null ? void 0 : _b3.call(
           _a3,
           variables,
           mutationFnContext
         ));
-        if (context !== this.state.context) {
+        if (context2 !== this.state.context) {
           __privateMethod(this, _Mutation_instances, dispatch_fn2).call(this, {
             type: "pending",
-            context,
+            context: context2,
             variables,
             isPaused
           });
@@ -17019,27 +17755,27 @@ var Mutation = (_n = class extends Removable {
     }
   }
 }, _client3 = new WeakMap(), _observers = new WeakMap(), _mutationCache = new WeakMap(), _retryer2 = new WeakMap(), _Mutation_instances = new WeakSet(), dispatch_fn2 = function(action) {
-  const reducer = (state) => {
+  const reducer = (state2) => {
     switch (action.type) {
       case "failed":
         return {
-          ...state,
+          ...state2,
           failureCount: action.failureCount,
           failureReason: action.error
         };
       case "pause":
         return {
-          ...state,
+          ...state2,
           isPaused: true
         };
       case "continue":
         return {
-          ...state,
+          ...state2,
           isPaused: false
         };
       case "pending":
         return {
-          ...state,
+          ...state2,
           context: action.context,
           data: void 0,
           failureCount: 0,
@@ -17052,7 +17788,7 @@ var Mutation = (_n = class extends Removable {
         };
       case "success":
         return {
-          ...state,
+          ...state2,
           data: action.data,
           failureCount: 0,
           failureReason: null,
@@ -17062,10 +17798,10 @@ var Mutation = (_n = class extends Removable {
         };
       case "error":
         return {
-          ...state,
+          ...state2,
           data: void 0,
           error: action.error,
-          failureCount: state.failureCount + 1,
+          failureCount: state2.failureCount + 1,
           failureReason: action.error,
           isPaused: false,
           status: "error"
@@ -17108,13 +17844,13 @@ var MutationCache = (_o = class extends Subscribable {
     __privateSet(this, _scopes, /* @__PURE__ */ new Map());
     __privateSet(this, _mutationId, 0);
   }
-  build(client2, options, state) {
+  build(client2, options, state2) {
     const mutation = new Mutation({
       client: client2,
       mutationCache: this,
       mutationId: ++__privateWrapper(this, _mutationId)._,
       options: client2.defaultMutationOptions(options),
-      state
+      state: state2
     });
     this.add(mutation);
     return mutation;
@@ -17221,7 +17957,7 @@ var QueryCache = (_p = class extends Subscribable {
     this.config = config;
     __privateSet(this, _queries, /* @__PURE__ */ new Map());
   }
-  build(client2, options, state) {
+  build(client2, options, state2) {
     const queryKey = options.queryKey;
     const queryHash = options.queryHash ?? hashQueryKeyByOptions(queryKey, options);
     let query = this.get(queryHash);
@@ -17231,7 +17967,7 @@ var QueryCache = (_p = class extends Subscribable {
         queryKey,
         queryHash,
         options: client2.defaultQueryOptions(options),
-        state,
+        state: state2,
         defaultOptions: client2.getQueryDefaults(queryKey)
       });
       this.add(query);
@@ -17375,8 +18111,8 @@ var QueryClient = (_q = class {
     return Promise.resolve(cachedData);
   }
   getQueriesData(filters) {
-    return __privateGet(this, _queryCache).findAll(filters).map(({ queryKey, state }) => {
-      const data = state.data;
+    return __privateGet(this, _queryCache).findAll(filters).map(({ queryKey, state: state2 }) => {
+      const data = state2.data;
       return [queryKey, data];
     });
   }
@@ -18502,9 +19238,9 @@ function popHostContainer() {
 }
 function pushHostContext(fiber) {
   null !== fiber.memoizedState && push(hostTransitionProviderCursor, fiber);
-  var context = contextStackCursor.current;
-  var JSCompiler_inline_result = getChildHostContextProd(context, fiber.type);
-  context !== JSCompiler_inline_result && (push(contextFiberStackCursor, fiber), push(contextStackCursor, JSCompiler_inline_result));
+  var context2 = contextStackCursor.current;
+  var JSCompiler_inline_result = getChildHostContextProd(context2, fiber.type);
+  context2 !== JSCompiler_inline_result && (push(contextFiberStackCursor, fiber), push(contextStackCursor, JSCompiler_inline_result));
 }
 function popHostContext(fiber) {
   contextFiberStackCursor.current === fiber && (pop(contextStackCursor), pop(contextFiberStackCursor));
@@ -19926,8 +20662,8 @@ function finishQueueingConcurrentUpdates() {
     var lane = concurrentQueues[i];
     concurrentQueues[i++] = null;
     if (null !== queue && null !== update) {
-      var pending = queue.pending;
-      null === pending ? update.next = update : (update.next = pending.next, pending.next = update);
+      var pending2 = queue.pending;
+      null === pending2 ? update.next = update : (update.next = pending2.next, pending2.next = update);
       queue.pending = update;
     }
     0 !== lane && markUpdateLaneFromFiberToRoot(fiber, update, lane);
@@ -20268,12 +21004,12 @@ function queueHydrationError(error) {
   null === hydrationErrors ? hydrationErrors = [error] : hydrationErrors.push(error);
 }
 var valueCursor = createCursor(null), currentlyRenderingFiber$1 = null, lastContextDependency = null;
-function pushProvider(providerFiber, context, nextValue) {
-  push(valueCursor, context._currentValue);
-  context._currentValue = nextValue;
+function pushProvider(providerFiber, context2, nextValue) {
+  push(valueCursor, context2._currentValue);
+  context2._currentValue = nextValue;
 }
-function popProvider(context) {
-  context._currentValue = valueCursor.current;
+function popProvider(context2) {
+  context2._currentValue = valueCursor.current;
   pop(valueCursor);
 }
 function scheduleContextWorkOnParentPath(parent, renderLanes2, propagationRoot) {
@@ -20349,8 +21085,8 @@ function propagateParentContextChanges(current, workInProgress2, renderLanes2, f
       if (null === currentParent) throw Error(formatProdErrorMessage(387));
       currentParent = currentParent.memoizedProps;
       if (null !== currentParent) {
-        var context = parent.type;
-        objectIs$2(parent.pendingProps.value, currentParent.value) || (null !== current ? current.push(context) : current = [context]);
+        var context2 = parent.type;
+        objectIs$2(parent.pendingProps.value, currentParent.value) || (null !== current ? current.push(context2) : current = [context2]);
       }
     } else if (parent === hostTransitionProviderCursor.current) {
       currentParent = parent.alternate;
@@ -20384,34 +21120,34 @@ function prepareToReadContext(workInProgress2) {
   workInProgress2 = workInProgress2.dependencies;
   null !== workInProgress2 && (workInProgress2.firstContext = null);
 }
-function readContext(context) {
-  return readContextForConsumer(currentlyRenderingFiber$1, context);
+function readContext(context2) {
+  return readContextForConsumer(currentlyRenderingFiber$1, context2);
 }
-function readContextDuringReconciliation(consumer, context) {
+function readContextDuringReconciliation(consumer, context2) {
   null === currentlyRenderingFiber$1 && prepareToReadContext(consumer);
-  return readContextForConsumer(consumer, context);
+  return readContextForConsumer(consumer, context2);
 }
-function readContextForConsumer(consumer, context) {
-  var value = context._currentValue;
-  context = { context, memoizedValue: value, next: null };
+function readContextForConsumer(consumer, context2) {
+  var value = context2._currentValue;
+  context2 = { context: context2, memoizedValue: value, next: null };
   if (null === lastContextDependency) {
     if (null === consumer) throw Error(formatProdErrorMessage(308));
-    lastContextDependency = context;
-    consumer.dependencies = { lanes: 0, firstContext: context };
+    lastContextDependency = context2;
+    consumer.dependencies = { lanes: 0, firstContext: context2 };
     consumer.flags |= 524288;
-  } else lastContextDependency = lastContextDependency.next = context;
+  } else lastContextDependency = lastContextDependency.next = context2;
   return value;
 }
 var AbortControllerLocal = "undefined" !== typeof AbortController ? AbortController : function() {
-  var listeners = [], signal = this.signal = {
+  var listeners2 = [], signal = this.signal = {
     aborted: false,
     addEventListener: function(type, listener) {
-      listeners.push(listener);
+      listeners2.push(listener);
     }
   };
   this.abort = function() {
     signal.aborted = true;
-    listeners.forEach(function(listener) {
+    listeners2.forEach(function(listener) {
       return listener();
     });
   };
@@ -20430,10 +21166,10 @@ function createCache() {
     refCount: 0
   };
 }
-function releaseCache(cache2) {
-  cache2.refCount--;
-  0 === cache2.refCount && scheduleCallback$2(NormalPriority, function() {
-    cache2.controller.abort();
+function releaseCache(cache) {
+  cache.refCount--;
+  0 === cache.refCount && scheduleCallback$2(NormalPriority, function() {
+    cache.controller.abort();
   });
 }
 var currentEntangledListeners = null, currentEntangledPendingCount = 0, currentEntangledLane = 0, currentEntangledActionThenable = null;
@@ -20457,33 +21193,33 @@ function entangleAsyncAction(transition, thenable) {
 function pingEngtangledActionScope() {
   if (0 === --currentEntangledPendingCount && null !== currentEntangledListeners) {
     null !== currentEntangledActionThenable && (currentEntangledActionThenable.status = "fulfilled");
-    var listeners = currentEntangledListeners;
+    var listeners2 = currentEntangledListeners;
     currentEntangledListeners = null;
     currentEntangledLane = 0;
     currentEntangledActionThenable = null;
-    for (var i = 0; i < listeners.length; i++) (0, listeners[i])();
+    for (var i = 0; i < listeners2.length; i++) (0, listeners2[i])();
   }
 }
 function chainThenableValue(thenable, result) {
-  var listeners = [], thenableWithOverride = {
+  var listeners2 = [], thenableWithOverride = {
     status: "pending",
     value: null,
     reason: null,
     then: function(resolve) {
-      listeners.push(resolve);
+      listeners2.push(resolve);
     }
   };
   thenable.then(
     function() {
       thenableWithOverride.status = "fulfilled";
       thenableWithOverride.value = result;
-      for (var i = 0; i < listeners.length; i++) (0, listeners[i])(result);
+      for (var i = 0; i < listeners2.length; i++) (0, listeners2[i])(result);
     },
     function(error) {
       thenableWithOverride.status = "rejected";
       thenableWithOverride.reason = error;
-      for (error = 0; error < listeners.length; error++)
-        (0, listeners[error])(void 0);
+      for (error = 0; error < listeners2.length; error++)
+        (0, listeners2[error])(void 0);
     }
   );
   return thenableWithOverride;
@@ -20595,8 +21331,8 @@ function enqueueUpdate(fiber, update, lane) {
   if (null === updateQueue) return null;
   updateQueue = updateQueue.shared;
   if (0 !== (executionContext & 2)) {
-    var pending = updateQueue.pending;
-    null === pending ? update.next = update : (update.next = pending.next, pending.next = update);
+    var pending2 = updateQueue.pending;
+    null === pending2 ? update.next = update : (update.next = pending2.next, pending2.next = update);
     updateQueue.pending = update;
     update = getRootForUpdatedFiber(fiber);
     markUpdateLaneFromFiberToRoot(fiber, null, lane);
@@ -20737,23 +21473,23 @@ function processUpdateQueue(workInProgress$jscomp$0, props, instance$jscomp$0, r
     workInProgress$jscomp$0.memoizedState = newState;
   }
 }
-function callCallback(callback, context) {
+function callCallback(callback, context2) {
   if ("function" !== typeof callback)
     throw Error(formatProdErrorMessage(191, callback));
-  callback.call(context);
+  callback.call(context2);
 }
-function commitCallbacks(updateQueue, context) {
+function commitCallbacks(updateQueue, context2) {
   var callbacks = updateQueue.callbacks;
   if (null !== callbacks)
     for (updateQueue.callbacks = null, updateQueue = 0; updateQueue < callbacks.length; updateQueue++)
-      callCallback(callbacks[updateQueue], context);
+      callCallback(callbacks[updateQueue], context2);
 }
 var currentTreeHiddenStackCursor = createCursor(null), prevEntangledRenderLanesCursor = createCursor(0);
-function pushHiddenContext(fiber, context) {
+function pushHiddenContext(fiber, context2) {
   fiber = entangledRenderLanes;
   push(prevEntangledRenderLanesCursor, fiber);
-  push(currentTreeHiddenStackCursor, context);
-  entangledRenderLanes = fiber | context.baseLanes;
+  push(currentTreeHiddenStackCursor, context2);
+  entangledRenderLanes = fiber | context2.baseLanes;
 }
 function reuseHiddenContextOnStack() {
   push(prevEntangledRenderLanesCursor, entangledRenderLanes);
@@ -20936,8 +21672,8 @@ function useMemoCache(size) {
   memoCache.index++;
   return updateQueue;
 }
-function basicStateReducer(state, action) {
-  return "function" === typeof action ? action(state) : action;
+function basicStateReducer(state2, action) {
+  return "function" === typeof action ? action(state2) : action;
 }
 function updateReducer(reducer) {
   var hook = updateWorkInProgressHook();
@@ -21302,12 +22038,12 @@ function updateActionStateImpl(stateHook, currentStateHook, action) {
   stateHook = updateReducer(basicStateReducer)[0];
   if ("object" === typeof currentStateHook && null !== currentStateHook && "function" === typeof currentStateHook.then)
     try {
-      var state = useThenable(currentStateHook);
+      var state2 = useThenable(currentStateHook);
     } catch (x2) {
       if (x2 === SuspenseException) throw SuspenseActionException;
       throw x2;
     }
-  else state = currentStateHook;
+  else state2 = currentStateHook;
   currentStateHook = updateWorkInProgressHook();
   var actionQueue = currentStateHook.queue, dispatch = actionQueue.dispatch;
   action !== currentStateHook.memoizedState && (currentlyRenderingFiber.flags |= 2048, pushSimpleEffect(
@@ -21316,7 +22052,7 @@ function updateActionStateImpl(stateHook, currentStateHook, action) {
     actionStateActionEffect.bind(null, actionQueue, action),
     null
   ));
-  return [state, dispatch, stateHook];
+  return [state2, dispatch, stateHook];
 }
 function actionStateActionEffect(actionQueue, action) {
   actionQueue.action = action;
@@ -21634,8 +22370,8 @@ function isRenderPhaseUpdate(fiber) {
 }
 function enqueueRenderPhaseUpdate(queue, update) {
   didScheduleRenderPhaseUpdateDuringThisPass = didScheduleRenderPhaseUpdate = true;
-  var pending = queue.pending;
-  null === pending ? update.next = update : (update.next = pending.next, pending.next = update);
+  var pending2 = queue.pending;
+  null === pending2 ? update.next = update : (update.next = pending2.next, pending2.next = update);
   queue.pending = update;
 }
 function entangleTransitionUpdate(root2, queue, lane) {
@@ -22431,8 +23167,8 @@ var suspenseStackCursor = createCursor(0);
 function findFirstSuspended(row) {
   for (var node = row; null !== node; ) {
     if (13 === node.tag) {
-      var state = node.memoizedState;
-      if (null !== state && (state = state.dehydrated, null === state || "$?" === state.data || isSuspenseInstanceFallback(state)))
+      var state2 = node.memoizedState;
+      if (null !== state2 && (state2 = state2.dehydrated, null === state2 || "$?" === state2.data || isSuspenseInstanceFallback(state2)))
         return node;
     } else if (19 === node.tag && void 0 !== node.memoizedProps.revealOrder) {
       if (0 !== (node.flags & 128)) return node;
@@ -22839,51 +23575,51 @@ function replayFunctionComponent(current, workInProgress2, nextProps, Component2
 function updateClassComponent(current, workInProgress2, Component2, nextProps, renderLanes2) {
   prepareToReadContext(workInProgress2);
   if (null === workInProgress2.stateNode) {
-    var context = emptyContextObject, contextType = Component2.contextType;
-    "object" === typeof contextType && null !== contextType && (context = readContext(contextType));
-    context = new Component2(nextProps, context);
-    workInProgress2.memoizedState = null !== context.state && void 0 !== context.state ? context.state : null;
-    context.updater = classComponentUpdater;
-    workInProgress2.stateNode = context;
-    context._reactInternals = workInProgress2;
-    context = workInProgress2.stateNode;
-    context.props = nextProps;
-    context.state = workInProgress2.memoizedState;
-    context.refs = {};
+    var context2 = emptyContextObject, contextType = Component2.contextType;
+    "object" === typeof contextType && null !== contextType && (context2 = readContext(contextType));
+    context2 = new Component2(nextProps, context2);
+    workInProgress2.memoizedState = null !== context2.state && void 0 !== context2.state ? context2.state : null;
+    context2.updater = classComponentUpdater;
+    workInProgress2.stateNode = context2;
+    context2._reactInternals = workInProgress2;
+    context2 = workInProgress2.stateNode;
+    context2.props = nextProps;
+    context2.state = workInProgress2.memoizedState;
+    context2.refs = {};
     initializeUpdateQueue(workInProgress2);
     contextType = Component2.contextType;
-    context.context = "object" === typeof contextType && null !== contextType ? readContext(contextType) : emptyContextObject;
-    context.state = workInProgress2.memoizedState;
+    context2.context = "object" === typeof contextType && null !== contextType ? readContext(contextType) : emptyContextObject;
+    context2.state = workInProgress2.memoizedState;
     contextType = Component2.getDerivedStateFromProps;
     "function" === typeof contextType && (applyDerivedStateFromProps(
       workInProgress2,
       Component2,
       contextType,
       nextProps
-    ), context.state = workInProgress2.memoizedState);
-    "function" === typeof Component2.getDerivedStateFromProps || "function" === typeof context.getSnapshotBeforeUpdate || "function" !== typeof context.UNSAFE_componentWillMount && "function" !== typeof context.componentWillMount || (contextType = context.state, "function" === typeof context.componentWillMount && context.componentWillMount(), "function" === typeof context.UNSAFE_componentWillMount && context.UNSAFE_componentWillMount(), contextType !== context.state && classComponentUpdater.enqueueReplaceState(context, context.state, null), processUpdateQueue(workInProgress2, nextProps, context, renderLanes2), suspendIfUpdateReadFromEntangledAsyncAction(), context.state = workInProgress2.memoizedState);
-    "function" === typeof context.componentDidMount && (workInProgress2.flags |= 4194308);
+    ), context2.state = workInProgress2.memoizedState);
+    "function" === typeof Component2.getDerivedStateFromProps || "function" === typeof context2.getSnapshotBeforeUpdate || "function" !== typeof context2.UNSAFE_componentWillMount && "function" !== typeof context2.componentWillMount || (contextType = context2.state, "function" === typeof context2.componentWillMount && context2.componentWillMount(), "function" === typeof context2.UNSAFE_componentWillMount && context2.UNSAFE_componentWillMount(), contextType !== context2.state && classComponentUpdater.enqueueReplaceState(context2, context2.state, null), processUpdateQueue(workInProgress2, nextProps, context2, renderLanes2), suspendIfUpdateReadFromEntangledAsyncAction(), context2.state = workInProgress2.memoizedState);
+    "function" === typeof context2.componentDidMount && (workInProgress2.flags |= 4194308);
     nextProps = true;
   } else if (null === current) {
-    context = workInProgress2.stateNode;
+    context2 = workInProgress2.stateNode;
     var unresolvedOldProps = workInProgress2.memoizedProps, oldProps = resolveClassComponentProps(Component2, unresolvedOldProps);
-    context.props = oldProps;
-    var oldContext = context.context, contextType$jscomp$0 = Component2.contextType;
+    context2.props = oldProps;
+    var oldContext = context2.context, contextType$jscomp$0 = Component2.contextType;
     contextType = emptyContextObject;
     "object" === typeof contextType$jscomp$0 && null !== contextType$jscomp$0 && (contextType = readContext(contextType$jscomp$0));
     var getDerivedStateFromProps = Component2.getDerivedStateFromProps;
-    contextType$jscomp$0 = "function" === typeof getDerivedStateFromProps || "function" === typeof context.getSnapshotBeforeUpdate;
+    contextType$jscomp$0 = "function" === typeof getDerivedStateFromProps || "function" === typeof context2.getSnapshotBeforeUpdate;
     unresolvedOldProps = workInProgress2.pendingProps !== unresolvedOldProps;
-    contextType$jscomp$0 || "function" !== typeof context.UNSAFE_componentWillReceiveProps && "function" !== typeof context.componentWillReceiveProps || (unresolvedOldProps || oldContext !== contextType) && callComponentWillReceiveProps(
+    contextType$jscomp$0 || "function" !== typeof context2.UNSAFE_componentWillReceiveProps && "function" !== typeof context2.componentWillReceiveProps || (unresolvedOldProps || oldContext !== contextType) && callComponentWillReceiveProps(
       workInProgress2,
-      context,
+      context2,
       nextProps,
       contextType
     );
     hasForceUpdate = false;
     var oldState = workInProgress2.memoizedState;
-    context.state = oldState;
-    processUpdateQueue(workInProgress2, nextProps, context, renderLanes2);
+    context2.state = oldState;
+    processUpdateQueue(workInProgress2, nextProps, context2, renderLanes2);
     suspendIfUpdateReadFromEntangledAsyncAction();
     oldContext = workInProgress2.memoizedState;
     unresolvedOldProps || oldState !== oldContext || hasForceUpdate ? ("function" === typeof getDerivedStateFromProps && (applyDerivedStateFromProps(
@@ -22899,29 +23635,29 @@ function updateClassComponent(current, workInProgress2, Component2, nextProps, r
       oldState,
       oldContext,
       contextType
-    )) ? (contextType$jscomp$0 || "function" !== typeof context.UNSAFE_componentWillMount && "function" !== typeof context.componentWillMount || ("function" === typeof context.componentWillMount && context.componentWillMount(), "function" === typeof context.UNSAFE_componentWillMount && context.UNSAFE_componentWillMount()), "function" === typeof context.componentDidMount && (workInProgress2.flags |= 4194308)) : ("function" === typeof context.componentDidMount && (workInProgress2.flags |= 4194308), workInProgress2.memoizedProps = nextProps, workInProgress2.memoizedState = oldContext), context.props = nextProps, context.state = oldContext, context.context = contextType, nextProps = oldProps) : ("function" === typeof context.componentDidMount && (workInProgress2.flags |= 4194308), nextProps = false);
+    )) ? (contextType$jscomp$0 || "function" !== typeof context2.UNSAFE_componentWillMount && "function" !== typeof context2.componentWillMount || ("function" === typeof context2.componentWillMount && context2.componentWillMount(), "function" === typeof context2.UNSAFE_componentWillMount && context2.UNSAFE_componentWillMount()), "function" === typeof context2.componentDidMount && (workInProgress2.flags |= 4194308)) : ("function" === typeof context2.componentDidMount && (workInProgress2.flags |= 4194308), workInProgress2.memoizedProps = nextProps, workInProgress2.memoizedState = oldContext), context2.props = nextProps, context2.state = oldContext, context2.context = contextType, nextProps = oldProps) : ("function" === typeof context2.componentDidMount && (workInProgress2.flags |= 4194308), nextProps = false);
   } else {
-    context = workInProgress2.stateNode;
+    context2 = workInProgress2.stateNode;
     cloneUpdateQueue(current, workInProgress2);
     contextType = workInProgress2.memoizedProps;
     contextType$jscomp$0 = resolveClassComponentProps(Component2, contextType);
-    context.props = contextType$jscomp$0;
+    context2.props = contextType$jscomp$0;
     getDerivedStateFromProps = workInProgress2.pendingProps;
-    oldState = context.context;
+    oldState = context2.context;
     oldContext = Component2.contextType;
     oldProps = emptyContextObject;
     "object" === typeof oldContext && null !== oldContext && (oldProps = readContext(oldContext));
     unresolvedOldProps = Component2.getDerivedStateFromProps;
-    (oldContext = "function" === typeof unresolvedOldProps || "function" === typeof context.getSnapshotBeforeUpdate) || "function" !== typeof context.UNSAFE_componentWillReceiveProps && "function" !== typeof context.componentWillReceiveProps || (contextType !== getDerivedStateFromProps || oldState !== oldProps) && callComponentWillReceiveProps(
+    (oldContext = "function" === typeof unresolvedOldProps || "function" === typeof context2.getSnapshotBeforeUpdate) || "function" !== typeof context2.UNSAFE_componentWillReceiveProps && "function" !== typeof context2.componentWillReceiveProps || (contextType !== getDerivedStateFromProps || oldState !== oldProps) && callComponentWillReceiveProps(
       workInProgress2,
-      context,
+      context2,
       nextProps,
       oldProps
     );
     hasForceUpdate = false;
     oldState = workInProgress2.memoizedState;
-    context.state = oldState;
-    processUpdateQueue(workInProgress2, nextProps, context, renderLanes2);
+    context2.state = oldState;
+    processUpdateQueue(workInProgress2, nextProps, context2, renderLanes2);
     suspendIfUpdateReadFromEntangledAsyncAction();
     var newState = workInProgress2.memoizedState;
     contextType !== getDerivedStateFromProps || oldState !== newState || hasForceUpdate || null !== current && null !== current.dependencies && checkIfContextChanged(current.dependencies) ? ("function" === typeof unresolvedOldProps && (applyDerivedStateFromProps(
@@ -22937,16 +23673,16 @@ function updateClassComponent(current, workInProgress2, Component2, nextProps, r
       oldState,
       newState,
       oldProps
-    ) || null !== current && null !== current.dependencies && checkIfContextChanged(current.dependencies)) ? (oldContext || "function" !== typeof context.UNSAFE_componentWillUpdate && "function" !== typeof context.componentWillUpdate || ("function" === typeof context.componentWillUpdate && context.componentWillUpdate(nextProps, newState, oldProps), "function" === typeof context.UNSAFE_componentWillUpdate && context.UNSAFE_componentWillUpdate(
+    ) || null !== current && null !== current.dependencies && checkIfContextChanged(current.dependencies)) ? (oldContext || "function" !== typeof context2.UNSAFE_componentWillUpdate && "function" !== typeof context2.componentWillUpdate || ("function" === typeof context2.componentWillUpdate && context2.componentWillUpdate(nextProps, newState, oldProps), "function" === typeof context2.UNSAFE_componentWillUpdate && context2.UNSAFE_componentWillUpdate(
       nextProps,
       newState,
       oldProps
-    )), "function" === typeof context.componentDidUpdate && (workInProgress2.flags |= 4), "function" === typeof context.getSnapshotBeforeUpdate && (workInProgress2.flags |= 1024)) : ("function" !== typeof context.componentDidUpdate || contextType === current.memoizedProps && oldState === current.memoizedState || (workInProgress2.flags |= 4), "function" !== typeof context.getSnapshotBeforeUpdate || contextType === current.memoizedProps && oldState === current.memoizedState || (workInProgress2.flags |= 1024), workInProgress2.memoizedProps = nextProps, workInProgress2.memoizedState = newState), context.props = nextProps, context.state = newState, context.context = oldProps, nextProps = contextType$jscomp$0) : ("function" !== typeof context.componentDidUpdate || contextType === current.memoizedProps && oldState === current.memoizedState || (workInProgress2.flags |= 4), "function" !== typeof context.getSnapshotBeforeUpdate || contextType === current.memoizedProps && oldState === current.memoizedState || (workInProgress2.flags |= 1024), nextProps = false);
+    )), "function" === typeof context2.componentDidUpdate && (workInProgress2.flags |= 4), "function" === typeof context2.getSnapshotBeforeUpdate && (workInProgress2.flags |= 1024)) : ("function" !== typeof context2.componentDidUpdate || contextType === current.memoizedProps && oldState === current.memoizedState || (workInProgress2.flags |= 4), "function" !== typeof context2.getSnapshotBeforeUpdate || contextType === current.memoizedProps && oldState === current.memoizedState || (workInProgress2.flags |= 1024), workInProgress2.memoizedProps = nextProps, workInProgress2.memoizedState = newState), context2.props = nextProps, context2.state = newState, context2.context = oldProps, nextProps = contextType$jscomp$0) : ("function" !== typeof context2.componentDidUpdate || contextType === current.memoizedProps && oldState === current.memoizedState || (workInProgress2.flags |= 4), "function" !== typeof context2.getSnapshotBeforeUpdate || contextType === current.memoizedProps && oldState === current.memoizedState || (workInProgress2.flags |= 1024), nextProps = false);
   }
-  context = nextProps;
+  context2 = nextProps;
   markRef(current, workInProgress2);
   nextProps = 0 !== (workInProgress2.flags & 128);
-  context || nextProps ? (context = workInProgress2.stateNode, Component2 = nextProps && "function" !== typeof Component2.getDerivedStateFromError ? null : context.render(), workInProgress2.flags |= 1, null !== current && nextProps ? (workInProgress2.child = reconcileChildFibers(
+  context2 || nextProps ? (context2 = workInProgress2.stateNode, Component2 = nextProps && "function" !== typeof Component2.getDerivedStateFromError ? null : context2.render(), workInProgress2.flags |= 1, null !== current && nextProps ? (workInProgress2.child = reconcileChildFibers(
     workInProgress2,
     current.child,
     null,
@@ -22956,7 +23692,7 @@ function updateClassComponent(current, workInProgress2, Component2, nextProps, r
     null,
     Component2,
     renderLanes2
-  )) : reconcileChildren(current, workInProgress2, Component2, renderLanes2), workInProgress2.memoizedState = context.state, current = workInProgress2.child) : current = bailoutOnAlreadyFinishedWork(
+  )) : reconcileChildren(current, workInProgress2, Component2, renderLanes2), workInProgress2.memoizedState = context2.state, current = workInProgress2.child) : current = bailoutOnAlreadyFinishedWork(
     current,
     workInProgress2,
     renderLanes2
@@ -23311,9 +24047,9 @@ function attemptEarlyBailoutIfNoScheduledUpdate(current, workInProgress2, render
       );
       break;
     case 13:
-      var state = workInProgress2.memoizedState;
-      if (null !== state) {
-        if (null !== state.dehydrated)
+      var state2 = workInProgress2.memoizedState;
+      if (null !== state2) {
+        if (null !== state2.dehydrated)
           return pushPrimaryTreeSuspenseHandler(workInProgress2), workInProgress2.flags |= 128, null;
         if (0 !== (renderLanes2 & workInProgress2.child.childLanes))
           return updateSuspenseComponent(current, workInProgress2, renderLanes2);
@@ -23329,15 +24065,15 @@ function attemptEarlyBailoutIfNoScheduledUpdate(current, workInProgress2, render
       break;
     case 19:
       var didSuspendBefore = 0 !== (current.flags & 128);
-      state = 0 !== (renderLanes2 & workInProgress2.childLanes);
-      state || (propagateParentContextChanges(
+      state2 = 0 !== (renderLanes2 & workInProgress2.childLanes);
+      state2 || (propagateParentContextChanges(
         current,
         workInProgress2,
         renderLanes2,
         false
-      ), state = 0 !== (renderLanes2 & workInProgress2.childLanes));
+      ), state2 = 0 !== (renderLanes2 & workInProgress2.childLanes));
       if (didSuspendBefore) {
-        if (state)
+        if (state2)
           return updateSuspenseListComponent(
             current,
             workInProgress2,
@@ -23348,7 +24084,7 @@ function attemptEarlyBailoutIfNoScheduledUpdate(current, workInProgress2, render
       didSuspendBefore = workInProgress2.memoizedState;
       null !== didSuspendBefore && (didSuspendBefore.rendering = null, didSuspendBefore.tail = null, didSuspendBefore.lastEffect = null);
       push(suspenseStackCursor, suspenseStackCursor.current);
-      if (state) break;
+      if (state2) break;
       else return null;
     case 22:
     case 23:
@@ -25527,21 +26263,21 @@ function commitPassiveUnmountEffectsInsideOfDeletedTree_begin(deletedSubtreeRoot
       case 23:
       case 22:
         if (null !== fiber.memoizedState && null !== fiber.memoizedState.cachePool) {
-          var cache2 = fiber.memoizedState.cachePool.pool;
-          null != cache2 && cache2.refCount++;
+          var cache = fiber.memoizedState.cachePool.pool;
+          null != cache && cache.refCount++;
         }
         break;
       case 24:
         releaseCache(fiber.memoizedState.cache);
     }
-    cache2 = fiber.child;
-    if (null !== cache2) cache2.return = fiber, nextEffect = cache2;
+    cache = fiber.child;
+    if (null !== cache) cache.return = fiber, nextEffect = cache;
     else
       a: for (fiber = deletedSubtreeRoot; null !== nextEffect; ) {
-        cache2 = nextEffect;
-        var sibling = cache2.sibling, returnFiber = cache2.return;
-        detachFiberAfterEffects(cache2);
-        if (cache2 === fiber) {
+        cache = nextEffect;
+        var sibling = cache.sibling, returnFiber = cache.return;
+        detachFiberAfterEffects(cache);
+        if (cache === fiber) {
           nextEffect = null;
           break a;
         }
@@ -25556,8 +26292,8 @@ function commitPassiveUnmountEffectsInsideOfDeletedTree_begin(deletedSubtreeRoot
 }
 var DefaultAsyncDispatcher = {
   getCacheForType: function(resourceType) {
-    var cache2 = readContext(CacheContext), cacheForType = cache2.data.get(resourceType);
-    void 0 === cacheForType && (cacheForType = resourceType(), cache2.data.set(resourceType, cacheForType));
+    var cache = readContext(CacheContext), cacheForType = cache.data.get(resourceType);
+    void 0 === cacheForType && (cacheForType = resourceType(), cache.data.set(resourceType, cacheForType));
     return cacheForType;
   }
 }, PossiblyWeakMap = "function" === typeof WeakMap ? WeakMap : Map, executionContext = 0, workInProgressRoot = null, workInProgress = null, workInProgressRootRenderLanes = 0, workInProgressSuspendedReason = 0, workInProgressThrownValue = null, workInProgressRootDidSkipSuspendedSiblings = false, workInProgressRootIsPrerendering = false, workInProgressRootDidAttachPingListener = false, entangledRenderLanes = 0, workInProgressRootExitStatus = 0, workInProgressRootSkippedLanes = 0, workInProgressRootInterleavedUpdatedLanes = 0, workInProgressRootPingedLanes = 0, workInProgressDeferredLane = 0, workInProgressSuspendedRetryLanes = 0, workInProgressRootConcurrentErrors = null, workInProgressRootRecoverableErrors = null, workInProgressRootDidIncludeRecursiveRenderUpdate = false, globalMostRecentFallbackTime = 0, workInProgressRootRenderTargetTime = Infinity, workInProgressTransitions = null, legacyErrorBoundariesThatAlreadyFailed = null, pendingEffectsStatus = 0, pendingEffectsRoot = null, pendingFinishedWork = null, pendingEffectsLanes = 0, pendingEffectsRemainingLanes = 0, pendingPassiveTransitions = null, pendingRecoverableErrors = null, nestedUpdateCount = 0, rootWithNestedUpdates = null;
@@ -27146,15 +27882,15 @@ function createDispatchListener(instance, listener, currentTarget) {
   };
 }
 function accumulateTwoPhaseListeners(targetFiber, reactName) {
-  for (var captureName = reactName + "Capture", listeners = []; null !== targetFiber; ) {
+  for (var captureName = reactName + "Capture", listeners2 = []; null !== targetFiber; ) {
     var _instance2 = targetFiber, stateNode = _instance2.stateNode;
     _instance2 = _instance2.tag;
-    5 !== _instance2 && 26 !== _instance2 && 27 !== _instance2 || null === stateNode || (_instance2 = getListener(targetFiber, captureName), null != _instance2 && listeners.unshift(
+    5 !== _instance2 && 26 !== _instance2 && 27 !== _instance2 || null === stateNode || (_instance2 = getListener(targetFiber, captureName), null != _instance2 && listeners2.unshift(
       createDispatchListener(targetFiber, _instance2, stateNode)
-    ), _instance2 = getListener(targetFiber, reactName), null != _instance2 && listeners.push(
+    ), _instance2 = getListener(targetFiber, reactName), null != _instance2 && listeners2.push(
       createDispatchListener(targetFiber, _instance2, stateNode)
     ));
-    if (3 === targetFiber.tag) return listeners;
+    if (3 === targetFiber.tag) return listeners2;
     targetFiber = targetFiber.return;
   }
   return [];
@@ -27167,18 +27903,18 @@ function getParent(inst) {
   return inst ? inst : null;
 }
 function accumulateEnterLeaveListenersForEvent(dispatchQueue, event, target, common, inCapturePhase) {
-  for (var registrationName = event._reactName, listeners = []; null !== target && target !== common; ) {
+  for (var registrationName = event._reactName, listeners2 = []; null !== target && target !== common; ) {
     var _instance3 = target, alternate = _instance3.alternate, stateNode = _instance3.stateNode;
     _instance3 = _instance3.tag;
     if (null !== alternate && alternate === common) break;
-    5 !== _instance3 && 26 !== _instance3 && 27 !== _instance3 || null === stateNode || (alternate = stateNode, inCapturePhase ? (stateNode = getListener(target, registrationName), null != stateNode && listeners.unshift(
+    5 !== _instance3 && 26 !== _instance3 && 27 !== _instance3 || null === stateNode || (alternate = stateNode, inCapturePhase ? (stateNode = getListener(target, registrationName), null != stateNode && listeners2.unshift(
       createDispatchListener(target, stateNode, alternate)
-    )) : inCapturePhase || (stateNode = getListener(target, registrationName), null != stateNode && listeners.push(
+    )) : inCapturePhase || (stateNode = getListener(target, registrationName), null != stateNode && listeners2.push(
       createDispatchListener(target, stateNode, alternate)
     )));
     target = target.return;
   }
-  0 !== listeners.length && dispatchQueue.push({ event, listeners });
+  0 !== listeners2.length && dispatchQueue.push({ event, listeners: listeners2 });
 }
 var NORMALIZE_NEWLINES_REGEX = /\r\n?/g, NORMALIZE_NULL_AND_REPLACEMENT_REGEX = /\u0000|\uFFFD/g;
 function normalizeMarkupForTextOrAttribute(markup) {
@@ -28287,11 +29023,11 @@ function preinitStyle(href, precedence, options) {
     precedence = precedence || "default";
     var resource = styles.get(key);
     if (!resource) {
-      var state = { loading: 0, preload: null };
+      var state2 = { loading: 0, preload: null };
       if (resource = ownerDocument.querySelector(
         getStylesheetSelectorFromKey(key)
       ))
-        state.loading = 5;
+        state2.loading = 5;
       else {
         href = assign(
           { rel: "stylesheet", href, "data-precedence": precedence },
@@ -28306,19 +29042,19 @@ function preinitStyle(href, precedence, options) {
           link.onerror = reject;
         });
         link.addEventListener("load", function() {
-          state.loading |= 1;
+          state2.loading |= 1;
         });
         link.addEventListener("error", function() {
-          state.loading |= 2;
+          state2.loading |= 2;
         });
-        state.loading |= 4;
+        state2.loading |= 4;
         insertStylesheet(resource, precedence, ownerDocument);
       }
       resource = {
         type: "stylesheet",
         instance: resource,
         count: 1,
-        state
+        state: state2
       };
       styles.set(key, resource);
     }
@@ -28426,11 +29162,11 @@ function stylesheetPropsFromRawProps(rawProps) {
     precedence: null
   });
 }
-function preloadStylesheet(ownerDocument, key, preloadProps, state) {
-  ownerDocument.querySelector('link[rel="preload"][as="style"][' + key + "]") ? state.loading = 1 : (key = ownerDocument.createElement("link"), state.preload = key, key.addEventListener("load", function() {
-    return state.loading |= 1;
+function preloadStylesheet(ownerDocument, key, preloadProps, state2) {
+  ownerDocument.querySelector('link[rel="preload"][as="style"][' + key + "]") ? state2.loading = 1 : (key = ownerDocument.createElement("link"), state2.preload = key, key.addEventListener("load", function() {
+    return state2.loading |= 1;
   }), key.addEventListener("error", function() {
-    return state.loading |= 2;
+    return state2.loading |= 2;
   }), setInitialProperties(key, "link", preloadProps), markNodeAsHoistable(key), ownerDocument.head.appendChild(key));
 }
 function getScriptKey(src) {
@@ -28529,24 +29265,24 @@ function adoptPreloadPropsForScript(scriptProps, preloadProps) {
 var tagCaches = null;
 function getHydratableHoistableCache(type, keyAttribute, ownerDocument) {
   if (null === tagCaches) {
-    var cache2 = /* @__PURE__ */ new Map();
+    var cache = /* @__PURE__ */ new Map();
     var caches = tagCaches = /* @__PURE__ */ new Map();
-    caches.set(ownerDocument, cache2);
+    caches.set(ownerDocument, cache);
   } else
-    caches = tagCaches, cache2 = caches.get(ownerDocument), cache2 || (cache2 = /* @__PURE__ */ new Map(), caches.set(ownerDocument, cache2));
-  if (cache2.has(type)) return cache2;
-  cache2.set(type, null);
+    caches = tagCaches, cache = caches.get(ownerDocument), cache || (cache = /* @__PURE__ */ new Map(), caches.set(ownerDocument, cache));
+  if (cache.has(type)) return cache;
+  cache.set(type, null);
   ownerDocument = ownerDocument.getElementsByTagName(type);
   for (caches = 0; caches < ownerDocument.length; caches++) {
     var node = ownerDocument[caches];
     if (!(node[internalHoistableMarker] || node[internalInstanceKey] || "link" === type && "stylesheet" === node.getAttribute("rel")) && "http://www.w3.org/2000/svg" !== node.namespaceURI) {
       var nodeKey = node.getAttribute(keyAttribute) || "";
       nodeKey = type + nodeKey;
-      var existing = cache2.get(nodeKey);
-      existing ? existing.push(node) : cache2.set(nodeKey, [node]);
+      var existing = cache.get(nodeKey);
+      existing ? existing.push(node) : cache.set(nodeKey, [node]);
     }
   }
-  return cache2;
+  return cache;
 }
 function mountHoistable(hoistableRoot, type, instance) {
   hoistableRoot = hoistableRoot.ownerDocument || hoistableRoot;
@@ -28588,7 +29324,7 @@ function noop$4() {
 }
 function suspendResource(hoistableRoot, resource, props) {
   if (null === suspendedState) throw Error(formatProdErrorMessage(475));
-  var state = suspendedState;
+  var state2 = suspendedState;
   if ("stylesheet" === resource.type && ("string" !== typeof props.media || false !== matchMedia(props.media).matches) && 0 === (resource.state.loading & 4)) {
     if (null === resource.instance) {
       var key = getStyleKey(props.href), instance = hoistableRoot.querySelector(
@@ -28596,7 +29332,7 @@ function suspendResource(hoistableRoot, resource, props) {
       );
       if (instance) {
         hoistableRoot = instance._p;
-        null !== hoistableRoot && "object" === typeof hoistableRoot && "function" === typeof hoistableRoot.then && (state.count++, state = onUnsuspend.bind(state), hoistableRoot.then(state, state));
+        null !== hoistableRoot && "object" === typeof hoistableRoot && "function" === typeof hoistableRoot.then && (state2.count++, state2 = onUnsuspend.bind(state2), hoistableRoot.then(state2, state2));
         resource.state.loading |= 4;
         resource.instance = instance;
         markNodeAsHoistable(instance);
@@ -28615,27 +29351,27 @@ function suspendResource(hoistableRoot, resource, props) {
       setInitialProperties(instance, "link", props);
       resource.instance = instance;
     }
-    null === state.stylesheets && (state.stylesheets = /* @__PURE__ */ new Map());
-    state.stylesheets.set(resource, hoistableRoot);
-    (hoistableRoot = resource.state.preload) && 0 === (resource.state.loading & 3) && (state.count++, resource = onUnsuspend.bind(state), hoistableRoot.addEventListener("load", resource), hoistableRoot.addEventListener("error", resource));
+    null === state2.stylesheets && (state2.stylesheets = /* @__PURE__ */ new Map());
+    state2.stylesheets.set(resource, hoistableRoot);
+    (hoistableRoot = resource.state.preload) && 0 === (resource.state.loading & 3) && (state2.count++, resource = onUnsuspend.bind(state2), hoistableRoot.addEventListener("load", resource), hoistableRoot.addEventListener("error", resource));
   }
 }
 function waitForCommitToBeReady() {
   if (null === suspendedState) throw Error(formatProdErrorMessage(475));
-  var state = suspendedState;
-  state.stylesheets && 0 === state.count && insertSuspendedStylesheets(state, state.stylesheets);
-  return 0 < state.count ? function(commit) {
+  var state2 = suspendedState;
+  state2.stylesheets && 0 === state2.count && insertSuspendedStylesheets(state2, state2.stylesheets);
+  return 0 < state2.count ? function(commit) {
     var stylesheetTimer = setTimeout(function() {
-      state.stylesheets && insertSuspendedStylesheets(state, state.stylesheets);
-      if (state.unsuspend) {
-        var unsuspend = state.unsuspend;
-        state.unsuspend = null;
+      state2.stylesheets && insertSuspendedStylesheets(state2, state2.stylesheets);
+      if (state2.unsuspend) {
+        var unsuspend = state2.unsuspend;
+        state2.unsuspend = null;
         unsuspend();
       }
     }, 6e4);
-    state.unsuspend = commit;
+    state2.unsuspend = commit;
     return function() {
-      state.unsuspend = null;
+      state2.unsuspend = null;
       clearTimeout(stylesheetTimer);
     };
   } : null;
@@ -28652,9 +29388,9 @@ function onUnsuspend() {
   }
 }
 var precedencesByRoot = null;
-function insertSuspendedStylesheets(state, resources) {
-  state.stylesheets = null;
-  null !== state.unsuspend && (state.count++, precedencesByRoot = /* @__PURE__ */ new Map(), resources.forEach(insertStylesheetIntoRoot, state), precedencesByRoot = null, onUnsuspend.call(state));
+function insertSuspendedStylesheets(state2, resources) {
+  state2.stylesheets = null;
+  null !== state2.unsuspend && (state2.count++, precedencesByRoot = /* @__PURE__ */ new Map(), resources.forEach(insertStylesheetIntoRoot, state2), precedencesByRoot = null, onUnsuspend.call(state2));
 }
 function insertStylesheetIntoRoot(root2, resource) {
   if (!(resource.state.loading & 4)) {
@@ -29661,32 +30397,32 @@ function createHistory(opts) {
         subscribers.delete(cb);
       };
     },
-    push: (path, state, navigateOpts) => {
+    push: (path, state2, navigateOpts) => {
       const currentIndex = location2.state[stateIndexKey];
-      state = assignKeyAndIndex(currentIndex + 1, state);
+      state2 = assignKeyAndIndex(currentIndex + 1, state2);
       tryNavigation({
         task: () => {
-          opts.pushState(path, state);
+          opts.pushState(path, state2);
           notify({ type: "PUSH" });
         },
         navigateOpts,
         type: "PUSH",
         path,
-        state
+        state: state2
       });
     },
-    replace: (path, state, navigateOpts) => {
+    replace: (path, state2, navigateOpts) => {
       const currentIndex = location2.state[stateIndexKey];
-      state = assignKeyAndIndex(currentIndex, state);
+      state2 = assignKeyAndIndex(currentIndex, state2);
       tryNavigation({
         task: () => {
-          opts.replaceState(path, state);
+          opts.replaceState(path, state2);
           notify({ type: "REPLACE" });
         },
         navigateOpts,
         type: "REPLACE",
         path,
-        state
+        state: state2
       });
     },
     go: (index2, navigateOpts) => {
@@ -29744,13 +30480,13 @@ function createHistory(opts) {
     notify
   };
 }
-function assignKeyAndIndex(index2, state) {
-  if (!state) {
-    state = {};
+function assignKeyAndIndex(index2, state2) {
+  if (!state2) {
+    state2 = {};
   }
   const key = createRandomKey();
   return {
-    ...state,
+    ...state2,
     key,
     // TODO: Remove in v2 - use __TSR_key instead
     __TSR_key: key,
@@ -29806,15 +30542,15 @@ function createBrowserHistory(opts) {
     scheduled = void 0;
     rollbackLocation = void 0;
   };
-  const queueHistoryAction = (type, destHref, state) => {
+  const queueHistoryAction = (type, destHref, state2) => {
     const href = createHref(destHref);
     if (!scheduled) {
       rollbackLocation = currentLocation;
     }
-    currentLocation = parseHref(destHref, state);
+    currentLocation = parseHref(destHref, state2);
     next = {
       href,
-      state,
+      state: state2,
       isPush: (next == null ? void 0 : next.isPush) || type === "push"
     };
     if (!scheduled) {
@@ -29895,8 +30631,8 @@ function createBrowserHistory(opts) {
   const history = createHistory({
     getLocation,
     getLength: () => win.history.length,
-    pushState: (href, state) => queueHistoryAction("push", href, state),
-    replaceState: (href, state) => queueHistoryAction("replace", href, state),
+    pushState: (href, state2) => queueHistoryAction("push", href, state2),
+    replaceState: (href, state2) => queueHistoryAction("replace", href, state2),
     back: (ignoreBlocker) => {
       if (ignoreBlocker) skipBlockerNextPop = true;
       ignoreNextBeforeUnload = true;
@@ -29956,17 +30692,17 @@ function createMemoryHistory(opts = {
   return createHistory({
     getLocation,
     getLength: () => entries.length,
-    pushState: (path, state) => {
+    pushState: (path, state2) => {
       if (index2 < entries.length - 1) {
         entries.splice(index2 + 1);
         states.splice(index2 + 1);
       }
-      states.push(state);
+      states.push(state2);
       entries.push(path);
       index2 = Math.max(entries.length - 1, 0);
     },
-    replaceState: (path, state) => {
-      states[index2] = state;
+    replaceState: (path, state2) => {
+      states[index2] = state2;
       entries[index2] = path;
     },
     back: () => {
@@ -29981,7 +30717,7 @@ function createMemoryHistory(opts = {
     createHref: (path) => path
   });
 }
-function parseHref(href, state) {
+function parseHref(href, state2) {
   const hashIndex = href.indexOf("#");
   const searchIndex = href.indexOf("?");
   const addedKey = createRandomKey();
@@ -29993,7 +30729,7 @@ function parseHref(href, state) {
     ),
     hash: hashIndex > -1 ? href.substring(hashIndex) : "",
     search: searchIndex > -1 ? href.slice(searchIndex, hashIndex === -1 ? void 0 : hashIndex) : "",
-    state: state || { [stateIndexKey]: 0, key: addedKey, __TSR_key: addedKey }
+    state: state2 || { [stateIndexKey]: 0, key: addedKey, __TSR_key: addedKey }
   };
 }
 function createRandomKey() {
@@ -30266,14 +31002,14 @@ function resolvePath({
   const joined = joinPaths([basepath, ...segmentValues]);
   return joined;
 }
-const parseBasePathSegments = (pathname, cache2) => parsePathname(pathname, cache2, true);
-const parseRoutePathSegments = (pathname, cache2) => parsePathname(pathname, cache2, false);
-const parsePathname = (pathname, cache2, basePathValues) => {
+const parseBasePathSegments = (pathname, cache) => parsePathname(pathname, cache, true);
+const parseRoutePathSegments = (pathname, cache) => parsePathname(pathname, cache, false);
+const parsePathname = (pathname, cache, basePathValues) => {
   if (!pathname) return [];
-  const cached = cache2 == null ? void 0 : cache2.get(pathname);
+  const cached = cache == null ? void 0 : cache.get(pathname);
   if (cached) return cached;
   const parsed = baseParsePathname(pathname, basePathValues);
-  cache2 == null ? void 0 : cache2.set(pathname, parsed);
+  cache == null ? void 0 : cache.set(pathname, parsed);
   return parsed;
 };
 const PARAM_RE = /^\$.{1,}$/;
@@ -30874,13 +31610,13 @@ function createScrollRestorationCache() {
     return void 0;
   }
   const persistedState = safeSessionStorage.getItem(storageKey);
-  let state = persistedState ? JSON.parse(persistedState) : {};
+  let state2 = persistedState ? JSON.parse(persistedState) : {};
   return {
-    state,
+    state: state2,
     // This setter is simply to make sure that we set the sessionStorage right
     // after the state is updated. It doesn't necessarily need to be a functional
     // update.
-    set: (updater) => (state = functionalUpdate(updater, state) || state, safeSessionStorage.setItem(storageKey, JSON.stringify(state)))
+    set: (updater) => (state2 = functionalUpdate(updater, state2) || state2, safeSessionStorage.setItem(storageKey, JSON.stringify(state2)))
   };
 }
 const scrollRestorationCache = createScrollRestorationCache();
@@ -30994,8 +31730,8 @@ function setupScrollRestoration(router2, force) {
       }
     }
     const restoreKey2 = getKey(router2.state.location);
-    scrollRestorationCache.set((state) => {
-      const keyEntry = state[restoreKey2] || (state[restoreKey2] = {});
+    scrollRestorationCache.set((state2) => {
+      const keyEntry = state2[restoreKey2] || (state2[restoreKey2] = {});
       const elementEntry = keyEntry[elementSelector] || (keyEntry[elementSelector] = {});
       if (elementSelector === "window") {
         elementEntry.scrollX = window.scrollX || 0;
@@ -31007,7 +31743,7 @@ function setupScrollRestoration(router2, force) {
           elementEntry.scrollY = element.scrollTop || 0;
         }
       }
-      return state;
+      return state2;
     });
   };
   if (typeof document !== "undefined") {
@@ -31028,9 +31764,9 @@ function setupScrollRestoration(router2, force) {
       location: router2.history.location
     });
     if (router2.isScrollRestoring) {
-      scrollRestorationCache.set((state) => {
-        state[cacheKey] || (state[cacheKey] = {});
-        return state;
+      scrollRestorationCache.set((state2) => {
+        state2[cacheKey] || (state2[cacheKey] = {});
+        return state2;
       });
     }
   });
@@ -31150,7 +31886,7 @@ function isRedirect(obj) {
   return obj instanceof Response && !!obj.options;
 }
 function createLRUCache(max) {
-  const cache2 = /* @__PURE__ */ new Map();
+  const cache = /* @__PURE__ */ new Map();
   let oldest;
   let newest;
   const touch = (entry) => {
@@ -31176,15 +31912,15 @@ function createLRUCache(max) {
   };
   return {
     get(key) {
-      const entry = cache2.get(key);
+      const entry = cache.get(key);
       if (!entry) return void 0;
       touch(entry);
       return entry.value;
     },
     set(key, value) {
-      if (cache2.size >= max && oldest) {
+      if (cache.size >= max && oldest) {
         const toDelete = oldest;
-        cache2.delete(toDelete.key);
+        cache.delete(toDelete.key);
         if (toDelete.next) {
           oldest = toDelete.next;
           toDelete.next.prev = void 0;
@@ -31193,7 +31929,7 @@ function createLRUCache(max) {
           newest = void 0;
         }
       }
-      const existing = cache2.get(key);
+      const existing = cache.get(key);
       if (existing) {
         existing.value = value;
         touch(existing);
@@ -31202,7 +31938,7 @@ function createLRUCache(max) {
         if (newest) newest.next = entry;
         newest = entry;
         if (!oldest) oldest = entry;
-        cache2.set(key, entry);
+        cache.set(key, entry);
       }
     }
   };
@@ -31412,9 +32148,9 @@ const executeBeforeLoad = (inner, matchId, index2, route) => {
   const parentMatchId = (_a3 = inner.matches[index2 - 1]) == null ? void 0 : _a3.id;
   const parentMatch = parentMatchId ? inner.router.getMatch(parentMatchId) : void 0;
   const parentMatchContext = (parentMatch == null ? void 0 : parentMatch.context) ?? inner.router.options.context ?? void 0;
-  const context = { ...parentMatchContext, ...match.__routeContext };
+  const context2 = { ...parentMatchContext, ...match.__routeContext };
   let isPending = false;
-  const pending = () => {
+  const pending2 = () => {
     if (isPending) return;
     isPending = true;
     inner.updateMatch(matchId, (prev) => ({
@@ -31422,7 +32158,7 @@ const executeBeforeLoad = (inner, matchId, index2, route) => {
       isFetching: "beforeLoad",
       fetchCount: prev.fetchCount + 1,
       abortController,
-      context
+      context: context2
     }));
   };
   const resolve = () => {
@@ -31436,7 +32172,7 @@ const executeBeforeLoad = (inner, matchId, index2, route) => {
   };
   if (!route.options.beforeLoad) {
     batch(() => {
-      pending();
+      pending2();
       resolve();
     });
     return;
@@ -31449,7 +32185,7 @@ const executeBeforeLoad = (inner, matchId, index2, route) => {
     abortController,
     params,
     preload: preload2,
-    context,
+    context: context2,
     location: inner.location,
     navigate: (opts) => inner.router.navigate({
       ...opts,
@@ -31462,17 +32198,17 @@ const executeBeforeLoad = (inner, matchId, index2, route) => {
   const updateContext = (beforeLoadContext2) => {
     if (beforeLoadContext2 === void 0) {
       batch(() => {
-        pending();
+        pending2();
         resolve();
       });
       return;
     }
     if (isRedirect(beforeLoadContext2) || isNotFound(beforeLoadContext2)) {
-      pending();
+      pending2();
       handleSerialError(inner, index2, beforeLoadContext2, "BEFORE_LOAD");
     }
     batch(() => {
-      pending();
+      pending2();
       inner.updateMatch(matchId, (prev) => ({
         ...prev,
         __beforeLoadContext: beforeLoadContext2,
@@ -31488,13 +32224,13 @@ const executeBeforeLoad = (inner, matchId, index2, route) => {
   try {
     beforeLoadContext = route.options.beforeLoad(beforeLoadFnContext);
     if (isPromise(beforeLoadContext)) {
-      pending();
+      pending2();
       return beforeLoadContext.catch((err) => {
         handleSerialError(inner, index2, err, "BEFORE_LOAD");
       }).then(updateContext);
     }
   } catch (err) {
-    pending();
+    pending2();
     handleSerialError(inner, index2, err, "BEFORE_LOAD");
   }
   updateContext(beforeLoadContext);
@@ -31554,7 +32290,7 @@ const executeHead = (inner, matchId, route) => {
 };
 const getLoaderContext = (inner, matchId, index2, route) => {
   const parentMatchPromise = inner.matchPromises[index2 - 1];
-  const { params, loaderDeps, abortController, context, cause } = inner.router.getMatch(matchId);
+  const { params, loaderDeps, abortController, context: context2, cause } = inner.router.getMatch(matchId);
   const preload2 = resolvePreload(inner, matchId);
   return {
     params,
@@ -31562,7 +32298,7 @@ const getLoaderContext = (inner, matchId, index2, route) => {
     preload: !!preload2,
     parentMatchPromise,
     abortController,
-    context,
+    context: context2,
     location: inner.location,
     navigate: (opts) => inner.router.navigate({
       ...opts,
@@ -31971,7 +32707,7 @@ class RouterCore {
         pathname,
         search,
         hash,
-        state
+        state: state2
       }) => {
         const parsedSearch = this.options.parseSearch(search);
         const searchStr = this.options.stringifySearch(parsedSearch);
@@ -31981,7 +32717,7 @@ class RouterCore {
           search: replaceEqualDeep(previousLocation == null ? void 0 : previousLocation.search, parsedSearch),
           hash: hash.split("#").reverse()[0] ?? "",
           href: `${pathname}${searchStr}${hash}`,
-          state: replaceEqualDeep(previousLocation == null ? void 0 : previousLocation.state, state)
+          state: replaceEqualDeep(previousLocation == null ? void 0 : previousLocation.state, state2)
         };
       };
       const location2 = parse2(locationToParse);
@@ -32644,8 +33380,8 @@ class RouterCore {
       if ((opts == null ? void 0 : opts.pending) && this.state.status !== "pending") {
         return false;
       }
-      const pending = (opts == null ? void 0 : opts.pending) === void 0 ? !this.state.isLoading : opts.pending;
-      const baseLocation = pending ? this.latestLocation : this.state.resolvedLocation || this.state.location;
+      const pending2 = (opts == null ? void 0 : opts.pending) === void 0 ? !this.state.isLoading : opts.pending;
+      const baseLocation = pending2 ? this.latestLocation : this.state.resolvedLocation || this.state.location;
       const match = matchPathname(
         this.basepath,
         baseLocation.pathname,
@@ -33268,12 +34004,12 @@ function ClientOnly({ children, fallback = null }) {
 }
 function useHydrated() {
   return React2.useSyncExternalStore(
-    subscribe,
+    subscribe$1,
     () => true,
     () => false
   );
 }
-function subscribe() {
+function subscribe$1() {
   return () => {
   };
 }
@@ -33480,19 +34216,19 @@ function useRouterState(opts) {
   });
   const router2 = (opts == null ? void 0 : opts.router) || contextRouter;
   const previousResult = reactExports.useRef(void 0);
-  return useStore(router2.__store, (state) => {
+  return useStore(router2.__store, (state2) => {
     if (opts == null ? void 0 : opts.select) {
       if (opts.structuralSharing ?? router2.options.defaultStructuralSharing) {
         const newSlice = replaceEqualDeep(
           previousResult.current,
-          opts.select(state)
+          opts.select(state2)
         );
         previousResult.current = newSlice;
         return newSlice;
       }
-      return opts.select(state);
+      return opts.select(state2);
     }
-    return state;
+    return state2;
   });
 }
 const matchContext = reactExports.createContext(void 0);
@@ -33504,8 +34240,8 @@ function useMatch(opts) {
     opts.from ? dummyMatchContext : matchContext
   );
   const matchSelection = useRouterState({
-    select: (state) => {
-      const match = state.matches.find(
+    select: (state2) => {
+      const match = state2.matches.find(
         (d2) => opts.from ? opts.from === d2.routeId : d2.id === nearestMatchId
       );
       invariant$1(
@@ -34665,7 +35401,7 @@ const createLucideIcon = (iconName, iconNode) => {
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-const __iconNode$17 = [
+const __iconNode$1a = [
   [
     "path",
     {
@@ -34674,7 +35410,41 @@ const __iconNode$17 = [
     }
   ]
 ];
-const Activity = createLucideIcon("activity", __iconNode$17);
+const Activity = createLucideIcon("activity", __iconNode$1a);
+/**
+ * @license lucide-react v0.511.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */
+const __iconNode$19 = [
+  ["path", { d: "M12 17V3", key: "1cwfxf" }],
+  ["path", { d: "m6 11 6 6 6-6", key: "12ii2o" }],
+  ["path", { d: "M19 21H5", key: "150jfl" }]
+];
+const ArrowDownToLine = createLucideIcon("arrow-down-to-line", __iconNode$19);
+/**
+ * @license lucide-react v0.511.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */
+const __iconNode$18 = [
+  ["path", { d: "M12 5v14", key: "s699le" }],
+  ["path", { d: "m19 12-7 7-7-7", key: "1idqje" }]
+];
+const ArrowDown = createLucideIcon("arrow-down", __iconNode$18);
+/**
+ * @license lucide-react v0.511.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */
+const __iconNode$17 = [
+  ["path", { d: "m12 19-7-7 7-7", key: "1l729n" }],
+  ["path", { d: "M19 12H5", key: "x3x0zl" }]
+];
+const ArrowLeft = createLucideIcon("arrow-left", __iconNode$17);
 /**
  * @license lucide-react v0.511.0 - ISC
  *
@@ -34682,10 +35452,12 @@ const Activity = createLucideIcon("activity", __iconNode$17);
  * See the LICENSE file in the root directory of this source tree.
  */
 const __iconNode$16 = [
-  ["path", { d: "M12 5v14", key: "s699le" }],
-  ["path", { d: "m19 12-7 7-7-7", key: "1idqje" }]
+  ["path", { d: "m16 3 4 4-4 4", key: "1x1c3m" }],
+  ["path", { d: "M20 7H4", key: "zbl0bi" }],
+  ["path", { d: "m8 21-4-4 4-4", key: "h9nckh" }],
+  ["path", { d: "M4 17h16", key: "g4d7ey" }]
 ];
-const ArrowDown = createLucideIcon("arrow-down", __iconNode$16);
+const ArrowRightLeft = createLucideIcon("arrow-right-left", __iconNode$16);
 /**
  * @license lucide-react v0.511.0 - ISC
  *
@@ -34693,10 +35465,10 @@ const ArrowDown = createLucideIcon("arrow-down", __iconNode$16);
  * See the LICENSE file in the root directory of this source tree.
  */
 const __iconNode$15 = [
-  ["path", { d: "m12 19-7-7 7-7", key: "1l729n" }],
-  ["path", { d: "M19 12H5", key: "x3x0zl" }]
+  ["path", { d: "M5 12h14", key: "1ays0h" }],
+  ["path", { d: "m12 5 7 7-7 7", key: "xquz4c" }]
 ];
-const ArrowLeft = createLucideIcon("arrow-left", __iconNode$15);
+const ArrowRight = createLucideIcon("arrow-right", __iconNode$15);
 /**
  * @license lucide-react v0.511.0 - ISC
  *
@@ -34704,12 +35476,11 @@ const ArrowLeft = createLucideIcon("arrow-left", __iconNode$15);
  * See the LICENSE file in the root directory of this source tree.
  */
 const __iconNode$14 = [
-  ["path", { d: "m16 3 4 4-4 4", key: "1x1c3m" }],
-  ["path", { d: "M20 7H4", key: "zbl0bi" }],
-  ["path", { d: "m8 21-4-4 4-4", key: "h9nckh" }],
-  ["path", { d: "M4 17h16", key: "g4d7ey" }]
+  ["path", { d: "m18 9-6-6-6 6", key: "kcunyi" }],
+  ["path", { d: "M12 3v14", key: "7cf3v8" }],
+  ["path", { d: "M5 21h14", key: "11awu3" }]
 ];
-const ArrowRightLeft = createLucideIcon("arrow-right-left", __iconNode$14);
+const ArrowUpFromLine = createLucideIcon("arrow-up-from-line", __iconNode$14);
 /**
  * @license lucide-react v0.511.0 - ISC
  *
@@ -34717,10 +35488,10 @@ const ArrowRightLeft = createLucideIcon("arrow-right-left", __iconNode$14);
  * See the LICENSE file in the root directory of this source tree.
  */
 const __iconNode$13 = [
-  ["path", { d: "M5 12h14", key: "1ays0h" }],
-  ["path", { d: "m12 5 7 7-7 7", key: "xquz4c" }]
+  ["path", { d: "M7 7h10v10", key: "1tivn9" }],
+  ["path", { d: "M7 17 17 7", key: "1vkiza" }]
 ];
-const ArrowRight = createLucideIcon("arrow-right", __iconNode$13);
+const ArrowUpRight = createLucideIcon("arrow-up-right", __iconNode$13);
 /**
  * @license lucide-react v0.511.0 - ISC
  *
@@ -34728,10 +35499,10 @@ const ArrowRight = createLucideIcon("arrow-right", __iconNode$13);
  * See the LICENSE file in the root directory of this source tree.
  */
 const __iconNode$12 = [
-  ["path", { d: "M7 7h10v10", key: "1tivn9" }],
-  ["path", { d: "M7 17 17 7", key: "1vkiza" }]
+  ["path", { d: "m5 12 7-7 7 7", key: "hav0vg" }],
+  ["path", { d: "M12 19V5", key: "x0mq9r" }]
 ];
-const ArrowUpRight = createLucideIcon("arrow-up-right", __iconNode$12);
+const ArrowUp = createLucideIcon("arrow-up", __iconNode$12);
 /**
  * @license lucide-react v0.511.0 - ISC
  *
@@ -34739,17 +35510,6 @@ const ArrowUpRight = createLucideIcon("arrow-up-right", __iconNode$12);
  * See the LICENSE file in the root directory of this source tree.
  */
 const __iconNode$11 = [
-  ["path", { d: "m5 12 7-7 7 7", key: "hav0vg" }],
-  ["path", { d: "M12 19V5", key: "x0mq9r" }]
-];
-const ArrowUp = createLucideIcon("arrow-up", __iconNode$11);
-/**
- * @license lucide-react v0.511.0 - ISC
- *
- * This source code is licensed under the ISC license.
- * See the LICENSE file in the root directory of this source tree.
- */
-const __iconNode$10 = [
   ["path", { d: "M12 7v14", key: "1akyts" }],
   [
     "path",
@@ -34759,14 +35519,14 @@ const __iconNode$10 = [
     }
   ]
 ];
-const BookOpen = createLucideIcon("book-open", __iconNode$10);
+const BookOpen = createLucideIcon("book-open", __iconNode$11);
 /**
  * @license lucide-react v0.511.0 - ISC
  *
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-const __iconNode$$ = [
+const __iconNode$10 = [
   [
     "path",
     {
@@ -34777,14 +35537,14 @@ const __iconNode$$ = [
   ["path", { d: "m3.3 7 8.7 5 8.7-5", key: "g66t2b" }],
   ["path", { d: "M12 22V12", key: "d0xqtd" }]
 ];
-const Box = createLucideIcon("box", __iconNode$$);
+const Box = createLucideIcon("box", __iconNode$10);
 /**
  * @license lucide-react v0.511.0 - ISC
  *
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-const __iconNode$_ = [
+const __iconNode$$ = [
   ["rect", { width: "16", height: "20", x: "4", y: "2", rx: "2", key: "1nb95v" }],
   ["line", { x1: "8", x2: "16", y1: "6", y2: "6", key: "x4nwl0" }],
   ["line", { x1: "16", x2: "16", y1: "14", y2: "18", key: "wjye3r" }],
@@ -34796,28 +35556,14 @@ const __iconNode$_ = [
   ["path", { d: "M12 18h.01", key: "mhygvu" }],
   ["path", { d: "M8 18h.01", key: "lrp35t" }]
 ];
-const Calculator = createLucideIcon("calculator", __iconNode$_);
+const Calculator = createLucideIcon("calculator", __iconNode$$);
 /**
  * @license lucide-react v0.511.0 - ISC
  *
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-const __iconNode$Z = [
-  ["path", { d: "M8 2v4", key: "1cmpym" }],
-  ["path", { d: "M16 2v4", key: "4m81vk" }],
-  ["rect", { width: "18", height: "18", x: "3", y: "4", rx: "2", key: "1hopcy" }],
-  ["path", { d: "M3 10h18", key: "8toen8" }],
-  ["path", { d: "m9 16 2 2 4-4", key: "19s6y9" }]
-];
-const CalendarCheck = createLucideIcon("calendar-check", __iconNode$Z);
-/**
- * @license lucide-react v0.511.0 - ISC
- *
- * This source code is licensed under the ISC license.
- * See the LICENSE file in the root directory of this source tree.
- */
-const __iconNode$Y = [
+const __iconNode$_ = [
   ["path", { d: "M21 7.5V6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h3.5", key: "1osxxc" }],
   ["path", { d: "M16 2v4", key: "4m81vk" }],
   ["path", { d: "M8 2v4", key: "1cmpym" }],
@@ -34825,27 +35571,27 @@ const __iconNode$Y = [
   ["path", { d: "M17.5 17.5 16 16.3V14", key: "akvzfd" }],
   ["circle", { cx: "16", cy: "16", r: "6", key: "qoo3c4" }]
 ];
-const CalendarClock = createLucideIcon("calendar-clock", __iconNode$Y);
+const CalendarClock = createLucideIcon("calendar-clock", __iconNode$_);
 /**
  * @license lucide-react v0.511.0 - ISC
  *
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-const __iconNode$X = [
+const __iconNode$Z = [
   ["path", { d: "M3 3v16a2 2 0 0 0 2 2h16", key: "c24i48" }],
   ["path", { d: "M18 17V9", key: "2bz60n" }],
   ["path", { d: "M13 17V5", key: "1frdt8" }],
   ["path", { d: "M8 17v-3", key: "17ska0" }]
 ];
-const ChartColumn = createLucideIcon("chart-column", __iconNode$X);
+const ChartColumn = createLucideIcon("chart-column", __iconNode$Z);
 /**
  * @license lucide-react v0.511.0 - ISC
  *
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-const __iconNode$W = [
+const __iconNode$Y = [
   [
     "path",
     {
@@ -34855,31 +35601,53 @@ const __iconNode$W = [
   ],
   ["path", { d: "M21.21 15.89A10 10 0 1 1 8 2.83", key: "k2fpak" }]
 ];
-const ChartPie = createLucideIcon("chart-pie", __iconNode$W);
+const ChartPie = createLucideIcon("chart-pie", __iconNode$Y);
 /**
  * @license lucide-react v0.511.0 - ISC
  *
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-const __iconNode$V = [["path", { d: "M20 6 9 17l-5-5", key: "1gmf2c" }]];
-const Check = createLucideIcon("check", __iconNode$V);
+const __iconNode$X = [["path", { d: "M20 6 9 17l-5-5", key: "1gmf2c" }]];
+const Check = createLucideIcon("check", __iconNode$X);
 /**
  * @license lucide-react v0.511.0 - ISC
  *
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-const __iconNode$U = [["path", { d: "m15 18-6-6 6-6", key: "1wnfg3" }]];
-const ChevronLeft = createLucideIcon("chevron-left", __iconNode$U);
+const __iconNode$W = [["path", { d: "m15 18-6-6 6-6", key: "1wnfg3" }]];
+const ChevronLeft = createLucideIcon("chevron-left", __iconNode$W);
 /**
  * @license lucide-react v0.511.0 - ISC
  *
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-const __iconNode$T = [["path", { d: "m9 18 6-6-6-6", key: "mthhwq" }]];
-const ChevronRight = createLucideIcon("chevron-right", __iconNode$T);
+const __iconNode$V = [["path", { d: "m9 18 6-6-6-6", key: "mthhwq" }]];
+const ChevronRight = createLucideIcon("chevron-right", __iconNode$V);
+/**
+ * @license lucide-react v0.511.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */
+const __iconNode$U = [
+  ["circle", { cx: "12", cy: "12", r: "10", key: "1mglay" }],
+  ["path", { d: "m9 12 2 2 4-4", key: "dzmm74" }]
+];
+const CircleCheck = createLucideIcon("circle-check", __iconNode$U);
+/**
+ * @license lucide-react v0.511.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */
+const __iconNode$T = [
+  ["circle", { cx: "12", cy: "12", r: "10", key: "1mglay" }],
+  ["circle", { cx: "12", cy: "12", r: "1", key: "41hilf" }]
+];
+const CircleDot = createLucideIcon("circle-dot", __iconNode$T);
 /**
  * @license lucide-react v0.511.0 - ISC
  *
@@ -34888,9 +35656,10 @@ const ChevronRight = createLucideIcon("chevron-right", __iconNode$T);
  */
 const __iconNode$S = [
   ["circle", { cx: "12", cy: "12", r: "10", key: "1mglay" }],
-  ["path", { d: "m9 12 2 2 4-4", key: "dzmm74" }]
+  ["path", { d: "m15 9-6 6", key: "1uzhvr" }],
+  ["path", { d: "m9 9 6 6", key: "z0biqf" }]
 ];
-const CircleCheck = createLucideIcon("circle-check", __iconNode$S);
+const CircleX = createLucideIcon("circle-x", __iconNode$S);
 /**
  * @license lucide-react v0.511.0 - ISC
  *
@@ -34898,10 +35667,12 @@ const CircleCheck = createLucideIcon("circle-check", __iconNode$S);
  * See the LICENSE file in the root directory of this source tree.
  */
 const __iconNode$R = [
-  ["circle", { cx: "12", cy: "12", r: "10", key: "1mglay" }],
-  ["circle", { cx: "12", cy: "12", r: "1", key: "41hilf" }]
+  ["circle", { cx: "8", cy: "8", r: "6", key: "3yglwk" }],
+  ["path", { d: "M18.09 10.37A6 6 0 1 1 10.34 18", key: "t5s6rm" }],
+  ["path", { d: "M7 6h1v4", key: "1obek4" }],
+  ["path", { d: "m16.71 13.88.7.71-2.82 2.82", key: "1rbuyh" }]
 ];
-const CircleDot = createLucideIcon("circle-dot", __iconNode$R);
+const Coins = createLucideIcon("coins", __iconNode$R);
 /**
  * @license lucide-react v0.511.0 - ISC
  *
@@ -34909,11 +35680,10 @@ const CircleDot = createLucideIcon("circle-dot", __iconNode$R);
  * See the LICENSE file in the root directory of this source tree.
  */
 const __iconNode$Q = [
-  ["circle", { cx: "12", cy: "12", r: "10", key: "1mglay" }],
-  ["path", { d: "m15 9-6 6", key: "1uzhvr" }],
-  ["path", { d: "m9 9 6 6", key: "z0biqf" }]
+  ["rect", { width: "14", height: "14", x: "8", y: "8", rx: "2", ry: "2", key: "17jyea" }],
+  ["path", { d: "M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2", key: "zix9uf" }]
 ];
-const CircleX = createLucideIcon("circle-x", __iconNode$Q);
+const Copy = createLucideIcon("copy", __iconNode$Q);
 /**
  * @license lucide-react v0.511.0 - ISC
  *
@@ -34921,12 +35691,11 @@ const CircleX = createLucideIcon("circle-x", __iconNode$Q);
  * See the LICENSE file in the root directory of this source tree.
  */
 const __iconNode$P = [
-  ["circle", { cx: "8", cy: "8", r: "6", key: "3yglwk" }],
-  ["path", { d: "M18.09 10.37A6 6 0 1 1 10.34 18", key: "t5s6rm" }],
-  ["path", { d: "M7 6h1v4", key: "1obek4" }],
-  ["path", { d: "m16.71 13.88.7.71-2.82 2.82", key: "1rbuyh" }]
+  ["path", { d: "M12 15V3", key: "m9g1x1" }],
+  ["path", { d: "M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4", key: "ih7n3h" }],
+  ["path", { d: "m7 10 5 5 5-5", key: "brsn70" }]
 ];
-const Coins = createLucideIcon("coins", __iconNode$P);
+const Download = createLucideIcon("download", __iconNode$P);
 /**
  * @license lucide-react v0.511.0 - ISC
  *
@@ -34934,46 +35703,6 @@ const Coins = createLucideIcon("coins", __iconNode$P);
  * See the LICENSE file in the root directory of this source tree.
  */
 const __iconNode$O = [
-  [
-    "path",
-    {
-      d: "m16.24 7.76-1.804 5.411a2 2 0 0 1-1.265 1.265L7.76 16.24l1.804-5.411a2 2 0 0 1 1.265-1.265z",
-      key: "9ktpf1"
-    }
-  ],
-  ["circle", { cx: "12", cy: "12", r: "10", key: "1mglay" }]
-];
-const Compass = createLucideIcon("compass", __iconNode$O);
-/**
- * @license lucide-react v0.511.0 - ISC
- *
- * This source code is licensed under the ISC license.
- * See the LICENSE file in the root directory of this source tree.
- */
-const __iconNode$N = [
-  ["rect", { width: "14", height: "14", x: "8", y: "8", rx: "2", ry: "2", key: "17jyea" }],
-  ["path", { d: "M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2", key: "zix9uf" }]
-];
-const Copy = createLucideIcon("copy", __iconNode$N);
-/**
- * @license lucide-react v0.511.0 - ISC
- *
- * This source code is licensed under the ISC license.
- * See the LICENSE file in the root directory of this source tree.
- */
-const __iconNode$M = [
-  ["path", { d: "M12 15V3", key: "m9g1x1" }],
-  ["path", { d: "M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4", key: "ih7n3h" }],
-  ["path", { d: "m7 10 5 5 5-5", key: "brsn70" }]
-];
-const Download = createLucideIcon("download", __iconNode$M);
-/**
- * @license lucide-react v0.511.0 - ISC
- *
- * This source code is licensed under the ISC license.
- * See the LICENSE file in the root directory of this source tree.
- */
-const __iconNode$L = [
   [
     "path",
     {
@@ -34989,28 +35718,40 @@ const __iconNode$L = [
     }
   ]
 ];
-const Droplets = createLucideIcon("droplets", __iconNode$L);
+const Droplets = createLucideIcon("droplets", __iconNode$O);
 /**
  * @license lucide-react v0.511.0 - ISC
  *
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-const __iconNode$K = [
+const __iconNode$N = [
+  ["path", { d: "M15 3h6v6", key: "1q9fwt" }],
+  ["path", { d: "M10 14 21 3", key: "gplh6r" }],
+  ["path", { d: "M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6", key: "a6xqqp" }]
+];
+const ExternalLink = createLucideIcon("external-link", __iconNode$N);
+/**
+ * @license lucide-react v0.511.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */
+const __iconNode$M = [
   ["path", { d: "M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z", key: "1rqfz7" }],
   ["path", { d: "M14 2v4a2 2 0 0 0 2 2h4", key: "tnqrlb" }],
   ["path", { d: "M10 9H8", key: "b1mrlr" }],
   ["path", { d: "M16 13H8", key: "t4e002" }],
   ["path", { d: "M16 17H8", key: "z1uh3a" }]
 ];
-const FileText = createLucideIcon("file-text", __iconNode$K);
+const FileText = createLucideIcon("file-text", __iconNode$M);
 /**
  * @license lucide-react v0.511.0 - ISC
  *
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-const __iconNode$J = [
+const __iconNode$L = [
   [
     "path",
     {
@@ -35019,14 +35760,32 @@ const __iconNode$J = [
     }
   ]
 ];
-const Flame = createLucideIcon("flame", __iconNode$J);
+const Flame = createLucideIcon("flame", __iconNode$L);
 /**
  * @license lucide-react v0.511.0 - ISC
  *
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-const __iconNode$I = [
+const __iconNode$K = [
+  [
+    "path",
+    {
+      d: "M14 2v6a2 2 0 0 0 .245.96l5.51 10.08A2 2 0 0 1 18 22H6a2 2 0 0 1-1.755-2.96l5.51-10.08A2 2 0 0 0 10 8V2",
+      key: "18mbvz"
+    }
+  ],
+  ["path", { d: "M6.453 15h11.094", key: "3shlmq" }],
+  ["path", { d: "M8.5 2h7", key: "csnxdl" }]
+];
+const FlaskConical = createLucideIcon("flask-conical", __iconNode$K);
+/**
+ * @license lucide-react v0.511.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */
+const __iconNode$J = [
   ["line", { x1: "6", x2: "10", y1: "11", y2: "11", key: "1gktln" }],
   ["line", { x1: "8", x2: "8", y1: "9", y2: "13", key: "qnk9ow" }],
   ["line", { x1: "15", x2: "15.01", y1: "12", y2: "12", key: "krot7o" }],
@@ -35039,7 +35798,21 @@ const __iconNode$I = [
     }
   ]
 ];
-const Gamepad2 = createLucideIcon("gamepad-2", __iconNode$I);
+const Gamepad2 = createLucideIcon("gamepad-2", __iconNode$J);
+/**
+ * @license lucide-react v0.511.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */
+const __iconNode$I = [
+  ["path", { d: "m14.5 12.5-8 8a2.119 2.119 0 1 1-3-3l8-8", key: "15492f" }],
+  ["path", { d: "m16 16 6-6", key: "vzrcl6" }],
+  ["path", { d: "m8 8 6-6", key: "18bi4p" }],
+  ["path", { d: "m9 7 8 8", key: "5jnvq1" }],
+  ["path", { d: "m21 11-8-8", key: "z4y7zo" }]
+];
+const Gavel = createLucideIcon("gavel", __iconNode$I);
 /**
  * @license lucide-react v0.511.0 - ISC
  *
@@ -35047,13 +35820,11 @@ const Gamepad2 = createLucideIcon("gamepad-2", __iconNode$I);
  * See the LICENSE file in the root directory of this source tree.
  */
 const __iconNode$H = [
-  ["path", { d: "m14.5 12.5-8 8a2.119 2.119 0 1 1-3-3l8-8", key: "15492f" }],
-  ["path", { d: "m16 16 6-6", key: "vzrcl6" }],
-  ["path", { d: "m8 8 6-6", key: "18bi4p" }],
-  ["path", { d: "m9 7 8 8", key: "5jnvq1" }],
-  ["path", { d: "m21 11-8-8", key: "z4y7zo" }]
+  ["path", { d: "M6 3h12l4 6-10 13L2 9Z", key: "1pcd5k" }],
+  ["path", { d: "M11 3 8 9l4 13 4-13-3-6", key: "1fcu3u" }],
+  ["path", { d: "M2 9h20", key: "16fsjt" }]
 ];
-const Gavel = createLucideIcon("gavel", __iconNode$H);
+const Gem = createLucideIcon("gem", __iconNode$H);
 /**
  * @license lucide-react v0.511.0 - ISC
  *
@@ -35061,18 +35832,6 @@ const Gavel = createLucideIcon("gavel", __iconNode$H);
  * See the LICENSE file in the root directory of this source tree.
  */
 const __iconNode$G = [
-  ["path", { d: "M6 3h12l4 6-10 13L2 9Z", key: "1pcd5k" }],
-  ["path", { d: "M11 3 8 9l4 13 4-13-3-6", key: "1fcu3u" }],
-  ["path", { d: "M2 9h20", key: "16fsjt" }]
-];
-const Gem = createLucideIcon("gem", __iconNode$G);
-/**
- * @license lucide-react v0.511.0 - ISC
- *
- * This source code is licensed under the ISC license.
- * See the LICENSE file in the root directory of this source tree.
- */
-const __iconNode$F = [
   ["rect", { x: "3", y: "8", width: "18", height: "4", rx: "1", key: "bkv52" }],
   ["path", { d: "M12 8v13", key: "1c76mn" }],
   ["path", { d: "M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7", key: "6wjy6b" }],
@@ -35084,7 +35843,20 @@ const __iconNode$F = [
     }
   ]
 ];
-const Gift = createLucideIcon("gift", __iconNode$F);
+const Gift = createLucideIcon("gift", __iconNode$G);
+/**
+ * @license lucide-react v0.511.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */
+const __iconNode$F = [
+  ["line", { x1: "4", x2: "20", y1: "9", y2: "9", key: "4lhtct" }],
+  ["line", { x1: "4", x2: "20", y1: "15", y2: "15", key: "vyu0kd" }],
+  ["line", { x1: "10", x2: "8", y1: "3", y2: "21", key: "1ggp8o" }],
+  ["line", { x1: "16", x2: "14", y1: "3", y2: "21", key: "weycgp" }]
+];
+const Hash2 = createLucideIcon("hash", __iconNode$F);
 /**
  * @license lucide-react v0.511.0 - ISC
  *
@@ -35092,12 +35864,11 @@ const Gift = createLucideIcon("gift", __iconNode$F);
  * See the LICENSE file in the root directory of this source tree.
  */
 const __iconNode$E = [
-  ["line", { x1: "4", x2: "20", y1: "9", y2: "9", key: "4lhtct" }],
-  ["line", { x1: "4", x2: "20", y1: "15", y2: "15", key: "vyu0kd" }],
-  ["line", { x1: "10", x2: "8", y1: "3", y2: "21", key: "1ggp8o" }],
-  ["line", { x1: "16", x2: "14", y1: "3", y2: "21", key: "weycgp" }]
+  ["path", { d: "M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8", key: "1357e3" }],
+  ["path", { d: "M3 3v5h5", key: "1xhq8a" }],
+  ["path", { d: "M12 7v5l4 2", key: "1fdv2h" }]
 ];
-const Hash2 = createLucideIcon("hash", __iconNode$E);
+const History = createLucideIcon("history", __iconNode$E);
 /**
  * @license lucide-react v0.511.0 - ISC
  *
@@ -35105,18 +35876,6 @@ const Hash2 = createLucideIcon("hash", __iconNode$E);
  * See the LICENSE file in the root directory of this source tree.
  */
 const __iconNode$D = [
-  ["path", { d: "M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8", key: "1357e3" }],
-  ["path", { d: "M3 3v5h5", key: "1xhq8a" }],
-  ["path", { d: "M12 7v5l4 2", key: "1fdv2h" }]
-];
-const History = createLucideIcon("history", __iconNode$D);
-/**
- * @license lucide-react v0.511.0 - ISC
- *
- * This source code is licensed under the ISC license.
- * See the LICENSE file in the root directory of this source tree.
- */
-const __iconNode$C = [
   ["path", { d: "M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8", key: "5wwlr5" }],
   [
     "path",
@@ -35126,7 +35885,21 @@ const __iconNode$C = [
     }
   ]
 ];
-const House = createLucideIcon("house", __iconNode$C);
+const House = createLucideIcon("house", __iconNode$D);
+/**
+ * @license lucide-react v0.511.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */
+const __iconNode$C = [
+  ["path", { d: "M16 5h6", key: "1vod17" }],
+  ["path", { d: "M19 2v6", key: "4bpg5p" }],
+  ["path", { d: "M21 11.5V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7.5", key: "1ue2ih" }],
+  ["path", { d: "m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21", key: "1xmnt7" }],
+  ["circle", { cx: "9", cy: "9", r: "2", key: "af1f0g" }]
+];
+const ImagePlus = createLucideIcon("image-plus", __iconNode$C);
 /**
  * @license lucide-react v0.511.0 - ISC
  *
@@ -35134,13 +35907,11 @@ const House = createLucideIcon("house", __iconNode$C);
  * See the LICENSE file in the root directory of this source tree.
  */
 const __iconNode$B = [
-  ["path", { d: "M16 5h6", key: "1vod17" }],
-  ["path", { d: "M19 2v6", key: "4bpg5p" }],
-  ["path", { d: "M21 11.5V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7.5", key: "1ue2ih" }],
-  ["path", { d: "m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21", key: "1xmnt7" }],
-  ["circle", { cx: "9", cy: "9", r: "2", key: "af1f0g" }]
+  ["circle", { cx: "12", cy: "12", r: "10", key: "1mglay" }],
+  ["path", { d: "M12 16v-4", key: "1dtifu" }],
+  ["path", { d: "M12 8h.01", key: "e9boi3" }]
 ];
-const ImagePlus = createLucideIcon("image-plus", __iconNode$B);
+const Info = createLucideIcon("info", __iconNode$B);
 /**
  * @license lucide-react v0.511.0 - ISC
  *
@@ -35148,18 +35919,6 @@ const ImagePlus = createLucideIcon("image-plus", __iconNode$B);
  * See the LICENSE file in the root directory of this source tree.
  */
 const __iconNode$A = [
-  ["circle", { cx: "12", cy: "12", r: "10", key: "1mglay" }],
-  ["path", { d: "M12 16v-4", key: "1dtifu" }],
-  ["path", { d: "M12 8h.01", key: "e9boi3" }]
-];
-const Info = createLucideIcon("info", __iconNode$A);
-/**
- * @license lucide-react v0.511.0 - ISC
- *
- * This source code is licensed under the ISC license.
- * See the LICENSE file in the root directory of this source tree.
- */
-const __iconNode$z = [
   ["path", { d: "M10 18v-7", key: "wt116b" }],
   [
     "path",
@@ -35173,14 +35932,14 @@ const __iconNode$z = [
   ["path", { d: "M3 22h18", key: "8prr45" }],
   ["path", { d: "M6 18v-7", key: "1ivflk" }]
 ];
-const Landmark = createLucideIcon("landmark", __iconNode$z);
+const Landmark = createLucideIcon("landmark", __iconNode$A);
 /**
  * @license lucide-react v0.511.0 - ISC
  *
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-const __iconNode$y = [
+const __iconNode$z = [
   [
     "path",
     {
@@ -35203,7 +35962,20 @@ const __iconNode$y = [
     }
   ]
 ];
-const Layers = createLucideIcon("layers", __iconNode$y);
+const Layers = createLucideIcon("layers", __iconNode$z);
+/**
+ * @license lucide-react v0.511.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */
+const __iconNode$y = [
+  ["rect", { width: "7", height: "9", x: "3", y: "3", rx: "1", key: "10lvy0" }],
+  ["rect", { width: "7", height: "5", x: "14", y: "3", rx: "1", key: "16une8" }],
+  ["rect", { width: "7", height: "9", x: "14", y: "12", rx: "1", key: "1hutg5" }],
+  ["rect", { width: "7", height: "5", x: "3", y: "16", rx: "1", key: "ldoo1y" }]
+];
+const LayoutDashboard = createLucideIcon("layout-dashboard", __iconNode$y);
 /**
  * @license lucide-react v0.511.0 - ISC
  *
@@ -35211,19 +35983,6 @@ const Layers = createLucideIcon("layers", __iconNode$y);
  * See the LICENSE file in the root directory of this source tree.
  */
 const __iconNode$x = [
-  ["rect", { width: "7", height: "9", x: "3", y: "3", rx: "1", key: "10lvy0" }],
-  ["rect", { width: "7", height: "5", x: "14", y: "3", rx: "1", key: "16une8" }],
-  ["rect", { width: "7", height: "9", x: "14", y: "12", rx: "1", key: "1hutg5" }],
-  ["rect", { width: "7", height: "5", x: "3", y: "16", rx: "1", key: "ldoo1y" }]
-];
-const LayoutDashboard = createLucideIcon("layout-dashboard", __iconNode$x);
-/**
- * @license lucide-react v0.511.0 - ISC
- *
- * This source code is licensed under the ISC license.
- * See the LICENSE file in the root directory of this source tree.
- */
-const __iconNode$w = [
   ["path", { d: "M10 12h11", key: "6m4ad9" }],
   ["path", { d: "M10 18h11", key: "11hvi2" }],
   ["path", { d: "M10 6h11", key: "c7qv1k" }],
@@ -35231,15 +35990,26 @@ const __iconNode$w = [
   ["path", { d: "M4 6h1v4", key: "cnovpq" }],
   ["path", { d: "M6 18H4c0-1 2-2 2-3s-1-1.5-2-1", key: "m9a95d" }]
 ];
-const ListOrdered = createLucideIcon("list-ordered", __iconNode$w);
+const ListOrdered = createLucideIcon("list-ordered", __iconNode$x);
 /**
  * @license lucide-react v0.511.0 - ISC
  *
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-const __iconNode$v = [["path", { d: "M21 12a9 9 0 1 1-6.219-8.56", key: "13zald" }]];
-const LoaderCircle = createLucideIcon("loader-circle", __iconNode$v);
+const __iconNode$w = [["path", { d: "M21 12a9 9 0 1 1-6.219-8.56", key: "13zald" }]];
+const LoaderCircle = createLucideIcon("loader-circle", __iconNode$w);
+/**
+ * @license lucide-react v0.511.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */
+const __iconNode$v = [
+  ["rect", { width: "18", height: "11", x: "3", y: "11", rx: "2", ry: "2", key: "1w4ew1" }],
+  ["path", { d: "M7 11V7a5 5 0 0 1 10 0v4", key: "fwvmzm" }]
+];
+const Lock = createLucideIcon("lock", __iconNode$v);
 /**
  * @license lucide-react v0.511.0 - ISC
  *
@@ -35247,10 +36017,11 @@ const LoaderCircle = createLucideIcon("loader-circle", __iconNode$v);
  * See the LICENSE file in the root directory of this source tree.
  */
 const __iconNode$u = [
-  ["rect", { width: "18", height: "11", x: "3", y: "11", rx: "2", ry: "2", key: "1w4ew1" }],
-  ["path", { d: "M7 11V7a5 5 0 0 1 10 0v4", key: "fwvmzm" }]
+  ["path", { d: "m16 17 5-5-5-5", key: "1bji2h" }],
+  ["path", { d: "M21 12H9", key: "dn1m92" }],
+  ["path", { d: "M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4", key: "1uf3rs" }]
 ];
-const Lock = createLucideIcon("lock", __iconNode$u);
+const LogOut = createLucideIcon("log-out", __iconNode$u);
 /**
  * @license lucide-react v0.511.0 - ISC
  *
@@ -35258,36 +36029,24 @@ const Lock = createLucideIcon("lock", __iconNode$u);
  * See the LICENSE file in the root directory of this source tree.
  */
 const __iconNode$t = [
-  ["path", { d: "m16 17 5-5-5-5", key: "1bji2h" }],
-  ["path", { d: "M21 12H9", key: "dn1m92" }],
-  ["path", { d: "M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4", key: "1uf3rs" }]
-];
-const LogOut = createLucideIcon("log-out", __iconNode$t);
-/**
- * @license lucide-react v0.511.0 - ISC
- *
- * This source code is licensed under the ISC license.
- * See the LICENSE file in the root directory of this source tree.
- */
-const __iconNode$s = [
   ["path", { d: "M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z", key: "a7tn18" }]
 ];
-const Moon = createLucideIcon("moon", __iconNode$s);
+const Moon = createLucideIcon("moon", __iconNode$t);
 /**
  * @license lucide-react v0.511.0 - ISC
  *
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-const __iconNode$r = [["path", { d: "m8 3 4 8 5-5 5 15H2L8 3z", key: "otkl63" }]];
-const Mountain = createLucideIcon("mountain", __iconNode$r);
+const __iconNode$s = [["path", { d: "m8 3 4 8 5-5 5 15H2L8 3z", key: "otkl63" }]];
+const Mountain = createLucideIcon("mountain", __iconNode$s);
 /**
  * @license lucide-react v0.511.0 - ISC
  *
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-const __iconNode$q = [
+const __iconNode$r = [
   ["path", { d: "M15 18h-5", key: "95g1m2" }],
   ["path", { d: "M18 14h-8", key: "sponae" }],
   [
@@ -35299,14 +36058,14 @@ const __iconNode$q = [
   ],
   ["rect", { width: "8", height: "4", x: "10", y: "6", rx: "1", key: "aywv1n" }]
 ];
-const Newspaper = createLucideIcon("newspaper", __iconNode$q);
+const Newspaper = createLucideIcon("newspaper", __iconNode$r);
 /**
  * @license lucide-react v0.511.0 - ISC
  *
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-const __iconNode$p = [
+const __iconNode$q = [
   ["path", { d: "M14.531 12.469 6.619 20.38a1 1 0 1 1-3-3l7.912-7.912", key: "we99rg" }],
   [
     "path",
@@ -35330,7 +36089,18 @@ const __iconNode$p = [
     }
   ]
 ];
-const Pickaxe = createLucideIcon("pickaxe", __iconNode$p);
+const Pickaxe = createLucideIcon("pickaxe", __iconNode$q);
+/**
+ * @license lucide-react v0.511.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */
+const __iconNode$p = [
+  ["path", { d: "M5 12h14", key: "1ays0h" }],
+  ["path", { d: "M12 5v14", key: "s699le" }]
+];
+const Plus = createLucideIcon("plus", __iconNode$p);
 /**
  * @license lucide-react v0.511.0 - ISC
  *
@@ -35338,10 +36108,12 @@ const Pickaxe = createLucideIcon("pickaxe", __iconNode$p);
  * See the LICENSE file in the root directory of this source tree.
  */
 const __iconNode$o = [
-  ["path", { d: "M5 12h14", key: "1ays0h" }],
-  ["path", { d: "M12 5v14", key: "s699le" }]
+  ["path", { d: "M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8", key: "v9h5vc" }],
+  ["path", { d: "M21 3v5h-5", key: "1q7to0" }],
+  ["path", { d: "M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16", key: "3uifl3" }],
+  ["path", { d: "M8 16H3v5", key: "1cv678" }]
 ];
-const Plus = createLucideIcon("plus", __iconNode$o);
+const RefreshCw = createLucideIcon("refresh-cw", __iconNode$o);
 /**
  * @license lucide-react v0.511.0 - ISC
  *
@@ -35349,12 +36121,10 @@ const Plus = createLucideIcon("plus", __iconNode$o);
  * See the LICENSE file in the root directory of this source tree.
  */
 const __iconNode$n = [
-  ["path", { d: "M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8", key: "v9h5vc" }],
-  ["path", { d: "M21 3v5h-5", key: "1q7to0" }],
-  ["path", { d: "M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16", key: "3uifl3" }],
-  ["path", { d: "M8 16H3v5", key: "1cv678" }]
+  ["path", { d: "M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8", key: "1357e3" }],
+  ["path", { d: "M3 3v5h5", key: "1xhq8a" }]
 ];
-const RefreshCw = createLucideIcon("refresh-cw", __iconNode$n);
+const RotateCcw = createLucideIcon("rotate-ccw", __iconNode$n);
 /**
  * @license lucide-react v0.511.0 - ISC
  *
@@ -35362,10 +36132,10 @@ const RefreshCw = createLucideIcon("refresh-cw", __iconNode$n);
  * See the LICENSE file in the root directory of this source tree.
  */
 const __iconNode$m = [
-  ["path", { d: "M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8", key: "1357e3" }],
-  ["path", { d: "M3 3v5h5", key: "1xhq8a" }]
+  ["path", { d: "M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8", key: "1p45f6" }],
+  ["path", { d: "M21 3v5h-5", key: "1q7to0" }]
 ];
-const RotateCcw = createLucideIcon("rotate-ccw", __iconNode$m);
+const RotateCw = createLucideIcon("rotate-cw", __iconNode$m);
 /**
  * @license lucide-react v0.511.0 - ISC
  *
@@ -35373,10 +36143,13 @@ const RotateCcw = createLucideIcon("rotate-ccw", __iconNode$m);
  * See the LICENSE file in the root directory of this source tree.
  */
 const __iconNode$l = [
-  ["path", { d: "M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8", key: "1p45f6" }],
-  ["path", { d: "M21 3v5h-5", key: "1q7to0" }]
+  ["path", { d: "m16 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z", key: "7g6ntu" }],
+  ["path", { d: "m2 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z", key: "ijws7r" }],
+  ["path", { d: "M7 21h10", key: "1b0cd5" }],
+  ["path", { d: "M12 3v18", key: "108xh3" }],
+  ["path", { d: "M3 7h2c2 0 5-1 7-2 2 1 5 2 7 2h2", key: "3gwbw2" }]
 ];
-const RotateCw = createLucideIcon("rotate-cw", __iconNode$l);
+const Scale = createLucideIcon("scale", __iconNode$l);
 /**
  * @license lucide-react v0.511.0 - ISC
  *
@@ -35384,13 +36157,18 @@ const RotateCw = createLucideIcon("rotate-cw", __iconNode$l);
  * See the LICENSE file in the root directory of this source tree.
  */
 const __iconNode$k = [
-  ["path", { d: "m16 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z", key: "7g6ntu" }],
-  ["path", { d: "m2 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z", key: "ijws7r" }],
-  ["path", { d: "M7 21h10", key: "1b0cd5" }],
-  ["path", { d: "M12 3v18", key: "108xh3" }],
-  ["path", { d: "M3 7h2c2 0 5-1 7-2 2 1 5 2 7 2h2", key: "3gwbw2" }]
+  ["path", { d: "M15 12h-5", key: "r7krc0" }],
+  ["path", { d: "M15 8h-5", key: "1khuty" }],
+  ["path", { d: "M19 17V5a2 2 0 0 0-2-2H4", key: "zz82l3" }],
+  [
+    "path",
+    {
+      d: "M8 21h12a2 2 0 0 0 2-2v-1a1 1 0 0 0-1-1H11a1 1 0 0 0-1 1v1a2 2 0 1 1-4 0V5a2 2 0 1 0-4 0v2a1 1 0 0 0 1 1h3",
+      key: "1ph1d7"
+    }
+  ]
 ];
-const Scale = createLucideIcon("scale", __iconNode$k);
+const ScrollText = createLucideIcon("scroll-text", __iconNode$k);
 /**
  * @license lucide-react v0.511.0 - ISC
  *
@@ -35412,13 +36190,14 @@ const __iconNode$i = [
   [
     "path",
     {
-      d: "M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11z",
-      key: "1ffxy3"
+      d: "M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z",
+      key: "oel41y"
     }
   ],
-  ["path", { d: "m21.854 2.147-10.94 10.939", key: "12cjpa" }]
+  ["path", { d: "M12 8v4", key: "1got3b" }],
+  ["path", { d: "M12 16h.01", key: "1drbdi" }]
 ];
-const Send = createLucideIcon("send", __iconNode$i);
+const ShieldAlert = createLucideIcon("shield-alert", __iconNode$i);
 /**
  * @license lucide-react v0.511.0 - ISC
  *
@@ -35433,10 +36212,9 @@ const __iconNode$h = [
       key: "oel41y"
     }
   ],
-  ["path", { d: "M12 8v4", key: "1got3b" }],
-  ["path", { d: "M12 16h.01", key: "1drbdi" }]
+  ["path", { d: "m9 12 2 2 4-4", key: "dzmm74" }]
 ];
-const ShieldAlert = createLucideIcon("shield-alert", __iconNode$h);
+const ShieldCheck = createLucideIcon("shield-check", __iconNode$h);
 /**
  * @license lucide-react v0.511.0 - ISC
  *
@@ -35450,10 +36228,9 @@ const __iconNode$g = [
       d: "M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z",
       key: "oel41y"
     }
-  ],
-  ["path", { d: "m9 12 2 2 4-4", key: "dzmm74" }]
+  ]
 ];
-const ShieldCheck = createLucideIcon("shield-check", __iconNode$g);
+const Shield = createLucideIcon("shield", __iconNode$g);
 /**
  * @license lucide-react v0.511.0 - ISC
  *
@@ -35461,22 +36238,6 @@ const ShieldCheck = createLucideIcon("shield-check", __iconNode$g);
  * See the LICENSE file in the root directory of this source tree.
  */
 const __iconNode$f = [
-  [
-    "path",
-    {
-      d: "M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z",
-      key: "oel41y"
-    }
-  ]
-];
-const Shield = createLucideIcon("shield", __iconNode$f);
-/**
- * @license lucide-react v0.511.0 - ISC
- *
- * This source code is licensed under the ISC license.
- * See the LICENSE file in the root directory of this source tree.
- */
-const __iconNode$e = [
   [
     "path",
     {
@@ -35489,14 +36250,14 @@ const __iconNode$e = [
   ["path", { d: "M4 17v2", key: "vumght" }],
   ["path", { d: "M5 18H3", key: "zchphs" }]
 ];
-const Sparkles = createLucideIcon("sparkles", __iconNode$e);
+const Sparkles = createLucideIcon("sparkles", __iconNode$f);
 /**
  * @license lucide-react v0.511.0 - ISC
  *
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-const __iconNode$d = [
+const __iconNode$e = [
   ["path", { d: "M7 20h10", key: "e6iznv" }],
   ["path", { d: "M10 20c5.5-2.5.8-6.4 3-10", key: "161w41" }],
   [
@@ -35514,14 +36275,14 @@ const __iconNode$d = [
     }
   ]
 ];
-const Sprout = createLucideIcon("sprout", __iconNode$d);
+const Sprout = createLucideIcon("sprout", __iconNode$e);
 /**
  * @license lucide-react v0.511.0 - ISC
  *
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-const __iconNode$c = [
+const __iconNode$d = [
   ["circle", { cx: "12", cy: "12", r: "4", key: "4exip2" }],
   ["path", { d: "M12 2v2", key: "tus03m" }],
   ["path", { d: "M12 20v2", key: "1lh1kg" }],
@@ -35532,7 +36293,21 @@ const __iconNode$c = [
   ["path", { d: "m6.34 17.66-1.41 1.41", key: "1m8zz5" }],
   ["path", { d: "m19.07 4.93-1.41 1.41", key: "1shlcs" }]
 ];
-const Sun = createLucideIcon("sun", __iconNode$c);
+const Sun = createLucideIcon("sun", __iconNode$d);
+/**
+ * @license lucide-react v0.511.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */
+const __iconNode$c = [
+  ["path", { d: "M3 6h18", key: "d0wm0j" }],
+  ["path", { d: "M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6", key: "4alrt4" }],
+  ["path", { d: "M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2", key: "v07s0e" }],
+  ["line", { x1: "10", x2: "10", y1: "11", y2: "17", key: "1uufr5" }],
+  ["line", { x1: "14", x2: "14", y1: "11", y2: "17", key: "xtxkd" }]
+];
+const Trash2 = createLucideIcon("trash-2", __iconNode$c);
 /**
  * @license lucide-react v0.511.0 - ISC
  *
@@ -35540,13 +36315,10 @@ const Sun = createLucideIcon("sun", __iconNode$c);
  * See the LICENSE file in the root directory of this source tree.
  */
 const __iconNode$b = [
-  ["path", { d: "M3 6h18", key: "d0wm0j" }],
-  ["path", { d: "M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6", key: "4alrt4" }],
-  ["path", { d: "M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2", key: "v07s0e" }],
-  ["line", { x1: "10", x2: "10", y1: "11", y2: "17", key: "1uufr5" }],
-  ["line", { x1: "14", x2: "14", y1: "11", y2: "17", key: "xtxkd" }]
+  ["path", { d: "M16 17h6v-6", key: "t6n2it" }],
+  ["path", { d: "m22 17-8.5-8.5-5 5L2 7", key: "x473p" }]
 ];
-const Trash2 = createLucideIcon("trash-2", __iconNode$b);
+const TrendingDown = createLucideIcon("trending-down", __iconNode$b);
 /**
  * @license lucide-react v0.511.0 - ISC
  *
@@ -35554,10 +36326,10 @@ const Trash2 = createLucideIcon("trash-2", __iconNode$b);
  * See the LICENSE file in the root directory of this source tree.
  */
 const __iconNode$a = [
-  ["path", { d: "M16 17h6v-6", key: "t6n2it" }],
-  ["path", { d: "m22 17-8.5-8.5-5 5L2 7", key: "x473p" }]
+  ["path", { d: "M16 7h6v6", key: "box55l" }],
+  ["path", { d: "m22 7-8.5 8.5-5-5L2 17", key: "1t1m79" }]
 ];
-const TrendingDown = createLucideIcon("trending-down", __iconNode$a);
+const TrendingUp = createLucideIcon("trending-up", __iconNode$a);
 /**
  * @license lucide-react v0.511.0 - ISC
  *
@@ -35565,17 +36337,6 @@ const TrendingDown = createLucideIcon("trending-down", __iconNode$a);
  * See the LICENSE file in the root directory of this source tree.
  */
 const __iconNode$9 = [
-  ["path", { d: "M16 7h6v6", key: "box55l" }],
-  ["path", { d: "m22 7-8.5 8.5-5-5L2 17", key: "1t1m79" }]
-];
-const TrendingUp = createLucideIcon("trending-up", __iconNode$9);
-/**
- * @license lucide-react v0.511.0 - ISC
- *
- * This source code is licensed under the ISC license.
- * See the LICENSE file in the root directory of this source tree.
- */
-const __iconNode$8 = [
   [
     "path",
     {
@@ -35586,14 +36347,14 @@ const __iconNode$8 = [
   ["path", { d: "M12 9v4", key: "juzpu7" }],
   ["path", { d: "M12 17h.01", key: "p32p05" }]
 ];
-const TriangleAlert = createLucideIcon("triangle-alert", __iconNode$8);
+const TriangleAlert = createLucideIcon("triangle-alert", __iconNode$9);
 /**
  * @license lucide-react v0.511.0 - ISC
  *
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-const __iconNode$7 = [
+const __iconNode$8 = [
   ["path", { d: "M6 9H4.5a2.5 2.5 0 0 1 0-5H6", key: "17hqa7" }],
   ["path", { d: "M18 9h1.5a2.5 2.5 0 0 0 0-5H18", key: "lmptdp" }],
   ["path", { d: "M4 22h16", key: "57wxv0" }],
@@ -35601,7 +36362,19 @@ const __iconNode$7 = [
   ["path", { d: "M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22", key: "1np0yb" }],
   ["path", { d: "M18 2H6v7a6 6 0 0 0 12 0V2Z", key: "u46fv3" }]
 ];
-const Trophy = createLucideIcon("trophy", __iconNode$7);
+const Trophy = createLucideIcon("trophy", __iconNode$8);
+/**
+ * @license lucide-react v0.511.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */
+const __iconNode$7 = [
+  ["path", { d: "M12 4v16", key: "1654pz" }],
+  ["path", { d: "M4 7V5a1 1 0 0 1 1-1h14a1 1 0 0 1 1 1v2", key: "e0r10z" }],
+  ["path", { d: "M9 20h6", key: "s66wpe" }]
+];
+const Type$1 = createLucideIcon("type", __iconNode$7);
 /**
  * @license lucide-react v0.511.0 - ISC
  *
@@ -35609,11 +36382,11 @@ const Trophy = createLucideIcon("trophy", __iconNode$7);
  * See the LICENSE file in the root directory of this source tree.
  */
 const __iconNode$6 = [
-  ["path", { d: "M12 4v16", key: "1654pz" }],
-  ["path", { d: "M4 7V5a1 1 0 0 1 1-1h14a1 1 0 0 1 1 1v2", key: "e0r10z" }],
-  ["path", { d: "M9 20h6", key: "s66wpe" }]
+  ["path", { d: "M12 3v12", key: "1x0j5s" }],
+  ["path", { d: "m17 8-5-5-5 5", key: "7q97r8" }],
+  ["path", { d: "M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4", key: "ih7n3h" }]
 ];
-const Type$1 = createLucideIcon("type", __iconNode$6);
+const Upload = createLucideIcon("upload", __iconNode$6);
 /**
  * @license lucide-react v0.511.0 - ISC
  *
@@ -35621,18 +36394,6 @@ const Type$1 = createLucideIcon("type", __iconNode$6);
  * See the LICENSE file in the root directory of this source tree.
  */
 const __iconNode$5 = [
-  ["path", { d: "M12 3v12", key: "1x0j5s" }],
-  ["path", { d: "m17 8-5-5-5 5", key: "7q97r8" }],
-  ["path", { d: "M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4", key: "ih7n3h" }]
-];
-const Upload = createLucideIcon("upload", __iconNode$5);
-/**
- * @license lucide-react v0.511.0 - ISC
- *
- * This source code is licensed under the ISC license.
- * See the LICENSE file in the root directory of this source tree.
- */
-const __iconNode$4 = [
   ["path", { d: "M10 15H6a4 4 0 0 0-4 4v2", key: "1nfge6" }],
   ["path", { d: "m14.305 16.53.923-.382", key: "1itpsq" }],
   ["path", { d: "m15.228 13.852-.923-.383", key: "eplpkm" }],
@@ -35645,7 +36406,20 @@ const __iconNode$4 = [
   ["circle", { cx: "18", cy: "15", r: "3", key: "gjjjvw" }],
   ["circle", { cx: "9", cy: "7", r: "4", key: "nufk8" }]
 ];
-const UserCog = createLucideIcon("user-cog", __iconNode$4);
+const UserCog = createLucideIcon("user-cog", __iconNode$5);
+/**
+ * @license lucide-react v0.511.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */
+const __iconNode$4 = [
+  ["path", { d: "M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2", key: "1yyitq" }],
+  ["path", { d: "M16 3.128a4 4 0 0 1 0 7.744", key: "16gr8j" }],
+  ["path", { d: "M22 21v-2a4 4 0 0 0-3-3.87", key: "kshegd" }],
+  ["circle", { cx: "9", cy: "7", r: "4", key: "nufk8" }]
+];
+const Users = createLucideIcon("users", __iconNode$4);
 /**
  * @license lucide-react v0.511.0 - ISC
  *
@@ -35653,12 +36427,17 @@ const UserCog = createLucideIcon("user-cog", __iconNode$4);
  * See the LICENSE file in the root directory of this source tree.
  */
 const __iconNode$3 = [
-  ["path", { d: "M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2", key: "1yyitq" }],
-  ["path", { d: "M16 3.128a4 4 0 0 1 0 7.744", key: "16gr8j" }],
-  ["path", { d: "M22 21v-2a4 4 0 0 0-3-3.87", key: "kshegd" }],
-  ["circle", { cx: "9", cy: "7", r: "4", key: "nufk8" }]
+  [
+    "path",
+    {
+      d: "M11 4.702a.705.705 0 0 0-1.203-.498L6.413 7.587A1.4 1.4 0 0 1 5.416 8H3a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2.416a1.4 1.4 0 0 1 .997.413l3.383 3.384A.705.705 0 0 0 11 19.298z",
+      key: "uqj9uw"
+    }
+  ],
+  ["path", { d: "M16 9a5 5 0 0 1 0 6", key: "1q6k2b" }],
+  ["path", { d: "M19.364 18.364a9 9 0 0 0 0-12.728", key: "ijwkga" }]
 ];
-const Users = createLucideIcon("users", __iconNode$3);
+const Volume2 = createLucideIcon("volume-2", __iconNode$3);
 /**
  * @license lucide-react v0.511.0 - ISC
  *
@@ -35673,10 +36452,10 @@ const __iconNode$2 = [
       key: "uqj9uw"
     }
   ],
-  ["path", { d: "M16 9a5 5 0 0 1 0 6", key: "1q6k2b" }],
-  ["path", { d: "M19.364 18.364a9 9 0 0 0 0-12.728", key: "ijwkga" }]
+  ["line", { x1: "22", x2: "16", y1: "9", y2: "15", key: "1ewh16" }],
+  ["line", { x1: "16", x2: "22", y1: "9", y2: "15", key: "5ykzw1" }]
 ];
-const Volume2 = createLucideIcon("volume-2", __iconNode$2);
+const VolumeX = createLucideIcon("volume-x", __iconNode$2);
 /**
  * @license lucide-react v0.511.0 - ISC
  *
@@ -35687,14 +36466,13 @@ const __iconNode$1 = [
   [
     "path",
     {
-      d: "M11 4.702a.705.705 0 0 0-1.203-.498L6.413 7.587A1.4 1.4 0 0 1 5.416 8H3a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2.416a1.4 1.4 0 0 1 .997.413l3.383 3.384A.705.705 0 0 0 11 19.298z",
-      key: "uqj9uw"
+      d: "M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1",
+      key: "18etb6"
     }
   ],
-  ["line", { x1: "22", x2: "16", y1: "9", y2: "15", key: "1ewh16" }],
-  ["line", { x1: "16", x2: "22", y1: "9", y2: "15", key: "5ykzw1" }]
+  ["path", { d: "M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4", key: "xoc0q4" }]
 ];
-const VolumeX = createLucideIcon("volume-x", __iconNode$1);
+const Wallet = createLucideIcon("wallet", __iconNode$1);
 /**
  * @license lucide-react v0.511.0 - ISC
  *
@@ -35702,16 +36480,10 @@ const VolumeX = createLucideIcon("volume-x", __iconNode$1);
  * See the LICENSE file in the root directory of this source tree.
  */
 const __iconNode = [
-  [
-    "path",
-    {
-      d: "M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1",
-      key: "18etb6"
-    }
-  ],
-  ["path", { d: "M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4", key: "xoc0q4" }]
+  ["path", { d: "M18 6 6 18", key: "1bl5f8" }],
+  ["path", { d: "m6 6 12 12", key: "d8bk6v" }]
 ];
-const Wallet = createLucideIcon("wallet", __iconNode);
+const X = createLucideIcon("x", __iconNode);
 function r(e2) {
   var t, f2, n2 = "";
   if ("string" == typeof e2 || "number" == typeof e2) n2 += e2;
@@ -35858,20 +36630,20 @@ const createLruCache = (maxCacheSize) => {
     };
   }
   let cacheSize = 0;
-  let cache2 = /* @__PURE__ */ new Map();
+  let cache = /* @__PURE__ */ new Map();
   let previousCache = /* @__PURE__ */ new Map();
   const update = (key, value) => {
-    cache2.set(key, value);
+    cache.set(key, value);
     cacheSize++;
     if (cacheSize > maxCacheSize) {
       cacheSize = 0;
-      previousCache = cache2;
-      cache2 = /* @__PURE__ */ new Map();
+      previousCache = cache;
+      cache = /* @__PURE__ */ new Map();
     }
   };
   return {
     get(key) {
-      let value = cache2.get(key);
+      let value = cache.get(key);
       if (value !== void 0) {
         return value;
       }
@@ -35881,8 +36653,8 @@ const createLruCache = (maxCacheSize) => {
       }
     },
     set(key, value) {
-      if (cache2.has(key)) {
-        cache2.set(key, value);
+      if (cache.has(key)) {
+        cache.set(key, value);
       } else {
         update(key, value);
       }
@@ -38334,7 +39106,7 @@ function createSlot$1(ownerName) {
   Slot2.displayName = `${ownerName}.Slot`;
   return Slot2;
 }
-var Slot = /* @__PURE__ */ createSlot$1("Slot");
+var Slot$1 = /* @__PURE__ */ createSlot$1("Slot");
 // @__NO_SIDE_EFFECTS__
 function createSlotClone$1(ownerName) {
   const SlotClone = reactExports.forwardRef((props, forwardedRef) => {
@@ -38469,7 +39241,7 @@ function Button({
   asChild = false,
   ...props
 }) {
-  const Comp = asChild ? Slot : "button";
+  const Comp = asChild ? Slot$1 : "button";
   return /* @__PURE__ */ jsxRuntimeExports.jsx(
     Comp,
     {
@@ -38909,7 +39681,7 @@ function Badge({
   asChild = false,
   ...props
 }) {
-  const Comp = asChild ? Slot : "span";
+  const Comp = asChild ? Slot$1 : "span";
   return /* @__PURE__ */ jsxRuntimeExports.jsx(
     Comp,
     {
@@ -44880,7 +45652,7 @@ function isSignedReadStateRequestWithExpiry(value) {
 }
 async function pollForResponse(agent, canisterId, requestId, options = {}) {
   const path = [utf8ToBytes("request_status"), requestId];
-  let state;
+  let state2;
   let currentRequest;
   const preSignReadStateRequest = options.preSignReadStateRequest ?? false;
   if (preSignReadStateRequest) {
@@ -44889,15 +45661,15 @@ async function pollForResponse(agent, canisterId, requestId, options = {}) {
       agent,
       pollingOptions: options
     });
-    state = await agent.readState(canisterId, { paths: [path] }, void 0, currentRequest);
+    state2 = await agent.readState(canisterId, { paths: [path] }, void 0, currentRequest);
   } else {
-    state = await agent.readState(canisterId, { paths: [path] });
+    state2 = await agent.readState(canisterId, { paths: [path] });
   }
   if (agent.rootKey == null) {
     throw ExternalError2.fromCode(new MissingRootKeyErrorCode2());
   }
   const cert = await Certificate.create({
-    certificate: state.certificate,
+    certificate: state2.certificate,
     rootKey: agent.rootKey,
     canisterId,
     blsVerify: options.blsVerify,
@@ -46817,17 +47589,17 @@ function createContextScope$1(scopeName, createContextScopeDeps = []) {
     defaultContexts = [...defaultContexts, defaultContext];
     const Provider = (props) => {
       var _a3;
-      const { scope, children, ...context } = props;
+      const { scope, children, ...context2 } = props;
       const Context2 = ((_a3 = scope == null ? void 0 : scope[scopeName]) == null ? void 0 : _a3[index2]) || BaseContext;
-      const value = reactExports.useMemo(() => context, Object.values(context));
+      const value = reactExports.useMemo(() => context2, Object.values(context2));
       return /* @__PURE__ */ jsxRuntimeExports.jsx(Context2.Provider, { value, children });
     };
     Provider.displayName = rootComponentName + "Provider";
     function useContext2(consumerName, scope) {
       var _a3;
       const Context2 = ((_a3 = scope == null ? void 0 : scope[scopeName]) == null ? void 0 : _a3[index2]) || BaseContext;
-      const context = reactExports.useContext(Context2);
-      if (context) return context;
+      const context2 = reactExports.useContext(Context2);
+      if (context2) return context2;
       if (defaultContext !== void 0) return defaultContext;
       throw new Error(`\`${consumerName}\` must be used within \`${rootComponentName}\``);
     }
@@ -46944,13 +47716,13 @@ var INDICATOR_NAME = "ProgressIndicator";
 var ProgressIndicator = reactExports.forwardRef(
   (props, forwardedRef) => {
     const { __scopeProgress, ...indicatorProps } = props;
-    const context = useProgressContext(INDICATOR_NAME, __scopeProgress);
+    const context2 = useProgressContext(INDICATOR_NAME, __scopeProgress);
     return /* @__PURE__ */ jsxRuntimeExports.jsx(
       Primitive$1.div,
       {
-        "data-state": getProgressState(context.value, context.max),
-        "data-value": context.value ?? void 0,
-        "data-max": context.max,
+        "data-state": getProgressState(context2.value, context2.max),
+        "data-value": context2.value ?? void 0,
+        "data-max": context2.max,
         ...indicatorProps,
         ref: forwardedRef
       }
@@ -47050,8 +47822,8 @@ const BUYBACK_LABEL = {
 };
 const SPAWN_LIMIT_ICP = 1e3;
 const SPAWN_DISSOLVE_DAYS = 7;
-const DAY_MS$1 = 864e5;
-const E8S$1 = 1e8;
+const DAY_MS$2 = 864e5;
+const E8S$5 = 1e8;
 function parseLogText(text) {
   const out = [];
   for (const line of text.split("\n")) {
@@ -47114,7 +47886,7 @@ function parseRewards(logs, p2) {
     if (metrics) {
       const [, rid, status, token, total, ok, retries, amt] = metrics;
       const roundId = Number(rid);
-      const amount = n(amt) / E8S$1;
+      const amount = n(amt) / E8S$5;
       const st2 = status === "CompletedFull" ? "paid" : status === "CompletedPartial" ? "partial" : "failed";
       upsertRound(rounds, roundId, e2.timestamp).tokens[token] = {
         token,
@@ -47295,7 +48067,7 @@ function parseIcpNeuron(logs, p2) {
   flushSpawn();
 }
 function parseBuyback(logs, p2) {
-  const pending = /* @__PURE__ */ new Map();
+  const pending2 = /* @__PURE__ */ new Map();
   let burnStart = null;
   let burnState = "ok";
   const closeBurn = () => {
@@ -47331,28 +48103,28 @@ function parseBuyback(logs, p2) {
         passed: q2[2] === "passed"
       });
       if (q2[2] === "passed")
-        pending.set(job, { ts: e2.timestamp, mode, icp: 0, quote });
+        pending2.set(job, { ts: e2.timestamp, mode, icp: 0, quote });
       return;
     }
     if (m2.startsWith("Running unconstrained swap job")) {
-      pending.set(1, { ts: e2.timestamp, mode: "gldt", icp: 0 });
+      pending2.set(1, { ts: e2.timestamp, mode: "gldt", icp: 0 });
       return;
     }
     const amt = m2.match(/^Amount to swap for job (\d+): (\d+)/);
     if (amt) {
       const job = Number(amt[1]);
-      const run = pending.get(job) ?? {
+      const run = pending2.get(job) ?? {
         ts: e2.timestamp,
         mode: BUYBACK_JOBS[job] ?? "gldt",
         icp: 0
       };
-      run.icp = Number(amt[2]) / E8S$1;
-      pending.delete(job);
+      run.icp = Number(amt[2]) / E8S$5;
+      pending2.delete(job);
       p2.buybackRuns.push(run);
       return;
     }
     if (m2.startsWith("No constrained swap conditions met")) {
-      pending.set(-1, { ts: e2.timestamp, mode: "compound", icp: 0 });
+      pending2.set(-1, { ts: e2.timestamp, mode: "compound", icp: 0 });
       p2.quoteChecks.push({
         ts: e2.timestamp,
         mode: "compound",
@@ -47363,17 +48135,17 @@ function parseBuyback(logs, p2) {
     }
     const staked = m2.match(/^stake_icp: NNS neuron (\d+) refreshed/);
     if (staked) {
-      const run = pending.get(-1) ?? {
+      const run = pending2.get(-1) ?? {
         ts: e2.timestamp,
         mode: "compound",
         icp: 0
       };
-      pending.delete(-1);
+      pending2.delete(-1);
       p2.buybackRuns.push(run);
       return;
     }
     if (m2.startsWith("stake_icp:") && m2.includes("too low")) {
-      pending.delete(-1);
+      pending2.delete(-1);
       return;
     }
     if (m2 === "Starting token burn process") {
@@ -47552,7 +48324,7 @@ function nextDistribution(now2 = Date.now()) {
   const day = d2.getUTCDay();
   let add2 = (3 - day + 7) % 7;
   if (add2 === 0 && now2 >= target) add2 = 7;
-  return target + add2 * DAY_MS$1;
+  return target + add2 * DAY_MS$2;
 }
 function nextGldtDistribution(now2 = Date.now()) {
   const d2 = new Date(now2);
@@ -47561,7 +48333,7 @@ function nextGldtDistribution(now2 = Date.now()) {
     const mth = d2.getUTCMonth() + k2;
     const first = new Date(Date.UTC(y2, mth, 1, 12));
     const add2 = (3 - first.getUTCDay() + 7) % 7;
-    const ts = first.getTime() + add2 * DAY_MS$1;
+    const ts = first.getTime() + add2 * DAY_MS$2;
     if (ts > now2) return ts;
   }
   return now2;
@@ -47570,7 +48342,7 @@ function icpOutlook(p2, now2 = Date.now()) {
   var _a3;
   const nextRoundTs = nextDistribution(now2);
   const nextGldtTs = nextGldtDistribution(now2);
-  const gldtThisRound = Math.abs(nextGldtTs - (nextRoundTs - 2 * 36e5)) < DAY_MS$1;
+  const gldtThisRound = Math.abs(nextGldtTs - (nextRoundTs - 2 * 36e5)) < DAY_MS$2;
   const lastRoundTs = ((_a3 = p2.rounds[0]) == null ? void 0 : _a3.ts) ?? 0;
   const spawn = p2.lastSpawn;
   const disb = p2.lastDisburse;
@@ -47581,25 +48353,25 @@ function icpOutlook(p2, now2 = Date.now()) {
       nextGldtTs,
       gldtThisRound,
       icp: "expected",
-      icpReason: `A spawned neuron was already disbursed on ${fmtDate(disb.ts)}; its ICP is waiting in the reward pool.`
+      icpReason: `A spawned neuron was already disbursed on ${fmtDate$1(disb.ts)}; its ICP is waiting in the reward pool.`
     };
   }
   if (pendingSpawn && spawn) {
-    const eta = spawn.ts + SPAWN_DISSOLVE_DAYS * DAY_MS$1;
+    const eta = spawn.ts + SPAWN_DISSOLVE_DAYS * DAY_MS$2;
     return eta < nextRoundTs ? {
       nextRoundTs,
       nextGldtTs,
       gldtThisRound,
       icp: "expected",
       expectedDisburseTs: eta,
-      icpReason: `The neuron spawned on ${fmtDate(spawn.ts)}; its ICP should be disbursed around ${fmtDate(eta)}, before the round.`
+      icpReason: `The neuron spawned on ${fmtDate$1(spawn.ts)}; its ICP should be disbursed around ${fmtDate$1(eta)}, before the round.`
     } : {
       nextRoundTs,
       nextGldtTs,
       gldtThisRound,
       icp: "not_expected",
       expectedDisburseTs: eta,
-      icpReason: `The last spawn (${fmtDate(spawn.ts)}) disburses around ${fmtDate(eta)}, after the next round. Maturity keeps accruing and is paid later.`
+      icpReason: `The last spawn (${fmtDate$1(spawn.ts)}) disburses around ${fmtDate$1(eta)}, after the next round. Maturity keeps accruing and is paid later.`
     };
   }
   return {
@@ -47631,7 +48403,7 @@ function deriveAlerts(p2, now2 = Date.now()) {
         });
     }
   }
-  const recent = (e2) => now2 - e2.ts < 14 * DAY_MS$1;
+  const recent = (e2) => now2 - e2.ts < 14 * DAY_MS$2;
   for (const e2 of p2.events.filter(recent)) {
     if (e2.kind === "cycle_management")
       alerts.push({
@@ -47650,7 +48422,7 @@ function deriveAlerts(p2, now2 = Date.now()) {
     alerts.push({
       severity: "warning",
       title: "Neuron sync is late",
-      detail: `sns_rewards last synced neurons ${fmtDate(p2.lastSync.ts)} (normally daily at 09:00 UTC).`
+      detail: `sns_rewards last synced neurons ${fmtDate$1(p2.lastSync.ts)} (normally daily at 09:00 UTC).`
     });
   return alerts;
 }
@@ -47664,7 +48436,7 @@ function fmt(v2, max = 2) {
   const digits = Math.abs(v2) >= 1e3 ? 0 : max;
   return v2.toLocaleString("en-US", { maximumFractionDigits: digits });
 }
-function fmtDate(ts, withTime = false) {
+function fmtDate$1(ts, withTime = false) {
   return new Date(ts).toLocaleString("en-US", {
     month: "short",
     day: "numeric",
@@ -47715,7 +48487,7 @@ function EventsPage() {
   const [loading, setLoading] = reactExports.useState(true);
   const [updatedAt, setUpdatedAt] = reactExports.useState(null);
   const [filter2, setFilter] = reactExports.useState("all");
-  const load2 = reactExports.useCallback(async () => {
+  const load = reactExports.useCallback(async () => {
     setLoading(true);
     const [res, totals] = await Promise.all([
       loadPipeline(),
@@ -47728,8 +48500,8 @@ function EventsPage() {
     setLoading(false);
   }, []);
   reactExports.useEffect(() => {
-    void load2();
-  }, [load2]);
+    void load();
+  }, [load]);
   const alerts = reactExports.useMemo(
     () => pipeline ? deriveAlerts(pipeline) : [],
     [pipeline]
@@ -47766,7 +48538,7 @@ function EventsPage() {
             {
               variant: "outline",
               size: "sm",
-              onClick: () => void load2(),
+              onClick: () => void load(),
               disabled: loading,
               "data-ocid": "events.refresh",
               children: [
@@ -47881,7 +48653,7 @@ function NextRoundCard({
     cls: "border-amber-500/40 text-amber-600 dark:text-amber-400"
   } : { text: "ICP unknown", cls: "" };
   return /* @__PURE__ */ jsxRuntimeExports.jsxs(SummaryCard, { icon: CalendarClock, label: "Next round", children: [
-    /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "font-display text-2xl font-bold", children: fmtDate(outlook.nextRoundTs, true) }),
+    /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "font-display text-2xl font-bold", children: fmtDate$1(outlook.nextRoundTs, true) }),
     /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "text-sm text-muted-foreground", children: [
       countdown(outlook.nextRoundTs),
       " · Wednesdays 14:00 UTC"
@@ -47921,11 +48693,11 @@ function NeuronCard({
     /* @__PURE__ */ jsxRuntimeExports.jsxs("p", { className: "text-xs text-muted-foreground", children: [
       "Last spawn:",
       " ",
-      pipeline.lastSpawn ? fmtDate(pipeline.lastSpawn.ts) : "not in log window",
+      pipeline.lastSpawn ? fmtDate$1(pipeline.lastSpawn.ts) : "not in log window",
       " ",
       "· Last disbursal:",
       " ",
-      pipeline.lastDisburse ? fmtDate(pipeline.lastDisburse.ts) : "not in log window"
+      pipeline.lastDisburse ? fmtDate$1(pipeline.lastDisburse.ts) : "not in log window"
     ] })
   ] });
 }
@@ -47937,7 +48709,7 @@ function BuybackCard({ pipeline }) {
     /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "font-display text-xl font-bold leading-tight", children: mode ? BUYBACK_LABEL[mode.mode] : "No recent activity" }),
     mode && /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "text-sm text-muted-foreground", children: [
       "Last run ",
-      fmtDate(mode.ts, true)
+      fmtDate$1(mode.ts, true)
     ] }),
     /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-col gap-1 font-mono text-xs", children: [
       goldao && /* @__PURE__ */ jsxRuntimeExports.jsx(
@@ -47996,7 +48768,7 @@ function LastRoundCard({ rounds }) {
       icon: Flame,
       label: last2 ? `Last round · #${last2.roundId}` : "Last round",
       children: last2 ? /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-sm text-muted-foreground", children: fmtDate(last2.ts, true) }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-sm text-muted-foreground", children: fmtDate$1(last2.ts, true) }),
         /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex flex-col gap-1", children: ["ICP", "OGY"].map((tk) => /* @__PURE__ */ jsxRuntimeExports.jsxs(
           "div",
           {
@@ -48075,7 +48847,7 @@ function RoundsTable({ rounds }) {
                   "#",
                   r2.roundId
                 ] }),
-                /* @__PURE__ */ jsxRuntimeExports.jsx("td", { className: "py-2.5 pr-4 text-muted-foreground", children: fmtDate(r2.ts) }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("td", { className: "py-2.5 pr-4 text-muted-foreground", children: fmtDate$1(r2.ts) }),
                 tokens.map((t) => /* @__PURE__ */ jsxRuntimeExports.jsx("td", { className: "py-2.5 pr-4 text-right", children: /* @__PURE__ */ jsxRuntimeExports.jsx(TokenCell, { result: r2.tokens[t] }) }, t)),
                 /* @__PURE__ */ jsxRuntimeExports.jsx("td", { className: "py-2.5 text-right font-mono text-muted-foreground", children: neurons ? fmt(neurons, 0) : "—" })
               ]
@@ -48147,7 +48919,7 @@ function LogWindow({ pipeline }) {
           }
         ),
         ": ",
-        w2 ? `${fmtDate(w2.from)} → ${fmtDate(w2.to)}` : "unavailable"
+        w2 ? `${fmtDate$1(w2.from)} → ${fmtDate$1(w2.to)}` : "unavailable"
       ] }, src);
     }) })
   ] });
@@ -48875,7 +49647,7 @@ const MODEL_SECTIONS = [
     fields: [{ key: "ogy_apy", label: "OGY APY", unit: "%" }]
   }
 ];
-const ZONES$1 = [
+const ZONES = [
   {
     id: "expensive",
     label: "Expensive",
@@ -48918,11 +49690,11 @@ const ZONES$1 = [
   }
 ];
 function getZone(difPct) {
-  if (difPct > 20) return ZONES$1[4];
-  if (difPct > 10) return ZONES$1[3];
-  if (difPct >= -10) return ZONES$1[2];
-  if (difPct >= -20) return ZONES$1[1];
-  return ZONES$1[0];
+  if (difPct > 20) return ZONES[4];
+  if (difPct > 10) return ZONES[3];
+  if (difPct >= -10) return ZONES[2];
+  if (difPct >= -20) return ZONES[1];
+  return ZONES[0];
 }
 const ZONE_TEXT = {
   expensive: "Staking ICP directly on the NNS yields significantly more than buying GOLDAO today.",
@@ -49050,11 +49822,11 @@ function Hero({ r: r2, params }) {
   const barMax = eq * 1.35;
   const toPct = (v2) => Math.max(0, Math.min(100, (v2 - barMin) / (barMax - barMin) * 100));
   const bands = [
-    { zone: ZONES$1[0], from: barMin, to: eq * 0.8 },
-    { zone: ZONES$1[1], from: eq * 0.8, to: eq * 0.9 },
-    { zone: ZONES$1[2], from: eq * 0.9, to: eq * 1.1 },
-    { zone: ZONES$1[3], from: eq * 1.1, to: eq * 1.2 },
-    { zone: ZONES$1[4], from: eq * 1.2, to: barMax }
+    { zone: ZONES[0], from: barMin, to: eq * 0.8 },
+    { zone: ZONES[1], from: eq * 0.8, to: eq * 0.9 },
+    { zone: ZONES[2], from: eq * 0.9, to: eq * 1.1 },
+    { zone: ZONES[3], from: eq * 1.1, to: eq * 1.2 },
+    { zone: ZONES[4], from: eq * 1.2, to: barMax }
   ];
   const ticks = [
     { v: eq * 0.8, label: "−20%" },
@@ -49730,17 +50502,17 @@ function createContextScope(scopeName, createContextScopeDeps = []) {
     defaultContexts = [...defaultContexts, defaultContext];
     const Provider = (props) => {
       var _a3;
-      const { scope, children, ...context } = props;
+      const { scope, children, ...context2 } = props;
       const Context2 = ((_a3 = scope == null ? void 0 : scope[scopeName]) == null ? void 0 : _a3[index2]) || BaseContext;
-      const value = reactExports.useMemo(() => context, Object.values(context));
+      const value = reactExports.useMemo(() => context2, Object.values(context2));
       return /* @__PURE__ */ jsxRuntimeExports.jsx(Context2.Provider, { value, children });
     };
     Provider.displayName = rootComponentName + "Provider";
     function useContext2(consumerName, scope) {
       var _a3;
       const Context2 = ((_a3 = scope == null ? void 0 : scope[scopeName]) == null ? void 0 : _a3[index2]) || BaseContext;
-      const context = reactExports.useContext(Context2);
-      if (context) return context;
+      const context2 = reactExports.useContext(Context2);
+      if (context2) return context2;
       if (defaultContext !== void 0) return defaultContext;
       throw new Error(`\`${consumerName}\` must be used within \`${rootComponentName}\``);
     }
@@ -49883,8 +50655,8 @@ function createCollection(name) {
   const CollectionSlot = React2.forwardRef(
     (props, forwardedRef) => {
       const { scope, children } = props;
-      const context = useCollectionContext(COLLECTION_SLOT_NAME, scope);
-      const composedRefs = useComposedRefs$1(forwardedRef, context.collectionRef);
+      const context2 = useCollectionContext(COLLECTION_SLOT_NAME, scope);
+      const composedRefs = useComposedRefs$1(forwardedRef, context2.collectionRef);
       return /* @__PURE__ */ jsxRuntimeExports.jsx(CollectionSlotImpl, { ref: composedRefs, children });
     }
   );
@@ -49897,27 +50669,27 @@ function createCollection(name) {
       const { scope, children, ...itemData } = props;
       const ref = React2.useRef(null);
       const composedRefs = useComposedRefs$1(forwardedRef, ref);
-      const context = useCollectionContext(ITEM_SLOT_NAME, scope);
+      const context2 = useCollectionContext(ITEM_SLOT_NAME, scope);
       React2.useEffect(() => {
-        context.itemMap.set(ref, { ref, ...itemData });
-        return () => void context.itemMap.delete(ref);
+        context2.itemMap.set(ref, { ref, ...itemData });
+        return () => void context2.itemMap.delete(ref);
       });
       return /* @__PURE__ */ jsxRuntimeExports.jsx(CollectionItemSlotImpl, { ...{ [ITEM_DATA_ATTR]: "" }, ref: composedRefs, children });
     }
   );
   CollectionItemSlot.displayName = ITEM_SLOT_NAME;
   function useCollection2(scope) {
-    const context = useCollectionContext(name + "CollectionConsumer", scope);
+    const context2 = useCollectionContext(name + "CollectionConsumer", scope);
     const getItems = React2.useCallback(() => {
-      const collectionNode = context.collectionRef.current;
+      const collectionNode = context2.collectionRef.current;
       if (!collectionNode) return [];
       const orderedNodes = Array.from(collectionNode.querySelectorAll(`[${ITEM_DATA_ATTR}]`));
-      const items = Array.from(context.itemMap.values());
+      const items = Array.from(context2.itemMap.values());
       const orderedItems = items.sort(
         (a2, b2) => orderedNodes.indexOf(a2.ref.current) - orderedNodes.indexOf(b2.ref.current)
       );
       return orderedItems;
-    }, [context.collectionRef, context.itemMap]);
+    }, [context2.collectionRef, context2.itemMap]);
     return getItems;
   }
   return [
@@ -50168,10 +50940,10 @@ var RovingFocusGroupItem = reactExports.forwardRef(
     } = props;
     const autoId = useId();
     const id2 = tabStopId || autoId;
-    const context = useRovingFocusContext(ITEM_NAME, __scopeRovingFocusGroup);
-    const isCurrentTabStop = context.currentTabStopId === id2;
+    const context2 = useRovingFocusContext(ITEM_NAME, __scopeRovingFocusGroup);
+    const isCurrentTabStop = context2.currentTabStopId === id2;
     const getItems = useCollection(__scopeRovingFocusGroup);
-    const { onFocusableItemAdd, onFocusableItemRemove, currentTabStopId } = context;
+    const { onFocusableItemAdd, onFocusableItemRemove, currentTabStopId } = context2;
     reactExports.useEffect(() => {
       if (focusable) {
         onFocusableItemAdd();
@@ -50189,21 +50961,21 @@ var RovingFocusGroupItem = reactExports.forwardRef(
           Primitive.span,
           {
             tabIndex: isCurrentTabStop ? 0 : -1,
-            "data-orientation": context.orientation,
+            "data-orientation": context2.orientation,
             ...itemProps,
             ref: forwardedRef,
             onMouseDown: composeEventHandlers(props.onMouseDown, (event) => {
               if (!focusable) event.preventDefault();
-              else context.onItemFocus(id2);
+              else context2.onItemFocus(id2);
             }),
-            onFocus: composeEventHandlers(props.onFocus, () => context.onItemFocus(id2)),
+            onFocus: composeEventHandlers(props.onFocus, () => context2.onItemFocus(id2)),
             onKeyDown: composeEventHandlers(props.onKeyDown, (event) => {
               if (event.key === "Tab" && event.shiftKey) {
-                context.onItemShiftTab();
+                context2.onItemShiftTab();
                 return;
               }
               if (event.target !== event.currentTarget) return;
-              const focusIntent = getFocusIntent(event, context.orientation, context.dir);
+              const focusIntent = getFocusIntent(event, context2.orientation, context2.dir);
               if (focusIntent !== void 0) {
                 if (event.metaKey || event.ctrlKey || event.altKey || event.shiftKey) return;
                 event.preventDefault();
@@ -50213,7 +50985,7 @@ var RovingFocusGroupItem = reactExports.forwardRef(
                 else if (focusIntent === "prev" || focusIntent === "next") {
                   if (focusIntent === "prev") candidateNodes.reverse();
                   const currentIndex = candidateNodes.indexOf(event.currentTarget);
-                  candidateNodes = context.loop ? wrapArray(candidateNodes, currentIndex + 1) : candidateNodes.slice(currentIndex + 1);
+                  candidateNodes = context2.loop ? wrapArray(candidateNodes, currentIndex + 1) : candidateNodes.slice(currentIndex + 1);
                 }
                 setTimeout(() => focusFirst(candidateNodes));
               }
@@ -50258,11 +51030,11 @@ function wrapArray(array, startIndex) {
   return array.map((_2, index2) => array[(startIndex + index2) % array.length]);
 }
 var Root = RovingFocusGroup;
-var Item$1 = RovingFocusGroupItem;
+var Item$2 = RovingFocusGroupItem;
 function useStateMachine(initialState, machine) {
-  return reactExports.useReducer((state, event) => {
-    const nextState = machine[state][event];
-    return nextState ?? state;
+  return reactExports.useReducer((state2, event) => {
+    const nextState = machine[state2][event];
+    return nextState ?? state2;
   }, initialState);
 }
 var Presence = (props) => {
@@ -50280,7 +51052,7 @@ function usePresence$1(present) {
   const prevPresentRef = reactExports.useRef(present);
   const prevAnimationNameRef = reactExports.useRef("none");
   const initialState = present ? "mounted" : "unmounted";
-  const [state, send] = useStateMachine(initialState, {
+  const [state2, send] = useStateMachine(initialState, {
     mounted: {
       UNMOUNT: "unmounted",
       ANIMATION_OUT: "unmountSuspended"
@@ -50295,8 +51067,8 @@ function usePresence$1(present) {
   });
   reactExports.useEffect(() => {
     const currentAnimationName = getAnimationName(stylesRef.current);
-    prevAnimationNameRef.current = state === "mounted" ? currentAnimationName : "none";
-  }, [state]);
+    prevAnimationNameRef.current = state2 === "mounted" ? currentAnimationName : "none";
+  }, [state2]);
   useLayoutEffect2(() => {
     const styles = stylesRef.current;
     const wasPresent = prevPresentRef.current;
@@ -50358,7 +51130,7 @@ function usePresence$1(present) {
     }
   }, [node, send]);
   return {
-    isPresent: ["mounted", "unmountSuspended"].includes(state),
+    isPresent: ["mounted", "unmountSuspended"].includes(state2),
     ref: reactExports.useCallback((node2) => {
       stylesRef.current = node2 ? getComputedStyle(node2) : null;
       setNode(node2);
@@ -50435,21 +51207,21 @@ var TAB_LIST_NAME = "TabsList";
 var TabsList$1 = reactExports.forwardRef(
   (props, forwardedRef) => {
     const { __scopeTabs, loop = true, ...listProps } = props;
-    const context = useTabsContext(TAB_LIST_NAME, __scopeTabs);
+    const context2 = useTabsContext(TAB_LIST_NAME, __scopeTabs);
     const rovingFocusGroupScope = useRovingFocusGroupScope(__scopeTabs);
     return /* @__PURE__ */ jsxRuntimeExports.jsx(
       Root,
       {
         asChild: true,
         ...rovingFocusGroupScope,
-        orientation: context.orientation,
-        dir: context.dir,
+        orientation: context2.orientation,
+        dir: context2.dir,
         loop,
         children: /* @__PURE__ */ jsxRuntimeExports.jsx(
           Primitive.div,
           {
             role: "tablist",
-            "aria-orientation": context.orientation,
+            "aria-orientation": context2.orientation,
             ...listProps,
             ref: forwardedRef
           }
@@ -50463,13 +51235,13 @@ var TRIGGER_NAME = "TabsTrigger";
 var TabsTrigger$1 = reactExports.forwardRef(
   (props, forwardedRef) => {
     const { __scopeTabs, value, disabled = false, ...triggerProps } = props;
-    const context = useTabsContext(TRIGGER_NAME, __scopeTabs);
+    const context2 = useTabsContext(TRIGGER_NAME, __scopeTabs);
     const rovingFocusGroupScope = useRovingFocusGroupScope(__scopeTabs);
-    const triggerId = makeTriggerId(context.baseId, value);
-    const contentId = makeContentId(context.baseId, value);
-    const isSelected = value === context.value;
+    const triggerId = makeTriggerId(context2.baseId, value);
+    const contentId = makeContentId(context2.baseId, value);
+    const isSelected = value === context2.value;
     return /* @__PURE__ */ jsxRuntimeExports.jsx(
-      Item$1,
+      Item$2,
       {
         asChild: true,
         ...rovingFocusGroupScope,
@@ -50490,18 +51262,18 @@ var TabsTrigger$1 = reactExports.forwardRef(
             ref: forwardedRef,
             onMouseDown: composeEventHandlers(props.onMouseDown, (event) => {
               if (!disabled && event.button === 0 && event.ctrlKey === false) {
-                context.onValueChange(value);
+                context2.onValueChange(value);
               } else {
                 event.preventDefault();
               }
             }),
             onKeyDown: composeEventHandlers(props.onKeyDown, (event) => {
-              if ([" ", "Enter"].includes(event.key)) context.onValueChange(value);
+              if ([" ", "Enter"].includes(event.key)) context2.onValueChange(value);
             }),
             onFocus: composeEventHandlers(props.onFocus, () => {
-              const isAutomaticActivation = context.activationMode !== "manual";
+              const isAutomaticActivation = context2.activationMode !== "manual";
               if (!isSelected && !disabled && isAutomaticActivation) {
-                context.onValueChange(value);
+                context2.onValueChange(value);
               }
             })
           }
@@ -50515,10 +51287,10 @@ var CONTENT_NAME = "TabsContent";
 var TabsContent$1 = reactExports.forwardRef(
   (props, forwardedRef) => {
     const { __scopeTabs, value, forceMount, children, ...contentProps } = props;
-    const context = useTabsContext(CONTENT_NAME, __scopeTabs);
-    const triggerId = makeTriggerId(context.baseId, value);
-    const contentId = makeContentId(context.baseId, value);
-    const isSelected = value === context.value;
+    const context2 = useTabsContext(CONTENT_NAME, __scopeTabs);
+    const triggerId = makeTriggerId(context2.baseId, value);
+    const contentId = makeContentId(context2.baseId, value);
+    const isSelected = value === context2.value;
     const isMountAnimationPreventedRef = reactExports.useRef(isSelected);
     reactExports.useEffect(() => {
       const rAF = requestAnimationFrame(() => isMountAnimationPreventedRef.current = false);
@@ -50528,7 +51300,7 @@ var TabsContent$1 = reactExports.forwardRef(
       Primitive.div,
       {
         "data-state": isSelected ? "active" : "inactive",
-        "data-orientation": context.orientation,
+        "data-orientation": context2.orientation,
         role: "tabpanel",
         "aria-labelledby": triggerId,
         hidden: !present,
@@ -50854,7 +51626,7 @@ const maxElapsed = 40;
 function createRenderBatcher(scheduleNextBatch, allowKeepAlive) {
   let runNextFrame = false;
   let useDefaultElapsed = true;
-  const state = {
+  const state2 = {
     delta: 0,
     timestamp: 0,
     isProcessing: false
@@ -50867,22 +51639,22 @@ function createRenderBatcher(scheduleNextBatch, allowKeepAlive) {
   const { setup, read, resolveKeyframes, preUpdate, update, preRender, render, postRender } = steps;
   const processBatch = () => {
     const useManualTiming = MotionGlobalConfig.useManualTiming;
-    const timestamp = useManualTiming ? state.timestamp : performance.now();
+    const timestamp = useManualTiming ? state2.timestamp : performance.now();
     runNextFrame = false;
     if (!useManualTiming) {
-      state.delta = useDefaultElapsed ? 1e3 / 60 : Math.max(Math.min(timestamp - state.timestamp, maxElapsed), 1);
+      state2.delta = useDefaultElapsed ? 1e3 / 60 : Math.max(Math.min(timestamp - state2.timestamp, maxElapsed), 1);
     }
-    state.timestamp = timestamp;
-    state.isProcessing = true;
-    setup.process(state);
-    read.process(state);
-    resolveKeyframes.process(state);
-    preUpdate.process(state);
-    update.process(state);
-    preRender.process(state);
-    render.process(state);
-    postRender.process(state);
-    state.isProcessing = false;
+    state2.timestamp = timestamp;
+    state2.isProcessing = true;
+    setup.process(state2);
+    read.process(state2);
+    resolveKeyframes.process(state2);
+    preUpdate.process(state2);
+    update.process(state2);
+    preRender.process(state2);
+    render.process(state2);
+    postRender.process(state2);
+    state2.isProcessing = false;
     if (runNextFrame && allowKeepAlive) {
       useDefaultElapsed = false;
       scheduleNextBatch(processBatch);
@@ -50891,7 +51663,7 @@ function createRenderBatcher(scheduleNextBatch, allowKeepAlive) {
   const wake = () => {
     runNextFrame = true;
     useDefaultElapsed = true;
-    if (!state.isProcessing) {
+    if (!state2.isProcessing) {
       scheduleNextBatch(processBatch);
     }
   };
@@ -50909,7 +51681,7 @@ function createRenderBatcher(scheduleNextBatch, allowKeepAlive) {
       steps[stepsOrder[i]].cancel(process2);
     }
   };
-  return { schedule, cancel, state, steps };
+  return { schedule, cancel, state: state2, steps };
 }
 const { schedule: frame, cancel: cancelFrame, state: frameData, steps: frameSteps } = /* @__PURE__ */ createRenderBatcher(typeof requestAnimationFrame !== "undefined" ? requestAnimationFrame : noop, true);
 let now;
@@ -51325,10 +52097,10 @@ const maxGeneratorDuration = 2e4;
 function calcGeneratorDuration(generator) {
   let duration2 = 0;
   const timeStep = 50;
-  let state = generator.next(duration2);
-  while (!state.done && duration2 < maxGeneratorDuration) {
+  let state2 = generator.next(duration2);
+  while (!state2.done && duration2 < maxGeneratorDuration) {
     duration2 += timeStep;
-    state = generator.next(duration2);
+    state2 = generator.next(duration2);
   }
   return duration2 >= maxGeneratorDuration ? Infinity : duration2;
 }
@@ -51487,7 +52259,7 @@ function spring(optionsOrVisualDuration = springDefaults.visualDuration, bounce 
   let { restSpeed, restDelta } = options;
   const origin = options.keyframes[0];
   const target = options.keyframes[options.keyframes.length - 1];
-  const state = { done: false, value: origin };
+  const state2 = { done: false, value: origin };
   const { stiffness, damping, mass, duration: duration2, velocity, isResolvedFromDuration } = getSpringOptions({
     ...options,
     velocity: -/* @__PURE__ */ millisecondsToSeconds(options.velocity || 0)
@@ -51548,19 +52320,19 @@ function spring(optionsOrVisualDuration = springDefaults.visualDuration, bounce 
         const cos = Math.cos(angularFreq * t);
         const current2 = target - envelope * (A2 * sin + initialDelta * cos);
         const currentVelocity = /* @__PURE__ */ secondsToMilliseconds(envelope * (sinCoeff * sin + cosCoeff * cos));
-        state.done = Math.abs(currentVelocity) <= restSpeed && Math.abs(target - current2) <= restDelta;
-        state.value = state.done ? target : current2;
-        return state;
+        state2.done = Math.abs(currentVelocity) <= restSpeed && Math.abs(target - current2) <= restDelta;
+        state2.value = state2.done ? target : current2;
+        return state2;
       }
       const current = resolveSpring(t);
       if (!isResolvedFromDuration) {
         const currentVelocity = /* @__PURE__ */ secondsToMilliseconds(resolveVelocity(t));
-        state.done = Math.abs(currentVelocity) <= restSpeed && Math.abs(target - current) <= restDelta;
+        state2.done = Math.abs(currentVelocity) <= restSpeed && Math.abs(target - current) <= restDelta;
       } else {
-        state.done = t >= duration2;
+        state2.done = t >= duration2;
       }
-      state.value = state.done ? target : current;
-      return state;
+      state2.value = state2.done ? target : current;
+      return state2;
     },
     toString: () => {
       const calculatedDuration = Math.min(calcGeneratorDuration(generator), maxGeneratorDuration);
@@ -51586,7 +52358,7 @@ function getGeneratorVelocity(resolveValue, t, current) {
 }
 function inertia({ keyframes: keyframes2, velocity = 0, power = 0.8, timeConstant = 325, bounceDamping = 10, bounceStiffness = 500, modifyTarget, min, max, restDelta = 0.5, restSpeed }) {
   const origin = keyframes2[0];
-  const state = {
+  const state2 = {
     done: false,
     value: origin
   };
@@ -51608,18 +52380,18 @@ function inertia({ keyframes: keyframes2, velocity = 0, power = 0.8, timeConstan
   const applyFriction = (t) => {
     const delta = calcDelta(t);
     const latest = calcLatest(t);
-    state.done = Math.abs(delta) <= restDelta;
-    state.value = state.done ? target : latest;
+    state2.done = Math.abs(delta) <= restDelta;
+    state2.value = state2.done ? target : latest;
   };
   let timeReachedBoundary;
   let spring$1;
   const checkCatchBoundary = (t) => {
-    if (!isOutOfBounds(state.value))
+    if (!isOutOfBounds(state2.value))
       return;
     timeReachedBoundary = t;
     spring$1 = spring({
-      keyframes: [state.value, nearestBoundary(state.value)],
-      velocity: getGeneratorVelocity(calcLatest, t, state.value),
+      keyframes: [state2.value, nearestBoundary(state2.value)],
+      velocity: getGeneratorVelocity(calcLatest, t, state2.value),
       // TODO: This should be passing * 1000
       damping: bounceDamping,
       stiffness: bounceStiffness,
@@ -51641,7 +52413,7 @@ function inertia({ keyframes: keyframes2, velocity = 0, power = 0.8, timeConstan
         return spring$1.next(t - timeReachedBoundary);
       } else {
         !hasUpdatedFrame && applyFriction(t);
-        return state;
+        return state2;
       }
     }
   };
@@ -51709,7 +52481,7 @@ function defaultEasing(values, easing) {
 }
 function keyframes({ duration: duration2 = 300, keyframes: keyframeValues, times, ease: ease2 = "easeInOut" }) {
   const easingFunctions = isEasingArray(ease2) ? ease2.map(easingDefinitionToFunction) : easingDefinitionToFunction(ease2);
-  const state = {
+  const state2 = {
     done: false,
     value: keyframeValues[0]
   };
@@ -51725,9 +52497,9 @@ function keyframes({ duration: duration2 = 300, keyframes: keyframeValues, times
   return {
     calculatedDuration: duration2,
     next: (t) => {
-      state.value = mapTimeToKeyframe(t);
-      state.done = t >= duration2;
-      return state;
+      state2.value = mapTimeToKeyframe(t);
+      state2.done = t >= duration2;
+      return state2;
     }
   };
 }
@@ -51886,31 +52658,31 @@ class JSAnimation extends WithPromise {
       }
       elapsed = clamp(0, 1, iterationProgress) * resolvedDuration;
     }
-    let state;
+    let state2;
     if (isInDelayPhase) {
       this.delayState.value = keyframes2[0];
-      state = this.delayState;
+      state2 = this.delayState;
     } else {
-      state = frameGenerator.next(elapsed);
+      state2 = frameGenerator.next(elapsed);
     }
     if (mixKeyframes && !isInDelayPhase) {
-      state.value = mixKeyframes(state.value);
+      state2.value = mixKeyframes(state2.value);
     }
-    let { done } = state;
+    let { done } = state2;
     if (!isInDelayPhase && calculatedDuration !== null) {
       done = this.playbackSpeed >= 0 ? this.currentTime >= totalDuration : this.currentTime <= 0;
     }
     const isAnimationFinished = this.holdTime === null && (this.state === "finished" || this.state === "running" && done);
     if (isAnimationFinished && type !== inertia) {
-      state.value = getFinalKeyframe(keyframes2, this.options, finalKeyframe, this.speed);
+      state2.value = getFinalKeyframe(keyframes2, this.options, finalKeyframe, this.speed);
     }
     if (onUpdate) {
-      onUpdate(state.value);
+      onUpdate(state2.value);
     }
     if (isAnimationFinished) {
       this.finish();
     }
-    return state;
+    return state2;
   }
   /**
    * Allows the returned animation to be awaited or promise-chained. Currently
@@ -52450,8 +53222,8 @@ class NativeAnimation extends WithPromise {
     if (this.isStopped)
       return;
     this.isStopped = true;
-    const { state } = this;
-    if (state === "idle" || state === "finished") {
+    const { state: state2 } = this;
+    if (state2 === "idle" || state2 === "finished") {
       return;
     }
     if (this.updateMotionValue) {
@@ -53063,12 +53835,12 @@ const animateMotionValue = (name, value, target, transition = {}, element, isHan
   return valueTransition.isSync ? new JSAnimation(options) : new AsyncMotionValueAnimation(options);
 };
 function getValueState(visualElement) {
-  const state = [{}, {}];
+  const state2 = [{}, {}];
   visualElement == null ? void 0 : visualElement.values.forEach((value, key) => {
-    state[0][key] = value.get();
-    state[1][key] = value.getVelocity();
+    state2[0][key] = value.get();
+    state2[1][key] = value.getVelocity();
   });
-  return state;
+  return state2;
 }
 function resolveVariantFromProps(props, definition, custom, visualElement) {
   if (typeof definition === "function") {
@@ -54831,8 +55603,8 @@ function buildTransform(latestValues, transform2, transformTemplate) {
   }
   return transformString;
 }
-function buildHTMLStyles(state, latestValues, transformTemplate) {
-  const { style: style2, vars, transformOrigin: transformOrigin2 } = state;
+function buildHTMLStyles(state2, latestValues, transformTemplate) {
+  const { style: style2, vars, transformOrigin: transformOrigin2 } = state2;
   let hasTransform2 = false;
   let hasTransformOrigin = false;
   for (const key in latestValues) {
@@ -54855,7 +55627,7 @@ function buildHTMLStyles(state, latestValues, transformTemplate) {
   }
   if (!latestValues.transform) {
     if (hasTransform2 || transformTemplate) {
-      style2.transform = buildTransform(latestValues, state.transform, transformTemplate);
+      style2.transform = buildTransform(latestValues, state2.transform, transformTemplate);
     } else if (style2.transform) {
       style2.transform = "none";
     }
@@ -55035,7 +55807,7 @@ const cssMotionPathProperties = [
   "offsetRotate",
   "offsetAnchor"
 ];
-function buildSVGAttrs(state, {
+function buildSVGAttrs(state2, {
   attrX,
   attrY,
   attrScale,
@@ -55045,16 +55817,16 @@ function buildSVGAttrs(state, {
   // This is object creation, which we try to avoid per-frame.
   ...latest
 }, isSVGTag2, transformTemplate, styleProp) {
-  buildHTMLStyles(state, latest, transformTemplate);
+  buildHTMLStyles(state2, latest, transformTemplate);
   if (isSVGTag2) {
-    if (state.style.viewBox) {
-      state.attrs.viewBox = state.style.viewBox;
+    if (state2.style.viewBox) {
+      state2.attrs.viewBox = state2.style.viewBox;
     }
     return;
   }
-  state.attrs = state.style;
-  state.style = {};
-  const { attrs, style: style2 } = state;
+  state2.attrs = state2.style;
+  state2.style = {};
+  const { attrs, style: style2 } = state2;
   if (attrs.transform) {
     style2.transform = attrs.transform;
     delete attrs.transform;
@@ -55162,21 +55934,21 @@ function getVariantContext(visualElement) {
   if (!visualElement)
     return void 0;
   if (!visualElement.isControllingVariants) {
-    const context2 = visualElement.parent ? getVariantContext(visualElement.parent) || {} : {};
+    const context3 = visualElement.parent ? getVariantContext(visualElement.parent) || {} : {};
     if (visualElement.props.initial !== void 0) {
-      context2.initial = visualElement.props.initial;
+      context3.initial = visualElement.props.initial;
     }
-    return context2;
+    return context3;
   }
-  const context = {};
+  const context2 = {};
   for (let i = 0; i < numVariantProps; i++) {
     const name = variantProps[i];
     const prop = visualElement.props[name];
     if (isVariantLabel(prop) || prop === false) {
-      context[name] = prop;
+      context2[name] = prop;
     }
   }
-  return context;
+  return context2;
 }
 function shallowCompare(next, prev) {
   if (!Array.isArray(prev))
@@ -55199,7 +55971,7 @@ function createAnimateFunction(visualElement) {
 }
 function createAnimationState(visualElement) {
   let animate2 = createAnimateFunction(visualElement);
-  let state = createState();
+  let state2 = createState();
   let isInitialRender = true;
   let wasReset = false;
   const buildResolvedTypeValues = (type) => (acc, definition) => {
@@ -55216,20 +55988,20 @@ function createAnimationState(visualElement) {
   }
   function animateChanges(changedActiveType) {
     const { props } = visualElement;
-    const context = getVariantContext(visualElement.parent) || {};
+    const context2 = getVariantContext(visualElement.parent) || {};
     const animations2 = [];
     const removedKeys = /* @__PURE__ */ new Set();
     let encounteredKeys = {};
     let removedVariantIndex = Infinity;
     for (let i = 0; i < numAnimationTypes; i++) {
       const type = reversePriorityOrder[i];
-      const typeState = state[type];
-      const prop = props[type] !== void 0 ? props[type] : context[type];
+      const typeState = state2[type];
+      const prop = props[type] !== void 0 ? props[type] : context2[type];
       const propIsVariant = isVariantLabel(prop);
       const activeDelta = type === changedActiveType ? typeState.isActive : null;
       if (activeDelta === false)
         removedVariantIndex = i;
-      let isInherited = prop === context[type] && prop !== props[type] && propIsVariant;
+      let isInherited = prop === context2[type] && prop !== props[type] && propIsVariant;
       if (isInherited && (isInitialRender || wasReset) && visualElement.manuallyAnimateOnMount) {
         isInherited = false;
       }
@@ -55354,16 +56126,16 @@ function createAnimationState(visualElement) {
   }
   function setActive(type, isActive2) {
     var _a3;
-    if (state[type].isActive === isActive2)
+    if (state2[type].isActive === isActive2)
       return Promise.resolve();
     (_a3 = visualElement.variantChildren) == null ? void 0 : _a3.forEach((child) => {
       var _a4;
       return (_a4 = child.animationState) == null ? void 0 : _a4.setActive(type, isActive2);
     });
-    state[type].isActive = isActive2;
+    state2[type].isActive = isActive2;
     const animations2 = animateChanges(type);
-    for (const key in state) {
-      state[key].protectedKeys = {};
+    for (const key in state2) {
+      state2[key].protectedKeys = {};
     }
     return animations2;
   }
@@ -55371,9 +56143,9 @@ function createAnimationState(visualElement) {
     animateChanges,
     setActive,
     setAnimateFunction,
-    getState: () => state,
+    getState: () => state2,
     reset: () => {
-      state = createState();
+      state2 = createState();
       wasReset = true;
     }
   };
@@ -56983,7 +57755,7 @@ const PresenceChild = ({ children, initial, isPresent, onExitComplete, custom, p
   const presenceChildren = useConstant(newChildrenMap);
   const id2 = reactExports.useId();
   let isReusedContext = true;
-  let context = reactExports.useMemo(() => {
+  let context2 = reactExports.useMemo(() => {
     isReusedContext = false;
     return {
       id: id2,
@@ -57005,7 +57777,7 @@ const PresenceChild = ({ children, initial, isPresent, onExitComplete, custom, p
     };
   }, [isPresent, presenceChildren, onExitComplete]);
   if (presenceAffectsLayout && isReusedContext) {
-    context = { ...context };
+    context2 = { ...context2 };
   }
   reactExports.useMemo(() => {
     presenceChildren.forEach((_2, key) => presenceChildren.set(key, false));
@@ -57014,16 +57786,16 @@ const PresenceChild = ({ children, initial, isPresent, onExitComplete, custom, p
     !isPresent && !presenceChildren.size && onExitComplete && onExitComplete();
   }, [isPresent]);
   children = jsxRuntimeExports.jsx(PopChild, { pop: mode === "popLayout", isPresent, anchorX, anchorY, root: root2, children });
-  return jsxRuntimeExports.jsx(PresenceContext.Provider, { value: context, children });
+  return jsxRuntimeExports.jsx(PresenceContext.Provider, { value: context2, children });
 };
 function newChildrenMap() {
   return /* @__PURE__ */ new Map();
 }
 function usePresence(subscribe2 = true) {
-  const context = reactExports.useContext(PresenceContext);
-  if (context === null)
+  const context2 = reactExports.useContext(PresenceContext);
+  if (context2 === null)
     return [true, null];
-  const { isPresent, onExitComplete, register } = context;
+  const { isPresent, onExitComplete, register } = context2;
   const id2 = reactExports.useId();
   reactExports.useEffect(() => {
     if (subscribe2) {
@@ -57224,7 +57996,7 @@ function filterProps(props, isDom, forwardMotionProps) {
   return filteredProps;
 }
 const MotionContext = /* @__PURE__ */ reactExports.createContext({});
-function getCurrentTreeVariants(props, context) {
+function getCurrentTreeVariants(props, context2) {
   if (isControllingVariants(props)) {
     const { initial, animate: animate2 } = props;
     return {
@@ -57232,7 +58004,7 @@ function getCurrentTreeVariants(props, context) {
       animate: isVariantLabel(animate2) ? animate2 : void 0
     };
   }
-  return props.inherit !== false ? context : {};
+  return props.inherit !== false ? context2 : {};
 }
 function useCreateMotionContext(props) {
   const { initial, animate: animate2 } = getCurrentTreeVariants(props, reactExports.useContext(MotionContext));
@@ -57256,9 +58028,9 @@ function copyRawValuesOnly(target, source, props) {
 }
 function useInitialMotionValues({ transformTemplate }, visualState) {
   return reactExports.useMemo(() => {
-    const state = createHtmlRenderState();
-    buildHTMLStyles(state, visualState, transformTemplate);
-    return Object.assign({}, state.vars, state.style);
+    const state2 = createHtmlRenderState();
+    buildHTMLStyles(state2, visualState, transformTemplate);
+    return Object.assign({}, state2.vars, state2.style);
   }, [visualState]);
 }
 function useStyle(props, visualState) {
@@ -57288,11 +58060,11 @@ const createSvgRenderState = () => ({
 });
 function useSVGProps(props, visualState, _isStatic, Component2) {
   const visualProps = reactExports.useMemo(() => {
-    const state = createSvgRenderState();
-    buildSVGAttrs(state, visualState, isSVGTag(Component2), props.transformTemplate, props.style);
+    const state2 = createSvgRenderState();
+    buildSVGAttrs(state2, visualState, isSVGTag(Component2), props.transformTemplate, props.style);
     return {
-      ...state.attrs,
-      style: { ...state.style }
+      ...state2.attrs,
+      style: { ...state2.style }
     };
   }, [visualState]);
   if (props.style) {
@@ -57366,14 +58138,14 @@ function useRender(Component2, props, ref, { latestValues }, isStatic, forwardMo
     children: renderedChildren
   });
 }
-function makeState({ scrapeMotionValuesFromProps: scrapeMotionValuesFromProps2, createRenderState }, props, context, presenceContext) {
-  const state = {
-    latestValues: makeLatestValues(props, context, presenceContext, scrapeMotionValuesFromProps2),
+function makeState({ scrapeMotionValuesFromProps: scrapeMotionValuesFromProps2, createRenderState }, props, context2, presenceContext) {
+  const state2 = {
+    latestValues: makeLatestValues(props, context2, presenceContext, scrapeMotionValuesFromProps2),
     renderState: createRenderState()
   };
-  return state;
+  return state2;
 }
-function makeLatestValues(props, context, presenceContext, scrapeMotionValues) {
+function makeLatestValues(props, context2, presenceContext, scrapeMotionValues) {
   const values = {};
   const motionValues = scrapeMotionValues(props, {});
   for (const key in motionValues) {
@@ -57382,11 +58154,11 @@ function makeLatestValues(props, context, presenceContext, scrapeMotionValues) {
   let { initial, animate: animate2 } = props;
   const isControllingVariants$1 = isControllingVariants(props);
   const isVariantNode$1 = isVariantNode(props);
-  if (context && isVariantNode$1 && !isControllingVariants$1 && props.inherit !== false) {
+  if (context2 && isVariantNode$1 && !isControllingVariants$1 && props.inherit !== false) {
     if (initial === void 0)
-      initial = context.initial;
+      initial = context2.initial;
     if (animate2 === void 0)
-      animate2 = context.animate;
+      animate2 = context2.animate;
   }
   let isInitialAnimationBlocked = presenceContext ? presenceContext.initial === false : false;
   isInitialAnimationBlocked = isInitialAnimationBlocked || initial === false;
@@ -57416,9 +58188,9 @@ function makeLatestValues(props, context, presenceContext, scrapeMotionValues) {
   return values;
 }
 const makeUseVisualState = (config) => (props, isStatic) => {
-  const context = reactExports.useContext(MotionContext);
+  const context2 = reactExports.useContext(MotionContext);
   const presenceContext = reactExports.useContext(PresenceContext);
-  const make = () => makeState(config, props, context, presenceContext);
+  const make = () => makeState(config, props, context2, presenceContext);
   return isStatic ? make() : useConstant(make);
 };
 const useHTMLVisualState = /* @__PURE__ */ makeUseVisualState({
@@ -57574,15 +58346,15 @@ function createMotionComponent(Component2, { forwardMotionProps = false, type } 
       layoutId: useLayoutId(props)
     };
     const { isStatic } = configAndProps;
-    const context = useCreateMotionContext(props);
+    const context2 = useCreateMotionContext(props);
     const visualState = useVisualState(props, isStatic);
     if (!isStatic && typeof window !== "undefined") {
       useStrictMode();
       const layoutProjection = getProjectionFunctionality(configAndProps);
       MeasureLayout2 = layoutProjection.MeasureLayout;
-      context.visualElement = useVisualElement(Component2, visualState, configAndProps, createVisualElement, layoutProjection.ProjectionNode, isSVG2);
+      context2.visualElement = useVisualElement(Component2, visualState, configAndProps, createVisualElement, layoutProjection.ProjectionNode, isSVG2);
     }
-    return jsxRuntimeExports.jsxs(MotionContext.Provider, { value: context, children: [MeasureLayout2 && context.visualElement ? jsxRuntimeExports.jsx(MeasureLayout2, { visualElement: context.visualElement, ...configAndProps }) : null, useRender(Component2, props, useMotionRef(visualState, context.visualElement, externalRef), visualState, isStatic, forwardMotionProps, isSVG2)] });
+    return jsxRuntimeExports.jsxs(MotionContext.Provider, { value: context2, children: [MeasureLayout2 && context2.visualElement ? jsxRuntimeExports.jsx(MeasureLayout2, { visualElement: context2.visualElement, ...configAndProps }) : null, useRender(Component2, props, useMotionRef(visualState, context2.visualElement, externalRef), visualState, isStatic, forwardMotionProps, isSVG2)] });
   }
   MotionDOMComponent.displayName = `motion.${typeof Component2 === "string" ? Component2 : `create(${Component2.displayName ?? Component2.name ?? ""})`}`;
   const ForwardRefMotionComponent = reactExports.forwardRef(MotionDOMComponent);
@@ -58829,9 +59601,6 @@ const featureBundle = {
   ...layout
 };
 const motion = /* @__PURE__ */ createMotionProxy(featureBundle, createDomVisualElement);
-function useUnmountEffect(callback) {
-  return reactExports.useEffect(() => () => callback(), []);
-}
 function useMotionValue(initial) {
   const value = useConstant(() => motionValue(initial));
   const { isStatic } = reactExports.useContext(MotionConfigContext);
@@ -58897,16 +59666,63 @@ function useReducedMotion() {
   const [shouldReduceMotion] = reactExports.useState(prefersReducedMotion.current);
   return shouldReduceMotion;
 }
-function useReducedMotionConfig() {
-  const reducedMotionPreference = useReducedMotion();
-  const { reducedMotion } = reactExports.useContext(MotionConfigContext);
-  if (reducedMotion === "never") {
-    return false;
-  } else if (reducedMotion === "always") {
-    return true;
+function stopAnimation(visualElement) {
+  visualElement.values.forEach((value) => value.stop());
+}
+function setVariants(visualElement, variantLabels) {
+  const reversedLabels = [...variantLabels].reverse();
+  reversedLabels.forEach((key) => {
+    const variant = visualElement.getVariant(key);
+    variant && setTarget(visualElement, variant);
+    if (visualElement.variantChildren) {
+      visualElement.variantChildren.forEach((child) => {
+        setVariants(child, variantLabels);
+      });
+    }
+  });
+}
+function setValues(visualElement, definition) {
+  if (Array.isArray(definition)) {
+    return setVariants(visualElement, definition);
+  } else if (typeof definition === "string") {
+    return setVariants(visualElement, [definition]);
   } else {
-    return reducedMotionPreference;
+    setTarget(visualElement, definition);
   }
+}
+function animationControls() {
+  const subscribers = /* @__PURE__ */ new Set();
+  const controls = {
+    subscribe(visualElement) {
+      subscribers.add(visualElement);
+      return () => void subscribers.delete(visualElement);
+    },
+    start(definition, transitionOverride) {
+      const animations2 = [];
+      subscribers.forEach((visualElement) => {
+        animations2.push(animateVisualElement(visualElement, definition, {
+          transitionOverride
+        }));
+      });
+      return Promise.all(animations2);
+    },
+    set(definition) {
+      return subscribers.forEach((visualElement) => {
+        setValues(visualElement, definition);
+      });
+    },
+    stop() {
+      subscribers.forEach((visualElement) => {
+        stopAnimation(visualElement);
+      });
+    },
+    mount() {
+      return () => {
+        controls.stop();
+      };
+    }
+  };
+  return controls;
 }
 function isDOMKeyframes(keyframes2) {
   return typeof keyframes2 === "object" && !Array.isArray(keyframes2);
@@ -59255,19 +60071,269 @@ function createScopedAnimate(options = {}) {
   return scopedAnimate;
 }
 const animate = createScopedAnimate();
-function useAnimate() {
-  const scope = useConstant(() => ({
-    current: null,
-    // Will be hydrated by React
-    animations: []
-  }));
-  const reduceMotion = useReducedMotionConfig() ?? void 0;
-  const animate2 = reactExports.useMemo(() => createScopedAnimate({ scope, reduceMotion }), [scope, reduceMotion]);
-  useUnmountEffect(() => {
-    scope.animations.forEach((animation) => animation.stop());
-    scope.animations.length = 0;
+function useAnimationControls() {
+  const controls = useConstant(animationControls);
+  useIsomorphicLayoutEffect(controls.mount, []);
+  return controls;
+}
+const GOLDAO_LEDGER = "tyyy3-4aaaa-aaaaq-aab7a-cai";
+const GOLDAO_ORIGINAL_SUPPLY = 1e9;
+const GOLDAO_FEE_E8S = 1000000000n;
+const ICRC_API$1 = `https://icrc-api.internetcomputer.org/api/v2/ledgers/${GOLDAO_LEDGER}/transactions`;
+const ledgerIdlFactory = ({ IDL: IDL2 }) => {
+  const Account = IDL2.Record({
+    owner: IDL2.Principal,
+    subaccount: IDL2.Opt(IDL2.Vec(IDL2.Nat8))
   });
-  return [scope, animate2];
+  const Burn = IDL2.Record({
+    from: Account,
+    memo: IDL2.Opt(IDL2.Vec(IDL2.Nat8)),
+    created_at_time: IDL2.Opt(IDL2.Nat64),
+    amount: IDL2.Nat,
+    spender: IDL2.Opt(Account)
+  });
+  const Mint = IDL2.Record({
+    to: Account,
+    memo: IDL2.Opt(IDL2.Vec(IDL2.Nat8)),
+    created_at_time: IDL2.Opt(IDL2.Nat64),
+    amount: IDL2.Nat
+  });
+  const Transfer = IDL2.Record({
+    to: Account,
+    fee: IDL2.Opt(IDL2.Nat),
+    from: Account,
+    memo: IDL2.Opt(IDL2.Vec(IDL2.Nat8)),
+    created_at_time: IDL2.Opt(IDL2.Nat64),
+    amount: IDL2.Nat,
+    spender: IDL2.Opt(Account)
+  });
+  const Approve = IDL2.Record({
+    fee: IDL2.Opt(IDL2.Nat),
+    from: Account,
+    memo: IDL2.Opt(IDL2.Vec(IDL2.Nat8)),
+    created_at_time: IDL2.Opt(IDL2.Nat64),
+    amount: IDL2.Nat,
+    expected_allowance: IDL2.Opt(IDL2.Nat),
+    expires_at: IDL2.Opt(IDL2.Nat64),
+    spender: Account
+  });
+  const Transaction = IDL2.Record({
+    burn: IDL2.Opt(Burn),
+    kind: IDL2.Text,
+    mint: IDL2.Opt(Mint),
+    approve: IDL2.Opt(Approve),
+    timestamp: IDL2.Nat64,
+    transfer: IDL2.Opt(Transfer)
+  });
+  const GetTransactionsRequest = IDL2.Record({
+    start: IDL2.Nat,
+    length: IDL2.Nat
+  });
+  const TransactionRange = IDL2.Record({ transactions: IDL2.Vec(Transaction) });
+  const ArchivedRange = IDL2.Record({
+    callback: IDL2.Func([GetTransactionsRequest], [TransactionRange], ["query"]),
+    start: IDL2.Nat,
+    length: IDL2.Nat
+  });
+  const ApproveArgs = IDL2.Record({
+    from_subaccount: IDL2.Opt(IDL2.Vec(IDL2.Nat8)),
+    spender: Account,
+    amount: IDL2.Nat,
+    expected_allowance: IDL2.Opt(IDL2.Nat),
+    expires_at: IDL2.Opt(IDL2.Nat64),
+    fee: IDL2.Opt(IDL2.Nat),
+    memo: IDL2.Opt(IDL2.Vec(IDL2.Nat8)),
+    created_at_time: IDL2.Opt(IDL2.Nat64)
+  });
+  const ApproveError = IDL2.Variant({
+    GenericError: IDL2.Record({ message: IDL2.Text, error_code: IDL2.Nat }),
+    TemporarilyUnavailable: IDL2.Null,
+    Duplicate: IDL2.Record({ duplicate_of: IDL2.Nat }),
+    BadFee: IDL2.Record({ expected_fee: IDL2.Nat }),
+    AllowanceChanged: IDL2.Record({ current_allowance: IDL2.Nat }),
+    CreatedInFuture: IDL2.Record({ ledger_time: IDL2.Nat64 }),
+    TooOld: IDL2.Null,
+    Expired: IDL2.Record({ ledger_time: IDL2.Nat64 }),
+    InsufficientFunds: IDL2.Record({ balance: IDL2.Nat })
+  });
+  const TransferArg = IDL2.Record({
+    to: Account,
+    fee: IDL2.Opt(IDL2.Nat),
+    memo: IDL2.Opt(IDL2.Vec(IDL2.Nat8)),
+    from_subaccount: IDL2.Opt(IDL2.Vec(IDL2.Nat8)),
+    created_at_time: IDL2.Opt(IDL2.Nat64),
+    amount: IDL2.Nat
+  });
+  const TransferError = IDL2.Variant({
+    GenericError: IDL2.Record({ message: IDL2.Text, error_code: IDL2.Nat }),
+    TemporarilyUnavailable: IDL2.Null,
+    BadBurn: IDL2.Record({ min_burn_amount: IDL2.Nat }),
+    Duplicate: IDL2.Record({ duplicate_of: IDL2.Nat }),
+    BadFee: IDL2.Record({ expected_fee: IDL2.Nat }),
+    CreatedInFuture: IDL2.Record({ ledger_time: IDL2.Nat64 }),
+    TooOld: IDL2.Null,
+    InsufficientFunds: IDL2.Record({ balance: IDL2.Nat })
+  });
+  return IDL2.Service({
+    icrc1_balance_of: IDL2.Func([Account], [IDL2.Nat], ["query"]),
+    icrc1_transfer: IDL2.Func(
+      [TransferArg],
+      [IDL2.Variant({ Ok: IDL2.Nat, Err: TransferError })],
+      []
+    ),
+    icrc2_allowance: IDL2.Func(
+      [IDL2.Record({ account: Account, spender: Account })],
+      [IDL2.Record({ allowance: IDL2.Nat, expires_at: IDL2.Opt(IDL2.Nat64) })],
+      ["query"]
+    ),
+    icrc2_approve: IDL2.Func(
+      [ApproveArgs],
+      [IDL2.Variant({ Ok: IDL2.Nat, Err: ApproveError })],
+      []
+    ),
+    icrc1_total_supply: IDL2.Func([], [IDL2.Nat], ["query"]),
+    get_transactions: IDL2.Func(
+      [GetTransactionsRequest],
+      [
+        IDL2.Record({
+          first_index: IDL2.Nat,
+          log_length: IDL2.Nat,
+          transactions: IDL2.Vec(Transaction),
+          archived_transactions: IDL2.Vec(ArchivedRange)
+        })
+      ],
+      ["query"]
+    )
+  });
+};
+let actorPromise$1 = null;
+function getLedger() {
+  if (!actorPromise$1) {
+    actorPromise$1 = HttpAgent.create({ host: "https://icp-api.io" }).then(
+      (agent) => Actor2.createActor(ledgerIdlFactory, {
+        agent,
+        canisterId: GOLDAO_LEDGER
+      })
+    );
+  }
+  return actorPromise$1;
+}
+const gameLedgers = /* @__PURE__ */ new Map();
+function getGameLedger(ledgerId) {
+  if (!ledgerId || ledgerId === GOLDAO_LEDGER) return getLedger();
+  let l2 = gameLedgers.get(ledgerId);
+  if (!l2) {
+    l2 = HttpAgent.create({ host: "https://icp-api.io" }).then(
+      (agent) => Actor2.createActor(ledgerIdlFactory, {
+        agent,
+        canisterId: ledgerId
+      })
+    );
+    gameLedgers.set(ledgerId, l2);
+  }
+  return l2;
+}
+const e8s = (v2) => Number(v2) / 1e8;
+async function fetchTotalSupply() {
+  try {
+    const ledger = await getLedger();
+    return e8s(await ledger.icrc1_total_supply());
+  } catch {
+    return null;
+  }
+}
+async function fetchLastBurn() {
+  var _a3;
+  try {
+    const res = await fetch(
+      `${ICRC_API$1}?limit=1&sort_by=-index&include_kind=burn`
+    );
+    if (!res.ok) return null;
+    const body = await res.json();
+    const tx = (_a3 = body.data) == null ? void 0 : _a3[0];
+    if (!tx) return null;
+    return {
+      index: Number(tx.index),
+      amount: Number(tx.amount) / 1e8,
+      timestamp: Math.floor(Number(tx.timestamp) / 1e6)
+    };
+  } catch {
+    return null;
+  }
+}
+const acct = (p2) => ({
+  owner: Principal$3.fromText(p2),
+  subaccount: []
+});
+async function fetchWalletBalance(owner, ledgerId) {
+  const l2 = await getGameLedger(ledgerId);
+  return l2.icrc1_balance_of(acct(owner));
+}
+async function fetchAllowance(owner, spender, ledgerId) {
+  const l2 = await getGameLedger(ledgerId);
+  const r2 = await l2.icrc2_allowance({
+    account: acct(owner),
+    spender: acct(spender)
+  });
+  return r2.allowance;
+}
+async function signedLedger(identity, ledgerId) {
+  const agent = await HttpAgent$1.create({
+    identity,
+    host: "https://icp-api.io"
+  });
+  return Actor$1.createActor(ledgerIdlFactory, {
+    agent,
+    canisterId: ledgerId || GOLDAO_LEDGER
+  });
+}
+const isCertError = (e2) => /canister ranges|certificate|Lookup status/i.test(
+  e2 instanceof Error ? e2.message : String(e2)
+);
+async function approveSpender(identity, spender, amount, expiresInMs, ledgerId) {
+  const l2 = await signedLedger(identity, ledgerId);
+  const res = await l2.icrc2_approve({
+    from_subaccount: [],
+    spender: acct(spender),
+    amount,
+    expected_allowance: [],
+    expires_at: expiresInMs === void 0 ? [] : [BigInt(Date.now() + expiresInMs) * 1000000n],
+    fee: [],
+    memo: [],
+    created_at_time: []
+  });
+  if ("Err" in res) {
+    throw new Error("The authorization was rejected by the ledger.");
+  }
+}
+async function transferGoldao(identity, to, amount, ledgerId) {
+  const l2 = await signedLedger(identity, ledgerId);
+  const owner = identity.getPrincipal().toText();
+  const before = await fetchWalletBalance(owner, ledgerId);
+  let res;
+  try {
+    res = await l2.icrc1_transfer({
+      to: acct(to),
+      fee: [GOLDAO_FEE_E8S],
+      memo: [],
+      from_subaccount: [],
+      created_at_time: [],
+      amount
+    });
+  } catch (e2) {
+    if (isCertError(e2)) {
+      await new Promise((r2) => setTimeout(r2, 1500));
+      const after = await fetchWalletBalance(owner, ledgerId);
+      if (after < before) return;
+    }
+    throw e2;
+  }
+  if ("Err" in res) {
+    if ("InsufficientFunds" in res.Err) {
+      throw new Error("Insufficient GOLDAO in your wallet.");
+    }
+    throw new Error("The ledger rejected the transfer.");
+  }
 }
 const ink$3 = "text-[color:var(--term-ink)]";
 const inkMid$3 = "text-[color:var(--term-ink-mid)]";
@@ -59276,67 +60342,117 @@ const gold$2 = "text-[color:var(--term-gold)]";
 const panel$1 = "rounded-xl border border-[color:var(--term-border)] bg-[var(--term-card)] backdrop-blur-[2px]";
 const panelHeader = "flex items-center justify-between gap-3 border-b border-[color:var(--term-border)] bg-[var(--term-header)] px-4 py-3 sm:px-5";
 const eyebrow = "font-mono text-[11px] font-semibold uppercase tracking-[0.18em]";
-const AUTO_SAVE_EV = 100;
-const TYPICAL_CUTS_X100 = [13800, 11500, 10200, 8200];
 const DIAMOND_IMG = "/assets/images/diamond.png";
-const E8S = 1e8;
+const CENT = 1000000n;
 function toGoldao(e8s2) {
-  return Number(e8s2) / E8S;
+  return Number(e8s2 / CENT) / 100;
 }
-function fmtGoldao(e8s2, digits = 0) {
-  return toGoldao(e8s2).toLocaleString("en-US", {
-    minimumFractionDigits: digits,
-    maximumFractionDigits: digits
+function fmtCents(cents) {
+  const neg = cents < 0n;
+  const abs = neg ? -cents : cents;
+  const whole = (abs / 100n).toLocaleString("en-US");
+  const frac = abs % 100n;
+  const body = frac === 0n ? whole : `${whole}.${frac.toString().padStart(2, "0")}`;
+  return neg ? `-${body}` : body;
+}
+function fmtGoldao(e8s2) {
+  return fmtCents(e8s2 / CENT);
+}
+function plainGoldao(e8s2) {
+  const whole = e8s2 / 100000000n;
+  const frac = (e8s2 % 100000000n).toString().padStart(8, "0").replace(/0+$/, "");
+  return frac ? `${whole}.${frac}` : `${whole}`;
+}
+const TX_EXPLORER_URL = "https://dashboard.internetcomputer.org/sns/tw2vt-hqaaa-aaaaq-aab6a-cai/transaction/";
+function txUrl(id2) {
+  return `${TX_EXPLORER_URL}${id2.toString()}`;
+}
+function fmtGoldao2(e8s2) {
+  return fmtFixedCents(e8s2 / CENT);
+}
+function fmtFixed2Number(value) {
+  return fmtFixedCents(BigInt(Math.round(value * 100)));
+}
+function fmtFixedCents(cents) {
+  const abs = cents < 0n ? -cents : cents;
+  const body = `${(abs / 100n).toLocaleString("en-US")}.${(abs % 100n).toString().padStart(2, "0")}`;
+  return cents < 0n ? `-${body}` : body;
+}
+function fmtPct1(part, whole) {
+  if (whole <= 0n) return "0.0";
+  const tenths = part * 1000n / whole;
+  return `${(tenths / 10n).toLocaleString("en-US")}.${tenths % 10n}`;
+}
+function fmtGoldaoNumber(value) {
+  return fmtCents(BigInt(Math.round(value * 100)));
+}
+function fmtCountdown(endsAtNs) {
+  const ms = Number(endsAtNs / 1000000n) - Date.now();
+  if (ms <= 0) return "Closing";
+  const m2 = Math.floor(ms / 6e4);
+  const d2 = Math.floor(m2 / 1440);
+  const h2 = Math.floor(m2 % 1440 / 60);
+  if (d2 > 0) return `${d2}d ${h2}h`;
+  if (h2 > 0) return `${h2}h ${m2 % 60}m`;
+  return `${m2}m`;
+}
+function fmtDate(ns) {
+  return new Date(Number(ns / 1000000n)).toLocaleString("en-US", {
+    dateStyle: "medium",
+    timeStyle: "short"
   });
 }
-function fmtAvg(x100) {
-  return (Number(x100) / 100).toLocaleString("en-US", {
-    minimumFractionDigits: 1,
-    maximumFractionDigits: 1
-  });
+const STAKE_LABELS = ["Min", "Mid", "Max"];
+const PAYOUT_BPS = 9250;
+function multX100(points, bps = PAYOUT_BPS) {
+  return Math.floor(points * bps / 1e4);
 }
+function fmtMultX100(m2) {
+  return `${Math.floor(m2 / 100)}.${String(m2 % 100).padStart(2, "0")}x`;
+}
+function fmtMult(points, bps = PAYOUT_BPS) {
+  return fmtMultX100(multX100(points, bps));
+}
+function fmtMultOf(gross, stake) {
+  return fmtMultX100(stake > 0n ? Number(gross * 100n / stake) : 0);
+}
+function collapsePoints(points) {
+  return Math.floor((points + 1) / 2);
+}
+const GOLD_DUST = {
+  name: "Gold dust",
+  icon: Sparkles,
+  pill: "bg-[oklch(0.85_0.1_85)] text-[oklch(0.36_0.07_70)] border-[oklch(0.78_0.1_82)]"
+};
+const INGOT = {
+  name: "Ingot",
+  icon: Box,
+  pill: "bg-[oklch(0.74_0.14_80)] text-[oklch(0.25_0.05_70)] border-[oklch(0.68_0.14_78)]"
+};
+const TREASURE = {
+  name: "Treasure",
+  icon: Trophy,
+  pill: "bg-[oklch(0.6_0.13_70)] text-[oklch(0.98_0.02_85)] border-[oklch(0.55_0.13_70)]"
+};
+const TREASURE_MIN_PICKS = 6;
+function prizeName(picks) {
+  if (picks >= TREASURE_MIN_PICKS) return TREASURE;
+  if (picks >= 4) return INGOT;
+  return GOLD_DUST;
+}
+function netOf(row) {
+  return row.returned + row.jackpotWon - row.staked;
+}
+const MAX_PICKS = 10;
+function fmtSigned(e8s2) {
+  const cents = e8s2 / CENT;
+  const sign = cents > 0n ? "+" : cents < 0n ? "-" : "";
+  return `${sign}${fmtCents(cents < 0n ? -cents : cents)}`;
+}
+const AUTHORIZE_GOLDAO = 1e4;
+const AUTHORIZE_DAYS = 7;
 function shortPrincipal(p2) {
   return p2.length > 14 ? `${p2.slice(0, 5)}…${p2.slice(-5)}` : p2;
-}
-const TIERS = [
-  {
-    name: "Treasure",
-    icon: Trophy,
-    pct: 5,
-    payout: "≈2.6x",
-    pill: "bg-[oklch(0.6_0.13_70)] text-[oklch(0.98_0.02_85)] border-[oklch(0.55_0.13_70)]"
-  },
-  {
-    name: "Ingot",
-    icon: Box,
-    pct: 15,
-    payout: "1.25x",
-    pill: "bg-[oklch(0.74_0.14_80)] text-[oklch(0.25_0.05_70)] border-[oklch(0.68_0.14_78)]"
-  },
-  {
-    name: "Nugget",
-    icon: CircleDot,
-    pct: 25,
-    payout: "1.15x",
-    pill: "bg-[oklch(0.85_0.1_85)] text-[oklch(0.36_0.07_70)] border-[oklch(0.78_0.1_82)]"
-  },
-  {
-    name: "Gold dust",
-    icon: Sparkles,
-    pct: 35,
-    payout: "1x",
-    pill: "bg-[oklch(0.8_0.1_85/0.16)] text-[color:var(--term-gold)] border-[oklch(0.72_0.12_82/0.45)]"
-  },
-  {
-    name: "Rock",
-    icon: Mountain,
-    pct: 20,
-    payout: "0",
-    pill: "bg-[oklch(0.6_0.01_80/0.14)] text-[color:var(--term-ink-mid)] border-[oklch(0.6_0.01_80/0.35)]"
-  }
-];
-function tierOf(index2) {
-  return TIERS[Math.min(4, Math.max(0, Number(index2)))];
 }
 const TOKENS = {
   GLDT: {
@@ -59367,14 +60483,199 @@ function tokenForPick(pick) {
   const order = ["GLDT", "ICP", "OGY", "GOLDAO"];
   return order[Math.min(3, Math.floor((pick - 1) / 2))];
 }
-const STRATEGY_GUIDE = [
-  { saveAt: 3, odds: [0, 1, 45, 47, 7] },
-  { saveAt: 4, odds: [0, 20, 21, 48, 11] },
-  { saveAt: 5, odds: [2, 16, 25, 35, 22] },
-  { saveAt: 6, odds: [6, 17, 32, 23, 22] },
-  { saveAt: 7, odds: [10, 24, 6, 37, 23] },
-  { saveAt: 8, odds: [12, 12, 22, 20, 34] }
-];
+function ConfirmDialog({
+  title,
+  detail,
+  word,
+  busy,
+  onCancel,
+  onConfirm
+}) {
+  const [typed, setTyped] = reactExports.useState("");
+  return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex w-full max-w-md flex-col gap-4 rounded-xl border border-[color:var(--term-border)] bg-card text-card-foreground shadow-2xl p-6", children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: cn("font-display text-lg font-semibold", ink$3), children: title }),
+    /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: cn("text-sm", inkMid$3), children: detail }),
+    word && /* @__PURE__ */ jsxRuntimeExports.jsxs("label", { className: "flex flex-col gap-1.5", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: cn("font-mono text-[11px]", inkFaint$2), children: [
+        "Type ",
+        word,
+        " to continue"
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx(
+        "input",
+        {
+          value: typed,
+          onChange: (e2) => setTyped(e2.target.value),
+          autoComplete: "off",
+          className: "rounded-md border border-[color:var(--term-border)] bg-transparent px-3 py-1.5 font-mono text-sm"
+        }
+      )
+    ] }),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex justify-end gap-3", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx(Button, { variant: "outline", onClick: onCancel, children: "Cancel" }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx(
+        Button,
+        {
+          disabled: !!busy || !!word && typed !== word,
+          className: "gradient-primary text-primary-foreground",
+          onClick: onConfirm,
+          children: "Confirm"
+        }
+      )
+    ] })
+  ] }) });
+}
+function CopyField({ label, value }) {
+  const [copied, setCopied] = reactExports.useState(false);
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1500);
+    } catch {
+      setCopied(false);
+    }
+  };
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-col gap-1.5", children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: cn("font-mono text-[11px]", inkFaint$2), children: label }),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-wrap items-center gap-2", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx(
+        "code",
+        {
+          className: cn(
+            "max-w-full break-all rounded-md border border-[color:var(--term-border)] px-3 py-1.5 font-mono text-xs",
+            inkMid$3
+          ),
+          children: value
+        }
+      ),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs(
+        Button,
+        {
+          size: "sm",
+          variant: "outline",
+          onClick: () => void copy(),
+          className: "gap-1.5",
+          children: [
+            copied ? /* @__PURE__ */ jsxRuntimeExports.jsx(Check, { className: "size-3.5" }) : /* @__PURE__ */ jsxRuntimeExports.jsx(Copy, { className: "size-3.5" }),
+            copied ? "Copied" : "Copy"
+          ]
+        }
+      )
+    ] })
+  ] });
+}
+function Spinner({ className }) {
+  return /* @__PURE__ */ jsxRuntimeExports.jsx(
+    "span",
+    {
+      role: "status",
+      "aria-label": "Loading",
+      className: cn(
+        "inline-block size-[max(0.7em,10px)] animate-spin rounded-full border-[max(0.1em,1.5px)] border-current border-t-transparent align-middle opacity-50",
+        className
+      )
+    }
+  );
+}
+function BoardLoader() {
+  const [slow, setSlow] = reactExports.useState(false);
+  reactExports.useEffect(() => {
+    const t = window.setTimeout(() => setSlow(true), 1e4);
+    return () => window.clearTimeout(t);
+  }, []);
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs(
+    "output",
+    {
+      "aria-label": "Loading",
+      className: "absolute inset-0 z-[6] flex flex-col items-center justify-center gap-3 rounded-lg bg-[var(--term-card)]/75 backdrop-blur-[2px]",
+      children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "size-16 animate-spin rounded-full border-4 border-[color:var(--term-gold)] border-t-transparent sm:size-20" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "font-mono text-xs text-[color:var(--term-gold)]", children: slow ? "Still loading. Check your connection." : "Loading your mine" })
+      ]
+    }
+  );
+}
+const TEST_TOKEN_LABEL = "GOLDAO TEST";
+function isTestLedger(config) {
+  return !!config && !!config.ledgerId && config.ledgerId !== GOLDAO_LEDGER;
+}
+const EMPTY = {
+  owner: null,
+  exc: null,
+  cells: {},
+  digging: null,
+  result: null,
+  error: null,
+  notice: null,
+  stake: 0,
+  jackpot: null,
+  jackpotKind: "none",
+  auto: null,
+  rain: 0,
+  skipRestoreUntil: 0,
+  hold: false,
+  heldBalance: null,
+  inPlay: 0n,
+  treasure: null,
+  working: false,
+  autoRun: false
+};
+let state = EMPTY;
+const listeners = /* @__PURE__ */ new Set();
+function subscribe(listener) {
+  listeners.add(listener);
+  return () => {
+    listeners.delete(listener);
+  };
+}
+function getBoard() {
+  return state;
+}
+function setBoard(patch) {
+  const next = typeof patch === "function" ? patch(state) : patch;
+  state = { ...state, ...next };
+  for (const l2 of listeners) l2();
+}
+function resetBoard(owner) {
+  state = { ...EMPTY, owner, stake: state.stake };
+  for (const l2 of listeners) l2();
+}
+function useBoard() {
+  return reactExports.useSyncExternalStore(subscribe, getBoard, getBoard);
+}
+const STORAGE_KEY$1 = "goldao.game.board";
+function saveBoardCells(owner, tournament, excNo, cells) {
+  try {
+    const data = {
+      owner,
+      tournament: String(tournament),
+      excNo,
+      cells
+    };
+    localStorage.setItem(STORAGE_KEY$1, JSON.stringify(data));
+  } catch {
+  }
+}
+function clearBoardCells() {
+  try {
+    localStorage.removeItem(STORAGE_KEY$1);
+  } catch {
+  }
+}
+function loadBoardCells(owner, tournament, excNo) {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY$1);
+    if (!raw) return null;
+    const data = JSON.parse(raw);
+    if (data.owner !== owner || data.tournament !== String(tournament) || data.excNo !== excNo) {
+      return null;
+    }
+    return data.cells ?? null;
+  } catch {
+    return null;
+  }
+}
 const KEY = "game";
 function useGameConfig() {
   const { actor } = useAuth();
@@ -59387,9 +60688,19 @@ function useGameConfig() {
 }
 function useDashboard() {
   const { actor, isAuthenticated, principalId } = useAuth();
+  const queryClient2 = useQueryClient();
   return useQuery({
     queryKey: [KEY, "dashboard", principalId],
-    queryFn: () => actor.gameMyDashboard(),
+    queryFn: async () => {
+      const fresh = await actor.gameMyDashboard();
+      if (!getBoard().hold) return fresh;
+      const shown = queryClient2.getQueryData([
+        KEY,
+        "dashboard",
+        principalId
+      ]);
+      return shown ? { ...fresh, credit: shown.credit, pool: shown.pool } : fresh;
+    },
     enabled: !!actor && isAuthenticated && !!principalId,
     refetchInterval: 2e4
   });
@@ -59403,14 +60714,25 @@ function useRanking() {
     refetchInterval: 2e4
   });
 }
-function useWeeks() {
+function useBurned() {
   const { actor } = useAuth();
   return useQuery({
-    queryKey: [KEY, "weeks"],
-    queryFn: () => actor.gameWeeks(),
+    queryKey: [KEY, "burned"],
+    queryFn: () => actor.gameBurned(),
+    enabled: !!actor,
+    refetchInterval: 15e3
+  });
+}
+function useTournaments() {
+  const { actor } = useAuth();
+  return useQuery({
+    queryKey: [KEY, "tournaments"],
+    queryFn: () => actor.gameTournaments(),
     enabled: !!actor,
     staleTime: 6e4
   });
+}
+class NotAdminError extends Error {
 }
 function useAdminView(enabled) {
   const { actor, principalId } = useAuth();
@@ -59418,20 +60740,76 @@ function useAdminView(enabled) {
     queryKey: [KEY, "admin", principalId],
     queryFn: async () => {
       const res = await actor.gameAdminView();
+      if (res.__kind__ === "err") throw new NotAdminError(res.err);
+      return res.ok;
+    },
+    enabled: !!actor && enabled,
+    // Non-admins get an answer once and polling stops. A network failure is retried, and
+    // polling goes on, so an admin never loses the tab because of one bad request.
+    refetchInterval: (q2) => q2.state.error instanceof NotAdminError ? false : 3e4,
+    retry: (count2, error) => !(error instanceof NotAdminError) && count2 < 3
+  });
+}
+function useSecurityView(enabled) {
+  const { actor, principalId } = useAuth();
+  return useQuery({
+    queryKey: [KEY, "security", principalId],
+    queryFn: async () => {
+      const res = await actor.gameAdminSecurity();
       if (res.__kind__ === "err") throw new Error(res.err);
       return res.ok;
     },
     enabled: !!actor && enabled,
-    // Non-admins get an error once; stop polling in that case.
+    refetchInterval: (q2) => q2.state.status === "error" ? false : 15e3,
+    retry: false
+  });
+}
+function useSecurityLog(day, enabled) {
+  const { actor, principalId } = useAuth();
+  return useQuery({
+    queryKey: [KEY, "security-log", principalId, day],
+    queryFn: async () => {
+      const res = await actor.gameAdminSecurityLog(BigInt(day));
+      if (res.__kind__ === "err") throw new Error(res.err);
+      return res.ok;
+    },
+    enabled: !!actor && enabled,
+    refetchInterval: (q2) => q2.state.status === "error" ? false : 3e4,
+    retry: false
+  });
+}
+function usePayouts(tournament) {
+  const { actor, principalId } = useAuth();
+  return useQuery({
+    queryKey: [KEY, "payouts", principalId, tournament],
+    queryFn: async () => {
+      const res = await actor.gameAdminPayouts(BigInt(tournament ?? 0));
+      if (res.__kind__ === "err") throw new Error(res.err);
+      return res.ok;
+    },
+    enabled: !!actor && tournament !== null,
     refetchInterval: (q2) => q2.state.status === "error" ? false : 3e4,
     retry: false
   });
 }
 function useGameAction() {
   const queryClient2 = useQueryClient();
-  const [pending, setPending] = reactExports.useState(null);
+  const [pending2, setPending] = reactExports.useState(null);
+  const refresh = reactExports.useCallback(
+    (scope) => {
+      if (scope === "all") {
+        return queryClient2.invalidateQueries({ queryKey: [KEY] });
+      }
+      return Promise.all([
+        queryClient2.invalidateQueries({ queryKey: [KEY, "dashboard"] }),
+        queryClient2.invalidateQueries({ queryKey: [KEY, "ranking"] }),
+        queryClient2.invalidateQueries({ queryKey: [KEY, "wallet"] })
+      ]);
+    },
+    [queryClient2]
+  );
   const run = reactExports.useCallback(
-    async (name, call, refresh = true) => {
+    async (name, call, scope = "live") => {
       setPending(name);
       try {
         const res = await call();
@@ -59439,16 +60817,40 @@ function useGameAction() {
         return res.ok;
       } finally {
         setPending(null);
-        if (refresh) void queryClient2.invalidateQueries({ queryKey: [KEY] });
+        if (scope) void refresh(scope);
       }
+    },
+    [refresh]
+  );
+  const refreshAll = reactExports.useCallback(() => refresh("live"), [refresh]);
+  const setOpenExcavation = reactExports.useCallback(
+    async (open) => {
+      await queryClient2.cancelQueries({ queryKey: [KEY, "dashboard"] });
+      queryClient2.setQueriesData(
+        { queryKey: [KEY, "dashboard"] },
+        (old) => old ? { ...old, open: open ?? void 0 } : old
+      );
     },
     [queryClient2]
   );
-  const refreshAll = reactExports.useCallback(
-    () => queryClient2.invalidateQueries({ queryKey: [KEY] }),
+  const setCredit = reactExports.useCallback(
+    async (credit, pool) => {
+      await Promise.all([
+        queryClient2.cancelQueries({ queryKey: [KEY, "dashboard"] }),
+        queryClient2.cancelQueries({ queryKey: [KEY, "ranking"] })
+      ]);
+      queryClient2.setQueriesData(
+        { queryKey: [KEY, "dashboard"] },
+        (old) => old ? { ...old, credit, pool } : old
+      );
+      queryClient2.setQueriesData(
+        { queryKey: [KEY, "ranking"] },
+        (old) => old ? { ...old, pool } : old
+      );
+    },
     [queryClient2]
   );
-  return { run, pending, refreshAll };
+  return { run, pending: pending2, refreshAll, setOpenExcavation, setCredit };
 }
 function errorMessage(e2) {
   if (e2 instanceof Error) {
@@ -59457,689 +60859,1540 @@ function errorMessage(e2) {
   }
   return "Something went wrong. Try again.";
 }
-function PlayerDashboard({ dashboard }) {
-  const { data: config } = useGameConfig();
-  const excPerChip = config ? Number(config.excavationsPerChip) : 5;
-  if (!dashboard) {
-    return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: cn(panel$1, "p-8 text-center text-sm", inkFaint$2), children: "Sign in to see your week." });
-  }
-  const paid = Number(dashboard.paid);
-  const receive = Number(dashboard.estimatedReceive);
-  const net = receive - paid;
-  const totalDiamonds = Number(dashboard.totalDiamonds);
-  const myDiamonds = Number(dashboard.diamonds);
-  const drawChance = totalDiamonds > 0 ? myDiamonds / totalDiamonds * 100 : 0;
-  const hasChips = dashboard.chips.length > 0;
-  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-col gap-6", children: [
-    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6", children: [
-      TIERS.map((t, i) => /* @__PURE__ */ jsxRuntimeExports.jsxs(
-        motion.div,
+function ModeStatusCard({
+  view,
+  config
+}) {
+  const test2 = isTestLedger(config);
+  const real = !!(config == null ? void 0 : config.realLedger);
+  const { actor } = useAuth();
+  const queryClient2 = useQueryClient();
+  const [asking, setAsking] = reactExports.useState(false);
+  const [working, setWorking] = reactExports.useState(false);
+  const [msg, setMsg] = reactExports.useState(null);
+  const [connectErr, setConnectErr] = reactExports.useState(null);
+  reactExports.useEffect(() => {
+    if (!actor || !config || config.realLedger) return;
+    void actor.gameAdminEnsureConnected().then((r2) => {
+      setConnectErr("err" in r2 ? r2.err : null);
+      void queryClient2.invalidateQueries({ queryKey: ["game"] });
+    }).catch((e2) => setConnectErr(errorMessage(e2)));
+  }, [actor, config, queryClient2]);
+  const changeLedger = async () => {
+    if (!actor || working) return;
+    setMsg(null);
+    setWorking(true);
+    try {
+      const res = await actor.gameAdminChangeLedger();
+      if (res.__kind__ === "err") throw new Error(res.err);
+      await queryClient2.invalidateQueries({ queryKey: ["game"] });
+      setMsg({
+        ok: true,
+        text: `Ledger changed. Bank is ${fmtGoldao(res.ok)} GOLDAO.`
+      });
+    } catch (e2) {
+      setMsg({ ok: false, text: errorMessage(e2) });
+    } finally {
+      setWorking(false);
+    }
+  };
+  const envQuery = useQuery({
+    queryKey: ["game", "spender"],
+    queryFn: async () => (await loadEnv()).backend_canister_id ?? "",
+    staleTime: Number.POSITIVE_INFINITY
+  });
+  const gameAccount = envQuery.data && envQuery.data !== "undefined" ? envQuery.data : "";
+  const pool = useQuery({
+    queryKey: ["game", "faucet-pool", gameAccount, config == null ? void 0 : config.ledgerId],
+    queryFn: () => fetchWalletBalance(gameAccount, config == null ? void 0 : config.ledgerId),
+    enabled: test2 && !!gameAccount,
+    refetchInterval: 3e4,
+    retry: false
+  });
+  const unpaid = view ? view.payouts.filter((p2) => !p2.paid).length : 0;
+  const checks = view ? [
+    { ok: view.paused, text: "The game is paused" },
+    { ok: view.owed === 0n, text: "Nothing is owed to players" },
+    { ok: unpaid === 0, text: "There are no pending payouts" }
+  ] : [];
+  const pill = !config ? null : !real ? {
+    text: "NOT CONNECTED",
+    cls: "border-[color:var(--term-border)] text-[color:var(--term-ink-faint)]"
+  } : test2 ? {
+    text: TEST_TOKEN_LABEL,
+    cls: "border-[color:var(--term-gold)] text-[color:var(--term-gold)]"
+  } : {
+    text: "PRODUCTION",
+    cls: "border-[color:var(--term-green)] text-[color:var(--term-green)]"
+  };
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: panel$1, children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: panelHeader, children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: cn(eyebrow, gold$2, "flex items-center gap-2"), children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx(FlaskConical, { className: "size-3.5" }),
+        " Ledger mode"
+      ] }),
+      pill ? /* @__PURE__ */ jsxRuntimeExports.jsx(
+        "span",
         {
-          initial: { opacity: 0, y: 10 },
-          animate: { opacity: 1, y: 0 },
-          transition: { delay: i * 0.05 },
-          className: cn(panel$1, "flex flex-col gap-2 p-4"),
-          children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsxs(
-              "span",
-              {
-                className: cn(
-                  "inline-flex w-fit items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium",
-                  t.pill
-                ),
-                children: [
-                  /* @__PURE__ */ jsxRuntimeExports.jsx(t.icon, { className: "size-3" }),
-                  t.name
-                ]
-              }
-            ),
-            /* @__PURE__ */ jsxRuntimeExports.jsx(
-              "span",
-              {
-                className: cn(
-                  "font-display text-3xl font-semibold tabular-nums",
-                  ink$3
-                ),
-                children: Number(dashboard.tiers[i] ?? 0n)
-              }
-            ),
-            /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: cn("font-mono text-[10px]", inkFaint$2), children: [
-              t.pct,
-              "% of chips · ",
-              t.payout
-            ] })
-          ]
-        },
-        t.name
-      )),
-      /* @__PURE__ */ jsxRuntimeExports.jsxs(
-        motion.div,
-        {
-          initial: { opacity: 0, y: 10 },
-          animate: { opacity: 1, y: 0 },
-          transition: { delay: 0.25 },
-          className: cn(panel$1, "flex flex-col gap-2 p-4"),
-          children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsxs(
-              "span",
-              {
-                className: cn(
-                  "flex items-center gap-1 text-[11px] font-medium",
-                  DIAMOND_TEXT
-                ),
-                children: [
-                  /* @__PURE__ */ jsxRuntimeExports.jsx(Gem, { className: "size-3" }),
-                  " Diamonds"
-                ]
-              }
-            ),
-            /* @__PURE__ */ jsxRuntimeExports.jsx(
-              "span",
-              {
-                className: cn(
-                  "font-display text-3xl font-semibold tabular-nums",
-                  DIAMOND_TEXT
-                ),
-                children: myDiamonds
-              }
-            ),
-            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: cn("font-mono text-[10px]", inkFaint$2), children: drawChance > 0 ? `${drawChance.toFixed(1)}% draw chance` : "No tickets yet" })
-          ]
+          className: cn(
+            "rounded-md border px-2 py-0.5 font-mono text-[11px] font-semibold",
+            pill.cls
+          ),
+          children: pill.text
         }
-      )
+      ) : /* @__PURE__ */ jsxRuntimeExports.jsx(Spinner, {})
     ] }),
-    /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: cn("-mt-3 font-mono text-[11px]", inkFaint$2), children: "Prizes are provisional until the weekly close." }),
-    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "grid gap-4 lg:grid-cols-2", children: [
-      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: panel$1, children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: panelHeader, children: /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: cn(eyebrow, gold$2, "flex items-center gap-2"), children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx(LayoutDashboard, { className: "size-3.5" }),
-          " This week"
-        ] }) }),
-        /* @__PURE__ */ jsxRuntimeExports.jsxs("dl", { className: "grid grid-cols-2 gap-y-4 p-5 font-mono text-sm", children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx(Row$1, { label: "Spent", value: `${fmtGoldao(dashboard.paid)} GOLDAO` }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx(
-            Row$1,
-            {
-              label: "Payout so far",
-              value: `${fmtGoldao(dashboard.estimatedReceive)} GOLDAO`
-            }
-          ),
-          /* @__PURE__ */ jsxRuntimeExports.jsx(
-            Row$1,
-            {
-              label: "Net result",
-              value: /* @__PURE__ */ jsxRuntimeExports.jsxs(
-                "span",
-                {
-                  className: cn(
-                    "flex items-center gap-1",
-                    net > 0 ? "text-[color:var(--term-green)]" : net < 0 ? "text-destructive" : inkMid$3
-                  ),
-                  children: [
-                    net > 0 ? /* @__PURE__ */ jsxRuntimeExports.jsx(TrendingUp, { className: "size-3.5" }) : net < 0 ? /* @__PURE__ */ jsxRuntimeExports.jsx(TrendingDown, { className: "size-3.5" }) : null,
-                    net > 0 ? "+" : "",
-                    (net / 1e8).toLocaleString("en-US", {
-                      maximumFractionDigits: 0
-                    })
-                  ]
-                }
-              )
-            }
-          ),
-          /* @__PURE__ */ jsxRuntimeExports.jsx(Row$1, { label: "Chips", value: String(dashboard.chips.length) })
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-col gap-4 p-5", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: cn("text-xs", inkMid$3), children: !config ? "Loading" : !real ? `The game is connecting to ${test2 ? TEST_TOKEN_LABEL : "the real GOLDAO"} by itself. If it stays like this, the ledger is unreachable or this canister has no bank configured in the backend.` : test2 ? `The game runs on the ${TEST_TOKEN_LABEL} ledger. These tokens have no value and the test faucet is available.` : "The game runs on the real GOLDAO ledger. The test faucet is not available." }),
+      !real && connectErr && /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "font-mono text-xs text-destructive", children: [
+        "Could not connect: ",
+        connectErr
+      ] }),
+      config && /* @__PURE__ */ jsxRuntimeExports.jsxs("dl", { className: "grid gap-3 font-mono text-xs sm:grid-cols-2", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-col gap-1", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("dt", { className: inkFaint$2, children: "Ledger" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("dd", { className: "break-all", children: config.ledgerId })
+        ] }),
+        test2 && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-col gap-1", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("dt", { className: inkFaint$2, children: "Faucet pool" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("dd", { children: pool.isError ? "unavailable" : pool.data === void 0 ? /* @__PURE__ */ jsxRuntimeExports.jsx(Spinner, {}) : `${fmtGoldao(pool.data)} ${TEST_TOKEN_LABEL}` })
         ] })
       ] }),
-      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: panel$1, children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: panelHeader, children: /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: cn(eyebrow, gold$2, "flex items-center gap-2"), children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx(Trophy, { className: "size-3.5" }),
-          " Records"
-        ] }) }),
-        /* @__PURE__ */ jsxRuntimeExports.jsxs("dl", { className: "grid grid-cols-2 gap-y-4 p-5 font-mono text-sm", children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx(
-            Row$1,
+      test2 && gameAccount && /* @__PURE__ */ jsxRuntimeExports.jsx(
+        CopyField,
+        {
+          label: `Game account: send ${TEST_TOKEN_LABEL} here to refill the faucet`,
+          value: gameAccount
+        }
+      ),
+      checks.length > 0 && (test2 || !real) && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-col gap-2", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: cn(eyebrow, inkFaint$2), children: "Before switching ledger" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("ul", { className: "flex flex-col gap-1 font-mono text-xs", children: checks.map((c2) => /* @__PURE__ */ jsxRuntimeExports.jsxs("li", { className: "flex items-center gap-2", children: [
+          c2.ok ? /* @__PURE__ */ jsxRuntimeExports.jsx(Check, { className: "size-3.5 text-[color:var(--term-green)]" }) : /* @__PURE__ */ jsxRuntimeExports.jsx(X, { className: "size-3.5 text-destructive" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: c2.ok ? void 0 : inkFaint$2, children: c2.text })
+        ] }, c2.text)) })
+      ] }),
+      real && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-col gap-2", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: cn(eyebrow, inkFaint$2), children: "Change ledger" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: cn("text-[11px]", inkFaint$2), children: "Moves the game to the ledger set in the backend code. It checks the fee and the symbol, reads the bank balance and erases all game data. Only the bank wallet can do it, with the game paused." }),
+        test2 && /* @__PURE__ */ jsxRuntimeExports.jsxs(
+          "ol",
+          {
+            className: cn(
+              "list-decimal space-y-1 pl-5 font-mono text-[11px]",
+              inkMid$3
+            ),
+            children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("li", { children: "With MODE still #test: pause new excavations, wait for the tournament to close and pay or mark as paid every payout." }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("li", { children: "Withdraw everything (all) to the treasury. Owed, credits and open excavations must be zero." }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("li", { children: "Deploy with MODE = #production and without the test faucet files. Nothing changes in the game until step 4." }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("li", { children: 'Press "Change ledger" here. The game stays paused: fund the jackpot pool, check the bank balance and the ledger id, then resume.' })
+            ]
+          }
+        ),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-wrap items-center gap-3", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsxs(
+            Button,
             {
-              label: "Best excavation",
-              value: `${Number(dashboard.stats.best)} pts`
+              variant: "outline",
+              disabled: working || !actor,
+              onClick: () => setAsking(true),
+              children: [
+                working ? /* @__PURE__ */ jsxRuntimeExports.jsx(Spinner, {}) : null,
+                "Change ledger"
+              ]
             }
           ),
-          /* @__PURE__ */ jsxRuntimeExports.jsx(
-            Row$1,
+          msg && /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "span",
             {
-              label: "Deepest pick",
-              value: String(Number(dashboard.stats.deepest))
-            }
-          ),
-          /* @__PURE__ */ jsxRuntimeExports.jsx(
-            Row$1,
-            {
-              label: "Collapses",
-              value: /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "flex items-center gap-1", children: [
-                /* @__PURE__ */ jsxRuntimeExports.jsx(Mountain, { className: "size-3.5" }),
-                " ",
-                Number(dashboard.stats.collapses)
-              ] })
-            }
-          ),
-          /* @__PURE__ */ jsxRuntimeExports.jsx(
-            Row$1,
-            {
-              label: "Chip purchases",
-              value: String(Number(dashboard.stats.playTx))
+              className: cn(
+                "font-mono text-xs",
+                msg.ok ? "text-[color:var(--term-green)]" : "text-destructive"
+              ),
+              children: msg.text
             }
           )
         ] })
+      ] }),
+      asking && /* @__PURE__ */ jsxRuntimeExports.jsx(
+        ConfirmDialog,
+        {
+          title: "Change the ledger?",
+          detail: "The game must be paused and empty. All game data is erased and the bank is read from the ledger set in the backend code.",
+          word: "CHANGE LEDGER",
+          busy: working,
+          onCancel: () => setAsking(false),
+          onConfirm: () => {
+            setAsking(false);
+            void changeLedger();
+          }
+        }
+      )
+    ] })
+  ] });
+}
+const NEXT_CHOICES = [1, 5, 10, 20];
+const inputCls$1 = "w-44 max-w-full rounded-md border border-[color:var(--term-border)] bg-transparent px-3 py-1.5 font-mono text-xs";
+function statusOf(p2) {
+  if (p2.paid) return { text: "paid", cls: ink$3 };
+  if (p2.uncertain) return { text: "unconfirmed", cls: "text-destructive" };
+  return { text: "pending", cls: inkFaint$2 };
+}
+function logText(tournament, rows) {
+  const head = [
+    "tournament",
+    "principal",
+    "amount_goldao",
+    "status",
+    "tx_id",
+    "url"
+  ].join("	");
+  const lines = rows.map(
+    (p2) => [
+      String(tournament),
+      p2.to.toText(),
+      plainGoldao(p2.amount),
+      statusOf(p2).text,
+      p2.txId !== void 0 ? String(p2.txId) : "",
+      p2.txId !== void 0 ? txUrl(p2.txId) : ""
+    ].join("	")
+  );
+  return [head, ...lines].join("\n");
+}
+function PayoutLogPanel({
+  view,
+  working,
+  onPayOne,
+  onPayNext,
+  onMarkPaid
+}) {
+  const tournaments = reactExports.useMemo(() => {
+    const set = /* @__PURE__ */ new Set();
+    for (const p2 of view.payouts) set.add(Number(p2.tournament));
+    return [...set].sort((a2, b2) => b2 - a2);
+  }, [view.payouts]);
+  const firstPending = reactExports.useMemo(() => {
+    const open = view.payouts.filter((p2) => !p2.paid).map((p2) => Number(p2.tournament));
+    return open.length > 0 ? Math.max(...open) : null;
+  }, [view.payouts]);
+  const [picked, setPicked] = reactExports.useState(null);
+  const [next, setNext] = reactExports.useState(String(NEXT_CHOICES[1]));
+  const [copied, setCopied] = reactExports.useState(null);
+  const [markFor, setMarkFor] = reactExports.useState(null);
+  const [txInput, setTxInput] = reactExports.useState("");
+  const tournament = picked ?? firstPending ?? tournaments[0] ?? null;
+  const { data, isLoading, isError } = usePayouts(tournament);
+  const rows = reactExports.useMemo(
+    () => [...data ?? []].sort((a2, b2) => Number(a2.id - b2.id)),
+    [data]
+  );
+  if (tournaments.length === 0 || tournament === null) return null;
+  const paid = rows.filter((p2) => p2.paid);
+  const pending2 = rows.filter((p2) => !p2.paid);
+  const total = rows.reduce((s, p2) => s + p2.amount, 0n);
+  const globalPending = view.payouts.filter((p2) => !p2.paid).length;
+  const txOk = /^\d+$/.test(txInput.trim());
+  const copy = async (key, text) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(key);
+      window.setTimeout(() => setCopied(null), 1800);
+    } catch {
+      setCopied(null);
+    }
+  };
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: panel$1, children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: panelHeader, children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: cn(eyebrow, gold$2), children: "Payments" }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: cn("font-mono text-[11px]", inkFaint$2), children: [
+        paid.length,
+        " paid · ",
+        pending2.length,
+        " pending · ",
+        fmtGoldao(total),
+        " ",
+        "GOLDAO"
       ] })
     ] }),
-    hasChips && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: panel$1, children: [
-      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: panelHeader, children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: cn(eyebrow, gold$2), children: "Your chips" }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: cn("font-mono text-[11px]", inkFaint$2), children: "Each chip competes on its own" })
-      ] }),
-      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "grid grid-cols-1 gap-3 p-4 sm:grid-cols-2 lg:grid-cols-4", children: dashboard.chips.map((c2, i) => {
-        const tier = tierOf(c2.tier);
-        const used = Number(c2.used);
-        return /* @__PURE__ */ jsxRuntimeExports.jsxs(
-          motion.div,
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-wrap items-center gap-3 px-5 py-3", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("label", { className: cn("font-mono text-[11px]", inkFaint$2), children: [
+        "Tournament",
+        " ",
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "select",
           {
-            layout: true,
-            initial: { opacity: 0, scale: 0.97 },
-            animate: { opacity: 1, scale: 1 },
-            className: "flex flex-col gap-2 rounded-lg border border-[color:var(--term-border-faint)] bg-[var(--term-alt)] p-3",
+            value: tournament,
+            onChange: (e2) => {
+              setPicked(Number(e2.target.value));
+              setMarkFor(null);
+            },
+            className: "ml-1 rounded-md border border-[color:var(--term-border)] bg-[var(--term-card)] px-2 py-1 font-mono text-xs",
+            children: tournaments.map((t) => /* @__PURE__ */ jsxRuntimeExports.jsxs("option", { value: t, children: [
+              "#",
+              t
+            ] }, t))
+          }
+        )
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs(
+        Button,
+        {
+          size: "sm",
+          variant: "outline",
+          disabled: rows.length === 0,
+          className: "gap-1.5",
+          onClick: () => void copy("all", logText(tournament, rows)),
+          children: [
+            copied === "all" ? /* @__PURE__ */ jsxRuntimeExports.jsx(Check, { className: "size-3.5" }) : /* @__PURE__ */ jsxRuntimeExports.jsx(Copy, { className: "size-3.5" }),
+            copied === "all" ? "Copied" : "Copy all payments"
+          ]
+        }
+      ),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "ml-auto flex items-center gap-2", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "select",
+          {
+            value: next,
+            onChange: (e2) => setNext(e2.target.value),
+            className: "rounded-md border border-[color:var(--term-border)] bg-[var(--term-card)] px-2 py-1 font-mono text-xs",
+            "aria-label": "How many payouts",
+            children: NEXT_CHOICES.map((n2) => /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: n2, children: n2 }, n2))
+          }
+        ),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs(
+          Button,
+          {
+            size: "sm",
+            disabled: working || globalPending === 0,
+            onClick: () => onPayNext(Number(next)),
             children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center justify-between", children: [
-                /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: cn("font-mono text-[11px]", inkFaint$2), children: [
-                  "Chip ",
-                  i + 1,
-                  " · ",
-                  used,
-                  "/",
-                  excPerChip
+              "Pay next ",
+              next
+            ]
+          }
+        )
+      ] })
+    ] }),
+    /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: cn("px-5 pb-3 font-mono text-[11px]", inkFaint$2), children: '"Pay next" sends the smallest pending payouts first, across all tournaments. Each payment shows its ledger transaction as soon as the ledger confirms it.' }),
+    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "max-h-[480px] overflow-auto", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("table", { className: "w-full font-mono text-xs", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("thead", { children: /* @__PURE__ */ jsxRuntimeExports.jsxs("tr", { className: cn("text-left", inkFaint$2), children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("th", { className: "px-5 py-2 font-medium", children: "Principal" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("th", { className: "px-3 py-2 text-right font-medium", children: "Amount" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("th", { className: "px-3 py-2 font-medium", children: "Status" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("th", { className: "px-3 py-2 font-medium", children: "Transaction" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("th", { className: "px-3 py-2 font-medium", children: "Paid" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("th", { className: "px-5 py-2 text-right font-medium", children: "Action" })
+      ] }) }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("tbody", { children: [
+        rows.map((p2) => {
+          const st2 = statusOf(p2);
+          return /* @__PURE__ */ jsxRuntimeExports.jsxs(
+            "tr",
+            {
+              className: "border-t border-[color:var(--term-border-faint)] align-top",
+              children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsxs("td", { className: cn("break-all px-5 py-2.5", ink$3), children: [
+                  p2.to.toText(),
+                  p2.uncertain && !p2.paid && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "mt-2 flex flex-col gap-2 text-[11px] text-destructive", children: [
+                    /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "The ledger did not answer. It may have been sent: look for this principal in the ledger before choosing." }),
+                    markFor === p2.id ? /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "flex flex-wrap items-center gap-2", children: [
+                      /* @__PURE__ */ jsxRuntimeExports.jsx(
+                        "input",
+                        {
+                          value: txInput,
+                          onChange: (e2) => setTxInput(e2.target.value),
+                          placeholder: "Transaction id",
+                          inputMode: "numeric",
+                          className: inputCls$1
+                        }
+                      ),
+                      /* @__PURE__ */ jsxRuntimeExports.jsx(
+                        Button,
+                        {
+                          size: "sm",
+                          disabled: working || !txOk,
+                          onClick: () => {
+                            onMarkPaid(p2, BigInt(txInput.trim()));
+                            setMarkFor(null);
+                            setTxInput("");
+                          },
+                          children: "Mark paid"
+                        }
+                      ),
+                      /* @__PURE__ */ jsxRuntimeExports.jsx(
+                        Button,
+                        {
+                          size: "sm",
+                          variant: "outline",
+                          onClick: () => setMarkFor(null),
+                          children: "Cancel"
+                        }
+                      )
+                    ] }) : /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "flex flex-wrap items-center gap-2", children: [
+                      /* @__PURE__ */ jsxRuntimeExports.jsx(
+                        Button,
+                        {
+                          size: "sm",
+                          variant: "outline",
+                          disabled: working,
+                          onClick: () => onPayOne(p2, false),
+                          children: "Check again"
+                        }
+                      ),
+                      /* @__PURE__ */ jsxRuntimeExports.jsx(
+                        Button,
+                        {
+                          size: "sm",
+                          variant: "outline",
+                          disabled: working,
+                          onClick: () => {
+                            setMarkFor(p2.id);
+                            setTxInput("");
+                          },
+                          children: "It was sent"
+                        }
+                      ),
+                      /* @__PURE__ */ jsxRuntimeExports.jsx(
+                        Button,
+                        {
+                          size: "sm",
+                          variant: "outline",
+                          disabled: working,
+                          onClick: () => onPayOne(p2, true),
+                          children: "It was not sent"
+                        }
+                      )
+                    ] })
+                  ] })
                 ] }),
-                Number(c2.diamonds) > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs(
-                  "span",
+                /* @__PURE__ */ jsxRuntimeExports.jsx(
+                  "td",
                   {
-                    className: cn(
-                      "flex items-center gap-1 font-mono text-[11px]",
-                      DIAMOND_TEXT
-                    ),
-                    children: [
-                      /* @__PURE__ */ jsxRuntimeExports.jsx(Gem, { className: "size-3" }),
-                      " ",
-                      Number(c2.diamonds)
-                    ]
+                    className: cn("px-3 py-2.5 text-right tabular-nums", ink$3),
+                    children: fmtGoldao(p2.amount)
                   }
-                )
-              ] }),
-              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center justify-between gap-2", children: [
-                /* @__PURE__ */ jsxRuntimeExports.jsxs(
-                  "span",
+                ),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("td", { className: cn("px-3 py-2.5", st2.cls), children: st2.text }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("td", { className: "px-3 py-2.5", children: p2.txId !== void 0 ? /* @__PURE__ */ jsxRuntimeExports.jsxs(
+                  "a",
                   {
+                    href: txUrl(p2.txId),
+                    target: "_blank",
+                    rel: "noopener noreferrer",
                     className: cn(
-                      "font-display text-xl font-semibold tabular-nums",
+                      "inline-flex items-center gap-1 underline",
                       ink$3
                     ),
                     children: [
-                      used > 0 ? fmtAvg(c2.avgX100) : "—",
-                      used < excPerChip && /* @__PURE__ */ jsxRuntimeExports.jsxs(
-                        "span",
-                        {
-                          className: cn(
-                            "ml-1.5 font-mono text-[10px] font-normal",
-                            inkFaint$2
-                          ),
-                          children: [
-                            "proj. ",
-                            fmtAvg(c2.projectedX100)
-                          ]
-                        }
-                      )
+                      String(p2.txId),
+                      /* @__PURE__ */ jsxRuntimeExports.jsx(ExternalLink, { className: "size-3" })
                     ]
                   }
-                ),
-                /* @__PURE__ */ jsxRuntimeExports.jsxs(
-                  "span",
+                ) : /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: inkFaint$2, children: "-" }) }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("td", { className: cn("px-3 py-2.5", inkFaint$2), children: p2.paid && p2.paidAt > 0n ? fmtDate(p2.paidAt) : "-" }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("td", { className: "px-5 py-2.5 text-right", children: !p2.paid && !p2.uncertain && /* @__PURE__ */ jsxRuntimeExports.jsx(
+                  Button,
                   {
-                    className: cn(
-                      "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium",
-                      tier.pill
-                    ),
-                    children: [
-                      /* @__PURE__ */ jsxRuntimeExports.jsx(tier.icon, { className: "size-3" }),
-                      tier.name
-                    ]
+                    size: "sm",
+                    disabled: working,
+                    onClick: () => onPayOne(p2, false),
+                    children: "Pay"
                   }
-                )
-              ] }),
-              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "h-1 overflow-hidden rounded-full bg-[var(--term-header)]", children: /* @__PURE__ */ jsxRuntimeExports.jsx(
-                motion.div,
-                {
-                  className: "h-full rounded-full bg-primary",
-                  initial: { width: 0 },
-                  animate: { width: `${used / excPerChip * 100}%` },
-                  transition: { duration: 0.6 }
-                }
-              ) }),
-              /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: cn("font-mono text-[10px]", inkFaint$2), children: used === 0 ? "Not started" : c2.gapToNextX100 !== void 0 ? `${fmtAvg(c2.gapToNextX100)} avg pts to ${tierOf(Number(c2.tier) - 1).name}` : Number(c2.tier) === 0 ? "Top prize" : " " })
-            ]
-          },
-          String(c2.id)
-        );
-      }) })
-    ] }),
-    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: panel$1, children: [
-      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: panelHeader, children: /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: cn(eyebrow, gold$2, "flex items-center gap-2"), children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx(History, { className: "size-3.5" }),
-        " Past weeks"
-      ] }) }),
-      dashboard.history.length === 0 ? /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: cn("p-5 text-sm", inkFaint$2), children: "Your past weeks will show up here." }) : /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx("ul", { className: "sm:hidden", children: [...dashboard.history].reverse().map((h2) => {
-          const diff = Number(h2.received) - Number(h2.paid);
-          return /* @__PURE__ */ jsxRuntimeExports.jsxs(
-            "li",
-            {
-              className: "flex flex-col gap-2 border-t border-[color:var(--term-border-faint)] px-4 py-3 font-mono text-xs",
-              children: [
-                /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center justify-between gap-2", children: [
-                  /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: ink$3, children: [
-                    "Week #",
-                    Number(h2.week),
-                    " · ",
-                    Number(h2.chips),
-                    " chips"
-                  ] }),
-                  /* @__PURE__ */ jsxRuntimeExports.jsxs(
-                    "span",
-                    {
-                      className: cn("flex items-center gap-1", DIAMOND_TEXT),
-                      children: [
-                        /* @__PURE__ */ jsxRuntimeExports.jsx(Gem, { className: "size-3" }),
-                        " ",
-                        Number(h2.diamonds),
-                        h2.drawWon && " · draw won"
-                      ]
-                    }
-                  )
-                ] }),
-                /* @__PURE__ */ jsxRuntimeExports.jsx(TierSummary, { tiers: h2.tiers }),
-                /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center justify-between gap-2", children: [
-                  /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: inkMid$3, children: [
-                    "Spent ",
-                    fmtGoldao(h2.paid)
-                  ] }),
-                  /* @__PURE__ */ jsxRuntimeExports.jsxs(
-                    "span",
-                    {
-                      className: diff >= 0 ? "text-[color:var(--term-green)]" : "text-destructive",
-                      children: [
-                        "Payout ",
-                        fmtGoldao(h2.received)
-                      ]
-                    }
-                  )
-                ] })
+                ) })
               ]
             },
-            String(h2.week)
+            String(p2.id)
           );
-        }) }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "hidden overflow-x-auto sm:block", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("table", { className: "w-full font-mono text-xs", children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx("thead", { children: /* @__PURE__ */ jsxRuntimeExports.jsxs("tr", { className: cn("text-left", inkFaint$2), children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx("th", { className: "px-5 py-2 font-medium", children: "Week" }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx("th", { className: "px-3 py-2 font-medium", children: "Chips" }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx("th", { className: "px-3 py-2 font-medium", children: "Prizes" }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx("th", { className: "px-3 py-2 font-medium", children: "Diamonds" }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx("th", { className: "px-3 py-2 text-right font-medium", children: "Spent" }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx("th", { className: "px-5 py-2 text-right font-medium", children: "Payout" })
-          ] }) }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("tbody", { children: [...dashboard.history].reverse().map((h2) => {
-            const diff = Number(h2.received) - Number(h2.paid);
-            return /* @__PURE__ */ jsxRuntimeExports.jsxs(
-              "tr",
+        }),
+        rows.length === 0 && /* @__PURE__ */ jsxRuntimeExports.jsx("tr", { children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "td",
+          {
+            colSpan: 6,
+            className: cn("px-5 py-6 text-center", inkFaint$2),
+            children: isLoading ? "Loading..." : isError ? "The payments could not be loaded." : "No payments in this tournament."
+          }
+        ) })
+      ] })
+    ] }) })
+  ] });
+}
+const DAY_MS$1 = 864e5;
+const RECENT_DAYS = 7;
+const CHIP_DAYS = 14;
+const LEVEL_STYLE = {
+  [SecurityLevel.info]: {
+    label: "Info",
+    box: "border-[color:var(--term-border)] bg-[var(--term-alt)]",
+    badge: "border-[color:var(--term-border)] text-[color:var(--term-ink-mid)]"
+  },
+  [SecurityLevel.warning]: {
+    label: "Warning",
+    box: "border-[color:var(--term-warn)]/40 bg-[var(--term-warn-bg)]",
+    badge: "border-[color:var(--term-warn)] bg-[var(--term-warn-bg)] text-[color:var(--term-warn)]"
+  },
+  [SecurityLevel.critical]: {
+    label: "Needs attention",
+    box: "border-destructive/50 bg-destructive/10",
+    badge: "border-destructive bg-destructive/10 text-destructive"
+  }
+};
+const utcDay = (ms) => Math.floor(ms / DAY_MS$1);
+const dayToIso = (day) => new Date(day * DAY_MS$1).toISOString().slice(0, 10);
+const isoToDay = (iso) => utcDay(Date.parse(`${iso}T00:00:00Z`));
+const timeOf = (ns) => new Date(Number(ns / 1000000n)).toISOString().slice(11, 19);
+function EventCard({ e: e2 }) {
+  const style2 = LEVEL_STYLE[e2.level];
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs(
+    "div",
+    {
+      className: cn("flex flex-col gap-1.5 rounded-lg border p-3", style2.box),
+      children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-wrap items-center gap-2", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "span",
+            {
+              className: cn(
+                "rounded border px-1.5 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-wider",
+                style2.badge
+              ),
+              children: style2.label
+            }
+          ),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: cn("text-sm font-medium", ink$3), children: e2.title }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: cn("ml-auto font-mono text-[11px]", inkFaint$2), children: [
+            timeOf(e2.at),
+            " UTC",
+            e2.count > 1n && ` · ×${Number(e2.count)} · last ${timeOf(e2.lastAt)}`
+          ] })
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: cn("font-mono text-xs leading-relaxed", inkMid$3), children: e2.description })
+      ]
+    }
+  );
+}
+function SecurityLogPanel() {
+  const today = utcDay(Date.now());
+  const [day, setDay] = reactExports.useState(today);
+  const { data } = useSecurityLog(day, true);
+  const days = (data == null ? void 0 : data.days) ?? [];
+  const recentAlerts = days.filter((d2) => Number(d2.day) > today - RECENT_DAYS).reduce((n2, d2) => n2 + Number(d2.attention), 0);
+  const chips = days.slice(0, CHIP_DAYS);
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: panel$1, children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: panelHeader, children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: cn(eyebrow, gold$2, "flex items-center gap-2"), children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx(ScrollText, { className: "size-3.5" }),
+        " Security log"
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx(
+        "span",
+        {
+          className: cn(
+            "font-mono text-[11px]",
+            recentAlerts > 0 ? "text-destructive" : inkFaint$2
+          ),
+          children: recentAlerts > 0 ? `${recentAlerts} alert${recentAlerts === 1 ? "" : "s"} in the last ${RECENT_DAYS} days` : `No alerts in the last ${RECENT_DAYS} days`
+        }
+      )
+    ] }),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-col gap-4 p-5", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-wrap items-center gap-2", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          Button,
+          {
+            size: "sm",
+            variant: "outline",
+            "aria-label": "Previous day",
+            onClick: () => setDay((d2) => d2 - 1),
+            children: /* @__PURE__ */ jsxRuntimeExports.jsx(ChevronLeft, {})
+          }
+        ),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "input",
+          {
+            type: "date",
+            value: dayToIso(day),
+            max: dayToIso(today),
+            onChange: (ev) => {
+              if (ev.target.value) setDay(isoToDay(ev.target.value));
+            },
+            className: "rounded-md border border-[color:var(--term-border)] bg-transparent px-3 py-1.5 font-mono text-xs"
+          }
+        ),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          Button,
+          {
+            size: "sm",
+            variant: "outline",
+            "aria-label": "Next day",
+            disabled: day >= today,
+            onClick: () => setDay((d2) => d2 + 1),
+            children: /* @__PURE__ */ jsxRuntimeExports.jsx(ChevronRight, {})
+          }
+        ),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          Button,
+          {
+            size: "sm",
+            variant: "outline",
+            disabled: day === today,
+            onClick: () => setDay(today),
+            children: "Today"
+          }
+        ),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: cn("ml-auto font-mono text-[11px]", inkFaint$2), children: "Days and times are UTC" })
+      ] }),
+      chips.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex flex-wrap gap-1.5", children: chips.map((d2) => /* @__PURE__ */ jsxRuntimeExports.jsxs(
+        "button",
+        {
+          type: "button",
+          onClick: () => setDay(Number(d2.day)),
+          className: cn(
+            "flex items-center gap-1.5 rounded-md border px-2 py-1 font-mono text-[11px] transition-colors",
+            Number(d2.day) === day ? "border-[color:var(--term-gold)] text-[color:var(--term-gold)]" : "border-[color:var(--term-border)] text-[color:var(--term-ink-mid)] hover:border-[color:var(--term-gold)]"
+          ),
+          children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx(
+              "span",
               {
-                className: "border-t border-[color:var(--term-border-faint)]",
-                children: [
-                  /* @__PURE__ */ jsxRuntimeExports.jsxs("td", { className: cn("px-5 py-2.5", ink$3), children: [
-                    "#",
-                    Number(h2.week)
-                  ] }),
-                  /* @__PURE__ */ jsxRuntimeExports.jsx("td", { className: cn("px-3 py-2.5", inkMid$3), children: Number(h2.chips) }),
-                  /* @__PURE__ */ jsxRuntimeExports.jsx("td", { className: "px-3 py-2.5", children: /* @__PURE__ */ jsxRuntimeExports.jsx(TierSummary, { tiers: h2.tiers }) }),
-                  /* @__PURE__ */ jsxRuntimeExports.jsxs("td", { className: cn("px-3 py-2.5", DIAMOND_TEXT), children: [
-                    Number(h2.diamonds),
-                    h2.drawWon && " · draw won"
-                  ] }),
-                  /* @__PURE__ */ jsxRuntimeExports.jsx("td", { className: cn("px-3 py-2.5 text-right", inkMid$3), children: fmtGoldao(h2.paid) }),
-                  /* @__PURE__ */ jsxRuntimeExports.jsx(
-                    "td",
-                    {
-                      className: cn(
-                        "px-5 py-2.5 text-right",
-                        diff >= 0 ? "text-[color:var(--term-green)]" : "text-destructive"
-                      ),
-                      children: fmtGoldao(h2.received)
-                    }
-                  )
-                ]
-              },
-              String(h2.week)
-            );
-          }) })
-        ] }) })
+                className: cn(
+                  "size-1.5 rounded-full",
+                  d2.attention > 0n ? "bg-destructive" : "bg-[color:var(--term-ink-faint)]"
+                )
+              }
+            ),
+            dayToIso(Number(d2.day)).slice(5),
+            " · ",
+            Number(d2.events)
+          ]
+        },
+        String(d2.day)
+      )) }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-col gap-2", children: [
+        data && data.events.length === 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("p", { className: cn("font-mono text-xs", inkFaint$2), children: [
+          "No events on ",
+          dayToIso(day),
+          "."
+        ] }),
+        data == null ? void 0 : data.events.map((e2) => /* @__PURE__ */ jsxRuntimeExports.jsx(EventCard, { e: e2 }, `${e2.code}-${String(e2.at)}`))
       ] })
     ] })
   ] });
 }
-function Row$1({ label, value }) {
-  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-col gap-1", children: [
-    /* @__PURE__ */ jsxRuntimeExports.jsx("dt", { className: cn("text-[10px] uppercase tracking-wider", inkFaint$2), children: label }),
-    /* @__PURE__ */ jsxRuntimeExports.jsx("dd", { className: cn("tabular-nums", ink$3), children: value })
-  ] });
-}
-function TierSummary({ tiers }) {
-  return /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "flex flex-wrap gap-1", children: tiers.map((n2, i) => {
-    if (Number(n2) === 0) return null;
-    const t = TIERS[i];
-    return /* @__PURE__ */ jsxRuntimeExports.jsxs(
-      "span",
-      {
-        className: cn(
-          "inline-flex items-center gap-1 whitespace-nowrap rounded-full border px-1.5 py-0.5 text-[10px] font-medium",
-          t.pill
-        ),
-        children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx(t.icon, { className: "size-2.5" }),
-          t.name,
-          " ×",
-          Number(n2)
-        ]
-      },
-      t.name
-    );
-  }) });
-}
+const HALT_TEXT = {
+  2: "ledger failures",
+  3: "manual",
+  4: "unexplained bank withdrawal",
+  5: "fund drop",
+  6: "ledger fee changed"
+};
+const E8S$4 = 100000000n;
+const DURATIONS = [1, 3, 7, 14, 30];
+const POOL_SEED_MIN_FALLBACK = 5e3;
+const POOL_SEED_MAX_FALLBACK = 2e4;
+const WITHDRAW_WINDOW_MS = 2 * 6e4;
+const PAY_WINDOW_MS = 10 * 6e4;
+const MAX_AUTHORIZE_E8S = 1000000n * E8S$4;
+const selectCls = "rounded-md border border-[color:var(--term-border)] bg-[var(--term-card)] px-3 py-1.5 font-mono text-sm";
+const inputCls = "w-80 max-w-full rounded-md border border-[color:var(--term-border)] bg-transparent px-3 py-1.5 font-mono text-xs";
 function AdminGamePanel({ view }) {
-  const { actor } = useAuth();
-  const { run, pending } = useGameAction();
-  const [confirm, setConfirm] = reactExports.useState(null);
+  var _a3, _b3;
+  const { actor, principalId } = useAuth();
+  const { identity } = useInternetIdentity();
+  const queryClient2 = useQueryClient();
+  const { run, pending: pending2 } = useGameAction();
+  const { data: security } = useSecurityView(!!view);
+  const { data: config } = useGameConfig();
+  const minPayout = config ? fmtGoldao(config.minPayoutE8s) : "-";
   const [msg, setMsg] = reactExports.useState(null);
-  const status = view == null ? void 0 : view.status;
-  const last2 = view == null ? void 0 : view.lastClose;
-  const closeWeek = async () => {
-    if (!actor) return;
+  const [ask, setAsk] = reactExports.useState(null);
+  const [days, setDays] = reactExports.useState("");
+  const [seed, setSeed] = reactExports.useState(String(POOL_SEED_MIN_FALLBACK));
+  const [who, setWho] = reactExports.useState("");
+  const [busy, setBusy] = reactExports.useState(false);
+  const working = !!pending2 || busy;
+  const connected = !!(view == null ? void 0 : view.realLedger);
+  const bankText = (_a3 = view == null ? void 0 : view.bankAccount) == null ? void 0 : _a3.toText();
+  const walletAddr = bankText ?? principalId ?? "";
+  const { data: ledgerBalance } = useQuery({
+    queryKey: ["game", "admin-wallet", walletAddr, config == null ? void 0 : config.ledgerId],
+    queryFn: () => fetchWalletBalance(walletAddr, config == null ? void 0 : config.ledgerId),
+    enabled: !!walletAddr && !!(config == null ? void 0 : config.ledgerId),
+    refetchInterval: 15e3
+  });
+  const selfText = (_b3 = view == null ? void 0 : view.selfId) == null ? void 0 : _b3.toText();
+  const envQuery = useQuery({
+    queryKey: ["game", "spender"],
+    queryFn: async () => (await loadEnv()).backend_canister_id ?? "",
+    staleTime: Number.POSITIVE_INFINITY
+  });
+  const envId = envQuery.data && envQuery.data !== "undefined" ? envQuery.data : "";
+  const unpaid = (view == null ? void 0 : view.payouts.filter((p2) => !p2.paid)) ?? [];
+  const unpaidTotal = (view == null ? void 0 : view.unpaidPayouts) ?? 0n;
+  const act = async (name, call, text, before, after) => {
+    if (!actor || working) return;
     setMsg(null);
+    setBusy(true);
     try {
-      const s = await run("close", () => actor.gameAdminCloseWeek());
+      if (before) await before();
+      const v2 = await run(name, call, "all");
+      setMsg({ ok: true, text: text(v2) });
+    } catch (e2) {
+      setMsg({ ok: false, text: errorMessage(e2) });
+    } finally {
+      if (after) await after();
+      setBusy(false);
+    }
+  };
+  const confirmThen = (a2) => setAsk(a2);
+  const authorize = async (required, windowMs, reuseMin) => {
+    if (!connected) return;
+    if (!identity || !bankText || !envId) {
+      throw new Error("Sign in with the admin wallet first.");
+    }
+    if (selfText !== envId) {
+      throw new Error(
+        "The game account does not match this canister. Nothing was authorized."
+      );
+    }
+    if (required > MAX_AUTHORIZE_E8S) {
+      throw new Error(
+        "The amount is above the safety limit. Nothing was authorized."
+      );
+    }
+    if (identity.getPrincipal().toText() !== bankText) {
+      throw new Error("This session is not the bank wallet.");
+    }
+    if (reuseMin !== void 0 && actor) {
+      const cur = await actor.gameAdminLedgerAllowance(
+        Principal$3.fromText(bankText),
+        Principal$3.fromText(envId)
+      );
+      if (cur.__kind__ === "ok" && cur.ok >= reuseMin) return;
+    }
+    await approveSpender(identity, envId, required, windowMs, config == null ? void 0 : config.ledgerId);
+  };
+  const preflight = async (check) => {
+    if (!connected || !actor) return;
+    const r2 = await check();
+    if (r2.__kind__ === "err") throw new Error(r2.err);
+  };
+  const revokeLeftover = async () => {
+    if (!connected || !actor || !identity || !bankText || !envId || selfText !== envId)
+      return;
+    try {
+      const cur = await actor.gameAdminLedgerAllowance(
+        Principal$3.fromText(bankText),
+        Principal$3.fromText(envId)
+      );
+      if (cur.__kind__ === "ok" && cur.ok > GOLDAO_FEE_E8S) {
+        await approveSpender(identity, envId, 0n, void 0, config == null ? void 0 : config.ledgerId);
+      }
+    } catch {
+    }
+  };
+  const parsePrincipal = (t) => {
+    try {
+      return Principal$3.fromText(t.trim());
+    } catch {
+      return null;
+    }
+  };
+  const halted = !!(security == null ? void 0 : security.halted);
+  const bank = (view == null ? void 0 : view.bank) ?? 0n;
+  const availableOut = (() => {
+    if (!view) return 0n;
+    const cap = bank > GOLDAO_FEE_E8S ? bank - GOLDAO_FEE_E8S : 0n;
+    return view.withdrawable < cap ? view.withdrawable : cap;
+  })();
+  const poolSeedMin = config ? Number(config.poolSeedE8s / E8S$4) : POOL_SEED_MIN_FALLBACK;
+  const poolSeedMax = config ? Number(config.poolSeedMaxE8s / E8S$4) : POOL_SEED_MAX_FALLBACK;
+  const seedNum = /^\d+$/.test(seed) ? Number(seed) : 0;
+  const seedValid = seedNum >= poolSeedMin && seedNum <= poolSeedMax;
+  const seedTarget = BigInt(seedNum) * E8S$4;
+  const poolGap = view && seedValid && view.pool < seedTarget ? seedTarget - view.pool : 0n;
+  const allBlockers = [];
+  if (view) {
+    if (!halted) allBlockers.push("pause new excavations first");
+    if (view.owed > 0n)
+      allBlockers.push(
+        "players still hold an Accumulated prize or unpaid prizes (use Close and pay everything, then Pay pending)"
+      );
+    if (unpaid.length > 0) allBlockers.push("pending payouts must be paid");
+    if (bank <= GOLDAO_FEE_E8S) allBlockers.push("the wallet is empty");
+  }
+  const payNow = async () => {
+    if (!actor || working) return;
+    setMsg(null);
+    setBusy(true);
+    let paid = 0;
+    let failed2 = 0;
+    let remaining = unpaid.length;
+    try {
+      await preflight(() => actor.gameAdminCheckPay());
+      await authorize(unpaidTotal, PAY_WINDOW_MS);
+      for (let i = 0; i < 500; i++) {
+        const r2 = await run("pay", () => actor.gameAdminPay(20n), false);
+        paid += Number(r2.paid);
+        failed2 += Number(r2.failed);
+        remaining = Number(r2.remaining);
+        if (remaining === 0 || r2.paid === 0n) break;
+      }
+      setMsg({
+        ok: failed2 === 0 && remaining === 0,
+        text: `Paid ${paid}, failed ${failed2}, remaining ${remaining}.`
+      });
+    } catch (e2) {
+      setMsg({
+        ok: false,
+        text: paid > 0 ? `Paid ${paid} before an error: ${errorMessage(e2)}` : errorMessage(e2)
+      });
+    } finally {
+      await revokeLeftover();
+      await queryClient2.invalidateQueries({ queryKey: ["game"] });
+      setBusy(false);
+    }
+  };
+  const payOne = async (p2, renew) => {
+    if (!actor || working) return;
+    setMsg(null);
+    setBusy(true);
+    try {
+      const need = p2.amount + GOLDAO_FEE_E8S;
+      await preflight(() => actor.gameAdminCheckPay());
+      await authorize(
+        unpaidTotal > need ? unpaidTotal : need,
+        PAY_WINDOW_MS,
+        need
+      );
+      const tx = await run(
+        "pay-one",
+        () => actor.gameAdminPayOne(p2.id, renew),
+        "all"
+      );
       setMsg({
         ok: true,
-        text: s.drawWinner ? `Week ${Number(s.week)} closed. Draw ticket #${Number(s.drawTicket)} of ${Number(s.drawTickets)}.` : `Week ${Number(s.week)} closed. No diamonds: the draw rolls over.`
+        text: tx !== void 0 ? `Paid ${fmtGoldao(p2.amount)} GOLDAO. Ledger transaction ${tx}.` : `Paid ${fmtGoldao(p2.amount)} GOLDAO (test mode, no ledger transaction).`
       });
     } catch (e2) {
       setMsg({ ok: false, text: errorMessage(e2) });
     } finally {
-      setConfirm(null);
+      await queryClient2.invalidateQueries({ queryKey: ["game"] });
+      setBusy(false);
     }
   };
-  const recover = async () => {
-    if (!actor) return;
+  const payNext = async (n2) => {
+    if (!actor || working) return;
     setMsg(null);
+    setBusy(true);
     try {
-      await run("recover", () => actor.gameAdminRecoverClosing());
-      setMsg({ ok: true, text: "Week reopened. Run the close again." });
-    } catch (e2) {
-      setMsg({ ok: false, text: errorMessage(e2) });
-    }
-  };
-  const payAndOpen = async () => {
-    if (!actor) return;
-    setMsg(null);
-    try {
-      const total = await run("pay", () => actor.gameAdminPayAndOpenNext());
+      const batch2 = [...unpaid].sort(
+        (a2, b2) => a2.amount === b2.amount ? Number(a2.id - b2.id) : a2.amount < b2.amount ? -1 : 1
+      ).slice(0, n2);
+      const need = batch2.reduce((s, p2) => s + p2.amount + GOLDAO_FEE_E8S, 0n);
+      await preflight(() => actor.gameAdminCheckPay());
+      await authorize(need, PAY_WINDOW_MS);
+      const r2 = await run("pay", () => actor.gameAdminPay(BigInt(n2)), "all");
       setMsg({
-        ok: true,
-        text: `Paid ${fmtGoldao(total)} GOLDAO. Next week is open.`
+        ok: r2.failed === 0n,
+        text: `Paid ${Number(r2.paid)}, failed ${Number(r2.failed)}, remaining ${Number(r2.remaining)}.`
       });
     } catch (e2) {
       setMsg({ ok: false, text: errorMessage(e2) });
     } finally {
-      setConfirm(null);
+      await revokeLeftover();
+      await queryClient2.invalidateQueries({ queryKey: ["game"] });
+      setBusy(false);
     }
   };
+  const markPaid = (p2, txId) => act(
+    "mark-paid",
+    () => actor.gameAdminMarkPaid(p2.id, txId),
+    () => `Recorded as paid with transaction ${txId}.`
+  );
   return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-col gap-6", children: [
+    (view == null ? void 0 : view.paused) && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "rounded-lg border border-destructive/50 bg-destructive/10 px-4 py-3 font-mono text-xs text-destructive", children: [
+      "Bets are paused:",
+      " ",
+      view.stakes.length === 0 ? "the bank fund is below its floor." : "play was halted."
+    ] }),
+    /* @__PURE__ */ jsxRuntimeExports.jsx(ModeStatusCard, { view, config }),
     /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "grid grid-cols-2 gap-3 sm:grid-cols-4", children: [
       /* @__PURE__ */ jsxRuntimeExports.jsx(
-        Kpi$1,
+        Kpi$2,
         {
-          icon: CalendarCheck,
-          label: "Week",
-          value: view ? `#${Number(view.week)}` : "—",
-          sub: status ?? ""
+          label: "Tournament",
+          value: view ? `#${Number(view.tournament)}` : /* @__PURE__ */ jsxRuntimeExports.jsx(Spinner, {}),
+          sub: view ? `ends in ${fmtCountdown(view.endsAt)}` : ""
         }
       ),
       /* @__PURE__ */ jsxRuntimeExports.jsx(
-        Kpi$1,
+        Kpi$2,
         {
-          icon: Landmark,
-          label: "Game balance",
-          value: view ? fmtGoldao(view.treasury) : "—",
-          sub: "GOLDAO (simulated)"
+          label: "Admin wallet",
+          value: view ? fmtGoldao(view.bank) : /* @__PURE__ */ jsxRuntimeExports.jsx(Spinner, {}),
+          sub: "GOLDAO (ledger)"
         }
       ),
       /* @__PURE__ */ jsxRuntimeExports.jsx(
-        Kpi$1,
+        Kpi$2,
         {
-          icon: Flame,
-          label: "Burned fees",
-          value: view ? fmtGoldao(view.burned) : "—",
+          label: "Owed to players",
+          value: view ? fmtGoldao(view.owed) : /* @__PURE__ */ jsxRuntimeExports.jsx(Spinner, {}),
+          sub: "accumulated prizes"
+        }
+      ),
+      /* @__PURE__ */ jsxRuntimeExports.jsx(
+        Kpi$2,
+        {
+          label: "Bank fund",
+          value: view ? fmtGoldao(view.fund < 0n ? 0n : view.fund) : /* @__PURE__ */ jsxRuntimeExports.jsx(Spinner, {}),
+          sub: "drives the stakes"
+        }
+      ),
+      /* @__PURE__ */ jsxRuntimeExports.jsx(
+        Kpi$2,
+        {
+          label: "Jackpot pool",
+          value: view ? fmtGoldao(view.pool) : /* @__PURE__ */ jsxRuntimeExports.jsx(Spinner, {}),
+          sub: "GOLDAO",
+          diamond: true
+        }
+      ),
+      /* @__PURE__ */ jsxRuntimeExports.jsx(
+        Kpi$2,
+        {
+          label: "Jackpot reserve",
+          value: view ? fmtGoldao(view.reserve) : /* @__PURE__ */ jsxRuntimeExports.jsx(Spinner, {}),
           sub: "GOLDAO"
         }
       ),
       /* @__PURE__ */ jsxRuntimeExports.jsx(
-        Kpi$1,
+        Kpi$2,
         {
-          icon: Gem,
-          label: "Draw rollover",
-          value: view ? fmtGoldao(view.drawCarry) : "—",
-          sub: "GOLDAO",
-          diamond: true
+          label: "Top 10 pool",
+          value: view ? fmtGoldao(view.top10) : /* @__PURE__ */ jsxRuntimeExports.jsx(Spinner, {}),
+          sub: "GOLDAO"
+        }
+      ),
+      /* @__PURE__ */ jsxRuntimeExports.jsx(
+        Kpi$2,
+        {
+          label: "Cycles accrued",
+          value: view ? fmtGoldao(view.cycles) : /* @__PURE__ */ jsxRuntimeExports.jsx(Spinner, {}),
+          sub: "GOLDAO"
+        }
+      ),
+      /* @__PURE__ */ jsxRuntimeExports.jsx(
+        Kpi$2,
+        {
+          label: "Available to withdraw",
+          value: view ? fmtGoldao(view.withdrawable) : /* @__PURE__ */ jsxRuntimeExports.jsx(Spinner, {}),
+          sub: "GOLDAO"
+        }
+      ),
+      /* @__PURE__ */ jsxRuntimeExports.jsx(
+        Kpi$2,
+        {
+          label: "Stakes now",
+          value: view ? view.stakes.length === 3 ? view.stakes.map((x2) => fmtGoldao(x2)).join(" / ") : "Paused" : /* @__PURE__ */ jsxRuntimeExports.jsx(Spinner, {}),
+          sub: "min / mid / max"
+        }
+      ),
+      /* @__PURE__ */ jsxRuntimeExports.jsx(
+        Kpi$2,
+        {
+          label: "Burned fees",
+          value: view ? fmtGoldao(view.burned) : /* @__PURE__ */ jsxRuntimeExports.jsx(Spinner, {}),
+          sub: "GOLDAO"
         }
       )
+    ] }),
+    view && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: panel$1, children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: panelHeader, children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: cn(eyebrow, gold$2, "flex items-center gap-2"), children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(Landmark, { className: "size-3.5" }),
+          " Owed to players"
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: cn("font-mono text-[11px]", inkFaint$2), children: [
+          fmtGoldao(view.owed),
+          " GOLDAO"
+        ] })
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("dl", { className: "grid grid-cols-2 gap-4 p-5 font-mono text-xs sm:grid-cols-4", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          Item$1,
+          {
+            label: `Accumulated prize (${Number(view.toCollectPlayers)} players)`,
+            value: fmtGoldao(view.toCollect)
+          }
+        ),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          Item$1,
+          {
+            label: "Pending payouts (with fees)",
+            value: fmtGoldao(view.unpaidPayouts)
+          }
+        ),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          Item$1,
+          {
+            label: "Jackpots in play",
+            value: fmtGoldao(view.heldJackpots)
+          }
+        ),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          Item$1,
+          {
+            label: `Under ${minPayout} (${Number(view.smallPlayers)} players)`,
+            value: fmtGoldao(view.smallBalances)
+          }
+        )
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: cn("px-5 pb-5 font-mono text-[11px]", inkFaint$2), children: "Owed = Accumulated prize + pending payouts + jackpots in play. The last figure is already inside Accumulated prize: balances under the minimum are not paid at a normal close and carry over to the next tournament." })
+    ] }),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: panel$1, children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: panelHeader, children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: cn(eyebrow, gold$2, "flex items-center gap-2"), children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(Landmark, { className: "size-3.5" }),
+          " Funds"
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: cn("font-mono text-[11px]", inkFaint$2), children: "Each button asks for confirmation" })
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-col gap-5 p-5", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-baseline gap-2", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: cn("font-mono text-[11px]", inkFaint$2), children: "Wallet balance on the ledger" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: cn("font-mono text-sm", ink$3), children: [
+            ledgerBalance === void 0 ? "-" : fmtGoldao(ledgerBalance),
+            " ",
+            isTestLedger(config) ? TEST_TOKEN_LABEL : "GOLDAO"
+          ] })
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          CopyField,
+          {
+            label: connected ? "Admin wallet address: send GOLDAO here to fund the game" : "Admin wallet address: it becomes the bank when you connect the ledger",
+            value: bankText ?? principalId ?? ""
+          }
+        ),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs(
+          Row$1,
+          {
+            title: "Jackpot pool",
+            hint: !seedValid ? `Choose between ${poolSeedMin.toLocaleString("en-US")} and ${poolSeedMax.toLocaleString("en-US")} GOLDAO.` : poolGap > 0n ? `Tops the pool up to ${fmtGoldao(seedTarget)} using ${fmtGoldao(poolGap)} from the fund.` : `The pool is already at or above ${fmtGoldao(seedTarget)}.`,
+            children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx(
+                "input",
+                {
+                  type: "number",
+                  inputMode: "numeric",
+                  min: poolSeedMin,
+                  max: poolSeedMax,
+                  step: 1e3,
+                  value: seed,
+                  onChange: (e2) => setSeed(e2.target.value),
+                  disabled: working,
+                  className: inputCls
+                }
+              ),
+              /* @__PURE__ */ jsxRuntimeExports.jsx(
+                Button,
+                {
+                  variant: "outline",
+                  disabled: working || !view || !seedValid || poolGap === 0n,
+                  onClick: () => confirmThen({
+                    title: `Seed the jackpot pool with ${fmtGoldao(poolGap)} GOLDAO?`,
+                    detail: `The pool will be ${fmtGoldao(seedTarget)}. The amount comes out of the bank fund.`,
+                    go: () => act(
+                      "seed",
+                      () => actor.gameAdminSeedPool(BigInt(seedNum)),
+                      (v2) => `Pool is now ${fmtGoldao(v2)}.`
+                    )
+                  }),
+                  children: "Seed jackpot pool"
+                }
+              )
+            ]
+          }
+        ),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          Row$1,
+          {
+            title: "Withdraw earnings",
+            hint: `Takes ${fmtGoldao(availableOut)} GOLDAO (cycles first, then the surplus over the fund target) to the fixed treasury address. Network fee: ${fmtGoldao(GOLDAO_FEE_E8S)}.${connected ? " The wallet authorization is set for that amount only and expires in 2 minutes." : ""}`,
+            children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+              Button,
+              {
+                variant: "outline",
+                disabled: working || !view || availableOut === 0n,
+                onClick: () => confirmThen({
+                  title: `Withdraw ${fmtGoldao(availableOut)} GOLDAO?`,
+                  detail: "Sent to the fixed treasury address.",
+                  go: () => act(
+                    "withdraw",
+                    () => actor.gameAdminWithdraw(WithdrawKind.available),
+                    (v2) => `Done. Bank is now ${fmtGoldao(v2)}.`,
+                    async () => {
+                      await preflight(
+                        () => actor.gameAdminCheckWithdraw(WithdrawKind.available)
+                      );
+                      await authorize(
+                        availableOut + GOLDAO_FEE_E8S,
+                        WITHDRAW_WINDOW_MS
+                      );
+                    },
+                    revokeLeftover
+                  )
+                }),
+                children: "Withdraw earnings"
+              }
+            )
+          }
+        ),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          Row$1,
+          {
+            title: "Withdraw everything",
+            hint: allBlockers.length === 0 ? `Empties the wallet (${fmtGoldao(bank - GOLDAO_FEE_E8S)} GOLDAO) to the fixed treasury address and resets pool, reserve, Top 10 pool and cycles.` : `Not available: ${allBlockers.join(", ")}.`,
+            children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+              Button,
+              {
+                variant: "outline",
+                className: "border-destructive/50 text-destructive",
+                disabled: working || !view || allBlockers.length > 0,
+                onClick: () => confirmThen({
+                  title: `Withdraw ALL ${fmtGoldao(bank - GOLDAO_FEE_E8S)} GOLDAO?`,
+                  detail: "The game will have no funds left. Sent to the fixed treasury address.",
+                  word: "WITHDRAW ALL",
+                  go: () => act(
+                    "withdraw-all",
+                    () => actor.gameAdminWithdraw(WithdrawKind.all),
+                    (v2) => `Done. Bank is now ${fmtGoldao(v2)}.`,
+                    async () => {
+                      const fresh = await actor.gameAdminRefreshBank();
+                      if (fresh.__kind__ === "err")
+                        throw new Error(fresh.err);
+                      await preflight(
+                        () => actor.gameAdminCheckWithdraw(WithdrawKind.all)
+                      );
+                      await authorize(
+                        fresh.ok - GOLDAO_FEE_E8S,
+                        WITHDRAW_WINDOW_MS
+                      );
+                    },
+                    revokeLeftover
+                  )
+                }),
+                children: "Withdraw everything"
+              }
+            )
+          }
+        ),
+        connected && /* @__PURE__ */ jsxRuntimeExports.jsx(
+          Row$1,
+          {
+            title: "Refresh bank",
+            hint: "Reads the wallet balance from the ledger.",
+            children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+              Button,
+              {
+                variant: "outline",
+                disabled: working,
+                onClick: () => void act(
+                  "refresh",
+                  () => actor.gameAdminRefreshBank(),
+                  (v2) => `Bank is ${fmtGoldao(v2)}.`
+                ),
+                children: "Refresh bank"
+              }
+            )
+          }
+        )
+      ] })
     ] }),
     /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: panel$1, children: [
       /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: panelHeader, children: /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: cn(eyebrow, gold$2, "flex items-center gap-2"), children: [
         /* @__PURE__ */ jsxRuntimeExports.jsx(Shield, { className: "size-3.5" }),
-        " Weekly close"
+        " Tournament"
       ] }) }),
-      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-col gap-4 p-5", children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: cn("text-sm", inkMid$3), children: "1. Close the week: open excavations are saved, unused ones auto-played, chips ranked and the diamond draw is run. 2. Review the payouts. 3. Pay and open the next week." }),
-        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-wrap gap-3", children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsxs(
-            Button,
-            {
-              variant: "outline",
-              disabled: status !== "open" || !!pending,
-              onClick: () => setConfirm("close"),
-              children: [
-                /* @__PURE__ */ jsxRuntimeExports.jsx(Lock, { className: "size-4" }),
-                "Close week"
-              ]
-            }
-          ),
-          /* @__PURE__ */ jsxRuntimeExports.jsxs(
-            Button,
-            {
-              disabled: status !== "closed" || !!pending,
-              onClick: () => setConfirm("pay"),
-              className: "gradient-primary text-primary-foreground",
-              children: [
-                /* @__PURE__ */ jsxRuntimeExports.jsx(Send, { className: "size-4" }),
-                "Pay and open next week"
-              ]
-            }
-          ),
-          status === "closing" && /* @__PURE__ */ jsxRuntimeExports.jsx(
-            Button,
-            {
-              variant: "outline",
-              disabled: !!pending,
-              onClick: () => void recover(),
-              children: "Recover interrupted close"
-            }
-          )
-        ] }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx(AnimatePresence, { children: confirm && /* @__PURE__ */ jsxRuntimeExports.jsx(
-          motion.div,
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-col gap-5 p-5", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs(
+          Row$1,
           {
-            initial: { opacity: 0, height: 0 },
-            animate: { opacity: 1, height: "auto" },
-            exit: { opacity: 0, height: 0 },
-            className: "overflow-hidden rounded-lg border border-[color:var(--term-border)] bg-[var(--term-header)]",
-            children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between", children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: cn("text-sm", inkMid$3), children: confirm === "close" ? "Close the current week? Players can't dig until the next one opens." : `Credit ${(view == null ? void 0 : view.payouts.length) ?? 0} payouts and open the next week?` }),
-              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex shrink-0 gap-2", children: [
-                /* @__PURE__ */ jsxRuntimeExports.jsx(
-                  Button,
-                  {
-                    size: "sm",
-                    variant: "outline",
-                    onClick: () => setConfirm(null),
-                    children: "Cancel"
-                  }
-                ),
-                /* @__PURE__ */ jsxRuntimeExports.jsx(
-                  Button,
-                  {
-                    size: "sm",
-                    disabled: !!pending,
-                    onClick: () => void (confirm === "close" ? closeWeek() : payAndOpen()),
-                    className: "gradient-primary text-primary-foreground",
-                    children: pending ? "Working…" : "Confirm"
-                  }
-                )
-              ] })
-            ] })
-          }
-        ) }),
-        msg && /* @__PURE__ */ jsxRuntimeExports.jsx(
-          "p",
-          {
-            className: cn(
-              "font-mono text-xs",
-              msg.ok ? "text-[color:var(--term-green)]" : "text-destructive"
-            ),
-            children: msg.text
-          }
-        )
-      ] })
-    ] }),
-    last2 && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: panel$1, children: [
-      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: panelHeader, children: /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: cn(eyebrow, gold$2), children: [
-        "Last close · week #",
-        Number(last2.week)
-      ] }) }),
-      /* @__PURE__ */ jsxRuntimeExports.jsxs("dl", { className: "grid grid-cols-2 gap-4 p-5 font-mono text-xs sm:grid-cols-4", children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx(Item, { label: "Prize pool", value: fmtGoldao(last2.pot) }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx(
-          Item,
-          {
-            label: "Chips · players",
-            value: `${Number(last2.chips)} · ${Number(last2.players)}`
-          }
-        ),
-        /* @__PURE__ */ jsxRuntimeExports.jsx(
-          Item,
-          {
-            label: "Treasure per chip",
-            value: fmtGoldao(last2.treasurePerChip)
-          }
-        ),
-        /* @__PURE__ */ jsxRuntimeExports.jsx(
-          Item,
-          {
-            label: "Kept for cycles",
-            value: fmtGoldao(last2.treasuryKeep)
-          }
-        ),
-        /* @__PURE__ */ jsxRuntimeExports.jsx(Item, { label: "Draw prize", value: fmtGoldao(last2.drawPrize) }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx(
-          Item,
-          {
-            label: "Draw ticket",
-            value: last2.drawWinner ? `#${Number(last2.drawTicket)} of ${Number(last2.drawTickets)}` : "Rolled over"
-          }
-        ),
-        /* @__PURE__ */ jsxRuntimeExports.jsx(
-          Item,
-          {
-            label: "Winner",
-            value: last2.drawWinner ? shortPrincipal(last2.drawWinner.toText()) : "—"
-          }
-        ),
-        /* @__PURE__ */ jsxRuntimeExports.jsx(
-          Item,
-          {
-            label: "raw_rand",
-            value: String(last2.drawRandom).slice(0, 12)
-          }
-        )
-      ] })
-    ] }),
-    view && view.payouts.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: panel$1, children: [
-      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: panelHeader, children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: cn(eyebrow, gold$2), children: "Pending payouts" }),
-        /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: cn("font-mono text-[11px]", inkFaint$2), children: [
-          view.payouts.length,
-          " transfers · net of the 10 fee"
-        ] })
-      ] }),
-      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "max-h-[420px] overflow-auto", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("table", { className: "w-full font-mono text-xs", children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx("thead", { children: /* @__PURE__ */ jsxRuntimeExports.jsxs("tr", { className: cn("text-left", inkFaint$2), children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx("th", { className: "px-5 py-2 font-medium", children: "Principal" }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("th", { className: "px-3 py-2 font-medium", children: "Concept" }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("th", { className: "px-5 py-2 text-right font-medium", children: "Net" })
-        ] }) }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx("tbody", { children: view.payouts.map((p2, i) => /* @__PURE__ */ jsxRuntimeExports.jsxs(
-          "tr",
-          {
-            className: "border-t border-[color:var(--term-border-faint)]",
+            title: "Duration",
+            hint: `Now ${view ? Number(view.durationDays) : "-"} days. Applies to the next tournament.`,
             children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsx(
-                "td",
+              /* @__PURE__ */ jsxRuntimeExports.jsxs(
+                "select",
                 {
-                  className: cn("px-5 py-2.5", ink$3),
-                  title: p2.to.toText(),
-                  children: shortPrincipal(p2.to.toText())
-                }
-              ),
-              /* @__PURE__ */ jsxRuntimeExports.jsx("td", { className: "px-3 py-2.5", children: p2.concept === "draw" ? /* @__PURE__ */ jsxRuntimeExports.jsxs(
-                "span",
-                {
-                  className: cn(
-                    "flex items-center gap-1",
-                    DIAMOND_TEXT
-                  ),
+                  value: days,
+                  onChange: (e2) => setDays(e2.target.value),
+                  disabled: working,
+                  className: selectCls,
                   children: [
-                    /* @__PURE__ */ jsxRuntimeExports.jsx(Gem, { className: "size-3" }),
-                    " Diamond draw"
+                    /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: "", children: "Choose" }),
+                    DURATIONS.map((d2) => /* @__PURE__ */ jsxRuntimeExports.jsxs("option", { value: d2, children: [
+                      d2,
+                      " ",
+                      d2 === 1 ? "day" : "days"
+                    ] }, d2))
                   ]
                 }
-              ) : /* @__PURE__ */ jsxRuntimeExports.jsx(TierSummary, { tiers: p2.tiers }) }),
+              ),
               /* @__PURE__ */ jsxRuntimeExports.jsx(
-                "td",
+                Button,
                 {
-                  className: cn("px-5 py-2.5 text-right tabular-nums", ink$3),
-                  children: fmtGoldao(p2.amount)
+                  variant: "outline",
+                  disabled: working || !days,
+                  onClick: () => confirmThen({
+                    title: `Set the duration to ${days} days?`,
+                    detail: "Applies to the next tournament.",
+                    go: () => act(
+                      "duration",
+                      () => actor.gameAdminSetDuration(BigInt(days)),
+                      () => `Duration set to ${days} days.`
+                    )
+                  }),
+                  children: "Set duration"
                 }
               )
             ]
-          },
-          `${p2.to.toText()}-${i}`
-        )) })
+          }
+        ),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          Row$1,
+          {
+            title: "Close tournament",
+            hint: `Ends it now. Accumulated prize balances of at least ${minPayout} GOLDAO become payouts; smaller ones stay for the next tournament.`,
+            children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+              Button,
+              {
+                variant: "outline",
+                disabled: working,
+                onClick: () => confirmThen({
+                  title: "Close the current tournament now?",
+                  detail: "It cannot be undone. Large Accumulated prize balances become pending payouts.",
+                  word: "CLOSE",
+                  go: () => act(
+                    "close",
+                    () => actor.gameAdminCloseTournament(),
+                    () => "Close requested."
+                  )
+                }),
+                children: "Close now"
+              }
+            )
+          }
+        ),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          Row$1,
+          {
+            title: "Close and pay everything",
+            hint: halted ? "Pays every Accumulated prize balance, small ones included. Each payment costs the network fee, taken from the player's balance. Use it before withdrawing everything." : "Not available: pause new excavations first.",
+            children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+              Button,
+              {
+                variant: "outline",
+                className: "border-destructive/50 text-destructive",
+                disabled: working || !halted,
+                onClick: () => confirmThen({
+                  title: "Close the tournament and pay everything?",
+                  detail: "Every Accumulated prize balance becomes a payout, whatever its size. Each payout costs the network fee, taken from the player's balance.",
+                  word: "CLOSE ALL",
+                  go: () => act(
+                    "close-all",
+                    () => actor.gameAdminCloseAll(),
+                    () => "Closed. Pay the pending payouts next."
+                  )
+                }),
+                children: "Close and pay everything"
+              }
+            )
+          }
+        ),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs(
+          Row$1,
+          {
+            title: "Pay pending",
+            hint: unpaid.length === 0 ? "Nothing to pay." : `${fmtGoldao(unpaidTotal)} GOLDAO pending including fees, smallest first, in batches of 20 until done. A payout that does not fit the funds or the authorization waits for the next run.${connected ? " The wallet authorization is set automatically for exactly that amount and expires in 10 minutes." : ""}`,
+            children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsxs(
+                Button,
+                {
+                  disabled: working || unpaid.length === 0,
+                  className: "gradient-primary text-primary-foreground",
+                  onClick: () => confirmThen({
+                    title: `Pay all pending payouts (${fmtGoldao(unpaidTotal)} GOLDAO)?`,
+                    detail: "Funds leave the admin wallet to the players. Keep this page open until it finishes.",
+                    go: payNow
+                  }),
+                  children: [
+                    "Pay pending (",
+                    unpaid.length,
+                    ")"
+                  ]
+                }
+              ),
+              connected && /* @__PURE__ */ jsxRuntimeExports.jsx(
+                Button,
+                {
+                  variant: "outline",
+                  disabled: working,
+                  onClick: () => void act(
+                    "revoke",
+                    async () => {
+                      await revokeLeftover();
+                      return { __kind__: "ok", ok: null };
+                    },
+                    () => "Authorization revoked."
+                  ),
+                  children: "Revoke authorization"
+                }
+              )
+            ]
+          }
+        ),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs(
+          Row$1,
+          {
+            title: "Player",
+            hint: "Paste a principal to free a stuck excavation.",
+            children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx(
+                "input",
+                {
+                  value: who,
+                  onChange: (e2) => setWho(e2.target.value),
+                  placeholder: "Player principal",
+                  className: inputCls
+                }
+              ),
+              /* @__PURE__ */ jsxRuntimeExports.jsx(
+                Button,
+                {
+                  variant: "outline",
+                  disabled: working || !parsePrincipal(who),
+                  onClick: () => confirmThen({
+                    title: "Release this player's excavation?",
+                    detail: shortPrincipal(who.trim()),
+                    go: () => act(
+                      "release",
+                      () => actor.gameAdminReleaseBusy(parsePrincipal(who)),
+                      () => "Excavation released."
+                    )
+                  }),
+                  children: "Release busy"
+                }
+              )
+            ]
+          }
+        )
+      ] })
+    ] }),
+    security && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: panel$1, children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: panelHeader, children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: cn(eyebrow, gold$2, "flex items-center gap-2"), children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(Shield, { className: "size-3.5" }),
+          " Security"
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "span",
+          {
+            className: cn(
+              "font-mono text-[11px]",
+              security.halted ? "text-destructive" : inkFaint$2
+            ),
+            children: security.halted ? `Halted (${HALT_TEXT[Number(security.haltCode)] ?? "unknown"}) · ${fmtDate(security.haltedAt)}` : "Running"
+          }
+        )
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex flex-col gap-4 p-5", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-wrap items-center gap-3", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          Button,
+          {
+            variant: "outline",
+            disabled: working || security.halted,
+            onClick: () => confirmThen({
+              title: "Halt new excavations?",
+              detail: "Players cannot start new excavations until you resume.",
+              go: () => act(
+                "halt",
+                () => actor.gameAdminHalt(),
+                () => "New excavations are halted."
+              )
+            }),
+            children: "Halt new excavations"
+          }
+        ),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          Button,
+          {
+            disabled: working || !security.halted,
+            className: "gradient-primary text-primary-foreground",
+            onClick: () => confirmThen({
+              title: "Resume play?",
+              detail: "Players can start new excavations again.",
+              go: () => act(
+                "resume",
+                () => actor.gameAdminResume(),
+                () => "Play resumed."
+              )
+            }),
+            children: "Resume"
+          }
+        ),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: cn("font-mono text-[11px]", inkFaint$2), children: [
+          "Ledger failures in a row: ",
+          Number(security.ledgerFails)
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "span",
+          {
+            className: cn(
+              "font-mono text-[11px]",
+              security.accountingOk && security.saturations === 0n ? inkFaint$2 : "text-destructive"
+            ),
+            children: security.accountingOk && security.saturations === 0n ? "Accounting OK" : `Accounting check failed (${Number(security.saturations)}). Payments blocked.`
+          }
+        ),
+        security.accountingOk && security.saturations > 0n && /* @__PURE__ */ jsxRuntimeExports.jsx(
+          Button,
+          {
+            size: "sm",
+            variant: "outline",
+            disabled: working,
+            onClick: () => void act(
+              "ack",
+              () => actor.gameAdminAckAccounting(),
+              () => "Accounting alert cleared."
+            ),
+            children: "Clear alert"
+          }
+        )
       ] }) })
-    ] })
+    ] }),
+    security && /* @__PURE__ */ jsxRuntimeExports.jsx(SecurityLogPanel, {}),
+    (view == null ? void 0 : view.lastClose) && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: panel$1, children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: panelHeader, children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: cn(eyebrow, gold$2), children: [
+          "Last close · #",
+          Number(view.lastClose.tournament)
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: cn("font-mono text-[11px]", inkFaint$2), children: fmtDate(view.lastClose.closedAt) })
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("dl", { className: "grid grid-cols-2 gap-4 p-5 font-mono text-xs sm:grid-cols-4", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          Item$1,
+          {
+            label: "Players",
+            value: String(Number(view.lastClose.players))
+          }
+        ),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          Item$1,
+          {
+            label: "Excavations",
+            value: String(Number(view.lastClose.excavations))
+          }
+        ),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(Item$1, { label: "Volume", value: fmtGoldao(view.lastClose.staked) }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(Item$1, { label: "Returned", value: fmtGoldao(view.lastClose.returned) }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          Item$1,
+          {
+            label: "Jackpots (full + mini)",
+            value: String(Number(view.lastClose.jackpots))
+          }
+        ),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          Item$1,
+          {
+            label: "Jackpot paid (full + mini)",
+            value: fmtGoldao(view.lastClose.jackpotPaid)
+          }
+        ),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          Item$1,
+          {
+            label: "Of which mini",
+            value: `${Number(view.lastClose.minis)} · ${fmtGoldao(view.lastClose.miniPaid)}`
+          }
+        ),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          Item$1,
+          {
+            label: "Payouts",
+            value: fmtGoldao(view.lastClose.payoutTotal)
+          }
+        )
+      ] })
+    ] }),
+    view && view.payouts.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsx(
+      PayoutLogPanel,
+      {
+        view,
+        working,
+        onPayOne: (p2, renew) => renew ? confirmThen({
+          title: "Renew this payout?",
+          detail: "Only if you checked in the ledger that it was NOT sent. A new timestamp is assigned and the next payment sends it for real.",
+          word: "RENEW",
+          go: () => payOne(p2, true)
+        }) : void payOne(p2, false),
+        onPayNext: (n2) => confirmThen({
+          title: `Pay the next ${n2} payouts?`,
+          detail: "Smallest first. Funds leave the admin wallet to the players. Keep this page open until it finishes.",
+          go: () => payNext(n2)
+        }),
+        onMarkPaid: (p2, txId) => confirmThen({
+          title: `Mark as paid with transaction ${txId}?`,
+          detail: `${shortPrincipal(p2.to.toText())} · ${fmtGoldao(p2.amount)} GOLDAO. Only if you saw this transaction in the ledger.`,
+          go: () => markPaid(p2, txId)
+        })
+      }
+    ),
+    ask && /* @__PURE__ */ jsxRuntimeExports.jsx(
+      ConfirmDialog,
+      {
+        title: ask.title,
+        detail: ask.detail,
+        word: ask.word,
+        busy: working,
+        onCancel: () => setAsk(null),
+        onConfirm: () => {
+          const go = ask.go;
+          setAsk(null);
+          void go();
+        }
+      },
+      ask.title
+    ),
+    (working || msg) && /* @__PURE__ */ jsxRuntimeExports.jsx(
+      "output",
+      {
+        className: cn(
+          "fixed bottom-4 left-1/2 z-50 flex max-w-[92vw] -translate-x-1/2 items-center gap-3 rounded-lg border bg-[var(--term-card)] px-4 py-3 font-mono text-xs shadow-lg",
+          working ? "border-[color:var(--term-border)]" : (msg == null ? void 0 : msg.ok) ? "border-[color:var(--term-green)] text-[color:var(--term-green)]" : "border-destructive text-destructive"
+        ),
+        children: working ? /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(Spinner, {}),
+          " Working…"
+        ] }) : /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: msg == null ? void 0 : msg.text }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "button",
+            {
+              type: "button",
+              onClick: () => setMsg(null),
+              className: "underline",
+              children: "Dismiss"
+            }
+          )
+        ] })
+      }
+    )
   ] });
 }
-function Kpi$1({
-  icon: Icon2,
+function Kpi$2({
   label,
   value,
   sub,
@@ -60147,8 +62400,7 @@ function Kpi$1({
 }) {
   return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: cn(panel$1, "flex flex-col gap-1 p-4"), children: [
     /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: cn(eyebrow, inkFaint$2, "flex items-center gap-1.5"), children: [
-      /* @__PURE__ */ jsxRuntimeExports.jsx(Icon2, { className: "size-3.5" }),
-      " ",
+      diamond && /* @__PURE__ */ jsxRuntimeExports.jsx(Gem, { className: "size-3.5" }),
       label
     ] }),
     /* @__PURE__ */ jsxRuntimeExports.jsx(
@@ -60161,23 +62413,179 @@ function Kpi$1({
         children: value
       }
     ),
-    /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: cn("font-mono text-[10px] capitalize", inkFaint$2), children: sub })
+    /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: cn("font-mono text-[10px]", inkFaint$2), children: sub })
   ] });
 }
-function Item({ label, value }) {
+function Item$1({ label, value }) {
   return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-col gap-1", children: [
     /* @__PURE__ */ jsxRuntimeExports.jsx("dt", { className: cn("text-[10px] uppercase tracking-wider", inkFaint$2), children: label }),
     /* @__PURE__ */ jsxRuntimeExports.jsx("dd", { className: cn("tabular-nums", ink$3), children: value })
   ] });
 }
+function Row$1({
+  title,
+  hint,
+  children
+}) {
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-col gap-2 border-b border-[color:var(--term-border-faint)] pb-5 last:border-0 last:pb-0", children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: cn("text-sm font-medium", ink$3), children: title }),
+    /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: cn("font-mono text-[11px]", inkFaint$2), children: hint }),
+    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex flex-wrap items-center gap-3", children })
+  ] });
+}
+function BurnedCounter({ value }) {
+  const reduce = useReducedMotion();
+  const target = toGoldao(value);
+  const [shown, setShown] = reactExports.useState(target);
+  const [gain, setGain] = reactExports.useState(null);
+  const prev = reactExports.useRef(target);
+  reactExports.useEffect(() => {
+    const from = prev.current;
+    prev.current = target;
+    if (target === from) return;
+    if (target < from || reduce) {
+      setShown(target);
+      return;
+    }
+    setGain({ id: Date.now(), amount: target - from });
+    const start = performance.now();
+    const duration2 = 1200;
+    let raf = 0;
+    const step = (now2) => {
+      const t = Math.min(1, (now2 - start) / duration2);
+      const v2 = Math.round(from + (target - from) * (1 - (1 - t) ** 3));
+      setShown(v2);
+      if (t < 1) raf = requestAnimationFrame(step);
+    };
+    raf = requestAnimationFrame(step);
+    const hide = window.setTimeout(() => setGain(null), 2200);
+    return () => {
+      cancelAnimationFrame(raf);
+      window.clearTimeout(hide);
+    };
+  }, [target, reduce]);
+  const burning = gain !== null;
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs(
+    "div",
+    {
+      className: "relative flex shrink-0 items-center gap-2 whitespace-nowrap px-1",
+      title: "All GOLDAO burned by the game: fees of loads, payouts and withdrawals",
+      children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          motion.span,
+          {
+            animate: burning && !reduce ? { scale: [1, 1.5, 1.15, 1.4, 1], rotate: [0, -8, 8, -4, 0] } : { scale: 1 },
+            transition: { duration: 1.2 },
+            className: cn(
+              "flex size-7 items-center justify-center rounded-full",
+              burning ? "bg-orange-500/20" : ""
+            ),
+            children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+              Flame,
+              {
+                className: cn(
+                  "size-5 transition-colors",
+                  burning ? "text-orange-400 drop-shadow-[0_0_8px_rgba(251,146,60,0.9)]" : "text-orange-500/80"
+                ),
+                fill: "currentColor"
+              }
+            )
+          },
+          (gain == null ? void 0 : gain.id) ?? "idle"
+        ),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-col leading-tight", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "font-mono text-sm font-semibold tabular-nums text-orange-400", children: [
+            fmtGoldao(BigInt(Math.round(shown)) * 100000000n),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: cn("ml-1 text-[10px] font-normal", inkFaint$2), children: "GOLDAO" })
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: cn("text-[10px] uppercase tracking-wider", inkFaint$2), children: "Burned by the game" })
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(AnimatePresence, { children: gain && !reduce && /* @__PURE__ */ jsxRuntimeExports.jsxs(
+          motion.span,
+          {
+            initial: { opacity: 0, y: 4 },
+            animate: { opacity: 1, y: -14 },
+            exit: { opacity: 0, y: -22 },
+            transition: { duration: 0.8 },
+            className: "pointer-events-none absolute -top-2 right-0 font-mono text-[11px] font-semibold text-orange-300",
+            children: [
+              "+",
+              Math.round(gain.amount).toLocaleString("en-US")
+            ]
+          },
+          gain.id
+        ) })
+      ]
+    }
+  );
+}
+function GameStatus({ waiting, failed: failed2, onRetry }) {
+  const [slow, setSlow] = reactExports.useState(false);
+  reactExports.useEffect(() => {
+    if (!waiting) {
+      setSlow(false);
+      return;
+    }
+    const t = window.setTimeout(() => setSlow(true), 8e3);
+    return () => window.clearTimeout(t);
+  }, [waiting]);
+  if (failed2) {
+    return /* @__PURE__ */ jsxRuntimeExports.jsxs(
+      "div",
+      {
+        role: "alert",
+        className: cn(
+          panel$1,
+          "flex flex-wrap items-center justify-between gap-3 border-destructive/50 p-4"
+        ),
+        children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-sm text-destructive", children: "Could not load the game. Check your connection and try again." }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(Button, { size: "sm", variant: "outline", onClick: onRetry, children: "Retry" })
+        ]
+      }
+    );
+  }
+  if (!waiting) return null;
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("output", { className: cn(panel$1, "flex items-center gap-3 p-4"), children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsx(Spinner, { className: "size-4" }),
+    /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: cn("font-mono text-xs", inkMid$3), children: slow ? "Taking longer than usual. Still connecting to the game…" : "Connecting to the game…" })
+  ] });
+}
 const SOURCES = {
   success: "/sounds/success.mp3",
-  diamond: "/sounds/diamond.mp3"
+  diamond: "/sounds/diamond.mp3",
+  count: "/sounds/count.mp3",
+  collapse: "/sounds/collapse.mp3",
+  crack: "/sounds/crack.mp3",
+  suspense: "/sounds/suspense.mp3",
+  treasure: "/sounds/treasure.mp3",
+  miss: "/sounds/miss.mp3",
+  jackpot: "/sounds/jackpot.mp3",
+  reveal1: "/sounds/reveal-1.mp3",
+  reveal2: "/sounds/reveal-2.mp3",
+  reveal3: "/sounds/reveal-3.mp3",
+  reveal4: "/sounds/reveal-4.mp3",
+  reveal5: "/sounds/reveal-5.mp3",
+  reveal6: "/sounds/reveal-6.mp3",
+  reveal7: "/sounds/reveal-7.mp3",
+  reveal8: "/sounds/reveal-8.mp3",
+  reveal9: "/sounds/reveal-9.mp3",
+  reveal10: "/sounds/reveal-10.mp3",
+  hit: "/sounds/hit.mp3",
+  enter: "/sounds/enter.mp3"
 };
 const VOLUME = 0.6;
+const GAIN = { count: 0.5, hit: 0.8 };
+const MAX_VOICES = { count: 3, hit: 2 };
+const DEFAULT_VOICES = 6;
 const STORAGE_KEY = "goldao.game.muted";
-const cache = {};
 let muted = readMuted();
+let context = null;
+let unlockInstalled = false;
+const buffers = {};
+const pending = {};
+const failed = {};
+const voices = {};
 function readMuted() {
   try {
     return localStorage.getItem(STORAGE_KEY) === "1";
@@ -60191,29 +62599,89 @@ function writeMuted(value) {
   } catch {
   }
 }
-function load(key) {
-  if (typeof Audio === "undefined") return null;
-  let audio = cache[key];
-  if (!audio) {
-    audio = new Audio(SOURCES[key]);
-    audio.preload = "auto";
-    cache[key] = audio;
+function getContext() {
+  if (context) return context;
+  if (typeof window === "undefined") return null;
+  const Ctor = window.AudioContext ?? window.webkitAudioContext;
+  if (!Ctor) return null;
+  try {
+    context = new Ctor();
+  } catch {
+    return null;
   }
-  return audio;
+  return context;
+}
+function resumeContext() {
+  const ctx = context;
+  if (ctx && ctx.state !== "running") void ctx.resume().catch(() => {
+  });
+}
+function installUnlock() {
+  if (unlockInstalled || typeof window === "undefined") return;
+  unlockInstalled = true;
+  for (const type of ["pointerdown", "touchend", "keydown"]) {
+    window.addEventListener(type, resumeContext, { capture: true });
+  }
+}
+function loadBuffer(key) {
+  const existing = pending[key];
+  if (existing) return existing;
+  const ctx = getContext();
+  if (!ctx || failed[key]) return Promise.resolve();
+  const job = fetch(SOURCES[key]).then((res) => {
+    const type = res.headers.get("content-type") ?? "";
+    if (!res.ok || type.includes("text/html")) {
+      throw new Error(`not found (${res.status})`);
+    }
+    return res.arrayBuffer();
+  }).then((data) => ctx.decodeAudioData(data)).then((buffer) => {
+    buffers[key] = buffer;
+  }).catch((e2) => {
+    failed[key] = true;
+    console.warn(`[sounds] ${SOURCES[key]} could not be loaded:`, e2);
+  });
+  pending[key] = job;
+  return job;
 }
 function preloadSounds() {
-  for (const key of Object.keys(SOURCES)) load(key);
+  installUnlock();
+  getContext();
+  for (const key of Object.keys(SOURCES)) void loadBuffer(key);
+}
+function revealSound(pick) {
+  const n2 = Math.min(10, Math.max(1, Math.round(pick)));
+  return `reveal${n2}`;
 }
 function playSound(key) {
   if (muted) return;
-  const base = load(key);
-  if (!base) return;
+  const ctx = getContext();
+  if (!ctx) return;
+  installUnlock();
+  resumeContext();
+  if (ctx.state !== "running") return;
+  const buffer = buffers[key];
+  if (!buffer) {
+    void loadBuffer(key);
+    return;
+  }
+  const active = voices[key] ?? 0;
+  if (active >= (MAX_VOICES[key] ?? DEFAULT_VOICES)) return;
   try {
-    const node = base.cloneNode(true);
-    node.volume = VOLUME;
-    void node.play().catch(() => {
-    });
+    const source = ctx.createBufferSource();
+    const gain = ctx.createGain();
+    source.buffer = buffer;
+    gain.gain.value = VOLUME * (GAIN[key] ?? 1);
+    source.connect(gain);
+    gain.connect(ctx.destination);
+    voices[key] = active + 1;
+    source.onended = () => {
+      voices[key] = Math.max(0, (voices[key] ?? 1) - 1);
+      source.disconnect();
+      gain.disconnect();
+    };
+    source.start(0);
   } catch {
+    voices[key] = Math.max(0, (voices[key] ?? 1) - 1);
   }
 }
 function useSoundToggle() {
@@ -60225,7 +62693,1970 @@ function useSoundToggle() {
   }, []);
   return { muted: value, toggleMuted };
 }
+const SLAB_CLASS = cn(
+  "[--f1:rgba(255,255,255,.4)] [--f2:rgba(90,70,45,.24)] [--f3:rgba(255,255,255,.2)] [--b1:#c6b8a3] [--b2:#a99880]",
+  "dark:[--f1:rgba(255,255,255,.12)] dark:[--f2:rgba(0,0,0,.28)] dark:[--f3:rgba(255,255,255,.06)] dark:[--b1:#4a443d] dark:[--b2:#2f2b27]",
+  "bg-[linear-gradient(135deg,var(--f1)_0_50%,transparent_50%),linear-gradient(45deg,transparent_0_50%,var(--f2)_50%),linear-gradient(160deg,transparent_0_28%,var(--f3)_28%_60%,transparent_60%),linear-gradient(180deg,var(--b1),var(--b2))]",
+  "border border-[rgba(80,65,45,.4)] dark:border-[rgba(199,154,59,.3)]",
+  "shadow-[inset_0_2px_0_rgba(255,255,255,.6),inset_0_-4px_0_rgba(80,65,45,.3),0_3px_6px_rgba(80,55,25,.22)] dark:shadow-[inset_0_1px_0_rgba(255,255,255,.14),inset_0_-4px_0_rgba(0,0,0,.4),0_4px_8px_rgba(0,0,0,.5)]"
+);
+const SWING_S = 0.4;
+const STRIKE_AT = 0.58;
+function MineCell({
+  cell,
+  digging,
+  disabled,
+  onClick,
+  enterNo = 0,
+  enterDelay = 0,
+  pop: pop2 = null,
+  onStrike
+}) {
+  const hitCtl = useAnimationControls();
+  const [hits, setHits] = reactExports.useState(0);
+  const strike = reactExports.useRef(onStrike);
+  strike.current = onStrike;
+  const style2 = !cell ? "border-[color:var(--term-border)] bg-[var(--term-header)]" : cell.kind === "rock" ? ROCK_CELL : cell.kind === "diamond" ? DIAMOND_CELL : TOKENS[cell.token].cell;
+  const picking = digging && !cell;
+  reactExports.useEffect(() => {
+    if (!picking) return;
+    let timer = 0;
+    const blow = () => {
+      var _a3;
+      playSound("hit");
+      (_a3 = strike.current) == null ? void 0 : _a3.call(strike);
+      setHits((h2) => h2 + 1);
+      void hitCtl.start({
+        x: [0, 2, -2, 0],
+        y: [0, 3, -1, 0],
+        scale: [1, 0.95, 1.02, 1],
+        transition: { duration: 0.14 }
+      });
+    };
+    const first = window.setTimeout(
+      () => {
+        blow();
+        timer = window.setInterval(blow, SWING_S * 1e3);
+      },
+      SWING_S * STRIKE_AT * 1e3
+    );
+    return () => {
+      window.clearTimeout(first);
+      window.clearInterval(timer);
+      setHits(0);
+    };
+  }, [picking, hitCtl]);
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs(
+    motion.button,
+    {
+      type: "button",
+      onClick,
+      disabled: disabled || !!cell,
+      initial: enterNo > 0 ? { opacity: 0, y: 40, scale: 0.9 } : false,
+      animate: { opacity: 1, y: 0, scale: 1 },
+      transition: { duration: 0.55, ease: "easeOut", delay: enterDelay },
+      className: cn(
+        "relative aspect-square rounded-lg disabled:cursor-default [&:enabled:active_.lift]:scale-95 [&:enabled:hover_.lift]:-translate-y-[3px] [&:enabled:hover_.lift]:brightness-110",
+        (picking || pop2) && "z-10"
+      ),
+      "aria-label": cell ? cell.kind : "Dig this cell",
+      children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs(
+          motion.span,
+          {
+            animate: hitCtl,
+            className: "absolute inset-0 rounded-[inherit]",
+            children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx(
+                "span",
+                {
+                  className: cn(
+                    "absolute inset-0 flex items-center justify-center overflow-hidden rounded-[inherit] border-[1.5px]",
+                    style2
+                  ),
+                  children: /* @__PURE__ */ jsxRuntimeExports.jsx(AnimatePresence, { children: cell && /* @__PURE__ */ jsxRuntimeExports.jsx(
+                    motion.span,
+                    {
+                      initial: { opacity: 0, y: "-70%", scale: 0.5 },
+                      animate: { opacity: 1, y: 0, scale: 1 },
+                      transition: {
+                        type: "spring",
+                        stiffness: 240,
+                        damping: 13,
+                        delay: 0.15
+                      },
+                      className: "flex size-full items-center justify-center",
+                      children: /* @__PURE__ */ jsxRuntimeExports.jsx(CellContent, { cell })
+                    },
+                    cell.kind
+                  ) })
+                }
+              ),
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "lift absolute inset-0 rounded-[inherit] transition-[transform,filter] duration-200", children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx(
+                  motion.span,
+                  {
+                    initial: false,
+                    animate: cell ? { opacity: 0, y: "46%", scale: 0.9, rotate: 3 } : { opacity: 1, y: 0, scale: 1, rotate: 0 },
+                    transition: cell ? { duration: 0.45, ease: "easeIn" } : { duration: 0 },
+                    className: cn(
+                      "absolute inset-0 overflow-hidden rounded-[inherit]",
+                      SLAB_CLASS
+                    ),
+                    children: /* @__PURE__ */ jsxRuntimeExports.jsx(Glint, {})
+                  }
+                ),
+                picking && /* @__PURE__ */ jsxRuntimeExports.jsx(
+                  motion.span,
+                  {
+                    "aria-hidden": true,
+                    className: "absolute inset-0 rounded-[inherit] bg-[radial-gradient(circle_at_50%_55%,rgba(255,200,90,0.45),transparent_62%)]",
+                    animate: { opacity: [0, 0, 1, 0] },
+                    transition: {
+                      duration: SWING_S,
+                      times: [0, 0.4, STRIKE_AT, 1],
+                      repeat: Number.POSITIVE_INFINITY
+                    }
+                  }
+                )
+              ] })
+            ]
+          }
+        ),
+        picking && /* @__PURE__ */ jsxRuntimeExports.jsx(PickaxeSwing, {}),
+        picking && hits > 0 && /* @__PURE__ */ jsxRuntimeExports.jsx(Burst, { sparks: 6, chips: 5, color: "#ffd67a" }, hits),
+        (cell == null ? void 0 : cell.kind) === "diamond" && /* @__PURE__ */ jsxRuntimeExports.jsx(Sparkle, {}),
+        pop2 && /* @__PURE__ */ jsxRuntimeExports.jsx(
+          Burst,
+          {
+            sparks: 12,
+            chips: 0,
+            color: (cell == null ? void 0 : cell.kind) === "diamond" ? "#ff8fbf" : "#ffcf6b"
+          },
+          `p${pop2.id}`
+        ),
+        pop2 && /* @__PURE__ */ jsxRuntimeExports.jsx(MultPop, { text: pop2.text }, pop2.id)
+      ]
+    }
+  );
+}
+function Glint() {
+  const ref = reactExports.useRef(null);
+  reactExports.useEffect(() => {
+    const el = ref.current;
+    if (!el || typeof el.animate !== "function") return;
+    const from = "translateX(-160%) skewX(-18deg)";
+    const to = "translateX(340%) skewX(-18deg)";
+    const anim = el.animate(
+      [
+        { transform: from, offset: 0 },
+        { transform: to, offset: 0.3 },
+        { transform: to, offset: 1 }
+      ],
+      {
+        duration: 6e3,
+        iterations: Number.POSITIVE_INFINITY,
+        delay: -Math.random() * 6e3,
+        easing: "linear"
+      }
+    );
+    return () => anim.cancel();
+  }, []);
+  return /* @__PURE__ */ jsxRuntimeExports.jsx(
+    "span",
+    {
+      ref,
+      "aria-hidden": true,
+      className: "pointer-events-none absolute inset-y-0 left-0 w-[45%] bg-[linear-gradient(90deg,transparent,rgba(224,178,70,.5),transparent)] will-change-transform",
+      style: { transform: "translateX(-160%) skewX(-18deg)" }
+    }
+  );
+}
+function PickaxeSwing() {
+  return /* @__PURE__ */ jsxRuntimeExports.jsx(
+    "span",
+    {
+      "aria-hidden": true,
+      className: "pointer-events-none absolute left-1/2 top-1/2 z-10 size-0",
+      children: /* @__PURE__ */ jsxRuntimeExports.jsxs(
+        motion.svg,
+        {
+          viewBox: "0 0 64 64",
+          fill: "none",
+          strokeLinecap: "round",
+          strokeLinejoin: "round",
+          className: "absolute -left-[30px] -top-[52px] size-[60px] drop-shadow-md",
+          style: { transformOrigin: "50% 88%" },
+          initial: { rotate: -40 },
+          animate: { rotate: [-62, -70, 14, 8, -62] },
+          transition: {
+            duration: SWING_S,
+            times: [0, 0.45, STRIKE_AT, 0.68, 1],
+            ease: "linear",
+            repeat: Number.POSITIVE_INFINITY
+          },
+          children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("title", { children: "Pickaxe" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("path", { d: "M14 58 36 20", stroke: "#5b3a1d", strokeWidth: "7" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("path", { d: "M14 58 36 20", stroke: "#c18a47", strokeWidth: "4" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx(
+              "path",
+              {
+                d: "M8 26C16 10 40 6 58 18c-8-3-14-2-20 2-4-4-14-6-30 6z",
+                fill: "#d7dbe0",
+                stroke: "#4b525c",
+                strokeWidth: "2.5"
+              }
+            ),
+            /* @__PURE__ */ jsxRuntimeExports.jsx(
+              "path",
+              {
+                d: "M14 24c10-8 24-10 36-4",
+                stroke: "#fff",
+                strokeWidth: "2",
+                opacity: ".7"
+              }
+            )
+          ]
+        }
+      )
+    }
+  );
+}
+function Burst({
+  sparks,
+  chips,
+  color: color2
+}) {
+  const parts = reactExports.useMemo(
+    () => Array.from({ length: sparks + chips }, (_2, i) => {
+      const spark = i < sparks;
+      const a2 = spark ? Math.random() * Math.PI * 2 : -Math.PI / 2 + (Math.random() - 0.5) * 2.2;
+      const sp = 30 + Math.random() * 60;
+      return {
+        spark,
+        dx: Math.cos(a2) * sp * (spark ? 1.3 : 1),
+        dy: Math.sin(a2) * sp * (spark ? 1.3 : 1),
+        rot: a2 * 180 / Math.PI + 90,
+        size: 3 + Math.random() * 5,
+        len: 8 + Math.random() * 8,
+        spin: Math.random() * 540
+      };
+    }),
+    [sparks, chips]
+  );
+  return /* @__PURE__ */ jsxRuntimeExports.jsx(
+    "span",
+    {
+      "aria-hidden": true,
+      className: "pointer-events-none absolute left-1/2 top-1/2 z-20 size-0",
+      children: parts.map(
+        (p2, i) => p2.spark ? /* @__PURE__ */ jsxRuntimeExports.jsx(
+          motion.i,
+          {
+            className: "absolute block w-[2px] rounded-sm",
+            style: {
+              height: p2.len,
+              background: color2,
+              boxShadow: `0 0 6px ${color2}`,
+              rotate: p2.rot
+            },
+            initial: { x: 0, y: 0, opacity: 1, scaleY: 1 },
+            animate: { x: p2.dx, y: p2.dy, opacity: 0, scaleY: 0.3 },
+            transition: { duration: 0.45, ease: "easeOut" }
+          },
+          i
+        ) : /* @__PURE__ */ jsxRuntimeExports.jsx(
+          motion.i,
+          {
+            className: "absolute block rounded-[2px] bg-[#8f7d66]",
+            style: { width: p2.size, height: p2.size },
+            initial: { x: 0, y: 0, opacity: 1, rotate: 0 },
+            animate: {
+              x: [0, p2.dx, p2.dx * 1.2],
+              y: [0, p2.dy - 20, p2.dy + 60],
+              opacity: [1, 1, 0],
+              rotate: p2.spin
+            },
+            transition: { duration: 0.55, ease: "easeOut" }
+          },
+          i
+        )
+      )
+    }
+  );
+}
+function MultPop({ text }) {
+  return /* @__PURE__ */ jsxRuntimeExports.jsx(
+    "span",
+    {
+      "aria-hidden": true,
+      className: "pointer-events-none absolute left-1/2 top-1 z-30 -translate-x-1/2",
+      children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+        motion.span,
+        {
+          className: "block whitespace-nowrap font-display text-[26px] font-extrabold leading-none tracking-tight text-[color:var(--term-green)] [text-shadow:0_0_3px_rgba(255,255,255,.9),0_2px_8px_rgba(255,255,255,.8)] dark:[text-shadow:0_0_3px_rgba(0,0,0,.85),0_2px_8px_rgba(0,0,0,.8)] sm:text-[30px]",
+          initial: { opacity: 0, y: 10, scale: 0.4 },
+          animate: {
+            opacity: [0, 1, 1, 0],
+            y: [10, -6, -14, -48],
+            scale: [0.4, 1.25, 1, 1]
+          },
+          transition: {
+            duration: 1.7,
+            times: [0, 0.18, 0.6, 1],
+            ease: "easeOut"
+          },
+          children: text
+        }
+      )
+    }
+  );
+}
+function CellContent({ cell }) {
+  if (cell.kind === "rock") {
+    return /* @__PURE__ */ jsxRuntimeExports.jsx(Mountain, { className: "size-[56%] text-[color:var(--term-ink-mid)]" });
+  }
+  if (cell.kind === "diamond") {
+    return /* @__PURE__ */ jsxRuntimeExports.jsx(
+      "img",
+      {
+        src: DIAMOND_IMG,
+        alt: "Diamond",
+        className: "size-[72%] object-contain"
+      }
+    );
+  }
+  return /* @__PURE__ */ jsxRuntimeExports.jsx(
+    "img",
+    {
+      src: TOKENS[cell.token].logo,
+      alt: cell.token,
+      className: "size-[62%] rounded-full object-contain"
+    }
+  );
+}
+function Sparkle() {
+  return /* @__PURE__ */ jsxRuntimeExports.jsx(
+    motion.span,
+    {
+      "aria-hidden": true,
+      initial: { opacity: 0.9, scale: 0.6 },
+      animate: { opacity: 0, scale: 2.2 },
+      transition: { duration: 0.9, ease: "easeOut" },
+      className: "pointer-events-none absolute inset-0 rounded-lg border-2 border-[oklch(0.75_0.14_350)]"
+    }
+  );
+}
+function RollingNumber({
+  value,
+  className,
+  scaled = false,
+  tick = false,
+  from,
+  fixed2 = false,
+  instant = false
+}) {
+  const mv = useMotionValue(from ?? value);
+  const prev = reactExports.useRef(from ?? value);
+  const target = reactExports.useRef(value);
+  target.current = value;
+  const text = useTransform(mv, (v2) => {
+    if (Math.abs(v2 - target.current) < 5e-3)
+      return fixed2 ? fmtFixed2Number(target.current) : fmtGoldaoNumber(target.current);
+    const cents = Math.max(0, Math.floor(v2 * 100 + 1e-6));
+    return `${Math.floor(cents / 100).toLocaleString("en-US")}.${String(cents % 100).padStart(2, "0")}`;
+  });
+  reactExports.useEffect(() => {
+    const delta = Math.abs(value - prev.current);
+    prev.current = value;
+    if (instant) {
+      mv.set(value);
+      return;
+    }
+    const duration2 = scaled ? Math.min(5, Math.max(1.5, 5 * Math.sqrt(50 / Math.max(delta, 50)))) : 0.7;
+    const controls = animate(mv, value, { duration: duration2, ease: "easeOut" });
+    return () => controls.stop();
+  }, [mv, value, scaled, instant]);
+  reactExports.useEffect(() => {
+    if (!tick) return;
+    let lastStep = Math.round(mv.get());
+    let lastAt = 0;
+    return mv.on("change", (v2) => {
+      const step = Math.round(v2);
+      const now2 = performance.now();
+      if (step === lastStep || now2 - lastAt < 60) return;
+      lastStep = step;
+      lastAt = now2;
+      playSound("count");
+    });
+  }, [mv, tick]);
+  return /* @__PURE__ */ jsxRuntimeExports.jsx(motion.span, { className, children: text });
+}
+function SaveButton({
+  canSave,
+  onSave,
+  amount,
+  className
+}) {
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs(
+    motion.button,
+    {
+      type: "button",
+      onClick: onSave,
+      disabled: !canSave,
+      whileHover: canSave ? { y: -2 } : void 0,
+      whileTap: canSave ? { scale: 0.94 } : void 0,
+      animate: canSave ? {
+        boxShadow: [
+          "0 0 0 0 oklch(0.74 0.14 80 / 0.5)",
+          "0 0 0 12px oklch(0.74 0.14 80 / 0)"
+        ]
+      } : { boxShadow: "0 0 0 0 oklch(0.74 0.14 80 / 0)" },
+      transition: canSave ? { boxShadow: { duration: 1.8, repeat: Number.POSITIVE_INFINITY } } : void 0,
+      className: cn(
+        "flex min-w-[9.5rem] flex-1 items-center justify-center gap-2 rounded-full px-6 py-3 font-display text-base font-bold transition-opacity sm:flex-none",
+        canSave ? "gradient-primary text-primary-foreground" : "cursor-not-allowed border border-[color:var(--term-border)] bg-[var(--term-alt)] text-[color:var(--term-ink-faint)]",
+        className
+      ),
+      "aria-label": "Save points",
+      children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx(Shield, { className: "size-4" }),
+        "Save",
+        canSave && amount ? ` ${amount}` : ""
+      ]
+    }
+  );
+}
+function StakeSelector({
+  stakes,
+  value,
+  locked,
+  paused,
+  onChange
+}) {
+  if (paused || stakes.length !== 3) {
+    return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "rounded-md border border-[color:var(--term-border)] bg-[var(--term-alt)] px-3 py-2 font-mono text-xs text-[color:var(--term-ink-mid)]", children: "Bets are paused" });
+  }
+  return /* @__PURE__ */ jsxRuntimeExports.jsx(
+    "div",
+    {
+      className: cn(
+        "flex w-full rounded-[10px] border border-[color:var(--term-border)] p-[3px] transition-opacity",
+        locked && "opacity-60"
+      ),
+      children: stakes.map((s, i) => /* @__PURE__ */ jsxRuntimeExports.jsxs(
+        "button",
+        {
+          type: "button",
+          disabled: locked,
+          onClick: () => onChange(i),
+          className: cn(
+            "flex-1 rounded-md px-2 py-2.5 font-mono text-sm font-semibold transition-smooth disabled:cursor-not-allowed sm:text-base",
+            value === i ? "gradient-primary text-primary-foreground" : cn(inkMid$3, "hover:text-[color:var(--term-ink)]")
+          ),
+          children: [
+            STAKE_LABELS[i],
+            " ",
+            fmtGoldao(s)
+          ]
+        },
+        STAKE_LABELS[i]
+      ))
+    }
+  );
+}
+function pickHint(exc, picks) {
+  if (!exc)
+    return "Pick any cell to start. The first two picks are always safe.";
+  if (picks < 2) return "Free pick: nothing at risk.";
+  if (picks + 1 >= MAX_PICKS)
+    return "Last pick: it is collected automatically.";
+  if (!exc.canSave) return "First risky pick. Surviving it unlocks Save.";
+  if (picks < 4) return "One more pick for Ingot.";
+  if (picks < 6) return "Treasure is within reach.";
+  return "Treasure. Every pick pays more.";
+}
+function useBelowMd() {
+  const supported = typeof window !== "undefined" && typeof window.matchMedia === "function";
+  const [below, setBelow] = reactExports.useState(
+    () => supported && window.matchMedia("(max-width: 767px)").matches
+  );
+  reactExports.useEffect(() => {
+    if (!supported) return;
+    const mq = window.matchMedia("(max-width: 767px)");
+    const update = () => setBelow(mq.matches);
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, [supported]);
+  return below;
+}
+function PayoutStep({
+  exc,
+  className
+}) {
+  const picks = exc ? Number(exc.picks) : 0;
+  const safe2 = exc ? Number(exc.safePctX100) / 100 : 100;
+  const tone = safe2 > 75 ? {
+    text: "text-[color:var(--term-green)]",
+    fill: "bg-gradient-to-r from-[oklch(0.6_0.13_160)] to-[color:var(--term-green)] shadow-[0_0_12px_oklch(0.7_0.15_155/0.45)]"
+  } : safe2 > 60 ? {
+    text: "text-primary",
+    fill: "bg-gradient-to-r from-[oklch(0.6_0.12_65)] to-primary shadow-[0_0_12px_oklch(0.71_0.122_83/0.4)]"
+  } : {
+    text: "text-destructive",
+    fill: "bg-gradient-to-r from-[oklch(0.55_0.18_25)] to-destructive shadow-[0_0_12px_oklch(0.65_0.19_22/0.45)]"
+  };
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs(
+    "div",
+    {
+      className: cn(
+        "relative overflow-hidden rounded-xl border border-primary/50 bg-primary/10 px-3 py-2 sm:px-4 md:py-3",
+        className
+      ),
+      children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx(AnimatePresence, { mode: "popLayout", initial: false, children: /* @__PURE__ */ jsxRuntimeExports.jsxs(
+          motion.div,
+          {
+            initial: { opacity: 0, y: 10 },
+            animate: { opacity: 1, y: 0 },
+            exit: { opacity: 0, y: -10 },
+            transition: { type: "spring", stiffness: 340, damping: 24 },
+            className: "flex flex-col gap-1.5 md:gap-2",
+            children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-baseline justify-between gap-3", children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: cn(eyebrow, gold$2), children: [
+                  "Next pick ",
+                  picks + 1
+                ] }),
+                /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "flex items-baseline gap-2", children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsxs(
+                    "span",
+                    {
+                      className: cn(
+                        "font-display text-xl font-bold leading-none tabular-nums md:text-[26px]",
+                        tone.text
+                      ),
+                      children: [
+                        safe2,
+                        "%"
+                      ]
+                    }
+                  ),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx(
+                    "span",
+                    {
+                      className: cn(
+                        "font-mono text-[10px] font-semibold uppercase tracking-[0.16em]",
+                        inkMid$3
+                      ),
+                      children: "Safe"
+                    }
+                  )
+                ] })
+              ] }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "h-2 overflow-hidden rounded-full bg-destructive/20 ring-1 ring-inset ring-white/5 md:h-2.5", children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+                "div",
+                {
+                  className: cn(
+                    "relative h-full rounded-full transition-all duration-500",
+                    tone.fill
+                  ),
+                  style: { width: `${safe2}%` },
+                  children: /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "absolute inset-x-0 top-0 h-1/2 rounded-full bg-white/20" })
+                }
+              ) }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: cn("hidden font-mono text-[11px] md:block", inkMid$3), children: pickHint(exc, picks) })
+            ]
+          },
+          picks
+        ) }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          motion.span,
+          {
+            "aria-hidden": true,
+            initial: { x: "-120%" },
+            animate: { x: "220%" },
+            transition: { duration: 0.9, ease: "easeOut" },
+            className: "pointer-events-none absolute inset-y-0 left-0 w-1/2 -skew-x-12 bg-gradient-to-r from-transparent via-white/25 to-transparent"
+          },
+          `sweep-${picks}`
+        )
+      ]
+    }
+  );
+}
+function PickProgress({
+  picks,
+  className
+}) {
+  return /* @__PURE__ */ jsxRuntimeExports.jsx(
+    "div",
+    {
+      role: "img",
+      "aria-label": `${Math.min(picks, MAX_PICKS)} of ${MAX_PICKS} picks`,
+      className: cn("flex flex-1 gap-[3px]", className),
+      children: Array.from({ length: MAX_PICKS }, (_2, i) => /* @__PURE__ */ jsxRuntimeExports.jsx(
+        "span",
+        {
+          className: cn(
+            "h-1 flex-1 rounded-sm transition-colors duration-300",
+            i < picks ? "gradient-primary" : "bg-[color:var(--term-border)]"
+          )
+        },
+        i
+      ))
+    }
+  );
+}
+function RunCard({
+  exc,
+  canSave,
+  onSave,
+  className
+}) {
+  const compact2 = useBelowMd();
+  const picks = exc ? Number(exc.picks) : 0;
+  const active = !!(exc == null ? void 0 : exc.canSave);
+  const prize = exc && active ? exc.runGross : 0n;
+  const next = exc && exc.nextGross > 0n ? exc.nextGross : null;
+  const lastPick = !!exc && picks + 1 >= MAX_PICKS;
+  const mult = exc && active ? fmtMultOf(exc.runGross, exc.stake) : "0.00x";
+  const prizeNumber = /* @__PURE__ */ jsxRuntimeExports.jsx(
+    "span",
+    {
+      className: cn(
+        "font-display font-bold leading-none tabular-nums transition-colors",
+        compact2 ? "text-[38px]" : "text-[64px]",
+        prize > 0n ? "text-[color:var(--term-green)]" : ink$3
+      ),
+      children: /* @__PURE__ */ jsxRuntimeExports.jsx(RollingNumber, { value: toGoldao(prize), scaled: true, tick: true, fixed2: true })
+    }
+  );
+  if (compact2) {
+    return /* @__PURE__ */ jsxRuntimeExports.jsxs(
+      "div",
+      {
+        className: cn(
+          "flex min-w-0 flex-col gap-2.5 border-t border-[color:var(--term-border)] bg-background px-3.5 pb-3 pt-3 shadow-[0_-10px_24px_rgba(0,0,0,0.35)]",
+          className
+        ),
+        children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center justify-between gap-3", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex min-w-0 flex-col gap-1", children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: cn(eyebrow, "text-[10px]", inkFaint$2), children: "Prize now" }),
+              prizeNumber
+            ] }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx(
+              SaveButton,
+              {
+                canSave,
+                onSave,
+                amount: exc ? fmtGoldao(exc.runGross) : void 0,
+                className: "max-w-[12rem] px-4 py-2.5"
+              }
+            )
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs(
+            "div",
+            {
+              className: cn(
+                "flex items-center gap-2.5 font-mono text-[11px]",
+                inkMid$3
+              ),
+              children: [
+                active && /* @__PURE__ */ jsxRuntimeExports.jsx(
+                  motion.span,
+                  {
+                    initial: { scale: 1.18 },
+                    animate: { scale: 1 },
+                    transition: { type: "spring", stiffness: 300, damping: 14 },
+                    className: "text-gradient-gold origin-left font-display text-lg font-bold leading-none tabular-nums",
+                    children: mult
+                  },
+                  picks
+                ),
+                /* @__PURE__ */ jsxRuntimeExports.jsx(PickProgress, { picks, className: "min-w-[4.5rem]" }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "whitespace-nowrap", children: next !== null ? /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+                  "You could win",
+                  " ",
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("b", { className: "font-semibold text-[color:var(--term-green)]", children: fmtGoldao2(next) })
+                ] }) : exc ? "Maximum reached" : "Save unlocks at pick 3" })
+              ]
+            }
+          )
+        ]
+      }
+    );
+  }
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs(
+    "div",
+    {
+      className: cn(
+        "flex min-w-0 flex-col gap-3 rounded-xl border border-[color:var(--term-border)] bg-[var(--term-alt)] p-4",
+        className
+      ),
+      children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-end justify-between gap-4", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex min-w-0 flex-col gap-1", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: cn(eyebrow, "text-[10px]", inkFaint$2), children: "Prize now" }),
+            prizeNumber
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex min-w-0 flex-col items-end gap-1", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: cn(eyebrow, "text-[10px]", inkFaint$2), children: "Multiplier" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx(
+              motion.span,
+              {
+                initial: { scale: 1.18 },
+                animate: { scale: 1 },
+                transition: { type: "spring", stiffness: 300, damping: 14 },
+                className: cn(
+                  "origin-right font-display text-[34px] font-bold leading-none tabular-nums",
+                  active ? "text-gradient-gold" : inkFaint$2
+                ),
+                children: mult
+              },
+              picks
+            )
+          ] })
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs(
+          "div",
+          {
+            className: cn(
+              "flex items-center gap-2.5 font-mono text-[11px]",
+              inkFaint$2
+            ),
+            children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx(PickProgress, { picks }),
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { children: [
+                picks,
+                "/",
+                MAX_PICKS
+              ] })
+            ]
+          }
+        ),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-wrap items-center justify-between gap-x-4 gap-y-2.5 rounded-xl border border-primary/50 bg-primary/10 px-3 py-2.5", children: [
+          next !== null ? /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex min-w-0 flex-col gap-0.5", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: cn(eyebrow, "text-[10px]", gold$2), children: "You could win" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx(
+              motion.span,
+              {
+                initial: { opacity: 0, y: 6 },
+                animate: { opacity: 1, y: 0 },
+                className: "font-display text-[30px] font-bold leading-none tabular-nums text-[color:var(--term-green)]",
+                children: fmtGoldao2(next)
+              },
+              `next-${picks}`
+            ),
+            lastPick && /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: cn("font-mono text-[10px]", inkMid$3), children: "Last pick, collected automatically" })
+          ] }) : /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: cn("font-mono text-xs", inkMid$3), children: exc ? "Maximum reached" : "Save unlocks at pick 3" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(
+            SaveButton,
+            {
+              canSave,
+              onSave,
+              amount: exc ? fmtGoldao(exc.runGross) : void 0
+            }
+          )
+        ] })
+      ]
+    }
+  );
+}
+const MEDAL = {
+  1: "bg-[linear-gradient(145deg,#f3d58f,#d9a93f)] text-[#54360b] dark:bg-[linear-gradient(145deg,#e8c370,#a88130)] dark:text-[#2b1d06]",
+  2: "bg-[linear-gradient(145deg,#f0f2f4,#b3bac2)] text-[#3b434b] dark:bg-[linear-gradient(145deg,#dde1e5,#868d96)] dark:text-[#1f2329]",
+  3: "bg-[linear-gradient(145deg,#ecbc92,#bd7f4b)] text-[#4a2a10] dark:bg-[linear-gradient(145deg,#d9a273,#8f5b31)] dark:text-[#2a1608]",
+  4: "bg-[linear-gradient(145deg,#ead8ca,#cbb2a0)] text-[#5c4f47] dark:bg-[linear-gradient(145deg,#505050,#3d3d3c)] dark:text-[#e6d9c3]"
+};
+const HEX_CLIP = "polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%)";
+const LABEL = "text-[#7a6a60] dark:text-[#9b9a94]";
+const NUM = "text-[#2a2520] dark:text-[#f0e6d6]";
+const GOLD = "text-[#b08a2e] dark:text-[#c9a03c]";
+const FOOT = "text-[#8a7a70] dark:text-[#8f8e88]";
+const GREEN_RANK = "text-[#2d8a5e] dark:text-[#36c58a]";
+function RankPanel({ dashboard }) {
+  const rank = dashboard ? Number(dashboard.top10Rank) : 0;
+  const inTop = rank >= 1 && rank <= 10;
+  const tier = rank >= 1 && rank <= 3 ? rank : 4;
+  const prize = dashboard && inTop ? dashboard.top10Prize : 0n;
+  let gap = "";
+  if (dashboard && rank > 10) gap = `${rank - 10} spots to Top 10`;
+  else if (dashboard && rank === 0)
+    gap = `Stake ${fmtGoldao(dashboard.top10Entry)} to enter`;
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex min-w-0 flex-col justify-center gap-4 rounded-[14px] border border-[rgba(92,79,71,.18)] bg-white/20 px-3.5 pb-3.5 pt-3 dark:border-white/[.07] dark:bg-black/[.18]", children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center justify-between", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx(
+        "span",
+        {
+          className: cn(
+            "text-[11px] font-bold uppercase tracking-[.26em]",
+            LABEL
+          ),
+          children: "Your rank"
+        }
+      ),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "group relative inline-flex", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "button",
+          {
+            type: "button",
+            "aria-label": "Top 10 pool info",
+            className: cn(
+              "inline-flex size-[18px] cursor-help items-center justify-center rounded-full border border-[rgba(92,79,71,.18)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#b08a2e] dark:border-white/[.07]",
+              LABEL
+            ),
+            children: /* @__PURE__ */ jsxRuntimeExports.jsxs(
+              "svg",
+              {
+                viewBox: "0 0 24 24",
+                className: "size-[11px]",
+                fill: "none",
+                stroke: "currentColor",
+                strokeWidth: "2.6",
+                strokeLinecap: "round",
+                strokeLinejoin: "round",
+                "aria-hidden": true,
+                children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("title", { children: "Info" }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("path", { d: "M12 11v6" }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("path", { d: "M12 7h.01" })
+                ]
+              }
+            )
+          }
+        ),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs(
+          "span",
+          {
+            className: cn(
+              "pointer-events-none absolute -right-1 bottom-[calc(100%+8px)] z-10 translate-y-[3px] whitespace-nowrap rounded-[10px] border border-[rgba(201,160,60,.65)] bg-[#f1e1d6] px-2.5 py-[7px] text-[11px] opacity-0 shadow-[0_14px_34px_rgba(92,60,40,.18)] transition group-focus-within:translate-y-0 group-focus-within:opacity-100 group-hover:translate-y-0 group-hover:opacity-100 dark:border-[rgba(174,137,58,.5)] dark:bg-[#232423] dark:shadow-[0_14px_34px_rgba(0,0,0,.45)]",
+              NUM
+            ),
+            children: [
+              "Top 10 pool",
+              " ",
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("b", { className: GOLD, children: [
+                dashboard ? fmtGoldao(dashboard.top10Pool) : "-",
+                " GOLDAO"
+              ] })
+            ]
+          }
+        )
+      ] })
+    ] }),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-3 text-left", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsxs(
+        "div",
+        {
+          className: cn(
+            "flex h-[58px] w-[52px] shrink-0 flex-col items-center justify-center gap-px",
+            MEDAL[tier]
+          ),
+          style: { clipPath: HEX_CLIP },
+          children: [
+            inTop ? /* @__PURE__ */ jsxRuntimeExports.jsxs(
+              "svg",
+              {
+                viewBox: "0 0 24 24",
+                className: "size-3",
+                fill: "currentColor",
+                "aria-hidden": true,
+                children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("title", { children: "Rank" }),
+                  rank <= 3 ? /* @__PURE__ */ jsxRuntimeExports.jsx("path", { d: "M3 8l4.5 4L12 5l4.5 7L21 8l-2 11H5z" }) : /* @__PURE__ */ jsxRuntimeExports.jsx("path", { d: "M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z" })
+                ]
+              }
+            ) : /* @__PURE__ */ jsxRuntimeExports.jsxs(
+              "svg",
+              {
+                viewBox: "0 0 24 24",
+                className: "size-3 opacity-80",
+                fill: "none",
+                stroke: "currentColor",
+                strokeWidth: "2.4",
+                strokeLinecap: "round",
+                "aria-hidden": true,
+                children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("title", { children: "Rank" }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("circle", { cx: "12", cy: "12", r: "8" }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("circle", { cx: "12", cy: "12", r: "3.5" })
+                ]
+              }
+            ),
+            /* @__PURE__ */ jsxRuntimeExports.jsx(
+              "span",
+              {
+                className: "font-display font-extrabold leading-none tracking-[-.02em]",
+                style: {
+                  fontSize: inTop ? 18 : String(rank).length >= 3 ? 13 : 16
+                },
+                children: rank > 0 ? `#${rank}` : "-"
+              }
+            )
+          ]
+        }
+      ),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs(
+          "div",
+          {
+            className: cn(
+              "font-display text-[26px] font-extrabold leading-none tracking-[-.01em]",
+              inTop && prize > 0n ? GREEN_RANK : FOOT
+            ),
+            children: [
+              "+",
+              fmtGoldao2(prize)
+            ]
+          }
+        ),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: cn("mt-1 text-[11px]", FOOT), children: "GOLDAO if it closed now" }),
+        gap && /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "div",
+          {
+            className: cn(
+              "mt-1 text-[11px] font-bold tracking-[.02em]",
+              GOLD
+            ),
+            children: gap
+          }
+        )
+      ] })
+    ] })
+  ] });
+}
+function CreditBar({
+  dashboard,
+  className
+}) {
+  const { inPlay } = useBoard();
+  const shown = dashboard ? dashboard.credit > inPlay ? dashboard.credit - inPlay : 0n : 0n;
+  const credit = toGoldao(shown);
+  const prev = reactExports.useRef(null);
+  const [flash, setFlash] = reactExports.useState(false);
+  const loaded = !!dashboard;
+  reactExports.useEffect(() => {
+    if (!loaded) return;
+    const before = prev.current;
+    prev.current = credit;
+    if (before === null || credit <= before) return;
+    setFlash(true);
+    const t = window.setTimeout(() => setFlash(false), 1200);
+    return () => window.clearTimeout(t);
+  }, [credit, loaded]);
+  const wrapRef = reactExports.useRef(null);
+  const leftRef = reactExports.useRef(null);
+  const [box, setBox] = reactExports.useState({ wrap: 0, left: 0 });
+  reactExports.useLayoutEffect(() => {
+    const wrap2 = wrapRef.current;
+    const left = leftRef.current;
+    if (!wrap2 || !left) return;
+    const measure = () => setBox({ wrap: wrap2.clientWidth, left: left.clientWidth });
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(wrap2);
+    ro.observe(left);
+    return () => ro.disconnect();
+  }, []);
+  const narrow = box.wrap > 0 && box.wrap < 520;
+  let em = 0;
+  for (const ch of fmtGoldao2(shown))
+    em += ch === "," || ch === "." ? 0.32 : 0.64;
+  const wanted = box.wrap * (narrow ? 0.135 : 0.08);
+  const room = box.left > 0 ? box.left / em : wanted;
+  const size = box.wrap > 0 ? Math.max(20, Math.min(narrow ? 40 : 48, wanted, Math.floor(room))) : 40;
+  return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { ref: wrapRef, className: cn("flex min-w-0 flex-col", className), children: /* @__PURE__ */ jsxRuntimeExports.jsxs(
+    "div",
+    {
+      className: cn(
+        "grid flex-1 items-stretch gap-[22px] rounded-[18px] border border-[rgba(201,160,60,.65)] bg-[#e2cabc] px-[22px] pb-5 pt-[22px] shadow-[0_14px_34px_rgba(92,60,40,.18)] dark:border-[rgba(174,137,58,.5)] dark:bg-[#343433] dark:shadow-[0_14px_34px_rgba(0,0,0,.45)]",
+        narrow ? "grid-cols-1 gap-4" : "grid-cols-[minmax(0,1fr)_230px]"
+      ),
+      children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs(
+          "div",
+          {
+            ref: leftRef,
+            className: cn(
+              "flex min-w-0 flex-col justify-between",
+              narrow && "gap-1"
+            ),
+            children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx(
+                  "div",
+                  {
+                    className: cn(
+                      "text-[11px] font-bold uppercase tracking-[.26em]",
+                      LABEL
+                    ),
+                    children: "Accumulated prize"
+                  }
+                ),
+                /* @__PURE__ */ jsxRuntimeExports.jsxs(
+                  "div",
+                  {
+                    className: cn(
+                      "flex flex-wrap items-baseline gap-x-2.5 gap-y-1",
+                      narrow ? "my-2.5 mb-3" : "mb-3.5 mt-3.5"
+                    ),
+                    children: [
+                      /* @__PURE__ */ jsxRuntimeExports.jsx(
+                        "span",
+                        {
+                          className: cn(
+                            "whitespace-nowrap font-display font-extrabold leading-none tracking-[-.02em] tabular-nums transition-colors duration-1000",
+                            flash ? GREEN_RANK : NUM
+                          ),
+                          style: { fontSize: size },
+                          children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+                            RollingNumber,
+                            {
+                              value: credit,
+                              scaled: prev.current !== null,
+                              tick: prev.current !== null,
+                              instant: prev.current !== null && credit < prev.current,
+                              fixed2: true
+                            }
+                          )
+                        }
+                      ),
+                      /* @__PURE__ */ jsxRuntimeExports.jsx(
+                        "span",
+                        {
+                          className: cn("text-[11px] font-bold tracking-[.12em]", GOLD),
+                          children: "GOLDAO"
+                        }
+                      )
+                    ]
+                  }
+                )
+              ] }),
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: cn("text-[11.5px]", FOOT), children: [
+                "Paid when the tournament closes",
+                dashboard ? ` · ${fmtCountdown(dashboard.endsAt)}` : ""
+              ] })
+            ]
+          }
+        ),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(RankPanel, { dashboard })
+      ]
+    }
+  ) });
+}
+function JackpotCard({
+  pool,
+  miniBps,
+  className
+}) {
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs(
+    "div",
+    {
+      className: cn(
+        "flex min-w-0 items-center justify-between gap-3 rounded-xl border border-[oklch(0.68_0.16_350/0.45)] bg-[oklch(0.7_0.14_350/0.08)] px-3 py-3 sm:px-5",
+        className
+      ),
+      children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex min-w-0 flex-col gap-0.5", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsxs(
+            "span",
+            {
+              className: cn(
+                eyebrow,
+                DIAMOND_TEXT,
+                "flex items-center gap-1.5 text-[10px] sm:text-xs"
+              ),
+              children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx(Gem, { className: "size-3.5" }),
+                " Diamond jackpot"
+              ]
+            }
+          ),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs(
+            "span",
+            {
+              className: cn(
+                "font-display text-[40px] font-bold leading-[1.05] tabular-nums md:text-[clamp(38px,4.6vw,56px)]",
+                DIAMOND_TEXT
+              ),
+              children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx(RollingNumber, { value: pool ? toGoldao(pool) : 0 }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: cn("ml-2 font-mono text-xs", inkFaint$2), children: "GOLDAO" })
+              ]
+            }
+          ),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: cn("font-mono text-[11px]", inkMid$3), children: [
+            "3 diamonds win it all",
+            miniBps !== void 0 && ` · 2 win ${miniBps / 100}%`
+          ] })
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "img",
+          {
+            src: DIAMOND_IMG,
+            alt: "",
+            "aria-hidden": true,
+            className: "block w-16 shrink-0 object-contain drop-shadow-[0_6px_18px_oklch(0.7_0.14_350/0.35)] md:hidden xl:block xl:w-24"
+          }
+        )
+      ]
+    }
+  );
+}
+const PINK = "text-[#d6336c] dark:text-[#ff7ab8]";
+const GREEN = "text-[color:var(--term-green)]";
+function FitNumber({
+  value,
+  className,
+  plus
+}) {
+  const ref = reactExports.useRef(null);
+  const [width, setWidth] = reactExports.useState(0);
+  reactExports.useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const measure = () => setWidth(el.clientWidth);
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  const text = (plus ? "+" : "") + fmtGoldao2(value);
+  let em = 0;
+  for (const ch of text) em += ch === "," || ch === "." ? 0.32 : 0.64;
+  const MAX = 74;
+  const MIN = 22;
+  const fit = width > 0 ? Math.floor(width / em) : MAX;
+  const size = Math.max(MIN, Math.min(MAX, fit));
+  return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { ref, className: "w-full", children: /* @__PURE__ */ jsxRuntimeExports.jsxs(
+    "span",
+    {
+      className: cn(
+        "block whitespace-nowrap font-display font-bold leading-none tabular-nums",
+        className
+      ),
+      style: { fontSize: size },
+      children: [
+        plus && "+",
+        /* @__PURE__ */ jsxRuntimeExports.jsx(RollingNumber, { value: toGoldao(value), from: 0, scaled: true, tick: true, fixed2: true })
+      ]
+    }
+  ) });
+}
+function ResultCard({
+  result,
+  mini = false,
+  onNew
+}) {
+  const collapsed = result.kind === EndKind.collapsed;
+  const jackpot = result.jackpotWon > 0n;
+  const prize = prizeName(Number(result.picks));
+  const PrizeIcon = prize.icon;
+  const total = result.gross + (jackpot ? result.jackpotWon : 0n);
+  const stake = result.stake;
+  const gain = total > stake && stake > 0n;
+  const pct = gain ? fmtPct1(total - stake, stake) : null;
+  const rescued = stake > 0n ? Number(result.gross * 1000n / stake) / 10 : 0;
+  const numberColor = jackpot ? PINK : GREEN;
+  return /* @__PURE__ */ jsxRuntimeExports.jsx(
+    motion.div,
+    {
+      initial: { opacity: 0 },
+      animate: { opacity: 1 },
+      className: "absolute inset-0 z-10 flex items-center justify-center rounded-xl bg-black/50 p-3 backdrop-blur-[3px]",
+      children: /* @__PURE__ */ jsxRuntimeExports.jsxs(
+        motion.div,
+        {
+          initial: { scale: 0.92, y: 8 },
+          animate: { scale: 1, y: 0 },
+          transition: { type: "spring", stiffness: 280, damping: 22 },
+          className: "flex w-full max-w-[400px] flex-col items-center gap-2.5 rounded-2xl border border-[color:var(--term-border)] bg-[oklch(var(--background)/0.96)] px-4 py-5 text-center shadow-2xl",
+          children: [
+            jackpot ? /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "inline-flex items-center gap-2 rounded-full border border-white/20 bg-[#d6336c] px-4 py-1.5 font-display text-[clamp(16px,4.4vw,24px)] font-bold uppercase leading-none tracking-wider text-white dark:bg-[#b8337a] dark:text-[#fff5fa]", children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx(Gem, { className: "size-[1em]" }),
+              mini ? "Mini jackpot" : "Diamond jackpot"
+            ] }) : collapsed ? /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: cn(eyebrow, gold$2), children: "Collapse · GOLDAO secured" }) : /* @__PURE__ */ jsxRuntimeExports.jsxs(
+              "span",
+              {
+                className: cn(
+                  "inline-flex items-center gap-2 rounded-full border px-4 py-1.5 font-display text-[clamp(20px,5vw,30px)] font-bold uppercase leading-none tracking-wider",
+                  prize.pill
+                ),
+                children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx(PrizeIcon, { className: "size-[1em]" }),
+                  prize.name
+                ]
+              }
+            ),
+            collapsed && /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: cn("font-mono text-[11px]", inkFaint$2), children: [
+              "Collapsed on pick ",
+              Number(result.picks) + 1
+            ] }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx(FitNumber, { value: total, className: numberColor, plus: total > 0n }),
+            jackpot ? /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+              pct !== null && /* @__PURE__ */ jsxRuntimeExports.jsxs(
+                "span",
+                {
+                  className: cn(
+                    "inline-flex items-center gap-1 rounded-full border border-[#d6336c]/40 bg-[#d6336c]/10 px-3 py-1 font-mono text-xs font-bold dark:border-[#ff7ab8]/40 dark:bg-[#ff7ab8]/10",
+                    PINK
+                  ),
+                  children: [
+                    /* @__PURE__ */ jsxRuntimeExports.jsx(ArrowUp, { className: "size-3" }),
+                    "+",
+                    pct,
+                    "% profit"
+                  ]
+                }
+              ),
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: cn("font-mono text-[11px] font-bold", PINK), children: [
+                fmtGoldao2(result.gross),
+                " ",
+                collapsed ? "secured" : "prize",
+                " +",
+                " ",
+                fmtGoldao2(result.jackpotWon),
+                " jackpot"
+              ] })
+            ] }) : collapsed ? /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex w-full flex-col gap-1", children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "h-2 w-full overflow-hidden rounded-full bg-[color:var(--term-border)]", children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+                "div",
+                {
+                  className: "h-full rounded-full bg-[color:var(--term-green)]",
+                  style: { width: `${Math.max(0, Math.min(100, rescued))}%` }
+                }
+              ) }),
+              /* @__PURE__ */ jsxRuntimeExports.jsxs(
+                "div",
+                {
+                  className: cn(
+                    "flex justify-between font-mono text-[10.5px]",
+                    inkFaint$2
+                  ),
+                  children: [
+                    /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { children: [
+                      Math.floor(rescued).toLocaleString("en-US"),
+                      "% rescued"
+                    ] }),
+                    /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { children: [
+                      "of ",
+                      fmtGoldao2(stake)
+                    ] })
+                  ]
+                }
+              )
+            ] }) : pct !== null && /* @__PURE__ */ jsxRuntimeExports.jsxs(
+              "span",
+              {
+                className: cn(
+                  "inline-flex items-center gap-1 rounded-full border border-[color:var(--term-green)]/40 bg-[color:var(--term-green)]/10 px-3 py-1 font-mono text-xs font-bold",
+                  GREEN
+                ),
+                children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx(ArrowUp, { className: "size-3" }),
+                  "+",
+                  pct,
+                  "% profit"
+                ]
+              }
+            ),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs(
+              "button",
+              {
+                type: "button",
+                onClick: onNew,
+                className: "mt-1 flex items-center gap-1.5 rounded-full border border-primary/60 bg-primary/10 px-4 py-1.5 font-mono text-xs font-medium text-[color:var(--term-gold)] transition-colors hover:bg-primary/20",
+                children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx(RotateCcw, { className: "size-3.5" }),
+                  "New excavation"
+                ]
+              }
+            )
+          ]
+        }
+      )
+    }
+  );
+}
+function Legend() {
+  const items = [
+    ...["GOLDAO", "OGY", "ICP", "GLDT"].map((t) => ({
+      label: t,
+      node: /* @__PURE__ */ jsxRuntimeExports.jsx("img", { src: TOKENS[t].logo, alt: "", className: "size-4 rounded-full" })
+    })),
+    {
+      label: "Diamond",
+      node: /* @__PURE__ */ jsxRuntimeExports.jsx("img", { src: DIAMOND_IMG, alt: "", className: "size-4" })
+    },
+    {
+      label: "Collapse",
+      node: /* @__PURE__ */ jsxRuntimeExports.jsx(Mountain, { className: "size-3.5 text-[color:var(--term-ink-mid)]" })
+    }
+  ];
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-wrap items-center gap-x-4 gap-y-2", children: [
+    items.map((it2) => /* @__PURE__ */ jsxRuntimeExports.jsxs(
+      "span",
+      {
+        className: cn(
+          "flex items-center gap-1.5 font-mono text-[11px]",
+          inkMid$3
+        ),
+        children: [
+          it2.node,
+          it2.label
+        ]
+      },
+      it2.label
+    )),
+    /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: cn("font-mono text-[11px]", inkFaint$2), children: "Tokens are decoration: only depth and diamonds matter." })
+  ] });
+}
+function BoardMessage({
+  text,
+  tone,
+  icon,
+  className
+}) {
+  const color2 = {
+    gold: "text-[color:var(--term-gold)]",
+    rock: "text-[color:var(--term-ink-mid)]",
+    mid: "text-[color:var(--term-ink-faint)]",
+    err: "text-destructive"
+  }[tone];
+  return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: cn("flex min-h-8 items-center justify-center", className), children: /* @__PURE__ */ jsxRuntimeExports.jsx(AnimatePresence, { mode: "wait", children: /* @__PURE__ */ jsxRuntimeExports.jsxs(
+    motion.p,
+    {
+      initial: { opacity: 0, y: 4 },
+      animate: { opacity: 1, y: 0 },
+      exit: { opacity: 0, y: -4 },
+      transition: { duration: 0.2 },
+      className: cn("flex items-center gap-1.5 font-mono text-xs", color2),
+      children: [
+        icon === "rock" && /* @__PURE__ */ jsxRuntimeExports.jsx(Mountain, { className: "size-3.5" }),
+        icon === "shield" && /* @__PURE__ */ jsxRuntimeExports.jsx(ShieldCheck, { className: "size-3.5" }),
+        text
+      ]
+    },
+    text
+  ) }) });
+}
+function AutoPicker({
+  value,
+  disabled,
+  busy,
+  onChange,
+  onRun
+}) {
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-wrap items-center gap-2 px-0.5", children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: cn(eyebrow, gold$2), children: "Auto dig" }),
+    /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: cn("font-mono text-xs", inkMid$3), children: "Save at pick" }),
+    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "inline-flex rounded-md border border-[color:var(--term-border)] p-0.5 font-mono text-xs", children: [3, 4, 5, 6, 7, 8, 9, 10].map((n2) => /* @__PURE__ */ jsxRuntimeExports.jsx(
+      "button",
+      {
+        type: "button",
+        disabled,
+        onClick: () => onChange(n2),
+        className: cn(
+          "rounded px-1.5 py-1 transition-smooth disabled:opacity-60",
+          value === n2 ? "bg-primary text-primary-foreground" : inkMid$3
+        ),
+        children: n2
+      },
+      n2
+    )) }),
+    /* @__PURE__ */ jsxRuntimeExports.jsx(
+      "button",
+      {
+        type: "button",
+        disabled,
+        onClick: onRun,
+        className: "min-w-24 flex-1 rounded-md border border-[color:var(--term-border)] px-3 py-2 font-display text-sm transition-colors hover:border-primary/60 disabled:cursor-not-allowed disabled:opacity-50",
+        children: busy ? "Digging…" : "Auto dig"
+      }
+    )
+  ] });
+}
+const CHIP_BG = "linear-gradient(var(--term-green-bg), var(--term-green-bg)), oklch(var(--background))";
+const CHARGE_MS = 1700;
+const CLOSE_MS = 1500;
+function CoinRain({ seed }) {
+  const coins = reactExports.useMemo(
+    () => Array.from({ length: 28 }, (_2, i) => ({
+      id: `${seed}-${i}`,
+      left: Math.random() * 100,
+      delay: Math.random() * 0.9,
+      duration: 1.6 + Math.random() * 1.2,
+      size: 18 + Math.round(Math.random() * 14),
+      spin: Math.random() > 0.5 ? 360 : -360
+    })),
+    [seed]
+  );
+  if (seed === 0) return null;
+  return /* @__PURE__ */ jsxRuntimeExports.jsx(
+    "div",
+    {
+      "aria-hidden": true,
+      className: "pointer-events-none absolute inset-0 z-20 overflow-hidden",
+      children: coins.map((c2) => /* @__PURE__ */ jsxRuntimeExports.jsx(
+        motion.img,
+        {
+          src: TOKENS.GOLDAO.logo,
+          alt: "",
+          initial: { y: -40, opacity: 0, rotate: 0 },
+          animate: { y: 520, opacity: [0, 1, 1, 0], rotate: c2.spin },
+          transition: { duration: c2.duration, delay: c2.delay, ease: "easeIn" },
+          style: { left: `${c2.left}%`, width: c2.size, height: c2.size },
+          className: "absolute top-0 rounded-full"
+        },
+        c2.id
+      ))
+    }
+  );
+}
+function SunRays({ color: color2 }) {
+  if (typeof document === "undefined") return null;
+  return reactDomExports.createPortal(
+    /* @__PURE__ */ jsxRuntimeExports.jsx(
+      "div",
+      {
+        "aria-hidden": true,
+        className: "pointer-events-none fixed inset-x-0 top-[46%] z-[79] flex h-0 items-center justify-center",
+        children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "div",
+          {
+            className: "size-[min(1100px,150vmin)] shrink-0",
+            style: {
+              WebkitMaskImage: "radial-gradient(circle, #000 14%, transparent 66%)",
+              maskImage: "radial-gradient(circle, #000 14%, transparent 66%)"
+            },
+            children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+              motion.div,
+              {
+                initial: { rotate: 0, opacity: 0 },
+                animate: { rotate: 360, opacity: 0.55 },
+                transition: {
+                  rotate: {
+                    duration: 50,
+                    ease: "linear",
+                    repeat: Number.POSITIVE_INFINITY
+                  },
+                  opacity: { duration: 0.6 }
+                },
+                className: "size-full rounded-full",
+                style: {
+                  backgroundImage: `repeating-conic-gradient(from 0deg, ${color2} 0 7deg, transparent 7deg 20deg)`,
+                  willChange: "transform"
+                }
+              }
+            )
+          }
+        )
+      }
+    ),
+    document.body
+  );
+}
+function DiamondRain() {
+  const { items, fall, light } = reactExports.useMemo(() => {
+    const w2 = typeof window === "undefined" ? 1024 : window.innerWidth;
+    const h2 = typeof window === "undefined" ? 800 : window.innerHeight;
+    const light2 = w2 < 768;
+    return {
+      light: light2,
+      fall: h2 + 180,
+      items: Array.from({ length: light2 ? 20 : 44 }, (_2, i) => ({
+        id: i,
+        left: Math.random() * 100,
+        delay: Math.random() * 3,
+        duration: 2.4 + Math.random() * 2.2,
+        size: 26 + Math.round(Math.random() * 48),
+        spin: Math.random() > 0.5 ? 540 : -540
+      }))
+    };
+  }, []);
+  if (typeof document === "undefined") return null;
+  return reactDomExports.createPortal(
+    /* @__PURE__ */ jsxRuntimeExports.jsx(
+      "div",
+      {
+        "aria-hidden": true,
+        className: "pointer-events-none fixed inset-0 z-[80] overflow-hidden",
+        children: items.map((d2) => /* @__PURE__ */ jsxRuntimeExports.jsx(
+          motion.div,
+          {
+            initial: { y: -140, rotate: 0 },
+            animate: { y: fall, rotate: d2.spin },
+            transition: {
+              duration: d2.duration,
+              delay: d2.delay,
+              ease: "linear",
+              repeat: Number.POSITIVE_INFINITY
+            },
+            style: {
+              left: `${d2.left}%`,
+              width: d2.size,
+              height: d2.size,
+              willChange: "transform"
+            },
+            className: cn(
+              "absolute top-0",
+              !light && "drop-shadow-[0_4px_12px_oklch(0.8_0.12_350/0.6)]"
+            ),
+            children: /* @__PURE__ */ jsxRuntimeExports.jsx(DiamondIcon, { fill: true })
+          },
+          d2.id
+        ))
+      }
+    ),
+    document.body
+  );
+}
+function DiamondIcon({
+  fill,
+  className
+}) {
+  const size = fill ? "size-full" : "size-[68%]";
+  return /* @__PURE__ */ jsxRuntimeExports.jsx(
+    "img",
+    {
+      src: DIAMOND_IMG,
+      alt: "Diamond",
+      className: cn("object-contain", size, className)
+    }
+  );
+}
+function Slot({
+  state: state2,
+  onTap,
+  ready,
+  label
+}) {
+  const tappable = state2 === "locked" && ready;
+  return /* @__PURE__ */ jsxRuntimeExports.jsx(
+    motion.button,
+    {
+      type: "button",
+      onClick: onTap,
+      disabled: !tappable,
+      "aria-label": label,
+      animate: state2 === "charging" ? {
+        scale: [1, 1.06],
+        boxShadow: [
+          "0 0 0 0 oklch(0.74 0.14 80 / 0)",
+          "0 0 32px 4px oklch(0.74 0.14 80 / 0.55)"
+        ]
+      } : state2 === "hit" ? {
+        scale: [0.7, 1],
+        boxShadow: "0 0 28px oklch(0.7 0.14 350 / 0.5)"
+      } : tappable ? {
+        scale: [1, 1.05, 1],
+        boxShadow: [
+          "0 0 0 0 oklch(0.74 0.14 80 / 0)",
+          "0 0 18px 2px oklch(0.74 0.14 80 / 0.4)",
+          "0 0 0 0 oklch(0.74 0.14 80 / 0)"
+        ]
+      } : { scale: 1, boxShadow: "0 0 0 0 transparent" },
+      transition: state2 === "charging" ? { duration: CHARGE_MS / 1e3, ease: "easeInOut" } : tappable ? { duration: 1.4, repeat: Number.POSITIVE_INFINITY } : { type: "spring", stiffness: 300, damping: 18 },
+      className: cn(
+        "flex size-20 items-center justify-center rounded-2xl border-2 disabled:cursor-default sm:size-24",
+        (state2 === "locked" || state2 === "charging") && "border-primary bg-[color:var(--term-card)]",
+        tappable && "cursor-pointer hover:border-[color:var(--term-gold)]",
+        state2 === "hit" && "border-[oklch(0.68_0.16_350/0.85)] bg-[oklch(0.7_0.14_350/0.18)]",
+        state2 === "miss" && "border-[color:var(--term-border)] bg-[var(--term-alt)] opacity-70"
+      ),
+      children: state2 === "hit" ? /* @__PURE__ */ jsxRuntimeExports.jsx(DiamondIcon, {}) : state2 === "miss" ? /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: cn("font-mono text-2xl", inkFaint$2), children: "-" }) : /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: cn("font-display text-3xl font-bold", gold$2), children: "?" })
+    }
+  );
+}
+function JackpotOverlay({
+  view,
+  onClose,
+  bandHost,
+  pool
+}) {
+  const [slots, setSlots] = reactExports.useState([
+    "locked",
+    "locked",
+    "locked"
+  ]);
+  const timers = reactExports.useRef([]);
+  const { inPlay } = useBoard();
+  const stage = (view == null ? void 0 : view.stage) ?? 0;
+  const won = (view == null ? void 0 : view.won) ?? 0n;
+  const full = stage >= 3 && won > 0n;
+  const mini = stage === 2 && won > 0n;
+  const jackpot = full || mini;
+  const shown = slots.filter((x2) => x2 === "hit" || x2 === "miss").length;
+  const charging = slots.includes("charging");
+  const celebrating = jackpot && shown >= 3;
+  reactExports.useEffect(() => {
+    setSlots(["locked", "locked", "locked"]);
+    for (const t of timers.current) window.clearTimeout(t);
+    timers.current = [];
+    if (view) playSound("crack");
+    return () => {
+      for (const t of timers.current) window.clearTimeout(t);
+      timers.current = [];
+    };
+  }, [view]);
+  const tap = (index2) => {
+    if (!view || charging || slots[index2] !== "locked") return;
+    const order = shown + 1;
+    setSlots((s) => s.map((x2, i) => i === index2 ? "charging" : x2));
+    playSound("suspense");
+    timers.current.push(
+      window.setTimeout(() => {
+        const hit = order <= view.stage;
+        setSlots(
+          (s) => s.map((x2, i) => i === index2 ? hit ? "hit" : "miss" : x2)
+        );
+        playSound(hit ? "diamond" : "miss");
+        if (order < 3) return;
+        if (view.stage >= 2 && view.won > 0n) {
+          timers.current.push(
+            window.setTimeout(() => playSound("jackpot"), 300)
+          );
+        } else {
+          timers.current.push(window.setTimeout(onClose, CLOSE_MS));
+        }
+      }, CHARGE_MS)
+    );
+  };
+  const hits = Math.min(shown, stage);
+  const ready = view !== null && !charging;
+  const band = /* @__PURE__ */ jsxRuntimeExports.jsx(AnimatePresence, { children: view && /* @__PURE__ */ jsxRuntimeExports.jsx(
+    motion.div,
+    {
+      initial: { height: 0, opacity: 0 },
+      animate: { height: "auto", opacity: 1 },
+      exit: { height: 0, opacity: 0 },
+      transition: { duration: 0.9, ease: [0.2, 0.8, 0.2, 1] },
+      className: "my-2 overflow-hidden border-y border-dashed border-[oklch(0.68_0.16_350/0.7)] bg-[radial-gradient(ellipse_at_center,oklch(0.7_0.14_350/0.14),transparent_75%)] sm:my-2.5",
+      children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-col items-center gap-3 px-2 py-4", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          motion.span,
+          {
+            animate: { opacity: [1, 0.35, 1], scale: [1, 1.04, 1] },
+            transition: {
+              duration: 1.1,
+              repeat: Number.POSITIVE_INFINITY,
+              ease: "easeInOut"
+            },
+            className: cn(
+              "text-center font-display text-[clamp(26px,7vw,42px)] font-bold leading-none tracking-wider",
+              DIAMOND_TEXT
+            ),
+            children: "DIAMOND JACKPOT"
+          }
+        ),
+        (full ? won : pool) !== void 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs(
+          "span",
+          {
+            className: cn(
+              "font-display text-xl font-semibold tabular-nums",
+              DIAMOND_TEXT
+            ),
+            children: [
+              fmtGoldao(full ? won : pool ?? 0n),
+              " ",
+              /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: cn("font-mono text-xs", inkMid$3), children: "GOLDAO" })
+            ]
+          }
+        ),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex items-center gap-3", children: slots.map((state2, i) => /* @__PURE__ */ jsxRuntimeExports.jsx(
+          Slot,
+          {
+            state: state2,
+            ready,
+            onTap: () => tap(i),
+            label: `Reveal slot ${i + 1}`
+          },
+          i
+        )) }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: cn("text-center font-mono text-xs", inkMid$3), children: shown >= 3 && !jackpot ? "So close" : shown === 0 ? "Tap a slot to reveal it" : `${hits} / 3 diamonds` })
+      ] })
+    }
+  ) });
+  const celebration = /* @__PURE__ */ jsxRuntimeExports.jsx(AnimatePresence, { children: celebrating && /* @__PURE__ */ jsxRuntimeExports.jsxs(
+    motion.div,
+    {
+      initial: { opacity: 0 },
+      animate: { opacity: 1 },
+      exit: { opacity: 0 },
+      className: "pointer-events-none fixed inset-0 z-[90] flex transform-gpu flex-col items-center justify-center gap-3 p-4 text-center",
+      children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex items-center gap-2", children: [0, 0.2, 0.4].map((delay2, i) => /* @__PURE__ */ jsxRuntimeExports.jsx(
+          motion.div,
+          {
+            animate: { scale: [1, 1.12, 1] },
+            transition: {
+              duration: 1.2,
+              delay: delay2,
+              repeat: Number.POSITIVE_INFINITY
+            },
+            className: i === 1 ? "size-20 sm:size-28" : "size-14 sm:size-20",
+            children: /* @__PURE__ */ jsxRuntimeExports.jsx(DiamondIcon, { fill: true })
+          },
+          delay2
+        )) }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-gradient-gold font-display text-[clamp(44px,12vw,120px)] font-bold leading-none tracking-wide", children: mini ? "MINI JACKPOT" : "JACKPOT" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "relative inline-flex", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "span",
+            {
+              "aria-hidden": true,
+              className: "pointer-events-none absolute -inset-x-[12%] -inset-y-[30%] -z-10 rounded-full bg-[radial-gradient(closest-side,oklch(0.74_0.14_80/0.35),transparent)]"
+            }
+          ),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs(
+            motion.span,
+            {
+              animate: { scale: [1, 1.04, 1] },
+              transition: { duration: 1.4, repeat: Number.POSITIVE_INFINITY },
+              className: "text-gradient-gold font-display text-[clamp(52px,14vw,140px)] font-bold leading-none tabular-nums",
+              children: [
+                "+",
+                /* @__PURE__ */ jsxRuntimeExports.jsx(
+                  RollingNumber,
+                  {
+                    value: toGoldao(won),
+                    from: 0,
+                    scaled: true,
+                    tick: true,
+                    fixed2: true
+                  }
+                )
+              ]
+            }
+          )
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: cn("font-mono text-sm tracking-[0.2em]", gold$2), children: "GOLDAO" }),
+        inPlay > 0n && /* @__PURE__ */ jsxRuntimeExports.jsxs(
+          "span",
+          {
+            className: "rounded-full border border-[color:var(--term-green-border)] px-3 py-1 font-mono text-xs font-bold text-[color:var(--term-green)]",
+            style: { background: CHIP_BG },
+            children: [
+              "+",
+              fmtPct1(won, inPlay),
+              "% profit"
+            ]
+          }
+        ),
+        (view == null ? void 0 : view.held) && /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "max-w-xs font-mono text-xs text-[color:var(--term-ink)]", children: "On hold: it is confirmed from the third pick." }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "button",
+          {
+            type: "button",
+            onClick: onClose,
+            className: "gradient-primary pointer-events-auto mt-2 rounded-full px-9 py-3 font-display text-lg font-bold text-primary-foreground",
+            children: "Continue"
+          }
+        )
+      ]
+    }
+  ) });
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+    bandHost && reactDomExports.createPortal(band, bandHost),
+    /* @__PURE__ */ jsxRuntimeExports.jsx(AnimatePresence, { children: celebrating && /* @__PURE__ */ jsxRuntimeExports.jsx(
+      motion.div,
+      {
+        initial: { opacity: 0 },
+        animate: { opacity: 1 },
+        exit: { opacity: 0 },
+        className: "absolute inset-0 z-40 rounded-xl bg-black/30"
+      }
+    ) }),
+    celebrating && /* @__PURE__ */ jsxRuntimeExports.jsx(SunRays, { color: "oklch(0.7 0.14 350 / 0.55)" }),
+    celebrating && /* @__PURE__ */ jsxRuntimeExports.jsx(DiamondRain, {}),
+    typeof document !== "undefined" && reactDomExports.createPortal(celebration, document.body)
+  ] });
+}
+function isTreasure(picks) {
+  return picks >= TREASURE_MIN_PICKS;
+}
+function GoldRain() {
+  const { items, fall, light } = reactExports.useMemo(() => {
+    const w2 = typeof window === "undefined" ? 1024 : window.innerWidth;
+    const h2 = typeof window === "undefined" ? 800 : window.innerHeight;
+    const light2 = w2 < 768;
+    return {
+      light: light2,
+      fall: h2 + 160,
+      items: Array.from({ length: light2 ? 24 : 48 }, (_2, i) => ({
+        id: i,
+        left: Math.random() * 100,
+        delay: Math.random() * 3,
+        duration: 2.2 + Math.random() * 2,
+        size: 24 + Math.round(Math.random() * 40),
+        spin: Math.random() > 0.5 ? 720 : -720
+      }))
+    };
+  }, []);
+  if (typeof document === "undefined") return null;
+  return reactDomExports.createPortal(
+    /* @__PURE__ */ jsxRuntimeExports.jsx(
+      "div",
+      {
+        "aria-hidden": true,
+        className: "pointer-events-none fixed inset-0 z-[80] overflow-hidden",
+        children: items.map((c2) => /* @__PURE__ */ jsxRuntimeExports.jsx(
+          motion.img,
+          {
+            src: TOKENS.GOLDAO.logo,
+            alt: "",
+            initial: { y: -120, rotate: 0 },
+            animate: { y: fall, rotate: c2.spin },
+            transition: {
+              duration: c2.duration,
+              delay: c2.delay,
+              ease: "linear",
+              repeat: Number.POSITIVE_INFINITY
+            },
+            style: {
+              left: `${c2.left}%`,
+              width: c2.size,
+              height: c2.size,
+              willChange: "transform"
+            },
+            className: cn(
+              "absolute top-0 rounded-full",
+              !light && "drop-shadow-[0_4px_12px_oklch(0.74_0.14_80/0.6)]"
+            )
+          },
+          c2.id
+        ))
+      }
+    ),
+    document.body
+  );
+}
+function TreasureOverlay({
+  view,
+  onClose
+}) {
+  reactExports.useEffect(() => {
+    if (view) playSound("treasure");
+  }, [view]);
+  const content2 = /* @__PURE__ */ jsxRuntimeExports.jsx(AnimatePresence, { children: view && /* @__PURE__ */ jsxRuntimeExports.jsxs(
+    motion.div,
+    {
+      initial: { opacity: 0 },
+      animate: { opacity: 1 },
+      exit: { opacity: 0 },
+      className: "pointer-events-none fixed inset-0 z-[90] flex transform-gpu flex-col items-center justify-center gap-3 p-4 text-center",
+      children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("svg", { width: "0", height: "0", className: "absolute", "aria-hidden": true, children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("title", { children: "Gold" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("defs", { children: /* @__PURE__ */ jsxRuntimeExports.jsxs(
+            "linearGradient",
+            {
+              id: "treasure-gold",
+              gradientUnits: "userSpaceOnUse",
+              x1: "0",
+              y1: "0",
+              x2: "24",
+              y2: "24",
+              children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("stop", { offset: "0", stopColor: "oklch(0.86 0.14 80)" }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("stop", { offset: "1", stopColor: "oklch(0.65 0.14 50)" })
+              ]
+            }
+          ) })
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          Trophy,
+          {
+            stroke: "url(#treasure-gold)",
+            strokeWidth: 1.6,
+            className: "size-[clamp(64px,12vw,104px)] drop-shadow-[0_6px_18px_oklch(0.74_0.14_80/0.6)]"
+          }
+        ),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-gradient-gold font-display text-[clamp(44px,12vw,110px)] font-bold uppercase leading-none tracking-wide", children: "Treasure" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "relative inline-flex", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "span",
+            {
+              "aria-hidden": true,
+              className: "pointer-events-none absolute -inset-x-[12%] -inset-y-[30%] -z-10 rounded-full bg-[radial-gradient(closest-side,oklch(0.74_0.14_80/0.35),transparent)]"
+            }
+          ),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs(
+            motion.span,
+            {
+              animate: { scale: [1, 1.04, 1] },
+              transition: { duration: 1.4, repeat: Number.POSITIVE_INFINITY },
+              className: "text-gradient-gold font-display text-[clamp(48px,13vw,120px)] font-bold leading-none tabular-nums",
+              children: [
+                "+",
+                /* @__PURE__ */ jsxRuntimeExports.jsx(
+                  RollingNumber,
+                  {
+                    value: toGoldao(view.gross),
+                    from: 0,
+                    scaled: true,
+                    tick: true,
+                    fixed2: true
+                  }
+                )
+              ]
+            }
+          )
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: `font-mono text-sm tracking-[0.2em] ${gold$2}`, children: "GOLDAO" }),
+        view.gross > view.won && /* @__PURE__ */ jsxRuntimeExports.jsxs(
+          "span",
+          {
+            className: "rounded-full border border-[color:var(--term-green-border)] px-3 py-1 font-mono text-xs font-bold text-[color:var(--term-green)]",
+            style: {
+              background: "linear-gradient(var(--term-green-bg), var(--term-green-bg)), oklch(var(--background))"
+            },
+            children: [
+              "+",
+              fmtPct1(view.won, view.gross - view.won),
+              "% profit"
+            ]
+          }
+        ),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "button",
+          {
+            type: "button",
+            onClick: onClose,
+            className: "gradient-primary pointer-events-auto mt-2 rounded-full px-9 py-3 font-display text-lg font-bold text-primary-foreground",
+            children: "Continue"
+          }
+        )
+      ]
+    }
+  ) });
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsx(AnimatePresence, { children: view && /* @__PURE__ */ jsxRuntimeExports.jsx(
+      motion.div,
+      {
+        initial: { opacity: 0 },
+        animate: { opacity: 1 },
+        exit: { opacity: 0 },
+        className: "absolute inset-0 z-40 rounded-xl bg-black/50"
+      }
+    ) }),
+    view && /* @__PURE__ */ jsxRuntimeExports.jsx(SunRays, { color: "oklch(0.74 0.14 80 / 0.55)" }),
+    view && /* @__PURE__ */ jsxRuntimeExports.jsx(GoldRain, {}),
+    typeof document !== "undefined" && reactDomExports.createPortal(content2, document.body)
+  ] });
+}
 const CELLS = 25;
+const SPLIT_AT = 15;
+const STAKE_KEYS = [StakeOption.min, StakeOption.mid, StakeOption.max];
+const AUTO_STEP_MS = 450;
+const POP_FROM_PICK = 3;
+const EXC_CHANGED = "Your excavation changed";
+const COIN_MULT_X100 = 110;
+const RAIN_MS = 4200;
 const RESTORE_ORDER = [
   12,
   6,
@@ -60248,1078 +64679,981 @@ const RESTORE_ORDER = [
   23,
   3
 ];
-function MineBoard({ dashboard, config }) {
-  const { actor, isAuthenticated, login } = useAuth();
-  const { run, refreshAll } = useGameAction();
-  const [scope, animate2] = useAnimate();
-  const [exc, setExc] = reactExports.useState(null);
-  const [cells, setCells] = reactExports.useState({});
-  const [digging, setDigging] = reactExports.useState(null);
-  const [result, setResult] = reactExports.useState(null);
-  const [error, setError] = reactExports.useState(null);
-  const skipRestoreUntil = reactExports.useRef(0);
+function fillCells(known, picks) {
+  const out = {};
+  let n2 = 0;
+  for (const key of Object.keys(known)) {
+    if (n2 >= picks) break;
+    out[Number(key)] = known[Number(key)];
+    n2 += 1;
+  }
+  for (const idx of RESTORE_ORDER) {
+    if (n2 >= picks) break;
+    if (out[idx]) continue;
+    n2 += 1;
+    out[idx] = { kind: "token", token: tokenForPick(n2) };
+  }
+  return out;
+}
+function noteJackpot(stage, won) {
+  if (won <= 0n) return;
+  setBoard((s) => ({
+    jackpotKind: stage >= 3 || s.jackpotKind === "full" ? "full" : "mini"
+  }));
+}
+function MineBoard({ dashboard }) {
+  const { actor, isAuthenticated, isLoading, login, principalId } = useAuth();
+  const { run, refreshAll, setOpenExcavation, setCredit } = useGameAction();
+  const board = useBoard();
+  const {
+    exc,
+    cells,
+    digging,
+    result,
+    error,
+    notice,
+    jackpot,
+    jackpotKind,
+    treasure,
+    working,
+    autoRun
+  } = board;
   const { muted: muted2, toggleMuted } = useSoundToggle();
-  const { data: ranking } = useRanking();
-  const [record, setRecord] = reactExports.useState(null);
-  const recordBase = reactExports.useRef(null);
-  const recordTimer = reactExports.useRef(void 0);
-  const showRecord = reactExports.useCallback((text) => {
-    window.clearTimeout(recordTimer.current);
-    setRecord(text);
-    recordTimer.current = window.setTimeout(() => setRecord(null), 3500);
-  }, []);
-  reactExports.useEffect(() => () => window.clearTimeout(recordTimer.current), []);
+  const [autoStop, setAutoStop] = reactExports.useState(3);
+  const [bandHost, setBandHost] = reactExports.useState(null);
+  const jackpotResolve = reactExports.useRef(null);
+  const [enterNo, setEnterNo] = reactExports.useState(0);
+  const descentCtl = useAnimationControls();
+  const shakeCtl = useAnimationControls();
+  const [pop2, setPop] = reactExports.useState(null);
+  const seenRain = reactExports.useRef(board.rain);
+  const [rainSeed, setRainSeed] = reactExports.useState(0);
+  const { data: config } = useGameConfig();
+  const payoutBps = config ? Number(config.payoutBps) : PAYOUT_BPS;
+  const stakes = (dashboard == null ? void 0 : dashboard.stakes) ?? [];
+  const paused = !!(dashboard == null ? void 0 : dashboard.paused) && !exc && !(dashboard == null ? void 0 : dashboard.open);
+  const credit = (dashboard == null ? void 0 : dashboard.credit) ?? 0n;
+  const excNo = dashboard ? Number(dashboard.stats.excavations) : 0;
+  const busy = digging !== null || autoRun || working;
+  const locked = busy || jackpot !== null;
+  const booting = isLoading || isAuthenticated && !dashboard;
   reactExports.useEffect(() => {
     preloadSounds();
+    return () => {
+      var _a3;
+      (_a3 = jackpotResolve.current) == null ? void 0 : _a3.call(jackpotResolve);
+      jackpotResolve.current = null;
+    };
   }, []);
-  const excPerChip = config ? Number(config.excavationsPerChip) : 5;
-  const safePicks = config ? Number(config.safePicks) : 2;
-  const table = reactExports.useMemo(
-    () => config ? config.pointsTable.map(Number) : [],
-    [config]
-  );
-  const weekOpen = (dashboard == null ? void 0 : dashboard.status) === "open";
-  const excavationsLeft = dashboard ? Number(dashboard.excavationsLeft) : 0;
-  const busy = digging !== null;
-  const open = dashboard == null ? void 0 : dashboard.open;
+  const entered = reactExports.useRef(false);
   reactExports.useEffect(() => {
-    if (!open || exc || busy || Date.now() < skipRestoreUntil.current) return;
-    const picks2 = Number(open.picks);
-    const restored = {};
-    RESTORE_ORDER.slice(0, picks2).forEach((idx, i) => {
-      restored[idx] = { kind: "token", token: tokenForPick(i + 1) };
-    });
-    recordBase.current = dashboard ? {
-      best: Number(dashboard.stats.best),
-      deepest: Number(dashboard.stats.deepest),
-      depthShown: false
-    } : null;
-    setExc(open);
-    setCells(restored);
-    setResult(null);
-  }, [open, exc, busy, dashboard]);
-  const endRun = reactExports.useCallback(
-    (r2) => {
-      skipRestoreUntil.current = Date.now() + 8e3;
-      const base = recordBase.current;
-      if (base && base.best > 0 && r2.points > base.best) {
-        showRecord(`New record: ${r2.points} pts in one excavation`);
+    if (booting || entered.current) return;
+    entered.current = true;
+    if (Object.keys(getBoard().cells).length === 0) setEnterNo((n2) => n2 + 1);
+  }, [booting]);
+  const cellCount = Object.keys(cells).length;
+  const prevCellCount = reactExports.useRef(cellCount);
+  reactExports.useEffect(() => {
+    const was = prevCellCount.current;
+    prevCellCount.current = cellCount;
+    if (was === 0 || cellCount > 0 || booting) return;
+    const b2 = getBoard();
+    if (b2.digging === null && !b2.autoRun) setEnterNo((n2) => n2 + 1);
+  }, [cellCount, booting]);
+  reactExports.useEffect(() => {
+    if (enterNo === 0) return;
+    playSound("enter");
+    void descentCtl.start({
+      y: [110, 0],
+      opacity: [0, 1, 1],
+      transition: {
+        duration: 1.3,
+        ease: [0.2, 0.8, 0.2, 1],
+        opacity: { times: [0, 0.5, 1] }
       }
-      recordBase.current = null;
-      setExc(null);
-      setResult(r2);
-      void refreshAll();
-    },
-    [refreshAll, showRecord]
-  );
-  const shake = reactExports.useCallback(() => {
-    if (!scope.current) return;
-    void animate2(
-      scope.current,
-      { x: [0, -10, 10, -7, 7, -3, 3, 0] },
-      { duration: 0.55 }
-    );
-  }, [animate2, scope]);
+    });
+  }, [enterNo, descentCtl]);
+  reactExports.useEffect(() => {
+    if (!pop2) return;
+    const t = window.setTimeout(() => setPop(null), 1900);
+    return () => window.clearTimeout(t);
+  }, [pop2]);
+  const shakeBoard = reactExports.useCallback(() => {
+    void shakeCtl.start({
+      x: [0, -4, 4, -2, 0],
+      y: [0, 3, -3, 2, 0],
+      transition: { duration: 0.22 }
+    });
+  }, [shakeCtl]);
+  reactExports.useEffect(() => {
+    if (getBoard().owner !== principalId) resetBoard(principalId);
+  }, [principalId]);
+  reactExports.useEffect(() => {
+    if (jackpot || board.rain === seenRain.current) return;
+    seenRain.current = board.rain;
+    setRainSeed(board.rain);
+  }, [board.rain, jackpot]);
+  reactExports.useEffect(() => {
+    if (rainSeed === 0) return;
+    const t = window.setTimeout(() => setRainSeed(0), RAIN_MS);
+    return () => window.clearTimeout(t);
+  }, [rainSeed]);
+  const open = dashboard == null ? void 0 : dashboard.open;
+  const excTournament = reactExports.useRef(null);
+  reactExports.useEffect(() => {
+    if (!exc) excTournament.current = null;
+    else if (excTournament.current === null && dashboard)
+      excTournament.current = Number(dashboard.tournament);
+  }, [exc, dashboard]);
+  reactExports.useEffect(() => {
+    if (!dashboard || working || getBoard().working || autoRun) return;
+    if (board.owner !== principalId || !principalId) return;
+    if (Date.now() < board.skipRestoreUntil) return;
+    if (open && (!exc || Number(open.picks) > Number(exc.picks))) {
+      const base = exc ? cells : loadBoardCells(principalId, dashboard.tournament, excNo) ?? {};
+      setBoard({
+        exc: open,
+        cells: fillCells(base, Number(open.picks)),
+        result: null,
+        inPlay: open.stake
+      });
+    }
+    if (!open && exc && digging === null) {
+      const closed = excTournament.current !== null && excTournament.current !== Number(dashboard.tournament);
+      setBoard({
+        exc: null,
+        inPlay: 0n,
+        notice: closed ? "The tournament closed. Your excavation was settled: check your Accumulated prize." : null
+      });
+    }
+  }, [
+    dashboard,
+    open,
+    exc,
+    cells,
+    digging,
+    excNo,
+    principalId,
+    board.owner,
+    board.skipRestoreUntil,
+    autoRun,
+    working
+  ]);
+  const coversStake = (stake) => {
+    if (credit >= stake) return true;
+    setBoard({
+      error: `Load at least ${fmtGoldao(stake - credit)} GOLDAO of balance to start.`
+    });
+    return false;
+  };
+  const finish = (end, stake) => {
+    setBoard({
+      exc: null,
+      inPlay: 0n,
+      digging: null,
+      result: end,
+      skipRestoreUntil: Date.now() + 6e3
+    });
+    clearBoardCells();
+    void setOpenExcavation(null);
+    const treasureWin = end.won > 0n && end.jackpotWon === 0n && end.kind !== EndKind.collapsed && isTreasure(Number(end.picks));
+    if (end.kind === EndKind.collapsed) playSound("collapse");
+    else if (end.won > 0n && end.jackpotWon === 0n && !treasureWin)
+      playSound("success");
+    if (end.gross >= stake * 2n) setBoard((s) => ({ rain: s.rain + 1 }));
+    if (treasureWin) {
+      setBoard({
+        treasure: {
+          gross: end.gross,
+          won: end.won,
+          points: Number(end.points)
+        }
+      });
+    }
+    void refreshAll();
+  };
   const dig = async (index2) => {
-    if (!actor || busy || cells[index2]) return;
+    var _a3, _b3, _c2;
+    if (!actor || getBoard().working || locked || cells[index2]) return;
     if (!isAuthenticated) {
       login();
       return;
     }
-    setError(null);
-    let current = exc;
-    if (!current) {
-      if (!weekOpen) {
-        setError("The week is closed. Wait for the next one to open.");
-        return;
-      }
-      if (excavationsLeft === 0) {
-        setError("No excavations left. Buy a chip to keep digging.");
-        return;
-      }
-      setDigging(index2);
-      setCells({});
-      setResult(null);
-      recordBase.current = dashboard ? {
-        best: Number(dashboard.stats.best),
-        deepest: Number(dashboard.stats.deepest),
-        depthShown: false
-      } : null;
-      try {
-        current = await run("start", () => actor.gameStartExcavation());
-        setExc(current);
-      } catch (e2) {
-        setDigging(null);
-        setError(errorMessage(e2));
-        return;
-      }
-    }
-    setDigging(index2);
+    if (paused) return;
+    setBoard({ working: true, error: null, notice: null });
     try {
-      const r2 = await run("pick", () => actor.gamePick(), false);
-      if (r2.collapsed) {
-        setCells((c2) => ({ ...c2, [index2]: { kind: "rock" } }));
-        shake();
-        endRun({ kind: "collapse", points: Number(r2.pointsSaved) });
+      const starting = !exc;
+      const stakeAmount = exc ? exc.stake : stakes[board.stake] ?? 0n;
+      if (stakeAmount === 0n) {
+        setBoard({ error: "Bets are paused. Try again later." });
         return;
       }
-      const cell = r2.diamond ? { kind: "diamond" } : { kind: "token", token: tokenForPick(Number(r2.picks)) };
-      setCells((c2) => ({ ...c2, [index2]: cell }));
-      playSound(r2.diamond ? "diamond" : "success");
-      const base = recordBase.current;
-      if (base && !base.depthShown && base.deepest > 0 && Number(r2.picks) > base.deepest) {
-        base.depthShown = true;
-        showRecord(`New depth record: pick ${Number(r2.picks)}`);
-      }
-      if (r2.ended) {
-        endRun({ kind: "emptied", points: Number(r2.pointsSaved) });
+      if (!coversStake(stakeAmount)) return;
+      setBoard((s) => ({
+        inPlay: stakeAmount,
+        digging: index2,
+        cells: starting ? {} : s.cells,
+        result: null,
+        jackpotKind: starting ? "none" : s.jackpotKind
+      }));
+      const res = await run(
+        "pick",
+        () => actor.gamePick(
+          starting ? STAKE_KEYS[board.stake] : null,
+          stakeAmount,
+          exc ? exc.picks : 0n
+        ),
+        false
+      );
+      const picks = Number(res.picks);
+      const stage = Number(res.diamond.stage);
+      const cell = res.collapsed ? { kind: "rock" } : stage > 0 ? { kind: "diamond" } : { kind: "token", token: tokenForPick(picks) };
+      setBoard((s) => ({ cells: { ...s.cells, [index2]: cell } }));
+      if (stage >= 2 && res.diamond.won > 0n) {
+        setBoard({
+          hold: true,
+          heldBalance: { credit: res.credit, pool: res.pool }
+        });
       } else {
-        setExc(r2.excavation ?? null);
+        void setCredit(res.credit, res.pool);
+      }
+      if (!res.collapsed) {
+        playSound(stage > 0 ? "diamond" : revealSound(picks));
+        const gross = ((_a3 = res.excavation) == null ? void 0 : _a3.runGross) ?? ((_b3 = res.end) == null ? void 0 : _b3.gross);
+        if (gross !== void 0 && picks >= POP_FROM_PICK)
+          setPop({
+            index: index2,
+            text: fmtMultOf(gross, stakeAmount),
+            id: Date.now()
+          });
+      }
+      if (stage > 0) {
+        setBoard({
+          jackpot: {
+            stage,
+            won: res.diamond.won,
+            held: (((_c2 = res.excavation) == null ? void 0 : _c2.held) ?? 0n) > 0n
+          }
+        });
+        noteJackpot(stage, res.diamond.won);
+        if (stage >= 2 && res.diamond.won > 0n) {
+          setBoard((s) => ({ rain: s.rain + 1 }));
+        }
+      }
+      if (res.end) {
+        finish(res.end, stakeAmount);
+      } else {
+        setBoard({ exc: res.excavation ?? null });
+        if (res.excavation) await setOpenExcavation(res.excavation);
+        if (res.excavation && multX100(Number(res.excavation.runPoints), payoutBps) > COIN_MULT_X100) {
+          setBoard((s) => ({ rain: s.rain + 1 }));
+        }
+        if (principalId && dashboard) {
+          saveBoardCells(
+            principalId,
+            dashboard.tournament,
+            starting ? excNo : excNo,
+            getBoard().cells
+          );
+        }
       }
     } catch (e2) {
-      setError(errorMessage(e2));
-      void refreshAll();
+      const m2 = errorMessage(e2);
+      setBoard({ error: m2 });
+      await refreshAll();
+      if (m2.startsWith(EXC_CHANGED)) {
+        clearBoardCells();
+        setBoard({ exc: null, cells: {}, inPlay: 0n, skipRestoreUntil: 0 });
+      }
     } finally {
-      setDigging(null);
+      setBoard({ working: false, digging: null });
+      if (!getBoard().exc) setBoard({ inPlay: 0n });
     }
-  };
-  const newGame = () => {
-    setCells({});
-    setResult(null);
-    setError(null);
   };
   const save = async () => {
-    if (!actor || !(exc == null ? void 0 : exc.canSave) || busy) return;
-    setError(null);
+    if (!actor || !(exc == null ? void 0 : exc.canSave) || getBoard().working) return;
+    setBoard({ working: true, error: null });
     try {
-      const pts = await run("save", () => actor.gameSave(), false);
-      endRun({ kind: "saved", points: Number(pts) });
+      const end = await run("save", () => actor.gameSave(), false);
+      void setCredit(end.credit, (dashboard == null ? void 0 : dashboard.pool) ?? 0n);
+      finish(end, exc.stake);
     } catch (e2) {
-      setError(errorMessage(e2));
+      setBoard({ error: errorMessage(e2) });
+      void refreshAll();
+    } finally {
+      setBoard({ working: false });
     }
   };
-  const chips = (dashboard == null ? void 0 : dashboard.chips) ?? [];
-  const currentChip = exc ? chips.find((c2) => c2.id === exc.chipId) : chips.find((c2) => Number(c2.used) < excPerChip);
-  const chipNumber = currentChip ? chips.indexOf(currentChip) + 1 : null;
-  const picks = exc ? Number(exc.picks) : 0;
-  const excNumber = Math.min(excPerChip, Number((currentChip == null ? void 0 : currentChip.used) ?? 0) + 1);
-  const trackChip = currentChip ?? chips[chips.length - 1];
-  const projectedOf = (c2) => (Number(c2.points) + AUTO_SAVE_EV * Math.max(0, excPerChip - Number(c2.used))) * 100 / excPerChip;
-  const liveCuts = ranking == null ? void 0 : ranking.cutsX100;
-  const estimated = !liveCuts || liveCuts.length !== 4 || liveCuts.some((c2) => c2 == null);
-  const cuts = ranking ? estimated ? TYPICAL_CUTS_X100 : liveCuts : void 0;
-  const hasCuts = !!(cuts == null ? void 0 : cuts.some((c2) => c2 != null));
-  const chipAvgFor = (pts) => {
-    if (!currentChip) return null;
-    const remaining = Math.max(0, excPerChip - Number(currentChip.used) - 1);
-    return (Number(currentChip.points) + pts + AUTO_SAVE_EV * remaining) * 100 / excPerChip;
-  };
-  const tierFor = (pts) => {
-    const avgX100 = chipAvgFor(pts);
-    if (avgX100 === null || !cuts || !hasCuts) return null;
-    for (let t = 0; t < 4; t++) {
-      const c2 = cuts[t];
-      if (c2 != null && avgX100 >= Number(c2)) return t;
-    }
-    return 4;
-  };
-  const tierNow = (exc == null ? void 0 : exc.canSave) ? tierFor(table[picks] ?? 0) : null;
-  const avgNow = exc ? chipAvgFor(table[picks] ?? 0) : null;
-  const nextUnlock = (() => {
-    if (!exc || tierNow === null || tierNow === 0) return null;
-    for (let k2 = picks + 1; k2 < table.length; k2++) {
-      const t = tierFor(table[k2] ?? 0);
-      if (t !== null && t < tierNow) return { tier: t, pick: k2, pts: table[k2] };
-    }
-    return null;
-  })();
-  const [tierPop, setTierPop] = reactExports.useState(null);
-  const lastTier = reactExports.useRef(null);
-  const popTimer = reactExports.useRef(void 0);
-  const excKey = exc ? Number(exc.chipId) * 100 + Number((currentChip == null ? void 0 : currentChip.used) ?? 0) : null;
-  reactExports.useEffect(() => {
-    if (excKey === null) {
-      lastTier.current = null;
+  const runAuto = async () => {
+    if (!actor || getBoard().working || locked || exc) return;
+    if (!isAuthenticated) {
+      login();
       return;
     }
-    if (tierNow === null || tierNow >= 4) return;
-    if (lastTier.current === null || tierNow < lastTier.current) {
-      lastTier.current = tierNow;
-      setTierPop({ tier: tierNow, next: nextUnlock });
-      window.clearTimeout(popTimer.current);
-      popTimer.current = window.setTimeout(() => setTierPop(null), 2600);
-    }
-  }, [excKey, tierNow]);
-  reactExports.useEffect(() => () => window.clearTimeout(popTimer.current), []);
-  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: cn(panel$1, "overflow-hidden"), children: [
-    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: panelHeader, children: [
-      /* @__PURE__ */ jsxRuntimeExports.jsxs(
-        "span",
-        {
-          className: cn(
-            eyebrow,
-            gold$2,
-            "flex shrink-0 items-center gap-2 whitespace-nowrap"
-          ),
-          children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx(Pickaxe, { className: "size-3.5" }),
-            " Gold mine"
-          ]
+    const stakeAmount = stakes[board.stake] ?? 0n;
+    if (stakeAmount === 0n || paused) return;
+    setBoard({
+      working: true,
+      autoRun: true,
+      error: null,
+      notice: null,
+      result: null,
+      jackpotKind: "none",
+      cells: {},
+      hold: true,
+      inPlay: stakeAmount
+    });
+    try {
+      if (!coversStake(stakeAmount)) return;
+      const out = await run(
+        "auto",
+        () => actor.gameAuto(
+          STAKE_KEYS[board.stake],
+          BigInt(autoStop),
+          stakeAmount
+        ),
+        false
+      );
+      const free = Array.from({ length: CELLS }, (_2, i) => i).sort(
+        () => Math.random() - 0.5
+      );
+      for (let i = 0; i < out.steps.length; i++) {
+        await new Promise(
+          (resolve) => window.setTimeout(resolve, AUTO_STEP_MS)
+        );
+        const step = out.steps[i];
+        const stage = Number(step.diamond.stage);
+        const cell = step.collapsed ? { kind: "rock" } : stage > 0 ? { kind: "diamond" } : { kind: "token", token: tokenForPick(Number(step.pick)) };
+        setBoard((s) => ({ cells: { ...s.cells, [free[i]]: cell } }));
+        if (!step.collapsed) {
+          playSound(stage > 0 ? "diamond" : revealSound(Number(step.pick)));
+          const points = config == null ? void 0 : config.pointsTable[Number(step.pick)];
+          if (points !== void 0 && Number(step.pick) >= POP_FROM_PICK)
+            setPop({
+              index: free[i],
+              text: fmtMult(Number(points), payoutBps),
+              id: Date.now()
+            });
         }
-      ),
-      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-3", children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx(
+        if (stage > 0) {
+          await new Promise((resolve) => {
+            jackpotResolve.current = resolve;
+            setBoard({
+              jackpot: { stage, won: step.diamond.won, held: false }
+            });
+            noteJackpot(stage, step.diamond.won);
+            if (stage >= 2 && step.diamond.won > 0n) {
+              setBoard((s) => ({ rain: s.rain + 1 }));
+            }
+          });
+        }
+      }
+      void setCredit(out.end.credit, out.pool);
+      finish(out.end, stakeAmount);
+    } catch (e2) {
+      setBoard({ error: errorMessage(e2) });
+      void refreshAll();
+    } finally {
+      setBoard({ working: false, autoRun: false, hold: false });
+      if (!getBoard().exc) setBoard({ inPlay: 0n });
+    }
+  };
+  const newGame = () => setBoard({ cells: {}, result: null, error: null, notice: null });
+  const closeJackpot = reactExports.useCallback(() => {
+    var _a3;
+    const held = getBoard().heldBalance;
+    setBoard({ jackpot: null });
+    if (held) {
+      void setCredit(held.credit, held.pool);
+      setBoard({ hold: false, heldBalance: null });
+      void refreshAll();
+    }
+    (_a3 = jackpotResolve.current) == null ? void 0 : _a3.call(jackpotResolve);
+    jackpotResolve.current = null;
+  }, [setCredit, refreshAll]);
+  const closeTreasure = reactExports.useCallback(() => setBoard({ treasure: null }), []);
+  const message = (() => {
+    if (error) return { text: error, tone: "err" };
+    if (notice) return { text: notice, tone: "mid" };
+    if (!isAuthenticated)
+      return { text: "Sign in to start digging.", tone: "mid" };
+    if (paused)
+      return {
+        text: "Bets are paused. Try again later.",
+        tone: "err"
+      };
+    if (dashboard && credit < (stakes[board.stake] ?? 0n))
+      return {
+        text: "Load balance to start digging.",
+        tone: "mid"
+      };
+    return null;
+  })();
+  const idle = !exc && !result && !locked;
+  const split2 = jackpot !== null;
+  const renderCell = (i) => /* @__PURE__ */ jsxRuntimeExports.jsx(
+    MineCell,
+    {
+      cell: cells[i],
+      enterNo,
+      enterDelay: Math.floor(i / 5) * 0.14 + i % 5 * 0.02,
+      pop: (pop2 == null ? void 0 : pop2.index) === i ? pop2 : null,
+      onStrike: shakeBoard,
+      digging: digging === i,
+      disabled: locked || paused || !dashboard,
+      onClick: () => void dig(i)
+    },
+    `${i}-${enterNo}`
+  );
+  const indexes = Array.from({ length: CELLS }, (_2, i) => i);
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-col gap-4", children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: cn(panel$1, "relative overflow-clip"), children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: panelHeader, children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs(
           "span",
           {
-            className: cn("whitespace-nowrap font-mono text-[11px]", inkFaint$2),
-            children: chipNumber ? /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "sm:hidden", children: [
-                "Chip ",
-                chipNumber,
-                " · ",
-                excNumber,
-                "/",
-                excPerChip
-              ] }),
-              /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "hidden sm:inline", children: [
-                "Chip ",
-                chipNumber,
-                " · excavation ",
-                excNumber,
-                " of ",
-                excPerChip
-              ] })
-            ] }) : "No active chip"
-          }
-        ),
-        /* @__PURE__ */ jsxRuntimeExports.jsx(
-          "button",
-          {
-            type: "button",
-            onClick: toggleMuted,
-            "aria-label": muted2 ? "Turn sound on" : "Turn sound off",
-            title: muted2 ? "Sound off" : "Sound on",
             className: cn(
-              "rounded-md p-1 transition-smooth hover:text-[color:var(--term-ink)]",
-              muted2 ? inkFaint$2 : gold$2
+              eyebrow,
+              gold$2,
+              "flex shrink-0 items-center gap-2 whitespace-nowrap"
             ),
-            children: muted2 ? /* @__PURE__ */ jsxRuntimeExports.jsx(VolumeX, { className: "size-4" }) : /* @__PURE__ */ jsxRuntimeExports.jsx(Volume2, { className: "size-4" })
-          }
-        )
-      ] })
-    ] }),
-    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "grid gap-6 p-4 sm:p-6 lg:grid-cols-[minmax(0,1fr)_260px]", children: [
-      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-col items-center gap-4", children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "relative w-full max-w-[420px]", children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx(AnimatePresence, { children: tierPop && /* @__PURE__ */ jsxRuntimeExports.jsx(TierPop, { ...tierPop }, `${tierPop.tier}`) }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx(AnimatePresence, { children: record && /* @__PURE__ */ jsxRuntimeExports.jsx(
-            motion.div,
-            {
-              initial: { opacity: 0, y: -12, scale: 0.9 },
-              animate: { opacity: 1, y: 0, scale: 1 },
-              exit: { opacity: 0, y: -8 },
-              transition: { type: "spring", stiffness: 300, damping: 20 },
-              className: "pointer-events-none absolute inset-x-0 -top-3 z-10 flex justify-center",
-              children: /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "gradient-primary flex items-center gap-2 rounded-full px-4 py-1.5 font-mono text-xs font-semibold text-primary-foreground shadow-lg", children: [
-                /* @__PURE__ */ jsxRuntimeExports.jsx(Trophy, { className: "size-3.5" }),
-                record
-              ] })
-            },
-            record
-          ) }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx(
-            "div",
-            {
-              ref: scope,
-              className: "grid w-full grid-cols-5 gap-2 sm:gap-2.5",
-              children: Array.from({ length: CELLS }, (_2, i) => /* @__PURE__ */ jsxRuntimeExports.jsx(
-                MineCell,
-                {
-                  cell: cells[i],
-                  digging: digging === i,
-                  disabled: busy && digging !== i,
-                  idle: !exc && !result,
-                  onClick: () => void dig(i)
-                },
-                i
-              ))
-            }
-          )
-        ] }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx(
-          BoardMessage,
-          {
-            exc,
-            result,
-            error,
-            busy,
-            safePicks,
-            canPlay: excavationsLeft > 0 && weekOpen,
-            isAuthenticated,
-            onNewGame: newGame
-          }
-        )
-      ] }),
-      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-col gap-4", children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-col gap-1 border-b border-[color:var(--term-border-faint)] pb-3", children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: cn(eyebrow, inkFaint$2), children: "This excavation" }),
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-wrap items-center gap-x-5 gap-y-2", children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-baseline", children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsx(
-                RollingNumber,
-                {
-                  value: exc ? table[picks] ?? 0 : 0,
-                  className: cn(
-                    "font-display text-4xl font-semibold tabular-nums",
-                    ink$3
-                  )
-                }
-              ),
-              /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: cn("ml-1.5 font-mono text-xs", inkFaint$2), children: "pts" })
-            ] }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx(
-              SaveButton,
-              {
-                canSave: !!(exc == null ? void 0 : exc.canSave) && !busy,
-                onSave: () => void save()
-              }
-            )
-          ] })
-        ] }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx(
-          ChipTrack,
-          {
-            cuts: (cuts ?? []).map((c2) => c2 == null ? null : Number(c2)),
-            used: Number((trackChip == null ? void 0 : trackChip.used) ?? 0),
-            excPerChip,
-            estimated,
-            digging: !!exc,
-            canSave: !!(exc == null ? void 0 : exc.canSave),
-            avgNow: exc ? avgNow : trackChip ? projectedOf(trackChip) : null,
-            avgNext: exc ? chipAvgFor(Number(exc.nextPoints)) : null,
-            avgCollapse: exc && picks >= safePicks ? chipAvgFor(Number(exc.ifCollapse)) : null,
-            nextGain: exc ? Number(exc.nextPoints) - (table[picks] ?? 0) : null,
-            safePct: exc ? Number(exc.safePctX100) / 100 : null
+            children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx(Pickaxe, { className: "size-3.5" }),
+              " Gold mine"
+            ]
           }
         ),
-        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "grid grid-cols-2 gap-2", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-3", children: [
           /* @__PURE__ */ jsxRuntimeExports.jsx(
-            MiniStat,
+            "span",
             {
-              label: "Excavations left",
-              value: dashboard ? String(excavationsLeft) : "—"
+              className: cn(
+                "whitespace-nowrap font-mono text-[11px]",
+                inkFaint$2
+              ),
+              children: dashboard ? `Tournament #${Number(dashboard.tournament)} · ${fmtCountdown(dashboard.endsAt)}` : ""
             }
           ),
           /* @__PURE__ */ jsxRuntimeExports.jsx(
-            MiniStat,
+            "button",
             {
-              label: "Diamonds",
-              value: dashboard ? String(Number(dashboard.diamonds)) : "—",
-              accent: true
+              type: "button",
+              onClick: toggleMuted,
+              "aria-label": muted2 ? "Turn sound on" : "Turn sound off",
+              className: cn(
+                "rounded-md p-1 transition-smooth hover:text-[color:var(--term-ink)]",
+                muted2 ? inkFaint$2 : gold$2
+              ),
+              children: muted2 ? /* @__PURE__ */ jsxRuntimeExports.jsx(VolumeX, { className: "size-4" }) : /* @__PURE__ */ jsxRuntimeExports.jsx(Volume2, { className: "size-4" })
             }
           )
-        ] }),
+        ] })
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "relative p-2.5 sm:p-6", children: [
         /* @__PURE__ */ jsxRuntimeExports.jsx(
-          DrawCard,
+          JackpotOverlay,
           {
-            prize: ranking == null ? void 0 : ranking.drawPrize,
-            mine: dashboard ? Number(dashboard.diamonds) : 0,
-            total: dashboard ? Number(dashboard.totalDiamonds) : 0
-          }
-        )
-      ] })
-    ] }),
-    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "border-t border-[color:var(--term-border-faint)] px-4 py-4 sm:px-6", children: [
-      /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: cn(eyebrow, inkFaint$2), children: "Points when saving" }),
-      /* @__PURE__ */ jsxRuntimeExports.jsx(
-        SavingStep,
-        {
-          picks: exc ? picks : null,
-          points: exc ? table[picks] ?? 0 : 0,
-          nextPoints: exc ? table[picks + 1] ?? null : null,
-          safePicks,
-          canSave: !!(exc == null ? void 0 : exc.canSave)
-        }
-      ),
-      /* @__PURE__ */ jsxRuntimeExports.jsx(Legend, {})
-    ] })
-  ] });
-}
-function MineCell({
-  cell,
-  digging,
-  disabled,
-  idle,
-  onClick
-}) {
-  const style2 = !cell ? "border-[color:var(--term-border)] bg-[var(--term-header)] hover:border-primary/60" : cell.kind === "rock" ? ROCK_CELL : cell.kind === "diamond" ? DIAMOND_CELL : TOKENS[cell.token].cell;
-  return /* @__PURE__ */ jsxRuntimeExports.jsxs(
-    motion.button,
-    {
-      type: "button",
-      onClick,
-      disabled: disabled || !!cell,
-      whileHover: !cell && !disabled ? { y: -3 } : void 0,
-      whileTap: !cell && !disabled ? { scale: 0.94 } : void 0,
-      animate: { opacity: idle && !cell ? 0.85 : 1 },
-      className: cn(
-        "relative flex aspect-square items-center justify-center overflow-hidden rounded-lg border transition-colors duration-300 disabled:cursor-default",
-        style2
-      ),
-      "aria-label": cell ? cell.kind : "Dig this cell",
-      children: [
-        digging && !cell && /* @__PURE__ */ jsxRuntimeExports.jsx(
-          motion.span,
-          {
-            animate: { rotate: [-28, 18, -28] },
-            transition: {
-              duration: 0.45,
-              repeat: Number.POSITIVE_INFINITY,
-              ease: "easeInOut"
-            },
-            className: gold$2,
-            children: /* @__PURE__ */ jsxRuntimeExports.jsx(Pickaxe, { className: "size-6" })
+            view: jackpot,
+            onClose: closeJackpot,
+            bandHost,
+            pool: dashboard == null ? void 0 : dashboard.pool
           }
         ),
-        /* @__PURE__ */ jsxRuntimeExports.jsx(AnimatePresence, { children: cell && /* @__PURE__ */ jsxRuntimeExports.jsx(
-          motion.span,
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          TreasureOverlay,
           {
-            initial: { opacity: 0, scale: 0.4, rotateY: 90 },
-            animate: { opacity: 1, scale: 1, rotateY: 0 },
-            transition: { type: "spring", stiffness: 320, damping: 20 },
-            className: "flex items-center justify-center",
-            children: /* @__PURE__ */ jsxRuntimeExports.jsx(CellContent, { cell })
+            view: jackpot ? null : treasure,
+            onClose: closeTreasure
+          }
+        ),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(AnimatePresence, { children: rainSeed > 0 && !jackpot && /* @__PURE__ */ jsxRuntimeExports.jsx(
+          motion.div,
+          {
+            className: "pointer-events-none absolute inset-0 z-20",
+            initial: { opacity: 1 },
+            animate: { opacity: 0 },
+            exit: { opacity: 0 },
+            transition: { duration: 3.4 },
+            children: /* @__PURE__ */ jsxRuntimeExports.jsx(CoinRain, { seed: rainSeed })
           },
-          cell.kind
+          rainSeed
         ) }),
-        (cell == null ? void 0 : cell.kind) === "diamond" && /* @__PURE__ */ jsxRuntimeExports.jsx(Sparkle, {})
-      ]
-    }
-  );
-}
-function CellContent({ cell }) {
-  if (cell.kind === "rock") {
-    return /* @__PURE__ */ jsxRuntimeExports.jsx(Mountain, { className: "size-7 text-[color:var(--term-ink-mid)]" });
-  }
-  if (cell.kind === "diamond") {
-    return /* @__PURE__ */ jsxRuntimeExports.jsx("img", { src: DIAMOND_IMG, alt: "Diamond", className: "size-9 object-contain" });
-  }
-  return /* @__PURE__ */ jsxRuntimeExports.jsx(
-    "img",
-    {
-      src: TOKENS[cell.token].logo,
-      alt: cell.token,
-      className: "size-8 rounded-full object-contain sm:size-9"
-    }
-  );
-}
-function Sparkle() {
-  return /* @__PURE__ */ jsxRuntimeExports.jsx(
-    motion.span,
-    {
-      "aria-hidden": true,
-      initial: { opacity: 0.9, scale: 0.6 },
-      animate: { opacity: 0, scale: 2.2 },
-      transition: { duration: 0.9, ease: "easeOut" },
-      className: "pointer-events-none absolute inset-0 rounded-lg border-2 border-[oklch(0.75_0.14_350)]"
-    }
-  );
-}
-function BoardMessage({
-  exc,
-  result,
-  error,
-  busy,
-  safePicks,
-  canPlay,
-  isAuthenticated,
-  onNewGame
-}) {
-  let content2;
-  if (error) content2 = { text: error, tone: "err" };
-  else if (busy) content2 = { text: "Digging…", tone: "mid" };
-  else if ((result == null ? void 0 : result.kind) === "collapse")
-    content2 = {
-      text: `Collapse. You keep ${result.points} points.`,
-      tone: "rock"
-    };
-  else if ((result == null ? void 0 : result.kind) === "saved")
-    content2 = { text: `Saved ${result.points} points.`, tone: "gold" };
-  else if ((result == null ? void 0 : result.kind) === "emptied")
-    content2 = {
-      text: `You emptied the mine: ${result.points} points.`,
-      tone: "gold"
-    };
-  else if (exc && Number(exc.picks) < safePicks)
-    content2 = { text: "The first two picks are always safe.", tone: "mid" };
-  else if (exc)
-    content2 = { text: "Keep digging or save your points.", tone: "mid" };
-  else if (!isAuthenticated)
-    content2 = { text: "Sign in to start digging.", tone: "mid" };
-  else if (!canPlay)
-    content2 = { text: "Buy a chip to get excavations.", tone: "mid" };
-  else content2 = { text: "Pick any cell to start an excavation.", tone: "mid" };
-  const tone = {
-    gold: "text-[color:var(--term-gold)]",
-    rock: "text-[color:var(--term-ink-mid)]",
-    mid: "text-[color:var(--term-ink-faint)]",
-    err: "text-destructive"
-  }[content2.tone];
-  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex min-h-8 flex-wrap items-center justify-center gap-3", children: [
-    /* @__PURE__ */ jsxRuntimeExports.jsx(AnimatePresence, { mode: "wait", children: /* @__PURE__ */ jsxRuntimeExports.jsxs(
-      motion.p,
-      {
-        initial: { opacity: 0, y: 4 },
-        animate: { opacity: 1, y: 0 },
-        exit: { opacity: 0, y: -4 },
-        transition: { duration: 0.2 },
-        className: cn("flex items-center gap-1.5 font-mono text-xs", tone),
-        children: [
-          (result == null ? void 0 : result.kind) === "collapse" && !error && /* @__PURE__ */ jsxRuntimeExports.jsx(Mountain, { className: "size-3.5" }),
-          result && result.kind !== "collapse" && !error && /* @__PURE__ */ jsxRuntimeExports.jsx(ShieldCheck, { className: "size-3.5" }),
-          content2.text
-        ]
-      },
-      content2.text
-    ) }),
-    /* @__PURE__ */ jsxRuntimeExports.jsx(AnimatePresence, { children: result && !busy && /* @__PURE__ */ jsxRuntimeExports.jsxs(
-      motion.button,
-      {
-        type: "button",
-        onClick: onNewGame,
-        initial: { opacity: 0, scale: 0.9 },
-        animate: { opacity: 1, scale: 1 },
-        exit: { opacity: 0, scale: 0.9 },
-        whileHover: { y: -1 },
-        whileTap: { scale: 0.95 },
-        className: "flex items-center gap-1.5 rounded-full border border-primary/60 bg-primary/10 px-3 py-1 font-mono text-xs font-medium text-[color:var(--term-gold)] transition-colors hover:bg-primary/20",
-        children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx(RotateCcw, { className: "size-3.5" }),
-          "New game"
-        ]
-      }
-    ) })
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "grid grid-cols-2 gap-x-5 gap-y-2.5 md:grid-cols-[minmax(0,460px)_minmax(0,1fr)] md:gap-y-4", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "relative order-2 col-span-2 mx-auto w-full max-w-[460px] md:order-none md:col-span-1 md:col-start-1 md:row-start-1 md:mx-0 md:mb-5", children: [
+            booting && /* @__PURE__ */ jsxRuntimeExports.jsx(BoardLoader, {}),
+            idle && !booting && /* @__PURE__ */ jsxRuntimeExports.jsx(
+              motion.div,
+              {
+                "aria-hidden": true,
+                className: "pointer-events-none absolute inset-0 z-[3] rounded-lg bg-[linear-gradient(115deg,transparent_42%,oklch(0.74_0.14_80/0.2)_50%,transparent_58%)] bg-[length:250%_100%] bg-no-repeat",
+                initial: { backgroundPositionX: "130%" },
+                animate: { backgroundPositionX: "-30%" },
+                transition: {
+                  duration: 4.5,
+                  ease: "linear",
+                  repeat: Number.POSITIVE_INFINITY
+                }
+              }
+            ),
+            enterNo > 0 && /* @__PURE__ */ jsxRuntimeExports.jsx(
+              "div",
+              {
+                "aria-hidden": true,
+                className: "pointer-events-none absolute -inset-1.5 z-[1] overflow-hidden rounded-xl",
+                children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+                  motion.div,
+                  {
+                    className: "absolute inset-x-0 -inset-y-24 bg-[repeating-linear-gradient(180deg,rgba(120,90,50,.28)_0_34px,rgba(176,136,48,.3)_34px_52px,transparent_52px_70px,rgba(120,90,50,.28)_70px_96px)] dark:bg-[repeating-linear-gradient(180deg,rgba(0,0,0,.55)_0_34px,rgba(199,154,59,.2)_34px_52px,transparent_52px_70px,rgba(0,0,0,.55)_70px_96px)]",
+                    initial: { opacity: 0, y: 0 },
+                    animate: { opacity: [0, 1, 1, 0], y: -96 },
+                    transition: {
+                      duration: 1.5,
+                      ease: [0.5, 0, 0.2, 1],
+                      opacity: { times: [0, 0.2, 0.8, 1] }
+                    }
+                  },
+                  enterNo
+                )
+              }
+            ),
+            /* @__PURE__ */ jsxRuntimeExports.jsx(motion.div, { animate: descentCtl, className: "relative z-[2]", children: /* @__PURE__ */ jsxRuntimeExports.jsxs(motion.div, { animate: shakeCtl, children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx(
+                "div",
+                {
+                  className: cn(
+                    "grid grid-cols-5 gap-1.5 transition-[transform,opacity] duration-700 sm:gap-2.5",
+                    split2 && "-translate-y-1.5 opacity-40"
+                  ),
+                  children: indexes.slice(0, SPLIT_AT).map(renderCell)
+                }
+              ),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { ref: setBandHost }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx(
+                "div",
+                {
+                  className: cn(
+                    "mt-1.5 grid grid-cols-5 gap-1.5 transition-[transform,opacity] duration-700 sm:mt-2.5 sm:gap-2.5",
+                    split2 && "translate-y-1.5 opacity-40"
+                  ),
+                  children: indexes.slice(SPLIT_AT).map(renderCell)
+                }
+              )
+            ] }) }),
+            result && !exc && !treasure && !jackpot && /* @__PURE__ */ jsxRuntimeExports.jsx(
+              ResultCard,
+              {
+                result,
+                mini: jackpotKind === "mini",
+                onNew: newGame
+              }
+            ),
+            message && /* @__PURE__ */ jsxRuntimeExports.jsx(
+              BoardMessage,
+              {
+                text: message.text,
+                tone: message.tone,
+                className: "mt-1 md:absolute md:inset-x-0 md:top-[calc(100%+4px)] md:mt-0"
+              }
+            )
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "contents md:col-start-2 md:row-start-1 md:flex md:flex-col md:gap-3", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx(
+              PayoutStep,
+              {
+                exc,
+                className: "order-1 col-span-2 md:order-none"
+              }
+            ),
+            /* @__PURE__ */ jsxRuntimeExports.jsx(
+              JackpotCard,
+              {
+                pool: dashboard == null ? void 0 : dashboard.pool,
+                miniBps: config ? Number(config.miniBps) : void 0,
+                className: "order-3 col-span-2 md:order-none md:flex-1"
+              }
+            ),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "order-4 col-span-2 flex flex-col gap-2.5 rounded-xl border border-[color:var(--term-border)] bg-[var(--term-alt)] p-2.5 md:order-none", children: [
+              (stakes.length === 3 || !exc) && /* @__PURE__ */ jsxRuntimeExports.jsx(
+                StakeSelector,
+                {
+                  stakes,
+                  value: board.stake,
+                  locked: !!exc || locked,
+                  paused,
+                  onChange: (v2) => setBoard({ stake: v2 })
+                }
+              ),
+              /* @__PURE__ */ jsxRuntimeExports.jsx(
+                AutoPicker,
+                {
+                  value: autoStop,
+                  disabled: locked || !!exc || paused || !dashboard,
+                  busy: autoRun,
+                  onChange: setAutoStop,
+                  onRun: () => void runAuto()
+                }
+              )
+            ] })
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(
+            CreditBar,
+            {
+              dashboard,
+              className: "order-5 col-span-2 md:order-none md:col-span-1 md:col-start-2 md:row-start-2"
+            }
+          ),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(
+            RunCard,
+            {
+              exc,
+              canSave: !!(exc == null ? void 0 : exc.canSave) && !locked,
+              onSave: () => void save(),
+              className: "sticky bottom-[calc(3.4rem+max(env(safe-area-inset-bottom,0px),0.5rem))] z-30 order-6 col-span-2 -mx-2.5 sm:-mx-6 md:static md:order-none md:mx-0 md:col-span-1 md:col-start-1 md:row-start-2"
+            }
+          )
+        ] })
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "border-t border-[color:var(--term-border-faint)] px-4 py-4 sm:px-6", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Legend, {}) })
+    ] }),
+    /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: cn("text-center font-mono text-[11px]", inkFaint$2), children: "Your stake leaves your Accumulated prize when you start digging. Every prize shown includes your stake, and the balance is paid when the tournament closes." })
   ] });
 }
-function MiniStat({
-  label,
-  value,
-  accent
-}) {
-  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "rounded-md border border-[color:var(--term-border-faint)] bg-[var(--term-alt)] px-3 py-2", children: [
-    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: cn("font-mono text-[10px] uppercase", inkFaint$2), children: label }),
-    /* @__PURE__ */ jsxRuntimeExports.jsx(
+function PlayerDashboard({ dashboard }) {
+  const { isAuthenticated } = useAuth();
+  if (!dashboard) {
+    return /* @__PURE__ */ jsxRuntimeExports.jsx(
       "div",
       {
         className: cn(
-          "font-display text-lg font-semibold tabular-nums",
-          accent ? DIAMOND_TEXT : ink$3
+          panel$1,
+          "flex items-center justify-center gap-2 p-8 text-sm",
+          inkFaint$2
+        ),
+        children: isAuthenticated ? /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(Spinner, {}),
+          " Loading your tournament"
+        ] }) : "Sign in to see your tournament."
+      }
+    );
+  }
+  const s = dashboard.stats;
+  const net = netOf(s);
+  const bestPrize = dashboard.bestReturn > 0n ? fmtGoldao(dashboard.bestReturn) : "-";
+  const top10Prize = dashboard.top10Prize;
+  const jackpots = s.jackpotWon > 0n ? fmtGoldao(s.jackpotWon) : "-";
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-col gap-6", children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "grid grid-cols-2 gap-3 sm:grid-cols-3", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx(Kpi$1, { label: "Excavations", value: String(Number(s.excavations)) }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx(Kpi$1, { label: "Volume", value: fmtGoldao(s.staked) }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx(Kpi$1, { label: "Returned", value: fmtGoldao(s.returned) }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx(
+        Kpi$1,
+        {
+          label: "Net result",
+          value: fmtSigned(net),
+          tone: net > 0n ? "up" : void 0
+        }
+      ),
+      /* @__PURE__ */ jsxRuntimeExports.jsx(
+        Kpi$1,
+        {
+          label: "Top 10 prize",
+          value: top10Prize > 0n ? `+${fmtGoldao(top10Prize)}` : "-",
+          tone: top10Prize > 0n ? "up" : void 0
+        }
+      ),
+      /* @__PURE__ */ jsxRuntimeExports.jsx(Kpi$1, { label: "Jackpots", value: jackpots, diamond: true }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx(Kpi$1, { label: "Collapses", value: String(Number(s.collapses)) }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx(Kpi$1, { label: "Best prize", value: bestPrize }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx(Kpi$1, { label: "Deepest pick", value: String(Number(s.deepest)) })
+    ] }),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: panel$1, children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: panelHeader, children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: cn(eyebrow, gold$2, "flex items-center gap-2"), children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(LayoutDashboard, { className: "size-3.5" }),
+          " Tournament #",
+          Number(dashboard.tournament)
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: cn("font-mono text-[11px]", inkFaint$2), children: fmtCountdown(dashboard.endsAt) })
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("dl", { className: "grid grid-cols-2 gap-4 p-5 font-mono text-xs sm:grid-cols-3", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx(Item, { label: "Accumulated prize", value: fmtGoldao(dashboard.credit) }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          Item,
+          {
+            label: "Pending payout",
+            value: fmtGoldao(dashboard.pendingPayout)
+          }
+        ),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(Item, { label: "Jackpot pool", value: fmtGoldao(dashboard.pool) })
+      ] })
+    ] }),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: panel$1, children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: panelHeader, children: /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: cn(eyebrow, gold$2, "flex items-center gap-2"), children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx(History, { className: "size-3.5" }),
+        " Past tournaments"
+      ] }) }),
+      dashboard.history.length === 0 ? /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: cn("p-5 text-sm", inkFaint$2), children: "Nothing yet." }) : /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "overflow-auto", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("table", { className: "w-full font-mono text-xs", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("thead", { children: /* @__PURE__ */ jsxRuntimeExports.jsxs("tr", { className: cn("text-left", inkFaint$2), children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("th", { className: "px-5 py-2 font-medium", children: "Tournament" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("th", { className: "px-3 py-2 font-medium", children: "Excavations" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("th", { className: "px-3 py-2 font-medium", children: "Volume" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("th", { className: "px-3 py-2 font-medium", children: "Net result" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("th", { className: "px-5 py-2 text-right font-medium", children: "Paid out" })
+        ] }) }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("tbody", { children: [...dashboard.history].reverse().map((h2) => /* @__PURE__ */ jsxRuntimeExports.jsxs(
+          "tr",
+          {
+            className: "border-t border-[color:var(--term-border-faint)]",
+            children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("td", { className: cn("px-5 py-2.5", ink$3), children: [
+                "#",
+                Number(h2.tournament)
+              ] }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("td", { className: "px-3 py-2.5", children: Number(h2.stats.excavations) }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("td", { className: "px-3 py-2.5", children: fmtGoldao(h2.stats.staked) }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("td", { className: "px-3 py-2.5 tabular-nums", children: fmtSigned(netOf(h2.stats)) }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx(
+                "td",
+                {
+                  className: cn("px-5 py-2.5 text-right tabular-nums", ink$3),
+                  children: fmtGoldao(h2.payout)
+                }
+              )
+            ]
+          },
+          String(h2.tournament)
+        )) })
+      ] }) })
+    ] })
+  ] });
+}
+function Kpi$1({
+  label,
+  value,
+  diamond,
+  tone
+}) {
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: cn(panel$1, "flex flex-col gap-1 p-4"), children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsxs(
+      "span",
+      {
+        className: cn(
+          eyebrow,
+          diamond ? DIAMOND_TEXT : inkFaint$2,
+          "flex items-center gap-1.5"
+        ),
+        children: [
+          diamond && /* @__PURE__ */ jsxRuntimeExports.jsx(Gem, { className: "size-3.5" }),
+          label
+        ]
+      }
+    ),
+    /* @__PURE__ */ jsxRuntimeExports.jsx(
+      "span",
+      {
+        className: cn(
+          "font-display text-2xl font-semibold tabular-nums",
+          diamond ? DIAMOND_TEXT : ink$3,
+          tone === "up" && "text-[color:var(--term-green)]"
         ),
         children: value
       }
     )
   ] });
 }
-function SavingStep({
-  picks,
-  points,
-  nextPoints,
-  safePicks,
-  canSave
-}) {
-  const note = picks === null ? "Pick any cell to start" : canSave ? "Yours if you save now" : picks < safePicks ? "Free picks · nothing at risk" : "Free · you can save from the next pick";
-  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "mt-3 flex flex-wrap items-stretch gap-3", children: [
-    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "relative min-w-[220px] overflow-hidden rounded-xl border border-primary/50 bg-primary/10 px-6 py-4", children: [
-      /* @__PURE__ */ jsxRuntimeExports.jsx(AnimatePresence, { mode: "popLayout", initial: false, children: /* @__PURE__ */ jsxRuntimeExports.jsxs(
-        motion.div,
-        {
-          initial: { opacity: 0, y: 18, scale: 0.92 },
-          animate: { opacity: 1, y: 0, scale: 1 },
-          exit: { opacity: 0, y: -18, scale: 0.96 },
-          transition: { type: "spring", stiffness: 340, damping: 24 },
-          className: "flex flex-col gap-1",
-          children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: cn(eyebrow, gold$2), children: picks === null ? "Ready to dig" : `Pick ${picks}` }),
-            /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "flex items-baseline gap-1.5", children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsx(
-                "span",
-                {
-                  className: cn(
-                    "font-display text-5xl font-semibold tabular-nums",
-                    ink$3
-                  ),
-                  children: points.toLocaleString("en-US")
-                }
-              ),
-              /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: cn("font-mono text-xs", inkFaint$2), children: "pts" })
-            ] }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: cn("font-mono text-[11px]", inkMid$3), children: note })
-          ]
-        },
-        picks ?? "idle"
-      ) }),
-      /* @__PURE__ */ jsxRuntimeExports.jsx(
-        motion.span,
-        {
-          "aria-hidden": true,
-          initial: { x: "-120%" },
-          animate: { x: "220%" },
-          transition: { duration: 0.9, ease: "easeOut" },
-          className: "pointer-events-none absolute inset-y-0 left-0 w-1/2 -skew-x-12 bg-gradient-to-r from-transparent via-white/25 to-transparent"
-        },
-        `sweep-${picks ?? "idle"}`
-      )
-    ] }),
-    nextPoints !== null && /* @__PURE__ */ jsxRuntimeExports.jsxs(
-      motion.div,
-      {
-        initial: { opacity: 0, x: -8 },
-        animate: { opacity: 1, x: 0 },
-        transition: { delay: 0.15, duration: 0.3 },
-        className: "flex flex-col justify-center gap-1 rounded-xl border border-[color:var(--term-border-faint)] bg-[var(--term-alt)] px-5 py-4",
-        children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: cn(eyebrow, inkFaint$2), children: [
-            "Next · pick ",
-            (picks ?? 0) + 1
-          ] }),
-          /* @__PURE__ */ jsxRuntimeExports.jsxs(
-            "span",
-            {
-              className: cn(
-                "font-display text-2xl font-semibold tabular-nums",
-                inkMid$3
-              ),
-              children: [
-                nextPoints.toLocaleString("en-US"),
-                /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: cn("ml-1 font-mono text-[10px]", inkFaint$2), children: "pts" })
-              ]
-            }
-          )
-        ]
-      },
-      `next-${picks ?? "idle"}`
-    )
+function Item({ label, value }) {
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-col gap-1", children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsx("dt", { className: cn("text-[10px] uppercase tracking-wider", inkFaint$2), children: label }),
+    /* @__PURE__ */ jsxRuntimeExports.jsx("dd", { className: cn("tabular-nums", ink$3), children: value })
   ] });
 }
-function SaveButton({
-  canSave,
-  onSave
-}) {
-  return /* @__PURE__ */ jsxRuntimeExports.jsxs(
-    motion.button,
-    {
-      type: "button",
-      onClick: onSave,
-      disabled: !canSave,
-      whileHover: canSave ? { y: -2 } : void 0,
-      whileTap: canSave ? { scale: 0.94 } : void 0,
-      animate: canSave ? {
-        boxShadow: [
-          "0 0 0 0 oklch(0.74 0.14 80 / 0.45)",
-          "0 0 0 8px oklch(0.74 0.14 80 / 0)"
-        ]
-      } : { boxShadow: "0 0 0 0 oklch(0.74 0.14 80 / 0)" },
-      transition: canSave ? { boxShadow: { duration: 1.6, repeat: Number.POSITIVE_INFINITY } } : void 0,
-      className: cn(
-        "flex shrink-0 items-center gap-2 rounded-full px-4 py-2 font-display text-sm font-semibold transition-opacity",
-        canSave ? "gradient-primary text-primary-foreground" : "cursor-not-allowed border border-[color:var(--term-border)] bg-[var(--term-alt)] text-[color:var(--term-ink-faint)]"
-      ),
-      "aria-label": "Save points",
-      children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx(Shield, { className: "size-4" }),
-        "Save"
-      ]
-    }
-  );
+const LONG_RUN_RTP_TEXT = "~98.5%";
+const LIVE_RTP_MIN_POOL = 10000n * 100000000n;
+function reachProb(picks, cells, mines, safe2) {
+  let p2 = 1;
+  for (let n2 = safe2; n2 < picks; n2++) p2 *= 1 - mines / (cells - n2);
+  return p2;
 }
-function RollingNumber({
-  value,
-  className
-}) {
-  const mv = useMotionValue(value);
-  const text = useTransform(mv, (v2) => Math.round(v2).toLocaleString("en-US"));
-  reactExports.useEffect(() => {
-    const controls = animate(mv, value, {
-      duration: 0.6,
-      ease: "easeOut"
-    });
-    return () => controls.stop();
-  }, [mv, value]);
-  return /* @__PURE__ */ jsxRuntimeExports.jsx(motion.span, { className, children: text });
-}
-const ZONES = [4, 3, 2, 1, 0];
-function trackPos(avg2, bounds) {
-  for (let z2 = 0; z2 < 5; z2++) {
-    const lo = bounds[z2];
-    const hi = bounds[z2 + 1];
-    if (avg2 < hi || z2 === 4) {
-      const f2 = hi > lo ? (avg2 - lo) / (hi - lo) : 0.5;
-      return (z2 + Math.min(1, Math.max(0, f2))) / 5 * 100;
+function averagePlay(config) {
+  const cells = Number(config.cells);
+  const mines = Number(config.mines);
+  const safe2 = Number(config.safePicks);
+  const maxPicks = Number(config.maxPicks);
+  const pts = config.pointsTable.map(Number);
+  const bps = Number(config.payoutBps);
+  let base = 0;
+  let safePicks = 0;
+  let stops = 0;
+  for (let stop = safe2 + 1; stop <= maxPicks; stop++) {
+    let ret = 0;
+    for (let j2 = safe2; j2 < stop; j2++) {
+      const collapse = mines / (cells - j2);
+      ret += reachProb(j2, cells, mines, safe2) * collapse * (multX100(collapsePoints(pts[j2]), bps) / 100);
     }
+    ret += reachProb(stop, cells, mines, safe2) * (multX100(pts[stop], bps) / 100);
+    let rolls = 0;
+    for (let j2 = 1; j2 <= stop; j2++) rolls += reachProb(j2, cells, mines, safe2);
+    base += ret;
+    safePicks += rolls;
+    stops += 1;
   }
-  return 100;
+  return { base: base / stops, safePicks: safePicks / stops };
 }
-function ChipTrack({
-  cuts,
-  used,
-  excPerChip,
-  estimated,
-  digging,
-  canSave,
-  avgNow,
-  avgNext,
-  avgCollapse,
-  nextGain,
-  safePct
-}) {
-  const ready = cuts.length === 4 && cuts.every((c22) => c22 != null);
-  const c2 = cuts;
-  const bounds = ready ? [
-    Math.max(0, c2[3] - (c2[2] - c2[3]) * 2),
-    c2[3],
-    c2[2],
-    c2[1],
-    c2[0],
-    c2[0] + Math.max(c2[0] - c2[1], 1e3)
-  ] : [];
-  const tierAt = (avg2) => {
-    for (let t = 0; t < 4; t++) if (avg2 >= c2[t]) return t;
-    return 4;
-  };
-  const current = digging ? used : Math.min(used, excPerChip);
-  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-col gap-3 border-b border-[color:var(--term-border-faint)] pb-4", children: [
-    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center justify-between", children: [
-      /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: cn(eyebrow, inkFaint$2), children: "Your chip" }),
-      /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: cn("font-mono text-[10px]", inkFaint$2), children: [
-        "Prize = average of ",
-        excPerChip
-      ] })
-    ] }),
-    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex gap-1.5", children: Array.from({ length: excPerChip }, (_2, i) => {
-      const done = i < used;
-      const now2 = digging && i === current;
-      return /* @__PURE__ */ jsxRuntimeExports.jsx(
-        motion.div,
-        {
-          animate: now2 ? { scale: [1, 1.08, 1] } : { scale: 1 },
-          transition: now2 ? { duration: 1.2, repeat: Number.POSITIVE_INFINITY } : void 0,
-          className: cn(
-            "flex h-7 flex-1 items-center justify-center rounded-md border font-mono text-[10px]",
-            done ? "border-primary/60 bg-primary/80 text-primary-foreground" : now2 ? "border-primary bg-primary/15 text-[color:var(--term-gold)]" : "border-dashed border-[color:var(--term-border)] text-[color:var(--term-ink-faint)]"
-          ),
-          title: done ? "Played" : now2 ? "Digging now" : "Not played yet (counts as 100)",
-          children: done ? "✓" : i + 1
-        },
-        i
-      );
-    }) }),
-    !ready || avgNow === null ? /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: cn("font-mono text-[11px]", inkFaint$2), children: avgNow === null ? "Buy a chip to see where it lands." : "The prize track shows up once the week has more chips." }) : /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-col gap-2", children: [
-      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "relative pt-7", children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsxs(
-          motion.div,
-          {
-            className: "absolute top-0 flex -translate-x-1/2 flex-col items-center",
-            animate: { left: `${trackPos(avgNow, bounds)}%` },
-            transition: { type: "spring", stiffness: 200, damping: 22 },
-            children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsx(
-                "span",
-                {
-                  className: cn(
-                    "whitespace-nowrap rounded-full border px-2 py-0.5 text-[10px] font-semibold shadow-sm",
-                    tierOf(tierAt(avgNow)).pill
-                  ),
-                  children: tierOf(tierAt(avgNow)).name
-                }
-              ),
-              /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "h-2 w-0.5 bg-[color:var(--term-ink)]" })
-            ]
-          }
-        ),
-        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "relative flex h-4 overflow-hidden rounded-full border border-[color:var(--term-border-faint)]", children: ZONES.map((t) => /* @__PURE__ */ jsxRuntimeExports.jsx(
-          "div",
-          {
-            className: cn("h-full flex-1", tierOf(t).pill),
-            title: tierOf(t).name
-          },
-          t
-        )) }),
-        avgNext !== null && /* @__PURE__ */ jsxRuntimeExports.jsx(
-          motion.span,
-          {
-            "aria-hidden": true,
-            className: "absolute bottom-0 h-4 w-0.5 -translate-x-1/2 bg-[color:var(--term-green)]",
-            animate: { left: `${trackPos(avgNext, bounds)}%` },
-            transition: { type: "spring", stiffness: 200, damping: 22 }
-          }
-        ),
-        avgCollapse !== null && /* @__PURE__ */ jsxRuntimeExports.jsx(
-          motion.span,
-          {
-            "aria-hidden": true,
-            className: "absolute bottom-0 h-4 w-0.5 -translate-x-1/2 bg-destructive",
-            animate: { left: `${trackPos(avgCollapse, bounds)}%` },
-            transition: { type: "spring", stiffness: 200, damping: 22 }
-          }
-        ),
-        /* @__PURE__ */ jsxRuntimeExports.jsx(
-          motion.span,
-          {
-            "aria-hidden": true,
-            className: "absolute bottom-0 size-4 -translate-x-1/2 rounded-full border-2 border-[color:var(--term-ink)] bg-white shadow",
-            animate: { left: `${trackPos(avgNow, bounds)}%` },
-            transition: { type: "spring", stiffness: 200, damping: 22 }
-          }
-        )
-      ] }),
-      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex justify-between font-mono text-[9px] uppercase text-[color:var(--term-ink-faint)]", children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "Rock" }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "Treasure" })
-      ] }),
-      estimated && /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: cn("font-mono text-[10px]", inkFaint$2), children: "Estimated with typical cutoffs: this week still has few chips." }),
-      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-col gap-1 font-mono text-[11px]", children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: cn("flex items-center gap-1.5", ink$3), children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "size-2.5 rounded-full border-2 border-[color:var(--term-ink)] bg-white" }),
-          digging ? canSave ? "Save now" : "Save from pick 3" : "Right now",
-          ": ",
-          tierOf(tierAt(avgNow)).name,
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: inkFaint$2, children: [
-            "· avg ",
-            fmtAvg(avgNow)
-          ] })
-        ] }),
-        avgNext !== null && nextGain !== null && safePct !== null && /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: cn("flex items-center gap-1.5", inkMid$3), children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "h-2.5 w-0.5 bg-[color:var(--term-green)]" }),
-          "Next pick (+",
-          nextGain,
-          " pts, ",
-          Math.round(safePct),
-          "% safe):",
-          " ",
-          tierOf(tierAt(avgNext)).name
-        ] }),
-        avgCollapse !== null && /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: cn("flex items-center gap-1.5", inkMid$3), children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "h-2.5 w-0.5 bg-destructive" }),
-          "If it collapses: ",
-          tierOf(tierAt(avgCollapse)).name
-        ] })
-      ] })
-    ] })
-  ] });
-}
-function TierPop({
-  tier,
-  next
-}) {
-  const t = tierOf(tier);
-  const Icon2 = t.icon;
-  return /* @__PURE__ */ jsxRuntimeExports.jsx(
-    motion.div,
-    {
-      initial: { opacity: 0 },
-      animate: { opacity: 1 },
-      exit: { opacity: 0 },
-      transition: { duration: 0.25 },
-      className: "pointer-events-none absolute inset-0 z-20 flex items-center justify-center rounded-xl bg-white/10 backdrop-blur-[2px]",
-      children: /* @__PURE__ */ jsxRuntimeExports.jsxs(
-        motion.div,
-        {
-          initial: { scale: 0.6, y: 16, opacity: 0 },
-          animate: { scale: 1, y: 0, opacity: 1 },
-          exit: { scale: 0.9, y: -12, opacity: 0 },
-          transition: { type: "spring", stiffness: 260, damping: 18 },
-          className: cn(
-            "relative flex flex-col items-center gap-2 overflow-hidden rounded-2xl border-2 px-8 py-6 text-center shadow-2xl",
-            t.pill
-          ),
-          style: { backgroundColor: "oklch(var(--background))" },
-          children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { "aria-hidden": true, className: cn("absolute inset-0 border-0", t.pill) }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx(
-              motion.span,
-              {
-                className: "relative",
-                initial: { rotate: -20, scale: 0.5 },
-                animate: { rotate: 0, scale: 1 },
-                transition: {
-                  type: "spring",
-                  stiffness: 300,
-                  damping: 12,
-                  delay: 0.1
-                },
-                children: /* @__PURE__ */ jsxRuntimeExports.jsx(Icon2, { className: "size-10" })
-              }
-            ),
-            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "relative font-mono text-[10px] uppercase tracking-[0.2em] opacity-80", children: "Save now for" }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "relative font-display text-3xl font-bold", children: t.name }),
-            next ? /* @__PURE__ */ jsxRuntimeExports.jsxs(
-              motion.span,
-              {
-                initial: { opacity: 0, y: 6 },
-                animate: { opacity: 1, y: 0 },
-                transition: { delay: 0.35 },
-                className: "relative font-mono text-[11px] opacity-90",
-                children: [
-                  "Next: ",
-                  tierOf(next.tier).name,
-                  " at pick ",
-                  next.pick,
-                  " (",
-                  next.pts,
-                  " pts)"
-                ]
-              }
-            ) : tier === 0 ? /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "relative font-mono text-[11px] opacity-90", children: "Top prize" }) : null,
-            /* @__PURE__ */ jsxRuntimeExports.jsx(
-              motion.span,
-              {
-                "aria-hidden": true,
-                initial: { x: "-150%" },
-                animate: { x: "250%" },
-                transition: { duration: 1.1, ease: "easeOut", delay: 0.15 },
-                className: "absolute inset-y-0 left-0 w-1/3 -skew-x-12 bg-gradient-to-r from-transparent via-white/40 to-transparent"
-              }
-            )
-          ]
-        }
-      )
-    }
+function diamondChances(config, stake) {
+  const d1 = Number(config.diamond1Bps) / 1e4;
+  const d2 = Math.min(
+    1,
+    Number(stake / 100000000n) * Number(config.diamond2PerGoldao) / 1e8
   );
+  const odds = Number(config.diamond3Odds);
+  return {
+    mini: d1 * d2 * (odds - 1) / odds,
+    full: d1 * d2 / odds
+  };
 }
-function DrawCard({
-  prize,
-  mine,
-  total
-}) {
-  const chance = total > 0 ? mine / total * 100 : 0;
-  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "relative overflow-hidden rounded-md border border-[oklch(0.75_0.14_350/0.35)] bg-[oklch(0.75_0.14_350/0.08)] px-3 py-3", children: [
-    /* @__PURE__ */ jsxRuntimeExports.jsxs(
-      "div",
-      {
-        className: cn(
-          "flex items-center gap-1.5 font-mono text-[10px] uppercase",
-          DIAMOND_TEXT
-        ),
-        children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx(Gem, { className: "size-3" }),
-          " Diamond draw"
-        ]
-      }
-    ),
-    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-baseline gap-1.5", children: [
-      /* @__PURE__ */ jsxRuntimeExports.jsx(
-        motion.span,
-        {
-          initial: { opacity: 0, y: 6, scale: 0.96 },
-          animate: { opacity: 1, y: 0, scale: 1 },
-          transition: { type: "spring", stiffness: 260, damping: 18 },
-          className: cn(
-            "font-display text-2xl font-semibold tabular-nums",
-            DIAMOND_TEXT
-          ),
-          children: prize === void 0 ? "—" : fmtGoldao(prize)
-        },
-        prize === void 0 ? "none" : String(prize)
-      ),
-      /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: cn("font-mono text-[10px]", inkFaint$2), children: "GOLDAO" })
-    ] }),
-    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: cn("font-mono text-[10px]", inkFaint$2), children: mine > 0 ? `Your chance ${chance.toFixed(1)}% · ${mine} of ${total} tickets` : "Find a diamond to enter the draw" })
-  ] });
+function liveRtpPct(config, pool) {
+  const { base, safePicks } = averagePlay(config);
+  const top10 = Number(config.top10Bps) / 1e4;
+  const perGoldao = diamondChances(config, 100000000n).full;
+  const odds = Number(config.diamond3Odds);
+  const miniShare = Number(config.miniBps) / 1e4;
+  const poolGoldao = Number(pool / 100000000n);
+  const jackpot = safePicks * perGoldao * (1 + miniShare * (odds - 1)) * poolGoldao;
+  return (base + top10 + jackpot) * 100;
 }
-function Legend() {
-  const items = [
-    ...["GOLDAO", "OGY", "ICP", "GLDT"].map((t) => ({
-      label: t,
-      node: /* @__PURE__ */ jsxRuntimeExports.jsx("img", { src: TOKENS[t].logo, alt: "", className: "size-4 rounded-full" })
-    })),
-    {
-      label: "Diamond",
-      node: /* @__PURE__ */ jsxRuntimeExports.jsx("img", { src: DIAMOND_IMG, alt: "", className: "size-4" })
-    },
-    {
-      label: "Collapse",
-      node: /* @__PURE__ */ jsxRuntimeExports.jsx(Mountain, { className: "size-3.5 text-[color:var(--term-ink-mid)]" })
-    }
-  ];
-  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "mt-4 flex flex-wrap items-center gap-x-4 gap-y-2", children: [
-    items.map((it2) => /* @__PURE__ */ jsxRuntimeExports.jsxs(
-      "span",
-      {
-        className: cn(
-          "flex items-center gap-1.5 font-mono text-[11px]",
-          inkMid$3
-        ),
-        children: [
-          it2.node,
-          it2.label
-        ]
-      },
-      it2.label
-    )),
-    /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: cn("font-mono text-[11px]", inkFaint$2), children: "Tokens are decoration: your prize depends only on your average." })
-  ] });
+function reachPct(picks, cells, mines, safe2) {
+  let p2 = 1;
+  for (let n2 = safe2; n2 < picks; n2++) p2 *= 1 - mines / (cells - n2);
+  return p2 * 100;
 }
-function PrizeGuide({ ranking, config }) {
-  const liveCuts = (ranking == null ? void 0 : ranking.cutsX100) ?? [];
-  const estimated = liveCuts.length !== 4 || liveCuts.some((c2) => c2 == null);
-  const cuts = estimated ? TYPICAL_CUTS_X100 : liveCuts;
-  const chipPrice = config ? Number(config.chipPriceE8s) / 1e8 : 1e3;
-  const excPerChip = config ? Number(config.excavationsPerChip) : 5;
-  const mines = config ? Number(config.mines) : 5;
-  const drawPct = config ? Number(config.drawBps) / 100 : 2.4;
-  const treasuryPct = config ? Number(config.treasuryBps) / 100 : 1;
-  const minChips = config ? Number(config.minChips) : 20;
-  const minPlayers = config ? Number(config.minPlayers) : 5;
+function PrizeGuide({ config, stakes, pool }) {
+  if (!config) {
+    return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: cn(panel$1, "flex justify-center p-8"), children: /* @__PURE__ */ jsxRuntimeExports.jsx(Spinner, {}) });
+  }
+  const cells = Number(config.cells);
+  const mines = Number(config.mines);
+  const safe2 = Number(config.safePicks);
+  const pts = config.pointsTable.map(Number);
+  const bps = Number(config.payoutBps);
+  const miniPct = Number(config.miniBps) / 100;
+  const showLiveRtp = pool !== void 0 && pool > LIVE_RTP_MIN_POOL;
+  const oneIn = (chance) => Math.round(1 / chance).toLocaleString("en-US");
+  const rows = pts.map((p2, picks) => ({ picks, p: p2 })).filter((r2) => r2.picks >= safe2);
   return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-col gap-6", children: [
     /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: panel$1, children: [
       /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: panelHeader, children: /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: cn(eyebrow, gold$2, "flex items-center gap-2"), children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx(Compass, { className: "size-3.5" }),
-        " How to reach each prize"
+        /* @__PURE__ */ jsxRuntimeExports.jsx(BookOpen, { className: "size-3.5" }),
+        " How it works"
       ] }) }),
-      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "grid grid-cols-1 gap-3 p-4 sm:grid-cols-5 sm:p-5", children: TIERS.map((t, i) => {
-        const cut = cuts[i];
-        const nextUp = i === 4 ? cuts[3] : null;
-        return /* @__PURE__ */ jsxRuntimeExports.jsxs(
-          motion.div,
-          {
-            initial: { opacity: 0, y: 8 },
-            animate: { opacity: 1, y: 0 },
-            transition: { delay: i * 0.06 },
-            className: "flex flex-col gap-2 rounded-lg border border-[color:var(--term-border-faint)] bg-[var(--term-alt)] p-4",
-            children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsxs(
-                "span",
-                {
-                  className: cn(
-                    "inline-flex w-fit items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium",
-                    t.pill
-                  ),
-                  children: [
-                    /* @__PURE__ */ jsxRuntimeExports.jsx(t.icon, { className: "size-3" }),
-                    t.name
-                  ]
-                }
-              ),
-              /* @__PURE__ */ jsxRuntimeExports.jsx(
-                "span",
-                {
-                  className: cn(
-                    "font-display text-2xl font-semibold tabular-nums",
-                    ink$3
-                  ),
-                  children: i === 4 ? nextUp != null ? `< ${fmtAvg(nextUp)}` : "—" : cut != null ? `${fmtAvg(cut)}+` : "—"
-                }
-              ),
-              /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: cn("font-mono text-[10px]", inkFaint$2), children: [
-                t.pct,
-                "% of chips · pays ",
-                t.payout
-              ] })
-            ]
-          },
-          t.name
-        );
-      }) }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: cn("flex flex-col gap-3 p-5 text-sm", inkMid$3), children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("p", { children: [
+          "Choose a stake and dig. The board has ",
+          cells,
+          " cells and ",
+          mines,
+          " of them collapse the mine. The first ",
+          safe2,
+          " picks are always safe. From the third pick you can save: you receive",
+          " ",
+          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: ink$3, children: "your stake x the multiplier" }),
+          " shown below."
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("p", { children: [
+          "Before digging, load balance from your wallet into your Accumulated prize. Every stake comes out of it: wins are added, and if the mine collapses you keep GOLDAO secured, about half of your stake or more, shown in the If it collapses column; the rest of the stake is deducted. The wallet is only touched when you load balance, and each load pays the ",
+          fmtGoldao(config.feeE8s),
+          " GOLDAO network fee."
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("p", { children: [
+          "When the tournament closes, your Accumulated prize is paid to your wallet if it is at least ",
+          fmtGoldao(config.minPayoutE8s),
+          " GOLDAO (the payment costs the network fee). Smaller balances stay in your Accumulated prize for the next tournament."
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("p", { children: [
+          "Top 10: ",
+          Number(config.top10Bps) / 100,
+          "% of every stake goes to a prize pool paid when the tournament closes to the ten players with the most volume staked (",
+          config.top10Weights.map((w2) => `${Number(w2)}%`).join(", "),
+          " of the pool, from first to tenth). You need at least",
+          " ",
+          fmtGoldao(config.top10MinVolumeE8s),
+          " GOLDAO staked to qualify; the shares nobody qualifies for stay in the pool for the next tournament. Your place shows next to your Accumulated prize."
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "mt-2 flex flex-col gap-2 border-t border-[color:var(--term-border-faint)] pt-4", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: cn(eyebrow, gold$2), children: "RTP" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("p", { children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: cn("font-mono text-lg font-semibold", ink$3), children: [
+              "RTP: ",
+              LONG_RUN_RTP_TEXT
+            ] }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("br", {}),
+            "Return to player: on average, about 98.5 GOLDAO come back for every 100 GOLDAO staked, counting the jackpots. It is an average over many excavations and jackpot pool sizes."
+          ] }),
+          showLiveRtp && pool !== void 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("p", { children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: cn("font-mono text-lg font-semibold", gold$2), children: [
+              "Live RTP: ",
+              liveRtpPct(config, pool).toFixed(1),
+              "%"
+            ] }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("br", {}),
+            "The jackpot pool is above ",
+            fmtGoldao(LIVE_RTP_MIN_POOL),
+            " GOLDAO (",
+            fmtGoldao(pool),
+            " now), so the return of your next excavation is above average. It counts the prizes, the Top 10 share and the part of the pool that two or three diamonds pay, for a player who saves between pick 3 and pick 10, and it changes as the pool changes."
+          ] })
+        ] })
+      ] })
+    ] }),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: panel$1, children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: panelHeader, children: /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: cn(eyebrow, gold$2), children: "Prize per pick" }) }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "overflow-auto", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("table", { className: "w-full font-mono text-xs", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("thead", { children: /* @__PURE__ */ jsxRuntimeExports.jsxs("tr", { className: cn("text-left", inkFaint$2), children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("th", { className: "px-5 py-2 font-medium", children: "Save after pick" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("th", { className: "px-3 py-2 font-medium", children: "Prize" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("th", { className: "px-3 py-2 font-medium", children: "Multiplier" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("th", { className: "px-3 py-2 font-medium", children: "If the next pick collapses" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("th", { className: "px-5 py-2 text-right font-medium", children: "Chance to reach" })
+        ] }) }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("tbody", { children: rows.map(({ picks, p: p2 }) => {
+          const prize = prizeName(picks);
+          const Icon2 = prize.icon;
+          const canSaveHere = picks > safe2;
+          const lastPick = picks >= MAX_PICKS;
+          return /* @__PURE__ */ jsxRuntimeExports.jsxs(
+            "tr",
+            {
+              className: "border-t border-[color:var(--term-border-faint)]",
+              children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("td", { className: cn("px-5 py-2.5", ink$3), children: picks }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("td", { className: "px-3 py-2.5", children: canSaveHere ? /* @__PURE__ */ jsxRuntimeExports.jsxs(
+                  "span",
+                  {
+                    className: cn(
+                      "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px]",
+                      prize.pill
+                    ),
+                    children: [
+                      /* @__PURE__ */ jsxRuntimeExports.jsx(Icon2, { className: "size-3" }),
+                      prize.name
+                    ]
+                  }
+                ) : /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: inkFaint$2, children: "Cannot save yet" }) }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("td", { className: cn("px-3 py-2.5 tabular-nums", ink$3), children: canSaveHere ? fmtMult(p2, bps) : "-" }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("td", { className: "px-3 py-2.5 tabular-nums", children: lastPick ? /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: inkFaint$2, children: "-" }) : /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx(Mountain, { className: "mr-1 inline size-3" }),
+                  fmtMult(collapsePoints(p2), bps)
+                ] }) }),
+                /* @__PURE__ */ jsxRuntimeExports.jsxs("td", { className: "px-5 py-2.5 text-right tabular-nums", children: [
+                  reachPct(picks, cells, mines, safe2).toFixed(0),
+                  "%"
+                ] })
+              ]
+            },
+            picks
+          );
+        }) })
+      ] }) }),
       /* @__PURE__ */ jsxRuntimeExports.jsxs(
         "p",
         {
@@ -61328,177 +65662,70 @@ function PrizeGuide({ ranking, config }) {
             inkFaint$2
           ),
           children: [
-            estimated ? "Typical cutoffs (average points per chip), shown until this week has enough chips to have its own." : "Current cutoffs (average points per chip; unfinished chips count each missing excavation as 100).",
-            " ",
-            "The percentage of each prize is fixed; the cutoffs move with how everyone plays and are confirmed at the weekly close."
+            "Each row is a moment of the excavation: the picks you have already made safely. The collapse column is what you get if you keep digging and the very next pick collapses. The first ",
+            safe2,
+            " picks are always safe, so the next pick is the first with real risk. At pick 10 the prize is collected automatically."
           ]
         }
       )
     ] }),
     /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: panel$1, children: [
-      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: panelHeader, children: /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: cn(eyebrow, gold$2), children: "Strategy" }) }),
-      /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: cn("px-5 pt-4 text-sm", inkMid$3), children: "Saving early protects you from Rock. To fight for the Treasure you have to keep digging." }),
-      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-col gap-3 px-5 py-4", children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsxs(
-          "div",
-          {
-            className: cn(
-              "grid grid-cols-[64px_minmax(0,1fr)_56px] items-end gap-3 font-mono text-[10px] uppercase sm:grid-cols-[80px_minmax(0,1fr)_96px]",
-              inkFaint$2
-            ),
-            children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "Save at" }),
-              /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "Where the chip ends" }),
-              /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-right", children: "Win or break even" })
-            ]
-          }
-        ),
-        STRATEGY_GUIDE.map((s, row) => /* @__PURE__ */ jsxRuntimeExports.jsxs(
-          "div",
-          {
-            className: "grid grid-cols-[64px_minmax(0,1fr)_56px] items-center gap-3 sm:grid-cols-[80px_minmax(0,1fr)_96px]",
-            children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: cn("font-mono text-xs", ink$3), children: [
-                s.saveAt,
-                " picks"
-              ] }),
-              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-col gap-1", children: [
-                /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex h-7 w-full divide-x divide-white/40 overflow-hidden rounded-md border border-[color:var(--term-border-faint)]", children: s.odds.map(
-                  (pct, t) => pct > 0 ? /* @__PURE__ */ jsxRuntimeExports.jsx(
-                    motion.div,
-                    {
-                      title: `${TIERS[t].name}: ${pct}%`,
-                      initial: { width: 0 },
-                      whileInView: { width: `${pct}%` },
-                      viewport: { once: true },
-                      transition: { duration: 0.6, delay: row * 0.06 },
-                      className: cn(
-                        "flex items-center justify-center overflow-hidden font-mono text-[10px] font-medium",
-                        TIERS[t].pill
-                      ),
-                      children: pct >= 8 ? `${pct}%` : ""
-                    },
-                    TIERS[t].name
-                  ) : null
-                ) }),
-                s.odds.some((pct) => pct > 0 && pct < 8) && /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: cn("font-mono text-[10px]", inkFaint$2), children: s.odds.map(
-                  (pct, t) => pct > 0 && pct < 8 ? `${TIERS[t].name} ${pct}%` : null
-                ).filter(Boolean).join(" · ") })
-              ] }),
-              /* @__PURE__ */ jsxRuntimeExports.jsxs(
-                "span",
-                {
-                  className: cn("text-right font-mono text-xs tabular-nums", ink$3),
-                  children: [
-                    100 - s.odds[4],
-                    "%"
-                  ]
-                }
-              )
-            ]
-          },
-          s.saveAt
-        )),
-        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex flex-wrap gap-1.5 pt-1", children: TIERS.map((t) => /* @__PURE__ */ jsxRuntimeExports.jsxs(
+      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: panelHeader, children: /* @__PURE__ */ jsxRuntimeExports.jsxs(
+        "span",
+        {
+          className: cn(eyebrow, DIAMOND_TEXT, "flex items-center gap-2"),
+          children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx(Gem, { className: "size-3.5" }),
+            " Diamond jackpot"
+          ]
+        }
+      ) }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: cn("flex flex-col gap-3 p-5 text-sm", inkMid$3), children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("p", { children: [
+          "Every safe pick can reveal up to three diamonds. One diamond pays nothing, two diamonds win the mini jackpot (",
+          miniPct,
+          "% of the pool) and three diamonds win the whole jackpot. A jackpot found on the first two picks is confirmed from the third pick on. The bigger the stake, the better the chance."
+        ] }),
+        stakes && stakes.length === 3 && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex flex-wrap gap-3 font-mono text-xs", children: stakes.map((s, i) => /* @__PURE__ */ jsxRuntimeExports.jsxs(
           "span",
           {
-            className: cn(
-              "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-medium",
-              t.pill
-            ),
+            className: "rounded-md border border-[color:var(--term-border)] px-3 py-1.5",
             children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsx(t.icon, { className: "size-2.5" }),
-              t.name
+              STAKE_LABELS[i],
+              " ",
+              fmtGoldao(s),
+              ": mini",
+              " ",
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: ink$3, children: [
+                "1 in ",
+                oneIn(diamondChances(config, s).mini)
+              ] }),
+              ", full",
+              " ",
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: ink$3, children: [
+                "1 in ",
+                oneIn(diamondChances(config, s).full)
+              ] }),
+              " ",
+              "per safe pick"
             ]
           },
-          t.name
+          STAKE_LABELS[i]
         )) })
-      ] }),
-      /* @__PURE__ */ jsxRuntimeExports.jsx(
-        "p",
-        {
-          className: cn(
-            "border-t border-[color:var(--term-border-faint)] px-5 py-3 font-mono text-[11px]",
-            inkFaint$2
-          ),
-          children: 'Where a chip ends at the weekly close if all its excavations save at that pick, compared with everyone else. This is not the per-pick "safe" chance shown while digging. Simulated with a mixed set of players; every row adds up to 100%. Saving starts at pick 3: the first two picks are free.'
-        }
-      )
-    ] }),
-    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: panel$1, children: [
-      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: panelHeader, children: /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: cn(eyebrow, gold$2, "flex items-center gap-2"), children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx(BookOpen, { className: "size-3.5" }),
-        " Rules"
-      ] }) }),
-      /* @__PURE__ */ jsxRuntimeExports.jsxs("ul", { className: cn("grid gap-3 p-5 text-sm sm:grid-cols-2", inkMid$3), children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsxs(Rule, { title: "Chips", children: [
-          chipPrice.toLocaleString("en-US"),
-          " GOLDAO buys one chip with",
-          " ",
-          excPerChip,
-          " excavations. Every chip competes on its own, so playing more never gives an edge."
-        ] }),
-        /* @__PURE__ */ jsxRuntimeExports.jsxs(Rule, { title: "The mine", children: [
-          mines,
-          " hidden collapses in 25 cells. The first two picks are always safe and worth 100 points. You can save from the third pick on."
-        ] }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx(Rule, { title: "Collapses", children: "A collapse ends the excavation and keeps half of the points you had." }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx(Rule, { title: "Ranking", children: "Your chip's average points decide its prize. Ties go to whoever finished first." }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx(Rule, { title: "Fees", children: "If a chip pays out, every fee you paid is refunded with your prize." }),
-        /* @__PURE__ */ jsxRuntimeExports.jsxs(
-          Rule,
-          {
-            title: /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: cn("flex items-center gap-1", DIAMOND_TEXT), children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsx(Gem, { className: "size-3.5" }),
-              " Diamonds"
-            ] }),
-            children: [
-              "2% chance on every safe pick. Each diamond is a ticket for the weekly draw of ",
-              drawPct,
-              "% of the prize pool. One winner, verifiable on chain."
-            ]
-          }
-        ),
-        /* @__PURE__ */ jsxRuntimeExports.jsxs(Rule, { title: "Running costs", children: [
-          treasuryPct,
-          "% of the prize pool is kept to pay for the cycles that run the game."
-        ] }),
-        /* @__PURE__ */ jsxRuntimeExports.jsxs(Rule, { title: "Weekly close", children: [
-          "Open excavations are saved and unused ones are auto-played saving at 3. A week needs at least ",
-          minChips,
-          " chips from ",
-          minPlayers,
-          " ",
-          "different players to close."
-        ] })
       ] })
     ] })
   ] });
 }
-function Rule({
-  title,
-  children
-}) {
-  return /* @__PURE__ */ jsxRuntimeExports.jsxs("li", { className: "flex flex-col gap-1 rounded-lg border border-[color:var(--term-border-faint)] bg-[var(--term-alt)] p-4", children: [
-    /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: cn("font-display text-sm font-semibold", ink$3), children: title }),
-    /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-[13px] leading-relaxed", children })
-  ] });
-}
 const TOP = 20;
-function RankingTable({ ranking, weeks }) {
+function RankingTable({ ranking, tournaments }) {
   const { principalId } = useAuth();
-  const [sort, setSort] = reactExports.useState("result");
+  const [sort, setSort] = reactExports.useState("volume");
   const [showAll, setShowAll] = reactExports.useState(false);
   const rows = reactExports.useMemo(() => {
     if (!ranking) return [];
-    const ratio = (p2) => Number(p2.paid) > 0 ? Number(p2.estimatedReceive) / Number(p2.paid) : 0;
     const base = [...ranking.players];
-    const sorted = sort === "diamonds" ? base.sort(
-      (a2, b2) => Number(b2.diamonds) - Number(a2.diamonds) || ratio(b2) - ratio(a2)
-    ) : sort === "avg" ? base.sort((a2, b2) => Number(b2.avgX100) - Number(a2.avgX100)) : base.sort(
-      (a2, b2) => ratio(b2) - ratio(a2) || Number(b2.avgX100) - Number(a2.avgX100)
-    );
-    return sorted.map((p2, i) => ({ ...p2, pos: i + 1 }));
+    const key = (p2) => sort === "volume" ? Number(p2.staked) : sort === "points" ? Number(p2.bestReturn) : sort === "jackpot" ? Number(p2.jackpotWon) : Number(netOf(p2));
+    return base.sort((a2, b2) => key(b2) - key(a2)).map((p2, i) => ({ ...p2, pos: i + 1 }));
   }, [ranking, sort]);
   const visible = reactExports.useMemo(() => {
     if (showAll || rows.length <= TOP) return rows;
@@ -61507,39 +65734,12 @@ function RankingTable({ ranking, weeks }) {
     return mine && !top.includes(mine) ? [...top, mine] : top;
   }, [rows, showAll, principalId]);
   return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-col gap-6", children: [
-    ranking && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "grid grid-cols-2 gap-3 sm:grid-cols-4", children: [
-      /* @__PURE__ */ jsxRuntimeExports.jsx(
-        Kpi,
-        {
-          label: "Prize pool",
-          value: `${fmtGoldao(ranking.pot)}`,
-          unit: "GOLDAO"
-        }
-      ),
-      /* @__PURE__ */ jsxRuntimeExports.jsx(
-        Kpi,
-        {
-          label: "Treasure prize",
-          value: ranking.treasurePerChip > 0n ? fmtGoldao(ranking.treasurePerChip) : "—",
-          unit: ranking.treasurePerChip > 0n ? "per chip" : "No Treasure yet · needs 11+ chips"
-        }
-      ),
-      /* @__PURE__ */ jsxRuntimeExports.jsx(
-        Kpi,
-        {
-          label: "Diamond draw",
-          value: `${fmtGoldao(ranking.drawPrize)}`,
-          unit: "GOLDAO",
-          diamond: true
-        }
-      ),
-      /* @__PURE__ */ jsxRuntimeExports.jsx(
-        Kpi,
-        {
-          label: "Players · chips",
-          value: `${ranking.players.length} · ${Number(ranking.chips)}`
-        }
-      )
+    ranking && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx(Kpi, { label: "Jackpot pool", value: fmtGoldao(ranking.pool), diamond: true }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx(Kpi, { label: "Top 10 pool", value: fmtGoldao(ranking.top10Pool) }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx(Kpi, { label: "Volume", value: fmtGoldao(ranking.staked) }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx(Kpi, { label: "Players", value: String(Number(ranking.totalPlayers)) }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx(Kpi, { label: "Ends in", value: fmtCountdown(ranking.endsAt) })
     ] }),
     /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: panel$1, children: [
       /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: panelHeader, children: [
@@ -61547,357 +65747,638 @@ function RankingTable({ ranking, weeks }) {
           /* @__PURE__ */ jsxRuntimeExports.jsx(ListOrdered, { className: "size-3.5" }),
           " Ranking"
         ] }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "inline-flex rounded-md border border-[color:var(--term-border)] p-0.5", children: [
-          ["result", "Return"],
-          ["avg", "Average"],
-          ["diamonds", "Diamonds"]
-        ].map(([k2, label]) => /* @__PURE__ */ jsxRuntimeExports.jsxs(
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "inline-flex rounded-md border border-[color:var(--term-border)] p-0.5 font-mono text-[11px]", children: [
+          ["volume", "Volume"],
+          ["net", "Net"],
+          ["points", "Best prize"],
+          ["jackpot", "Jackpots"]
+        ].map(([k2, l2]) => /* @__PURE__ */ jsxRuntimeExports.jsx(
           "button",
           {
             type: "button",
             onClick: () => setSort(k2),
             className: cn(
-              "flex items-center gap-1 rounded px-2.5 py-1 font-mono text-[11px] transition-smooth",
-              sort === k2 ? "bg-primary text-primary-foreground" : inkMid$3
+              "rounded px-2 py-1",
+              sort === k2 ? "bg-primary text-primary-foreground" : inkFaint$2
             ),
-            children: [
-              k2 === "diamonds" && /* @__PURE__ */ jsxRuntimeExports.jsx(Gem, { className: "size-3" }),
-              label
-            ]
+            children: l2
           },
           k2
         )) })
       ] }),
-      !ranking ? /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: cn("p-5 text-sm", inkFaint$2), children: "Loading ranking…" }) : rows.length === 0 ? /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: cn("p-5 text-sm", inkFaint$2), children: "No chips played this week yet." }) : /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx("ul", { className: "sm:hidden", children: visible.map((r2) => {
-          const p2 = r2.player.toText();
-          const me = p2 === principalId;
-          const diff = Number(r2.estimatedReceive) - Number(r2.paid);
+      !ranking ? /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex justify-center p-8", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Spinner, {}) }) : rows.length === 0 ? /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: cn("p-5 text-sm", inkFaint$2), children: "No players yet." }) : /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "overflow-auto", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("table", { className: "w-full font-mono text-xs", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("thead", { children: /* @__PURE__ */ jsxRuntimeExports.jsxs("tr", { className: cn("text-left", inkFaint$2), children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("th", { className: "px-5 py-2 font-medium", children: "#" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("th", { className: "px-3 py-2 font-medium", children: "Player" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("th", { className: "hidden px-3 py-2 font-medium sm:table-cell", children: "Excavations" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("th", { className: "hidden px-3 py-2 font-medium sm:table-cell", children: "Volume" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("th", { className: "px-3 py-2 font-medium", children: "Top 10" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("th", { className: "px-3 py-2 font-medium", children: "Net result" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("th", { className: "hidden px-3 py-2 font-medium sm:table-cell", children: "Best prize" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("th", { className: "px-5 py-2 text-right font-medium", children: "Jackpots" })
+        ] }) }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("tbody", { children: visible.map((p2) => {
+          const me = p2.player.toText() === principalId;
           return /* @__PURE__ */ jsxRuntimeExports.jsxs(
-            motion.li,
+            "tr",
             {
-              layout: true,
-              initial: { opacity: 0 },
-              animate: { opacity: 1 },
               className: cn(
-                "flex flex-col gap-2 border-t border-[color:var(--term-border-faint)] px-4 py-3 font-mono text-xs",
+                "border-t border-[color:var(--term-border-faint)]",
                 me && "bg-primary/10"
               ),
               children: [
-                /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center justify-between gap-2", children: [
-                  /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "flex min-w-0 items-center gap-2", children: [
-                    /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: cn("tabular-nums", inkFaint$2), children: r2.pos }),
-                    /* @__PURE__ */ jsxRuntimeExports.jsx(
-                      "span",
-                      {
-                        className: cn("truncate", me ? gold$2 : ink$3),
-                        title: p2,
-                        children: me ? "You" : shortPrincipal(p2)
-                      }
+                /* @__PURE__ */ jsxRuntimeExports.jsx("td", { className: cn("px-5 py-2.5", ink$3), children: p2.pos }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("td", { className: cn("px-3 py-2.5", ink$3), children: shortPrincipal(p2.player.toText()) }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("td", { className: "hidden px-3 py-2.5 sm:table-cell", children: Number(p2.excavations) }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("td", { className: "hidden px-3 py-2.5 sm:table-cell", children: fmtGoldao(p2.staked) }),
+                /* @__PURE__ */ jsxRuntimeExports.jsxs(
+                  "td",
+                  {
+                    className: cn(
+                      "px-3 py-2.5 tabular-nums",
+                      p2.prize > 0n ? gold$2 : inkFaint$2
                     ),
-                    r2.playing && /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: inkFaint$2, children: "· playing" })
-                  ] }),
-                  /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: cn("shrink-0 tabular-nums", ink$3), children: [
-                    "avg ",
-                    fmtAvg(r2.avgX100)
-                  ] })
-                ] }),
-                /* @__PURE__ */ jsxRuntimeExports.jsx(TierSummary, { tiers: r2.tiers }),
-                /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center justify-between gap-2", children: [
-                  /* @__PURE__ */ jsxRuntimeExports.jsxs(
-                    "span",
-                    {
-                      className: cn(
-                        "flex items-center gap-1 tabular-nums",
-                        Number(r2.diamonds) > 0 ? DIAMOND_TEXT : inkFaint$2
-                      ),
-                      children: [
-                        /* @__PURE__ */ jsxRuntimeExports.jsx(Gem, { className: "size-3" }),
-                        " ",
-                        Number(r2.diamonds)
-                      ]
-                    }
-                  ),
-                  /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "tabular-nums", children: [
-                    /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: inkFaint$2, children: "Payout " }),
-                    /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: ink$3, children: fmtGoldao(r2.estimatedReceive) }),
-                    /* @__PURE__ */ jsxRuntimeExports.jsx(
-                      "span",
-                      {
-                        className: cn(
-                          "ml-1.5 text-[10px]",
-                          diff > 0 ? "text-[color:var(--term-green)]" : diff < 0 ? "text-destructive" : inkFaint$2
-                        ),
-                        children: diff === 0 ? "=" : `${diff > 0 ? "+" : ""}${(diff / 1e8).toLocaleString("en-US", { maximumFractionDigits: 0 })}`
-                      }
-                    )
-                  ] })
-                ] })
+                    children: [
+                      "#",
+                      Number(p2.rank),
+                      p2.prize > 0n ? ` +${fmtGoldao(p2.prize)}` : ""
+                    ]
+                  }
+                ),
+                /* @__PURE__ */ jsxRuntimeExports.jsx(
+                  "td",
+                  {
+                    className: cn(
+                      "px-3 py-2.5 tabular-nums",
+                      netOf(p2) > 0n ? "text-[color:var(--term-green)]" : ink$3
+                    ),
+                    children: fmtSigned(netOf(p2))
+                  }
+                ),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("td", { className: "hidden px-3 py-2.5 sm:table-cell", children: p2.bestReturn > 0n ? fmtGoldao(p2.bestReturn) : "-" }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx(
+                  "td",
+                  {
+                    className: cn(
+                      "px-5 py-2.5 text-right tabular-nums",
+                      p2.jackpotWon > 0n ? DIAMOND_TEXT : ink$3
+                    ),
+                    children: p2.jackpotWon > 0n ? fmtGoldao(p2.jackpotWon) : "-"
+                  }
+                )
               ]
             },
-            p2
+            p2.player.toText()
           );
-        }) }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "hidden overflow-x-auto sm:block", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("table", { className: "w-full font-mono text-xs", children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx("thead", { children: /* @__PURE__ */ jsxRuntimeExports.jsxs("tr", { className: cn("text-left", inkFaint$2), children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx("th", { className: "px-5 py-2 font-medium", children: "#" }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx("th", { className: "px-3 py-2 font-medium", children: "Player" }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx("th", { className: "px-3 py-2 text-right font-medium", children: "Avg" }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx("th", { className: "px-3 py-2 font-medium", children: "Chip prizes" }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx("th", { className: "px-3 py-2 text-right font-medium", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Gem, { className: cn("ml-auto size-3.5", DIAMOND_TEXT) }) }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx("th", { className: "px-5 py-2 text-right font-medium", children: "Payout" })
-          ] }) }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("tbody", { children: visible.map((r2, i) => {
-            const p2 = r2.player.toText();
-            const me = p2 === principalId;
-            const diff = Number(r2.estimatedReceive) - Number(r2.paid);
-            return /* @__PURE__ */ jsxRuntimeExports.jsxs(
-              motion.tr,
-              {
-                layout: true,
-                initial: { opacity: 0 },
-                animate: { opacity: 1 },
-                transition: { delay: Math.min(i, 20) * 0.015 },
-                className: cn(
-                  "border-t border-[color:var(--term-border-faint)]",
-                  me && "bg-primary/10"
-                ),
-                children: [
-                  /* @__PURE__ */ jsxRuntimeExports.jsx(
-                    "td",
-                    {
-                      className: cn("px-5 py-2.5 tabular-nums", inkFaint$2),
-                      children: r2.pos
-                    }
-                  ),
-                  /* @__PURE__ */ jsxRuntimeExports.jsxs(
-                    "td",
-                    {
-                      className: cn("px-3 py-2.5", me ? gold$2 : ink$3),
-                      title: p2,
-                      children: [
-                        me ? "You" : shortPrincipal(p2),
-                        r2.playing && /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: cn("ml-1.5", inkFaint$2), children: "· playing" })
-                      ]
-                    }
-                  ),
-                  /* @__PURE__ */ jsxRuntimeExports.jsx(
-                    "td",
-                    {
-                      className: cn(
-                        "px-3 py-2.5 text-right tabular-nums",
-                        ink$3
-                      ),
-                      children: fmtAvg(r2.avgX100)
-                    }
-                  ),
-                  /* @__PURE__ */ jsxRuntimeExports.jsx("td", { className: "px-3 py-2.5", children: /* @__PURE__ */ jsxRuntimeExports.jsx(TierSummary, { tiers: r2.tiers }) }),
-                  /* @__PURE__ */ jsxRuntimeExports.jsx(
-                    "td",
-                    {
-                      className: cn(
-                        "px-3 py-2.5 text-right tabular-nums",
-                        Number(r2.diamonds) > 0 ? DIAMOND_TEXT : inkFaint$2
-                      ),
-                      children: Number(r2.diamonds)
-                    }
-                  ),
-                  /* @__PURE__ */ jsxRuntimeExports.jsxs("td", { className: "px-5 py-2.5 text-right tabular-nums", children: [
-                    /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: ink$3, children: fmtGoldao(r2.estimatedReceive) }),
-                    /* @__PURE__ */ jsxRuntimeExports.jsx(
-                      "span",
-                      {
-                        className: cn(
-                          "ml-1.5 text-[10px]",
-                          diff > 0 ? "text-[color:var(--term-green)]" : diff < 0 ? "text-destructive" : inkFaint$2
-                        ),
-                        children: diff === 0 ? "=" : `${diff > 0 ? "+" : ""}${(diff / 1e8).toLocaleString("en-US", { maximumFractionDigits: 0 })}`
-                      }
-                    )
-                  ] })
-                ]
-              },
-              p2
-            );
-          }) })
-        ] }) })
-      ] }),
+        }) })
+      ] }) }),
       rows.length > TOP && /* @__PURE__ */ jsxRuntimeExports.jsx(
         "button",
         {
           type: "button",
           onClick: () => setShowAll((v2) => !v2),
           className: cn(
-            "w-full border-t border-[color:var(--term-border-faint)] py-2.5 font-mono text-[11px] transition-smooth hover:text-[color:var(--term-ink)]",
-            gold$2
-          ),
-          children: showAll ? "Show top 20" : `Show all ${rows.length} players`
-        }
-      ),
-      /* @__PURE__ */ jsxRuntimeExports.jsx(
-        "p",
-        {
-          className: cn(
-            "border-t border-[color:var(--term-border-faint)] px-5 py-3 font-mono text-[11px]",
+            "w-full border-t px-5 py-2 font-mono text-xs",
             inkFaint$2
           ),
-          children: "Sorted by return (payout ÷ spent). Prizes are decided chip by chip, so a good average can still lose if a chip ends in Rock. Unfinished chips count each missing excavation as 100 points (what the weekly close auto-plays). Everything is provisional until the close."
+          children: showAll ? "Show top 20" : `Show all ${rows.length}`
         }
       )
     ] }),
-    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: panel$1, children: [
-      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: panelHeader, children: /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: cn(eyebrow, gold$2, "flex items-center gap-2"), children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx(ShieldCheck, { className: "size-3.5" }),
-        " Past weeks"
+    ranking && ranking.lastTop10.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: panel$1, children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: panelHeader, children: /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: cn(eyebrow, gold$2), children: [
+        "Top 10 winners · tournament",
+        " ",
+        Number(ranking.lastTop10[0].tournament)
       ] }) }),
-      !weeks || weeks.length === 0 ? /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: cn("p-5 text-sm", inkFaint$2), children: "No past weeks yet." }) : /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx("ul", { className: "sm:hidden", children: [...weeks].reverse().map((w2) => /* @__PURE__ */ jsxRuntimeExports.jsxs(
-          "li",
+      /* @__PURE__ */ jsxRuntimeExports.jsx("ul", { className: "divide-y divide-[color:var(--term-border-faint)] font-mono text-xs", children: ranking.lastTop10.map((w2) => /* @__PURE__ */ jsxRuntimeExports.jsxs(
+        "li",
+        {
+          className: "flex items-center justify-between px-5 py-2.5",
+          children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: ink$3, children: [
+              "#",
+              Number(w2.rank),
+              " ",
+              shortPrincipal(w2.player.toText())
+            ] }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: inkFaint$2, children: [
+              fmtGoldao(w2.volume),
+              " volume"
+            ] }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: cn("tabular-nums", gold$2), children: [
+              "+",
+              fmtGoldao(w2.prize)
+            ] })
+          ]
+        },
+        `${w2.player.toText()}-${String(w2.rank)}`
+      )) })
+    ] }),
+    ranking && ranking.jackpots.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: panel$1, children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: panelHeader, children: /* @__PURE__ */ jsxRuntimeExports.jsxs(
+        "span",
+        {
+          className: cn(eyebrow, DIAMOND_TEXT, "flex items-center gap-2"),
+          children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx(Gem, { className: "size-3.5" }),
+            " Recent jackpots"
+          ]
+        }
+      ) }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("ul", { className: "divide-y divide-[color:var(--term-border-faint)] font-mono text-xs", children: [...ranking.jackpots].reverse().slice(0, 10).map((j2) => /* @__PURE__ */ jsxRuntimeExports.jsxs(
+        "li",
+        {
+          className: "flex items-center justify-between px-5 py-2.5",
+          children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: ink$3, children: shortPrincipal(j2.player.toText()) }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: inkFaint$2, children: fmtDate(j2.at) }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: cn("tabular-nums", DIAMOND_TEXT), children: fmtGoldao(j2.amount) })
+          ]
+        },
+        `${j2.player.toText()}-${String(j2.at)}`
+      )) })
+    ] }),
+    tournaments && tournaments.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: panel$1, children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: panelHeader, children: /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: cn(eyebrow, gold$2), children: "Past tournaments" }) }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "overflow-auto", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("table", { className: "w-full font-mono text-xs", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("thead", { children: /* @__PURE__ */ jsxRuntimeExports.jsxs("tr", { className: cn("text-left", inkFaint$2), children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("th", { className: "px-5 py-2 font-medium", children: "#" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("th", { className: "px-3 py-2 font-medium", children: "Players" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("th", { className: "px-3 py-2 font-medium", children: "Excavations" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("th", { className: "px-3 py-2 font-medium", children: "Volume" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("th", { className: "px-5 py-2 text-right font-medium", children: "Jackpots" })
+        ] }) }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("tbody", { children: [...tournaments].reverse().map((t) => /* @__PURE__ */ jsxRuntimeExports.jsxs(
+          "tr",
           {
-            className: "grid grid-cols-2 gap-x-3 gap-y-2 border-t border-[color:var(--term-border-faint)] px-4 py-3 font-mono text-xs",
+            className: "border-t border-[color:var(--term-border-faint)]",
             children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: ink$3, children: [
-                "Week #",
-                Number(w2.week)
-              ] }),
-              /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: cn("text-right", inkMid$3), children: [
-                "Pool ",
-                fmtGoldao(w2.pot)
-              ] }),
-              /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: inkMid$3, children: [
-                "Treasure ",
-                fmtGoldao(w2.treasurePerChip)
-              ] }),
-              /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: cn("text-right", DIAMOND_TEXT), children: [
-                "Draw ",
-                fmtGoldao(w2.drawPrize)
-              ] }),
-              /* @__PURE__ */ jsxRuntimeExports.jsx(
-                "span",
-                {
-                  className: cn("col-span-2", inkFaint$2),
-                  title: `raw_rand: ${String(w2.drawRandom)}`,
-                  children: w2.drawWinner ? `Winner ${shortPrincipal(w2.drawWinner.toText())} · ticket #${Number(w2.drawTicket)} of ${Number(w2.drawTickets)}` : "No diamonds · rolled over"
-                }
-              )
+              /* @__PURE__ */ jsxRuntimeExports.jsx("td", { className: cn("px-5 py-2.5", ink$3), children: Number(t.tournament) }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("td", { className: "px-3 py-2.5", children: Number(t.players) }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("td", { className: "px-3 py-2.5", children: Number(t.excavations) }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("td", { className: "px-3 py-2.5", children: fmtGoldao(t.staked) }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("td", { className: "px-5 py-2.5 text-right tabular-nums", children: fmtGoldao(t.jackpotPaid) })
             ]
           },
-          String(w2.week)
-        )) }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "hidden overflow-x-auto sm:block", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("table", { className: "w-full font-mono text-xs", children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx("thead", { children: /* @__PURE__ */ jsxRuntimeExports.jsxs("tr", { className: cn("text-left", inkFaint$2), children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx("th", { className: "px-5 py-2 font-medium", children: "Week" }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx("th", { className: "px-3 py-2 font-medium", children: "Prize pool" }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx("th", { className: "px-3 py-2 font-medium", children: "Treasure / chip" }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx("th", { className: "px-3 py-2 font-medium", children: "Diamond draw" }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx("th", { className: "px-5 py-2 font-medium", children: "Winner · ticket" })
-          ] }) }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("tbody", { children: [...weeks].reverse().map((w2) => /* @__PURE__ */ jsxRuntimeExports.jsxs(
-            "tr",
-            {
-              className: "border-t border-[color:var(--term-border-faint)]",
-              children: [
-                /* @__PURE__ */ jsxRuntimeExports.jsxs("td", { className: cn("px-5 py-2.5", ink$3), children: [
-                  "#",
-                  Number(w2.week)
-                ] }),
-                /* @__PURE__ */ jsxRuntimeExports.jsx("td", { className: cn("px-3 py-2.5", inkMid$3), children: fmtGoldao(w2.pot) }),
-                /* @__PURE__ */ jsxRuntimeExports.jsx("td", { className: cn("px-3 py-2.5", inkMid$3), children: fmtGoldao(w2.treasurePerChip) }),
-                /* @__PURE__ */ jsxRuntimeExports.jsx("td", { className: cn("px-3 py-2.5", DIAMOND_TEXT), children: fmtGoldao(w2.drawPrize) }),
-                /* @__PURE__ */ jsxRuntimeExports.jsx(
-                  "td",
-                  {
-                    className: cn("px-5 py-2.5", inkMid$3),
-                    title: `raw_rand: ${String(w2.drawRandom)}`,
-                    children: w2.drawWinner ? `${shortPrincipal(w2.drawWinner.toText())} · #${Number(w2.drawTicket)} of ${Number(w2.drawTickets)}` : "No diamonds · rolled over"
-                  }
-                )
-              ]
-            },
-            String(w2.week)
-          )) })
-        ] }) })
-      ] })
+          String(t.tournament)
+        )) })
+      ] }) })
     ] })
   ] });
 }
 function Kpi({
   label,
   value,
-  unit,
   diamond
 }) {
-  return /* @__PURE__ */ jsxRuntimeExports.jsxs(
-    motion.div,
-    {
-      initial: { opacity: 0, y: 8 },
-      animate: { opacity: 1, y: 0 },
-      className: cn(panel$1, "flex flex-col gap-1 p-4"),
-      children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: cn(eyebrow, inkFaint$2), children: label }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx(
-          "span",
-          {
-            className: cn(
-              "font-display text-2xl font-semibold tabular-nums",
-              diamond ? DIAMOND_TEXT : ink$3
-            ),
-            children: value
-          }
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: cn(panel$1, "flex flex-col gap-1 p-4"), children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: cn(eyebrow, inkFaint$2), children: label }),
+    /* @__PURE__ */ jsxRuntimeExports.jsx(
+      "span",
+      {
+        className: cn(
+          "font-display text-2xl font-semibold tabular-nums",
+          diamond ? DIAMOND_TEXT : ink$3
         ),
-        unit && /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: cn("font-mono text-[10px]", inkFaint$2), children: unit })
-      ]
-    }
-  );
+        children: value
+      }
+    )
+  ] });
 }
-const FAUCET_PRESETS = [1e3, 5e3, 1e4, 2e4];
-const CHIP_OPTIONS = [1, 2, 5, 10];
-function WalletPanel({ dashboard, config }) {
-  const { actor } = useAuth();
-  const { run, pending } = useGameAction();
-  const [chips, setChips] = reactExports.useState(1);
-  const [confirming, setConfirming] = reactExports.useState(false);
+const faucetIdl = ({ IDL: IDL2 }) => {
+  const Config = IDL2.Record({
+    enabled: IDL2.Bool,
+    presets: IDL2.Vec(IDL2.Nat),
+    capE8s: IDL2.Nat,
+    usedE8s: IDL2.Nat
+  });
+  return IDL2.Service({
+    testFaucetConfig: IDL2.Func([], [Config], ["query"]),
+    testFaucetClaim: IDL2.Func(
+      [IDL2.Nat],
+      [IDL2.Variant({ ok: IDL2.Nat, err: IDL2.Text })],
+      []
+    )
+  });
+};
+const actors = /* @__PURE__ */ new Map();
+function principalKey(identity) {
+  try {
+    return identity.getPrincipal().toText();
+  } catch {
+    return "anon";
+  }
+}
+function getActor$1(identity) {
+  const key = principalKey(identity);
+  let a2 = actors.get(key);
+  if (!a2) {
+    a2 = (async () => {
+      const env = await loadEnv();
+      const canisterId = env.backend_canister_id ?? "";
+      if (!canisterId || canisterId === "undefined") {
+        throw new Error("The game canister is not configured.");
+      }
+      const isLocal = env.backend_host === "local";
+      const agent = await HttpAgent$1.create({
+        identity,
+        host: isLocal ? "http://localhost:4943" : "https://icp-api.io",
+        // Same setting the game actor uses: the canister runs on a subnet whose query
+        // signatures the SDK does not verify. Claims are update calls, which are certified.
+        verifyQuerySignatures: false
+      });
+      if (isLocal) await agent.fetchRootKey().catch(() => {
+      });
+      return Actor$1.createActor(faucetIdl, {
+        agent,
+        canisterId
+      });
+    })();
+    actors.set(key, a2);
+    a2.catch(() => actors.delete(key));
+  }
+  return a2;
+}
+async function fetchFaucetConfig(identity) {
+  const c2 = await (await getActor$1(identity)).testFaucetConfig();
+  return {
+    enabled: c2.enabled,
+    presets: c2.presets.map(Number),
+    capE8s: c2.capE8s,
+    usedE8s: c2.usedE8s
+  };
+}
+async function claimTestTokens(identity, goldao) {
+  const res = await (await getActor$1(identity)).testFaucetClaim(BigInt(goldao));
+  if ("err" in res) throw new Error(res.err);
+  return res.ok;
+}
+const E8S$3 = 100000000n;
+function TestFaucetCard() {
+  const { identity } = useInternetIdentity();
+  const { principalId } = useAuth();
+  const queryClient2 = useQueryClient();
+  const [pending2, setPending] = reactExports.useState(null);
   const [msg, setMsg] = reactExports.useState(null);
-  const chipPrice = config ? Number(config.chipPriceE8s) / 1e8 : 1e3;
-  const excPerChip = config ? Number(config.excavationsPerChip) : 5;
-  const fee = config ? Number(config.feeE8s) / 1e8 : 10;
-  const cost = chips * chipPrice + fee;
-  const balance = dashboard ? Number(dashboard.balance) / 1e8 : 0;
-  const faucetLeft = dashboard ? Number(dashboard.faucetRemaining) / 1e8 : 0;
-  const faucetCap = config ? Number(config.faucetCapE8s) / 1e8 : 2e4;
-  const weekOpen = (dashboard == null ? void 0 : dashboard.status) === "open";
-  const requestTokens = async (amount) => {
-    if (!actor) return;
+  const cfg = useQuery({
+    queryKey: ["game", "faucet", principalId],
+    queryFn: () => fetchFaucetConfig(identity),
+    enabled: !!identity && !!principalId,
+    refetchInterval: 3e4,
+    retry: false
+  });
+  reactExports.useEffect(() => {
+    if (!(msg == null ? void 0 : msg.ok)) return;
+    const t = window.setTimeout(() => setMsg(null), 6e3);
+    return () => window.clearTimeout(t);
+  }, [msg]);
+  const data = cfg.data;
+  const left = data ? Number(
+    (data.capE8s > data.usedE8s ? data.capE8s - data.usedE8s : 0n) / E8S$3
+  ) : 0;
+  const claim = async (amount) => {
+    if (!identity || pending2 !== null) return;
     setMsg(null);
+    setPending(amount);
     try {
-      await run("faucet", () => actor.gameRequestTestTokens(BigInt(amount)));
+      await claimTestTokens(identity, amount);
       setMsg({
         ok: true,
-        text: `${amount.toLocaleString("en-US")} test GOLDAO added.`
+        text: `${amount.toLocaleString("en-US")} ${TEST_TOKEN_LABEL} sent to your wallet.`
       });
     } catch (e2) {
       setMsg({ ok: false, text: errorMessage(e2) });
+    } finally {
+      setPending(null);
+      void queryClient2.invalidateQueries({ queryKey: ["game", "faucet"] });
+      void queryClient2.invalidateQueries({ queryKey: ["game", "wallet"] });
     }
   };
-  const buy = async () => {
-    if (!actor) return;
-    setMsg(null);
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-col gap-2", children: [
+    cfg.isError || data && !data.enabled ? /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-xs text-destructive", children: "The test faucet is not available right now." }) : /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-wrap items-center gap-2", children: [
+      ((data == null ? void 0 : data.presets) ?? []).map((a2) => /* @__PURE__ */ jsxRuntimeExports.jsxs(
+        Button,
+        {
+          size: "sm",
+          variant: "outline",
+          disabled: pending2 !== null || a2 > left,
+          onClick: () => void claim(a2),
+          className: "font-mono text-xs",
+          children: [
+            pending2 === a2 ? /* @__PURE__ */ jsxRuntimeExports.jsx(Spinner, {}) : null,
+            "+",
+            a2.toLocaleString("en-US")
+          ]
+        },
+        a2
+      )),
+      data && /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: cn("font-mono text-[11px]", inkFaint$2), children: [
+        left.toLocaleString("en-US"),
+        " left this tournament"
+      ] })
+    ] }),
+    msg && /* @__PURE__ */ jsxRuntimeExports.jsx(
+      "span",
+      {
+        className: cn(
+          "font-mono text-[11px]",
+          msg.ok ? "text-[color:var(--term-green)]" : "text-destructive"
+        ),
+        children: msg.text
+      }
+    )
+  ] });
+}
+const E8S$2 = 100000000n;
+function parseAmount(text) {
+  if (!/^\d+(\.\d{1,8})?$/.test(text)) return null;
+  const [whole, frac = ""] = text.split(".");
+  const v2 = BigInt(whole) * E8S$2 + BigInt(frac.padEnd(8, "0"));
+  return v2 > 0n ? v2 : null;
+}
+function formatE8s(v2) {
+  const whole = v2 / E8S$2;
+  const frac = (v2 % E8S$2).toString().padStart(8, "0").replace(/0+$/, "");
+  return frac ? `${whole}.${frac}` : `${whole}`;
+}
+function useTokenBalances(config) {
+  const { principalId } = useAuth();
+  const active = (config == null ? void 0 : config.ledgerId) ?? GOLDAO_LEDGER;
+  const tokens = [{ ledgerId: GOLDAO_LEDGER, label: "GOLDAO" }];
+  if (active !== GOLDAO_LEDGER) {
+    tokens.push({ ledgerId: active, label: TEST_TOKEN_LABEL });
+  }
+  const ids = tokens.map((t) => t.ledgerId);
+  const query = useQuery({
+    queryKey: ["game", "wallet", "tokens", principalId, ids],
+    queryFn: async () => {
+      const out = {};
+      await Promise.all(
+        tokens.map(async (t) => {
+          try {
+            out[t.ledgerId] = await fetchWalletBalance(
+              principalId,
+              t.ledgerId
+            );
+          } catch {
+            out[t.ledgerId] = null;
+          }
+        })
+      );
+      return out;
+    },
+    enabled: !!principalId,
+    refetchInterval: 15e3
+  });
+  return {
+    tokens,
+    active: tokens.find((t) => t.ledgerId === active) ?? tokens[0],
+    balances: query.data
+  };
+}
+function SendForm({
+  config,
+  tokens,
+  active,
+  balances,
+  onResult
+}) {
+  const { principalId } = useAuth();
+  const { identity } = useInternetIdentity();
+  const queryClient2 = useQueryClient();
+  const [picked, setPicked] = reactExports.useState(null);
+  const selected = tokens.find((t) => t.ledgerId === picked) ?? active;
+  const balance = (balances == null ? void 0 : balances[selected.ledgerId]) ?? 0n;
+  const fee = (config == null ? void 0 : config.feeE8s) ?? 1000000000n;
+  const [dest, setDest] = reactExports.useState("");
+  const [text, setText] = reactExports.useState("");
+  const [sending, setSending] = reactExports.useState(false);
+  const [ask, setAsk] = reactExports.useState(false);
+  const destPrincipal = (() => {
     try {
-      await run("buy", () => actor.gameBuyChips(BigInt(chips)));
-      setConfirming(false);
+      const p2 = Principal$3.fromText(dest.trim());
+      return p2.isAnonymous() || p2.toText() === principalId ? null : p2;
+    } catch {
+      return null;
+    }
+  })();
+  const amount = parseAmount(text.trim());
+  const block = !destPrincipal ? "Enter a valid destination address." : !amount ? "Enter an amount." : amount + fee > balance ? "Not enough balance (the fee is paid on top)." : null;
+  const send = async () => {
+    if (!identity || !destPrincipal || !amount || sending) return;
+    setSending(true);
+    try {
+      await transferGoldao(
+        identity,
+        destPrincipal.toText(),
+        amount,
+        selected.ledgerId
+      );
+      await queryClient2.invalidateQueries({ queryKey: ["game", "wallet"] });
+      setText("");
+      setDest("");
+      onResult({
+        ok: true,
+        text: `Sent ${formatE8s(amount)} ${selected.label} to ${destPrincipal.toText().slice(0, 5)}…`
+      });
+    } catch (e2) {
+      onResult({ ok: false, text: errorMessage(e2) });
+    } finally {
+      setSending(false);
+    }
+  };
+  const field = "rounded-md border border-[color:var(--term-border)] bg-transparent px-3 py-1.5 font-mono text-xs";
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-col gap-2", children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-wrap items-center gap-2", children: [
+      tokens.length > 1 && /* @__PURE__ */ jsxRuntimeExports.jsx(
+        "select",
+        {
+          value: selected.ledgerId,
+          onChange: (e2) => setPicked(e2.target.value),
+          disabled: sending,
+          className: field,
+          children: tokens.map((t) => /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: t.ledgerId, children: t.label }, t.ledgerId))
+        }
+      ),
+      /* @__PURE__ */ jsxRuntimeExports.jsx(
+        "input",
+        {
+          value: dest,
+          onChange: (e2) => setDest(e2.target.value),
+          placeholder: "To (address)",
+          disabled: sending,
+          className: cn(field, "w-80 max-w-full")
+        }
+      ),
+      /* @__PURE__ */ jsxRuntimeExports.jsx(
+        "input",
+        {
+          value: text,
+          onChange: (e2) => setText(e2.target.value.replace(/[^\d.]/g, "")),
+          placeholder: "Amount",
+          inputMode: "decimal",
+          disabled: sending,
+          className: cn(field, "w-28")
+        }
+      ),
+      /* @__PURE__ */ jsxRuntimeExports.jsx(
+        Button,
+        {
+          size: "sm",
+          variant: "outline",
+          disabled: sending || balance <= fee,
+          onClick: () => setText(formatE8s(balance - fee)),
+          children: "Max"
+        }
+      ),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs(
+        Button,
+        {
+          size: "sm",
+          disabled: sending || !!block,
+          onClick: () => setAsk(true),
+          className: "gradient-primary text-primary-foreground",
+          children: [
+            sending ? /* @__PURE__ */ jsxRuntimeExports.jsx(Spinner, {}) : null,
+            "Send"
+          ]
+        }
+      )
+    ] }),
+    /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: cn("font-mono text-[11px]", inkFaint$2), children: dest || text ? block ?? `Fee ${fmtGoldao(fee)} ${selected.label}, paid on top.` : `Fee ${fmtGoldao(fee)} ${selected.label}, paid on top.` }),
+    ask && destPrincipal && amount && /* @__PURE__ */ jsxRuntimeExports.jsx(
+      ConfirmDialog,
+      {
+        title: `Send ${formatE8s(amount)} ${selected.label}?`,
+        detail: `To ${destPrincipal.toText()}. The network fee is paid on top. This cannot be undone.`,
+        busy: sending,
+        onCancel: () => setAsk(false),
+        onConfirm: () => {
+          setAsk(false);
+          void send();
+        }
+      }
+    )
+  ] });
+}
+const E8S$1 = 100000000n;
+function useWallet(config) {
+  var _a3, _b3;
+  const { principalId } = useAuth();
+  const { identity } = useInternetIdentity();
+  const ledgerId = config == null ? void 0 : config.ledgerId;
+  const spender = useQuery({
+    queryKey: ["game", "spender"],
+    queryFn: async () => (await loadEnv()).backend_canister_id ?? "",
+    staleTime: Number.POSITIVE_INFINITY
+  });
+  const ledger = useQuery({
+    queryKey: ["game", "wallet", principalId, spender.data, ledgerId],
+    queryFn: async () => {
+      const [balance2, allowance2] = await Promise.all([
+        fetchWalletBalance(principalId, ledgerId),
+        fetchAllowance(principalId, spender.data, ledgerId)
+      ]);
+      return { balance: balance2, allowance: allowance2 };
+    },
+    enabled: !!principalId && !!spender.data && !!ledgerId,
+    refetchInterval: 15e3
+  });
+  const balance = ((_a3 = ledger.data) == null ? void 0 : _a3.balance) ?? 0n;
+  const allowance = ((_b3 = ledger.data) == null ? void 0 : _b3.allowance) ?? 0n;
+  const ensureAllowance = reactExports.useCallback(
+    async (need) => {
+      if (need === 0n) return;
+      const wallet = (await ledger.refetch()).data;
+      const have = (wallet == null ? void 0 : wallet.allowance) ?? 0n;
+      const funds = (wallet == null ? void 0 : wallet.balance) ?? 0n;
+      if (have >= need) return;
+      if (funds < need + GOLDAO_FEE_E8S) {
+        throw new Error("Insufficient GOLDAO in your wallet.");
+      }
+      if (!identity || !spender.data) {
+        throw new Error("Sign in again to continue.");
+      }
+      await approveSpender(
+        identity,
+        spender.data,
+        BigInt(AUTHORIZE_GOLDAO) * E8S$1,
+        AUTHORIZE_DAYS * 24 * 60 * 60 * 1e3,
+        ledgerId
+      );
+      await ledger.refetch();
+    },
+    [ledger, identity, spender.data, ledgerId]
+  );
+  return { balance, allowance, ensureAllowance };
+}
+const LOAD_PRESETS = [200, 500, 1e3, 2e3, 5e3];
+const E8S = 100000000n;
+function WalletPanel({ dashboard, config }) {
+  const { actor, principalId } = useAuth();
+  const { run, pending: pending2 } = useGameAction();
+  const [msg, setMsg] = reactExports.useState(null);
+  const { balance, allowance, ensureAllowance } = useWallet(config);
+  const { tokens, active, balances } = useTokenBalances(config);
+  const other = tokens.find((t) => t.ledgerId !== active.ledgerId);
+  const otherBalance = other && (balances == null ? void 0 : balances[other.ledgerId]) || 0n;
+  const [open, setOpen] = reactExports.useState(null);
+  const toggle = (k2) => setOpen((cur) => cur === k2 ? null : k2);
+  const testLedger = isTestLedger(config);
+  const [amount, setAmount] = reactExports.useState(500);
+  const [loading, setLoading] = reactExports.useState(false);
+  const fee = (config == null ? void 0 : config.feeE8s) ?? 1000000000n;
+  const credit = (dashboard == null ? void 0 : dashboard.credit) ?? 0n;
+  const need = BigInt(amount) * E8S + fee;
+  const needsAuthFee = allowance < need;
+  const room = config && config.creditCapE8s > credit ? config.creditCapE8s - credit : 0n;
+  const roomGoldao = Number(room / E8S);
+  const loadMin = config ? Number(config.loadMin) : 0;
+  const maxLoad = config ? Math.min(Number(config.loadMax), roomGoldao) : 0;
+  const canLoad = !config || maxLoad >= loadMin;
+  const presets = LOAD_PRESETS.filter(
+    (a2) => !config || a2 >= loadMin && a2 <= maxLoad
+  );
+  const showMax = !!config && canLoad && !presets.includes(maxLoad);
+  const tokenName = testLedger ? TEST_TOKEN_LABEL : "GOLDAO";
+  const loadBlock = !dashboard ? "Loading" : dashboard.paused ? "Bets are paused." : !canLoad ? `Accumulated prize is full (limit ${fmtGoldao((config == null ? void 0 : config.creditCapE8s) ?? 0n)} ${tokenName}). You can load again after you use some of it.` : amount < loadMin || amount > maxLoad ? `Choose between ${loadMin.toLocaleString("en-US")} and ${maxLoad.toLocaleString("en-US")} ${tokenName}.` : balance < need ? `Not enough ${tokenName} in your wallet.` : null;
+  reactExports.useEffect(() => {
+    if (!config || !canLoad || amount <= maxLoad) return;
+    const fit = [...presets].reverse().find((a2) => a2 <= maxLoad);
+    setAmount(fit ?? maxLoad);
+  }, [config, canLoad, amount, maxLoad, presets]);
+  reactExports.useEffect(() => {
+    if (!(msg == null ? void 0 : msg.ok)) return;
+    const t = window.setTimeout(() => setMsg(null), 6e3);
+    return () => window.clearTimeout(t);
+  }, [msg]);
+  const loadCredit = async () => {
+    if (!actor || loading || loadBlock) return;
+    setMsg(null);
+    setLoading(true);
+    try {
+      await ensureAllowance(need);
+      const total = await run(
+        "load",
+        () => actor.gameLoadCredit(BigInt(amount)),
+        "live"
+      );
       setMsg({
         ok: true,
-        text: `${chips} chip${chips > 1 ? "s" : ""} loaded: ${chips * excPerChip} excavations.`
+        text: `Accumulated prize is now ${fmtGoldao(total)} ${tokenName}.`
       });
     } catch (e2) {
       setMsg({ ok: false, text: errorMessage(e2) });
+    } finally {
+      setLoading(false);
     }
   };
-  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: cn(panel$1, "grid gap-0 overflow-hidden md:grid-cols-3"), children: [
-    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-col gap-2 border-b border-[color:var(--term-border-faint)] p-5 md:border-b-0 md:border-r", children: [
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: cn(panel$1, "grid gap-0 overflow-hidden md:grid-cols-2"), children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-col gap-3 border-b border-[color:var(--term-border-faint)] p-5 md:border-b-0 md:border-r", children: [
       /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: cn(eyebrow, inkFaint$2, "flex items-center gap-1.5"), children: [
         /* @__PURE__ */ jsxRuntimeExports.jsx(Wallet, { className: "size-3.5" }),
-        " Balance"
+        " Wallet"
       ] }),
       /* @__PURE__ */ jsxRuntimeExports.jsxs(
         motion.span,
@@ -61909,157 +66390,168 @@ function WalletPanel({ dashboard, config }) {
             ink$3
           ),
           children: [
-            dashboard ? fmtGoldao(dashboard.balance) : "—",
-            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: cn("ml-2 font-mono text-xs", gold$2), children: "GOLDAO" })
+            dashboard ? fmtGoldao(balance) : /* @__PURE__ */ jsxRuntimeExports.jsx(Spinner, {}),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: cn("ml-2 font-mono text-xs", gold$2), children: tokenName })
           ]
         },
-        balance
+        String(balance)
       ),
-      /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: cn("font-mono text-[11px]", inkFaint$2), children: "Test tokens · simulated mode" })
-    ] }),
-    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-col gap-3 border-b border-[color:var(--term-border-faint)] p-5 md:border-b-0 md:border-r", children: [
-      /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: cn(eyebrow, inkFaint$2, "flex items-center gap-1.5"), children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx(Droplets, { className: "size-3.5" }),
-        " Test faucet"
-      ] }),
-      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex flex-wrap gap-2", children: FAUCET_PRESETS.map((amount) => /* @__PURE__ */ jsxRuntimeExports.jsxs(
-        Button,
-        {
-          size: "sm",
-          variant: "outline",
-          disabled: !!pending || amount > faucetLeft,
-          onClick: () => void requestTokens(amount),
-          className: "font-mono text-xs",
-          children: [
-            "+",
-            amount.toLocaleString("en-US")
-          ]
-        },
-        amount
-      )) }),
-      /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: cn("font-mono text-[11px]", inkFaint$2), children: [
-        faucetLeft.toLocaleString("en-US"),
-        " left this week (max",
+      other && /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: cn("font-mono text-[11px]", inkFaint$2), children: [
+        "Also in your wallet: ",
+        fmtGoldao(otherBalance),
         " ",
-        faucetCap.toLocaleString("en-US"),
-        ")"
+        other.label
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-wrap gap-2", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs(
+          Button,
+          {
+            size: "sm",
+            variant: open === "receive" ? "default" : "outline",
+            onClick: () => toggle("receive"),
+            children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx(ArrowDownToLine, { className: "size-3.5" }),
+              " Receive"
+            ]
+          }
+        ),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs(
+          Button,
+          {
+            size: "sm",
+            variant: open === "send" ? "default" : "outline",
+            onClick: () => toggle("send"),
+            children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx(ArrowUpFromLine, { className: "size-3.5" }),
+              " Send"
+            ]
+          }
+        ),
+        testLedger && /* @__PURE__ */ jsxRuntimeExports.jsxs(
+          Button,
+          {
+            size: "sm",
+            variant: open === "faucet" ? "default" : "outline",
+            onClick: () => toggle("faucet"),
+            children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx(Droplets, { className: "size-3.5" }),
+              " Get ",
+              TEST_TOKEN_LABEL
+            ]
+          }
+        )
       ] })
     ] }),
     /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-col gap-3 p-5", children: [
       /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: cn(eyebrow, inkFaint$2, "flex items-center gap-1.5"), children: [
         /* @__PURE__ */ jsxRuntimeExports.jsx(Coins, { className: "size-3.5" }),
-        " Play"
+        " Game balance"
       ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs(
+        "span",
+        {
+          className: cn(
+            "font-display text-3xl font-semibold tabular-nums",
+            ink$3
+          ),
+          children: [
+            dashboard ? fmtGoldao(dashboard.credit) : /* @__PURE__ */ jsxRuntimeExports.jsx(Spinner, {}),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: cn("ml-2 font-mono text-xs", gold$2), children: tokenName })
+          ]
+        }
+      ),
       /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-wrap items-center gap-2", children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "inline-flex rounded-md border border-[color:var(--term-border)] p-0.5", children: CHIP_OPTIONS.map((n2) => /* @__PURE__ */ jsxRuntimeExports.jsx(
-          "button",
+        presets.map((a2) => /* @__PURE__ */ jsxRuntimeExports.jsx(
+          Button,
           {
-            type: "button",
-            onClick: () => {
-              setChips(n2);
-              setConfirming(false);
-            },
-            className: cn(
-              "rounded px-2.5 py-1 font-mono text-xs transition-smooth",
-              chips === n2 ? "bg-primary text-primary-foreground" : cn(inkMid$3, "hover:text-[color:var(--term-ink)]")
-            ),
-            children: n2
+            size: "sm",
+            variant: a2 === amount ? "default" : "outline",
+            disabled: loading || !!pending2,
+            onClick: () => setAmount(a2),
+            className: "font-mono text-xs",
+            children: a2.toLocaleString("en-US")
           },
-          n2
-        )) }),
+          a2
+        )),
+        showMax && /* @__PURE__ */ jsxRuntimeExports.jsxs(
+          Button,
+          {
+            size: "sm",
+            variant: amount === maxLoad ? "default" : "outline",
+            disabled: loading || !!pending2,
+            onClick: () => setAmount(maxLoad),
+            className: "font-mono text-xs",
+            children: [
+              "Max ",
+              maxLoad.toLocaleString("en-US")
+            ]
+          }
+        ),
         /* @__PURE__ */ jsxRuntimeExports.jsxs(
           Button,
           {
             size: "sm",
-            disabled: !!pending || !weekOpen || balance < cost,
-            onClick: () => setConfirming(true),
+            disabled: loading || !!pending2 || !!loadBlock,
+            onClick: () => void loadCredit(),
             className: "gradient-primary text-primary-foreground",
             children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsx(Pickaxe, { className: "size-4" }),
-              "Buy ",
-              chips,
-              " chip",
-              chips > 1 ? "s" : ""
+              loading ? /* @__PURE__ */ jsxRuntimeExports.jsx(Spinner, {}) : null,
+              "Load ",
+              amount.toLocaleString("en-US")
             ]
           }
         )
       ] }),
-      /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: cn("font-mono text-[11px]", inkFaint$2), children: [
-        (chips * chipPrice).toLocaleString("en-US"),
-        " + ",
-        fee,
-        " fee ·",
-        " ",
-        chips * excPerChip,
-        " excavations"
-      ] })
+      /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: cn("font-mono text-[11px]", inkFaint$2), children: loadBlock && dashboard ? loadBlock : dashboard && dashboard.pendingPayout > 0n ? `Pending payout: ${fmtGoldao(dashboard.pendingPayout)}` : `Fee ${fmtGoldao(fee)}${needsAuthFee ? ` + ${fmtGoldao(fee)} to authorize the game` : ""}` })
     ] }),
-    /* @__PURE__ */ jsxRuntimeExports.jsx(AnimatePresence, { children: confirming && /* @__PURE__ */ jsxRuntimeExports.jsx(
-      motion.div,
+    open && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "border-t border-[color:var(--term-border-faint)] p-5 md:col-span-2", children: [
+      open === "receive" && principalId && /* @__PURE__ */ jsxRuntimeExports.jsx(CopyField, { label: "Your address", value: principalId }),
+      open === "send" && /* @__PURE__ */ jsxRuntimeExports.jsx(
+        SendForm,
+        {
+          config,
+          tokens,
+          active,
+          balances,
+          onResult: setMsg
+        }
+      ),
+      open === "faucet" && testLedger && /* @__PURE__ */ jsxRuntimeExports.jsx(TestFaucetCard, {})
+    ] }),
+    msg && /* @__PURE__ */ jsxRuntimeExports.jsx(
+      "p",
       {
-        initial: { height: 0, opacity: 0 },
-        animate: { height: "auto", opacity: 1 },
-        exit: { height: 0, opacity: 0 },
-        className: "overflow-hidden border-t border-[color:var(--term-border)] bg-[var(--term-header)] md:col-span-3",
-        children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between", children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("p", { className: cn("text-sm", inkMid$3), children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: cn("font-semibold", ink$3), children: [
-              cost.toLocaleString("en-US"),
-              " GOLDAO"
-            ] }),
-            " ",
-            "go into the prize pool (",
-            fee,
-            " fee included). Each chip competes on its own and 8 out of 10 chips win or break even. 100% of the prize pool is paid out every week; 1% is withheld from winnings to pay for cycles. This can't be undone."
-          ] }),
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex shrink-0 gap-2", children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx(
-              Button,
-              {
-                size: "sm",
-                variant: "outline",
-                onClick: () => setConfirming(false),
-                children: "Cancel"
-              }
-            ),
-            /* @__PURE__ */ jsxRuntimeExports.jsx(
-              Button,
-              {
-                size: "sm",
-                disabled: pending === "buy",
-                onClick: () => void buy(),
-                className: "gradient-primary text-primary-foreground",
-                children: pending === "buy" ? "Sending…" : "Confirm"
-              }
-            )
-          ] })
-        ] })
-      }
-    ) }),
-    /* @__PURE__ */ jsxRuntimeExports.jsx(AnimatePresence, { children: msg && /* @__PURE__ */ jsxRuntimeExports.jsx(
-      motion.p,
-      {
-        initial: { opacity: 0 },
-        animate: { opacity: 1 },
-        exit: { opacity: 0 },
         className: cn(
-          "border-t border-[color:var(--term-border-faint)] px-5 py-2 font-mono text-xs md:col-span-3",
+          "border-t border-[color:var(--term-border-faint)] px-5 py-2 font-mono text-xs md:col-span-2",
           msg.ok ? "text-[color:var(--term-green)]" : "text-destructive"
         ),
         children: msg.text
       }
-    ) })
+    )
   ] });
 }
 function GamePage() {
-  const { isAuthenticated, isLoading, login } = useAuth();
-  const { data: config } = useGameConfig();
-  const { data: dashboard } = useDashboard();
-  const { data: ranking } = useRanking();
-  const { data: weeks } = useWeeks();
+  const { actor, isAuthenticated, isLoading, login } = useAuth();
+  const configQuery = useGameConfig();
+  const dashboardQuery = useDashboard();
+  const rankingQuery = useRanking();
+  const config = configQuery.data;
+  const dashboard = dashboardQuery.data;
+  const ranking = rankingQuery.data;
+  const { data: tournaments } = useTournaments();
+  const { data: burned } = useBurned();
   const { data: adminView } = useAdminView(isAuthenticated);
-  const week = (dashboard == null ? void 0 : dashboard.week) ?? (ranking == null ? void 0 : ranking.week) ?? (config == null ? void 0 : config.week);
-  const status = (dashboard == null ? void 0 : dashboard.status) ?? (ranking == null ? void 0 : ranking.status) ?? (config == null ? void 0 : config.status);
+  const isAdmin = !!adminView;
+  const [picked, setPicked] = reactExports.useState(null);
+  const tab = picked ?? (isAdmin ? "admin" : "mine");
+  const needed = isAuthenticated ? [configQuery, rankingQuery, dashboardQuery] : [configQuery, rankingQuery];
+  const failed2 = needed.some((q2) => q2.isError && q2.data === void 0);
+  const waiting = !failed2 && (isLoading || !actor || needed.some((q2) => q2.data === void 0));
+  const retry = () => {
+    for (const q2 of needed) if (q2.isError) void q2.refetch();
+  };
+  const tournament = (dashboard == null ? void 0 : dashboard.tournament) ?? (ranking == null ? void 0 : ranking.tournament);
+  const paused = (dashboard == null ? void 0 : dashboard.paused) ?? false;
   return /* @__PURE__ */ jsxRuntimeExports.jsxs("section", { className: "mx-auto flex max-w-6xl flex-col gap-6 px-4 py-10 sm:px-6 lg:px-10", children: [
     /* @__PURE__ */ jsxRuntimeExports.jsxs(
       Link,
@@ -62081,8 +66573,8 @@ function GamePage() {
         tag: "Game",
         tagIcon: Pickaxe,
         title: "Gold Mine",
-        description: "Dig, decide when to save, and compete every week for the treasure. Simulated mode with test GOLDAO.",
-        children: week !== void 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs(
+        description: "Dig, decide when to save and chase the diamond jackpot. Tournaments run on a fixed schedule.",
+        children: tournament !== void 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs(
           motion.span,
           {
             initial: { opacity: 0, scale: 0.95 },
@@ -62094,21 +66586,22 @@ function GamePage() {
                 {
                   className: cn(
                     "size-2 rounded-full",
-                    status === "open" ? "animate-pulse bg-[color:var(--term-green)]" : "bg-[color:var(--term-warn)]"
+                    paused ? "bg-[color:var(--term-warn)]" : "animate-pulse bg-[color:var(--term-green)]"
                   )
                 }
               ),
               /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: inkMid$3, children: [
-                "Week #",
-                Number(week)
+                "Tournament #",
+                Number(tournament)
               ] }),
-              /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: gold$2, children: status === "open" ? "open" : status === "closed" ? "closed" : "closing" })
+              /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: gold$2, children: paused ? "paused" : dashboard ? `ends in ${fmtCountdown(dashboard.endsAt)}` : "open" })
             ]
           }
         )
       }
     ),
-    isAuthenticated ? /* @__PURE__ */ jsxRuntimeExports.jsx(WalletPanel, { dashboard, config }) : /* @__PURE__ */ jsxRuntimeExports.jsxs(
+    /* @__PURE__ */ jsxRuntimeExports.jsx(GameStatus, { waiting, failed: failed2, onRetry: retry }),
+    isAuthenticated ? isAdmin ? null : /* @__PURE__ */ jsxRuntimeExports.jsx(WalletPanel, { dashboard, config }) : /* @__PURE__ */ jsxRuntimeExports.jsxs(
       "div",
       {
         className: cn(
@@ -62116,7 +66609,7 @@ function GamePage() {
           "flex flex-col items-start gap-4 p-6 sm:flex-row sm:items-center sm:justify-between"
         ),
         children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: cn("text-sm", inkMid$3), children: "Sign in with Internet Identity to get test GOLDAO, buy chips and start digging." }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: cn("text-sm", inkMid$3), children: "Sign in with Internet Identity to start digging." }),
           /* @__PURE__ */ jsxRuntimeExports.jsxs(
             Button,
             {
@@ -62132,34 +66625,44 @@ function GamePage() {
         ]
       }
     ),
-    /* @__PURE__ */ jsxRuntimeExports.jsxs(Tabs, { defaultValue: "mine", className: "gap-4", children: [
-      /* @__PURE__ */ jsxRuntimeExports.jsxs(TabsList, { className: "grid h-auto w-full auto-cols-fr grid-flow-col rounded-lg border border-[color:var(--term-border)] bg-[var(--term-header)] p-1 sm:flex sm:h-10 sm:w-fit sm:justify-start", children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx(Tab, { value: "mine", icon: /* @__PURE__ */ jsxRuntimeExports.jsx(Pickaxe, {}), label: "Mine" }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx(
-          Tab,
-          {
-            value: "week",
-            icon: /* @__PURE__ */ jsxRuntimeExports.jsx(LayoutDashboard, {}),
-            label: "My week",
-            short: "Week"
-          }
-        ),
-        /* @__PURE__ */ jsxRuntimeExports.jsx(Tab, { value: "ranking", icon: /* @__PURE__ */ jsxRuntimeExports.jsx(ListOrdered, {}), label: "Ranking" }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx(
-          Tab,
-          {
-            value: "guide",
-            icon: /* @__PURE__ */ jsxRuntimeExports.jsx(BookOpen, {}),
-            label: "How it works",
-            short: "Guide"
-          }
-        ),
-        adminView && /* @__PURE__ */ jsxRuntimeExports.jsx(Tab, { value: "admin", icon: /* @__PURE__ */ jsxRuntimeExports.jsx(Shield, {}), label: "Admin" })
+    /* @__PURE__ */ jsxRuntimeExports.jsxs(Tabs, { value: tab, onValueChange: setPicked, className: "gap-4", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs(TabsList, { className: "grid h-auto w-full auto-cols-fr grid-flow-col rounded-lg border border-[color:var(--term-border)] bg-[var(--term-header)] p-1 sm:flex sm:h-10 sm:w-fit sm:justify-start", children: [
+          !isAdmin && /* @__PURE__ */ jsxRuntimeExports.jsx(Tab, { value: "mine", icon: /* @__PURE__ */ jsxRuntimeExports.jsx(Pickaxe, {}), label: "Mine" }),
+          !isAdmin && /* @__PURE__ */ jsxRuntimeExports.jsx(
+            Tab,
+            {
+              value: "stats",
+              icon: /* @__PURE__ */ jsxRuntimeExports.jsx(LayoutDashboard, {}),
+              label: "My stats",
+              short: "Stats"
+            }
+          ),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(Tab, { value: "ranking", icon: /* @__PURE__ */ jsxRuntimeExports.jsx(ListOrdered, {}), label: "Ranking" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(
+            Tab,
+            {
+              value: "guide",
+              icon: /* @__PURE__ */ jsxRuntimeExports.jsx(BookOpen, {}),
+              label: "How it works",
+              short: "Guide"
+            }
+          ),
+          adminView && /* @__PURE__ */ jsxRuntimeExports.jsx(Tab, { value: "admin", icon: /* @__PURE__ */ jsxRuntimeExports.jsx(Shield, {}), label: "Admin" })
+        ] }),
+        burned !== void 0 && /* @__PURE__ */ jsxRuntimeExports.jsx(BurnedCounter, { value: burned })
       ] }),
-      /* @__PURE__ */ jsxRuntimeExports.jsx(TabsContent, { value: "mine", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Fade, { children: /* @__PURE__ */ jsxRuntimeExports.jsx(MineBoard, { dashboard, config }) }) }),
-      /* @__PURE__ */ jsxRuntimeExports.jsx(TabsContent, { value: "week", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Fade, { children: /* @__PURE__ */ jsxRuntimeExports.jsx(PlayerDashboard, { dashboard }) }) }),
-      /* @__PURE__ */ jsxRuntimeExports.jsx(TabsContent, { value: "ranking", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Fade, { children: /* @__PURE__ */ jsxRuntimeExports.jsx(RankingTable, { ranking, weeks }) }) }),
-      /* @__PURE__ */ jsxRuntimeExports.jsx(TabsContent, { value: "guide", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Fade, { children: /* @__PURE__ */ jsxRuntimeExports.jsx(PrizeGuide, { ranking, config }) }) }),
+      !isAdmin && /* @__PURE__ */ jsxRuntimeExports.jsx(TabsContent, { value: "mine", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Fade, { children: /* @__PURE__ */ jsxRuntimeExports.jsx(MineBoard, { dashboard, config }) }) }),
+      !isAdmin && /* @__PURE__ */ jsxRuntimeExports.jsx(TabsContent, { value: "stats", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Fade, { children: /* @__PURE__ */ jsxRuntimeExports.jsx(PlayerDashboard, { dashboard }) }) }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx(TabsContent, { value: "ranking", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Fade, { children: /* @__PURE__ */ jsxRuntimeExports.jsx(RankingTable, { ranking, tournaments }) }) }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx(TabsContent, { value: "guide", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Fade, { children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+        PrizeGuide,
+        {
+          config,
+          stakes: dashboard == null ? void 0 : dashboard.stakes,
+          pool: (dashboard == null ? void 0 : dashboard.pool) ?? (ranking == null ? void 0 : ranking.pool)
+        }
+      ) }) }),
       adminView && /* @__PURE__ */ jsxRuntimeExports.jsx(TabsContent, { value: "admin", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Fade, { children: /* @__PURE__ */ jsxRuntimeExports.jsx(AdminGamePanel, { view: adminView }) }) })
     ] }),
     /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: cn("text-center font-mono text-[11px]", inkFaint$2), children: "Every pick is resolved on chain with ICP randomness (raw_rand). The page only shows the result." })
@@ -62242,12 +66745,26 @@ function GoldMineCard() {
                     /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: gold$2, children: "# 1" }),
                     /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "flex items-center gap-1", children: [
                       /* @__PURE__ */ jsxRuntimeExports.jsx(Users, { className: "size-3.5" }),
-                      players ?? "—"
+                      players ?? /* @__PURE__ */ jsxRuntimeExports.jsx(Spinner, {})
                     ] }),
-                    /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "flex items-center gap-1", children: [
-                      /* @__PURE__ */ jsxRuntimeExports.jsx(Coins, { className: "size-3.5" }),
-                      ranking ? fmtGoldao(ranking.pot) : "—"
-                    ] })
+                    /* @__PURE__ */ jsxRuntimeExports.jsxs(
+                      "span",
+                      {
+                        className: "flex items-center gap-1",
+                        title: "Current diamond jackpot",
+                        children: [
+                          /* @__PURE__ */ jsxRuntimeExports.jsx(
+                            "img",
+                            {
+                              src: DIAMOND_IMG,
+                              alt: "",
+                              className: "size-3.5 object-contain"
+                            }
+                          ),
+                          ranking ? fmtGoldao(ranking.pool) : /* @__PURE__ */ jsxRuntimeExports.jsx(Spinner, {})
+                        ]
+                      }
+                    )
                   ]
                 }
               ),
@@ -62259,7 +66776,7 @@ function GoldMineCard() {
             /* @__PURE__ */ jsxRuntimeExports.jsx(MinePreview, {}),
             /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-1 flex-col gap-3 p-4", children: [
               /* @__PURE__ */ jsxRuntimeExports.jsx("h3", { className: cn("font-display text-lg font-semibold", ink$3), children: "Gold Mine" }),
-              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex flex-wrap gap-1.5", children: ["Strategy", "Weekly tournament"].map((t) => /* @__PURE__ */ jsxRuntimeExports.jsx(
+              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex flex-wrap gap-1.5", children: ["Strategy", "Tournaments"].map((t) => /* @__PURE__ */ jsxRuntimeExports.jsx(
                 "span",
                 {
                   className: "rounded-full border border-primary/50 bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-[color:var(--term-gold)]",
@@ -62267,7 +66784,7 @@ function GoldMineCard() {
                 },
                 t
               )) }),
-              /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: cn("text-sm leading-relaxed", inkMid$3), children: "Dig the mine, save before it collapses and compete every week for the treasure." }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: cn("text-sm leading-relaxed", inkMid$3), children: "Dig the mine, save before it collapses and chase the diamond jackpot." }),
               /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "mt-auto flex items-center gap-1.5 font-mono text-xs font-semibold text-[color:var(--term-gold)]", children: [
                 "Play now",
                 /* @__PURE__ */ jsxRuntimeExports.jsx(ArrowRight, { className: "size-3.5 transition-transform group-hover:translate-x-1" })
@@ -62702,21 +67219,21 @@ var Bounds = (
     Bounds2.prototype.add = function(x2, y2, w2, h2) {
       return new Bounds2(this.left + x2, this.top + y2, this.width + w2, this.height + h2);
     };
-    Bounds2.fromClientRect = function(context, clientRect) {
-      return new Bounds2(clientRect.left + context.windowBounds.left, clientRect.top + context.windowBounds.top, clientRect.width, clientRect.height);
+    Bounds2.fromClientRect = function(context2, clientRect) {
+      return new Bounds2(clientRect.left + context2.windowBounds.left, clientRect.top + context2.windowBounds.top, clientRect.width, clientRect.height);
     };
-    Bounds2.fromDOMRectList = function(context, domRectList) {
+    Bounds2.fromDOMRectList = function(context2, domRectList) {
       var domRect = Array.from(domRectList).find(function(rect) {
         return rect.width !== 0;
       });
-      return domRect ? new Bounds2(domRect.left + context.windowBounds.left, domRect.top + context.windowBounds.top, domRect.width, domRect.height) : Bounds2.EMPTY;
+      return domRect ? new Bounds2(domRect.left + context2.windowBounds.left, domRect.top + context2.windowBounds.top, domRect.width, domRect.height) : Bounds2.EMPTY;
     };
     Bounds2.EMPTY = new Bounds2(0, 0, 0, 0);
     return Bounds2;
   }()
 );
-var parseBounds = function(context, node) {
-  return Bounds.fromClientRect(context, node.getBoundingClientRect());
+var parseBounds = function(context2, node) {
+  return Bounds.fromClientRect(context2, node.getBoundingClientRect());
 };
 var parseDocumentSize = function(document2) {
   var body = document2.body;
@@ -64219,13 +68736,13 @@ var deg = function(deg2) {
 };
 var color$1 = {
   name: "color",
-  parse: function(context, value) {
+  parse: function(context2, value) {
     if (value.type === 18) {
       var colorFunction = SUPPORTED_COLOR_FUNCTIONS[value.name];
       if (typeof colorFunction === "undefined") {
         throw new Error('Attempting to parse an unsupported color function "' + value.name + '"');
       }
-      return colorFunction(context, value.values);
+      return colorFunction(context2, value.values);
     }
     if (value.type === 5) {
       if (value.value.length === 3) {
@@ -64316,10 +68833,10 @@ function hue2rgb(t1, t2, hue) {
     return t1;
   }
 }
-var hsl = function(context, args) {
+var hsl = function(context2, args) {
   var tokens = args.filter(nonFunctionArgSeparator);
   var hue = tokens[0], saturation = tokens[1], lightness = tokens[2], alpha2 = tokens[3];
-  var h2 = (hue.type === 17 ? deg(hue.number) : angle.parse(context, hue)) / (Math.PI * 2);
+  var h2 = (hue.type === 17 ? deg(hue.number) : angle.parse(context2, hue)) / (Math.PI * 2);
   var s = isLengthPercentage(saturation) ? saturation.number / 100 : 0;
   var l2 = isLengthPercentage(lightness) ? lightness.number / 100 : 0;
   var a2 = typeof alpha2 !== "undefined" && isLengthPercentage(alpha2) ? getAbsoluteValue(alpha2, 1) : 1;
@@ -64339,8 +68856,8 @@ var SUPPORTED_COLOR_FUNCTIONS = {
   rgb,
   rgba: rgb
 };
-var parseColor = function(context, value) {
-  return color$1.parse(context, Parser.create(value).parseComponentValue());
+var parseColor = function(context2, value) {
+  return color$1.parse(context2, Parser.create(value).parseComponentValue());
 };
 var COLORS$1 = {
   ALICEBLUE: 4042850303,
@@ -64519,8 +69036,8 @@ var backgroundColor = {
   type: 3,
   format: "color"
 };
-var parseColorStop = function(context, args) {
-  var color2 = color$1.parse(context, args[0]);
+var parseColorStop = function(context2, args) {
+  var color2 = color$1.parse(context2, args[0]);
   var stop = args[1];
   return stop && isLengthPercentage(stop) ? { color: color2, stop } : { color: color2, stop: null };
 };
@@ -64660,7 +69177,7 @@ var calculateRadius = function(gradient, x2, y2, width, height) {
   }
   return [rx, ry];
 };
-var linearGradient = function(context, tokens) {
+var linearGradient = function(context2, tokens) {
   var angle$1 = deg(180);
   var stops = [];
   parseFunctionArgs(tokens).forEach(function(arg, i) {
@@ -64670,11 +69187,11 @@ var linearGradient = function(context, tokens) {
         angle$1 = parseNamedSide(arg);
         return;
       } else if (isAngle(firstToken)) {
-        angle$1 = angle.parse(context, firstToken);
+        angle$1 = angle.parse(context2, firstToken);
         return;
       }
     }
-    var colorStop = parseColorStop(context, arg);
+    var colorStop = parseColorStop(context2, arg);
     stops.push(colorStop);
   });
   return {
@@ -64684,7 +69201,7 @@ var linearGradient = function(context, tokens) {
     /* LINEAR_GRADIENT */
   };
 };
-var prefixLinearGradient = function(context, tokens) {
+var prefixLinearGradient = function(context2, tokens) {
   var angle$1 = deg(180);
   var stops = [];
   parseFunctionArgs(tokens).forEach(function(arg, i) {
@@ -64694,11 +69211,11 @@ var prefixLinearGradient = function(context, tokens) {
         angle$1 = parseNamedSide(arg);
         return;
       } else if (isAngle(firstToken)) {
-        angle$1 = (angle.parse(context, firstToken) + deg(270)) % deg(360);
+        angle$1 = (angle.parse(context2, firstToken) + deg(270)) % deg(360);
         return;
       }
     }
-    var colorStop = parseColorStop(context, arg);
+    var colorStop = parseColorStop(context2, arg);
     stops.push(colorStop);
   });
   return {
@@ -64708,7 +69225,7 @@ var prefixLinearGradient = function(context, tokens) {
     /* LINEAR_GRADIENT */
   };
 };
-var webkitGradient = function(context, tokens) {
+var webkitGradient = function(context2, tokens) {
   var angle2 = deg(180);
   var stops = [];
   var type = 1;
@@ -64728,15 +69245,15 @@ var webkitGradient = function(context, tokens) {
     }
     if (firstToken.type === 18) {
       if (firstToken.name === "from") {
-        var color2 = color$1.parse(context, firstToken.values[0]);
+        var color2 = color$1.parse(context2, firstToken.values[0]);
         stops.push({ stop: ZERO_LENGTH, color: color2 });
       } else if (firstToken.name === "to") {
-        var color2 = color$1.parse(context, firstToken.values[0]);
+        var color2 = color$1.parse(context2, firstToken.values[0]);
         stops.push({ stop: HUNDRED_PERCENT, color: color2 });
       } else if (firstToken.name === "color-stop") {
         var values = firstToken.values.filter(nonFunctionArgSeparator);
         if (values.length === 2) {
-          var color2 = color$1.parse(context, values[1]);
+          var color2 = color$1.parse(context2, values[1]);
           var stop_1 = values[0];
           if (isNumberToken(stop_1)) {
             stops.push({
@@ -64762,7 +69279,7 @@ var CIRCLE = "circle";
 var ELLIPSE = "ellipse";
 var COVER = "cover";
 var CONTAIN = "contain";
-var radialGradient = function(context, tokens) {
+var radialGradient = function(context2, tokens) {
   var shape = 0;
   var size = 3;
   var stops = [];
@@ -64827,7 +69344,7 @@ var radialGradient = function(context, tokens) {
       }, isColorStop);
     }
     if (isColorStop) {
-      var colorStop = parseColorStop(context, arg);
+      var colorStop = parseColorStop(context2, arg);
       stops.push(colorStop);
     }
   });
@@ -64840,7 +69357,7 @@ var radialGradient = function(context, tokens) {
     /* RADIAL_GRADIENT */
   };
 };
-var prefixRadialGradient = function(context, tokens) {
+var prefixRadialGradient = function(context2, tokens) {
   var shape = 0;
   var size = 3;
   var stops = [];
@@ -64905,7 +69422,7 @@ var prefixRadialGradient = function(context, tokens) {
       }, isColorStop);
     }
     if (isColorStop) {
-      var colorStop = parseColorStop(context, arg);
+      var colorStop = parseColorStop(context2, arg);
       stops.push(colorStop);
     }
   });
@@ -64926,14 +69443,14 @@ var isRadialGradient = function(background) {
 };
 var image = {
   name: "image",
-  parse: function(context, value) {
+  parse: function(context2, value) {
     if (value.type === 22) {
       var image_1 = {
         url: value.value,
         type: 0
         /* URL */
       };
-      context.cache.addImage(value.value);
+      context2.cache.addImage(value.value);
       return image_1;
     }
     if (value.type === 18) {
@@ -64941,7 +69458,7 @@ var image = {
       if (typeof imageFunction === "undefined") {
         throw new Error('Attempting to parse an unsupported image function "' + value.name + '"');
       }
-      return imageFunction(context, value.values);
+      return imageFunction(context2, value.values);
     }
     throw new Error("Unsupported image type " + value.type);
   }
@@ -64967,7 +69484,7 @@ var backgroundImage = {
   initialValue: "none",
   type: 1,
   prefix: false,
-  parse: function(context, tokens) {
+  parse: function(context2, tokens) {
     if (tokens.length === 0) {
       return [];
     }
@@ -64978,7 +69495,7 @@ var backgroundImage = {
     return tokens.filter(function(value) {
       return nonFunctionArgSeparator(value) && isSupportedImage(value);
     }).map(function(value) {
-      return image.parse(context, value);
+      return image.parse(context2, value);
     });
   }
 };
@@ -65313,11 +69830,11 @@ var listStyleImage = {
   initialValue: "none",
   type: 0,
   prefix: false,
-  parse: function(context, token) {
+  parse: function(context2, token) {
     if (token.type === 20 && token.value === "none") {
       return null;
     }
-    return image.parse(context, token);
+    return image.parse(context2, token);
   }
 };
 var listStylePosition = {
@@ -65560,7 +70077,7 @@ var textShadow = {
   initialValue: "none",
   type: 1,
   prefix: false,
-  parse: function(context, tokens) {
+  parse: function(context2, tokens) {
     if (tokens.length === 1 && isIdentWithValue(tokens[0], "none")) {
       return [];
     }
@@ -65584,7 +70101,7 @@ var textShadow = {
           }
           c2++;
         } else {
-          shadow.color = color$1.parse(context, token);
+          shadow.color = color$1.parse(context2, token);
         }
       }
       return shadow;
@@ -65949,9 +70466,9 @@ var duration = {
   initialValue: "0s",
   prefix: false,
   type: 1,
-  parse: function(context, tokens) {
+  parse: function(context2, tokens) {
     return tokens.filter(isDimensionToken).map(function(token) {
-      return time.parse(context, token);
+      return time.parse(context2, token);
     });
   }
 };
@@ -65996,7 +70513,7 @@ var boxShadow = {
   initialValue: "none",
   type: 1,
   prefix: false,
-  parse: function(context, tokens) {
+  parse: function(context2, tokens) {
     if (tokens.length === 1 && isIdentWithValue(tokens[0], "none")) {
       return [];
     }
@@ -66026,7 +70543,7 @@ var boxShadow = {
           }
           c2++;
         } else {
-          shadow.color = color$1.parse(context, token);
+          shadow.color = color$1.parse(context2, token);
         }
       }
       return shadow;
@@ -66098,75 +70615,75 @@ var webkitTextStrokeWidth = {
 var CSSParsedDeclaration = (
   /** @class */
   function() {
-    function CSSParsedDeclaration2(context, declaration) {
+    function CSSParsedDeclaration2(context2, declaration) {
       var _a3, _b3;
-      this.animationDuration = parse(context, duration, declaration.animationDuration);
-      this.backgroundClip = parse(context, backgroundClip, declaration.backgroundClip);
-      this.backgroundColor = parse(context, backgroundColor, declaration.backgroundColor);
-      this.backgroundImage = parse(context, backgroundImage, declaration.backgroundImage);
-      this.backgroundOrigin = parse(context, backgroundOrigin, declaration.backgroundOrigin);
-      this.backgroundPosition = parse(context, backgroundPosition, declaration.backgroundPosition);
-      this.backgroundRepeat = parse(context, backgroundRepeat, declaration.backgroundRepeat);
-      this.backgroundSize = parse(context, backgroundSize, declaration.backgroundSize);
-      this.borderTopColor = parse(context, borderTopColor, declaration.borderTopColor);
-      this.borderRightColor = parse(context, borderRightColor, declaration.borderRightColor);
-      this.borderBottomColor = parse(context, borderBottomColor, declaration.borderBottomColor);
-      this.borderLeftColor = parse(context, borderLeftColor, declaration.borderLeftColor);
-      this.borderTopLeftRadius = parse(context, borderTopLeftRadius, declaration.borderTopLeftRadius);
-      this.borderTopRightRadius = parse(context, borderTopRightRadius, declaration.borderTopRightRadius);
-      this.borderBottomRightRadius = parse(context, borderBottomRightRadius, declaration.borderBottomRightRadius);
-      this.borderBottomLeftRadius = parse(context, borderBottomLeftRadius, declaration.borderBottomLeftRadius);
-      this.borderTopStyle = parse(context, borderTopStyle, declaration.borderTopStyle);
-      this.borderRightStyle = parse(context, borderRightStyle, declaration.borderRightStyle);
-      this.borderBottomStyle = parse(context, borderBottomStyle, declaration.borderBottomStyle);
-      this.borderLeftStyle = parse(context, borderLeftStyle, declaration.borderLeftStyle);
-      this.borderTopWidth = parse(context, borderTopWidth, declaration.borderTopWidth);
-      this.borderRightWidth = parse(context, borderRightWidth, declaration.borderRightWidth);
-      this.borderBottomWidth = parse(context, borderBottomWidth, declaration.borderBottomWidth);
-      this.borderLeftWidth = parse(context, borderLeftWidth, declaration.borderLeftWidth);
-      this.boxShadow = parse(context, boxShadow, declaration.boxShadow);
-      this.color = parse(context, color, declaration.color);
-      this.direction = parse(context, direction, declaration.direction);
-      this.display = parse(context, display, declaration.display);
-      this.float = parse(context, float, declaration.cssFloat);
-      this.fontFamily = parse(context, fontFamily, declaration.fontFamily);
-      this.fontSize = parse(context, fontSize, declaration.fontSize);
-      this.fontStyle = parse(context, fontStyle, declaration.fontStyle);
-      this.fontVariant = parse(context, fontVariant, declaration.fontVariant);
-      this.fontWeight = parse(context, fontWeight, declaration.fontWeight);
-      this.letterSpacing = parse(context, letterSpacing, declaration.letterSpacing);
-      this.lineBreak = parse(context, lineBreak, declaration.lineBreak);
-      this.lineHeight = parse(context, lineHeight, declaration.lineHeight);
-      this.listStyleImage = parse(context, listStyleImage, declaration.listStyleImage);
-      this.listStylePosition = parse(context, listStylePosition, declaration.listStylePosition);
-      this.listStyleType = parse(context, listStyleType, declaration.listStyleType);
-      this.marginTop = parse(context, marginTop, declaration.marginTop);
-      this.marginRight = parse(context, marginRight, declaration.marginRight);
-      this.marginBottom = parse(context, marginBottom, declaration.marginBottom);
-      this.marginLeft = parse(context, marginLeft, declaration.marginLeft);
-      this.opacity = parse(context, opacity, declaration.opacity);
-      var overflowTuple = parse(context, overflow, declaration.overflow);
+      this.animationDuration = parse(context2, duration, declaration.animationDuration);
+      this.backgroundClip = parse(context2, backgroundClip, declaration.backgroundClip);
+      this.backgroundColor = parse(context2, backgroundColor, declaration.backgroundColor);
+      this.backgroundImage = parse(context2, backgroundImage, declaration.backgroundImage);
+      this.backgroundOrigin = parse(context2, backgroundOrigin, declaration.backgroundOrigin);
+      this.backgroundPosition = parse(context2, backgroundPosition, declaration.backgroundPosition);
+      this.backgroundRepeat = parse(context2, backgroundRepeat, declaration.backgroundRepeat);
+      this.backgroundSize = parse(context2, backgroundSize, declaration.backgroundSize);
+      this.borderTopColor = parse(context2, borderTopColor, declaration.borderTopColor);
+      this.borderRightColor = parse(context2, borderRightColor, declaration.borderRightColor);
+      this.borderBottomColor = parse(context2, borderBottomColor, declaration.borderBottomColor);
+      this.borderLeftColor = parse(context2, borderLeftColor, declaration.borderLeftColor);
+      this.borderTopLeftRadius = parse(context2, borderTopLeftRadius, declaration.borderTopLeftRadius);
+      this.borderTopRightRadius = parse(context2, borderTopRightRadius, declaration.borderTopRightRadius);
+      this.borderBottomRightRadius = parse(context2, borderBottomRightRadius, declaration.borderBottomRightRadius);
+      this.borderBottomLeftRadius = parse(context2, borderBottomLeftRadius, declaration.borderBottomLeftRadius);
+      this.borderTopStyle = parse(context2, borderTopStyle, declaration.borderTopStyle);
+      this.borderRightStyle = parse(context2, borderRightStyle, declaration.borderRightStyle);
+      this.borderBottomStyle = parse(context2, borderBottomStyle, declaration.borderBottomStyle);
+      this.borderLeftStyle = parse(context2, borderLeftStyle, declaration.borderLeftStyle);
+      this.borderTopWidth = parse(context2, borderTopWidth, declaration.borderTopWidth);
+      this.borderRightWidth = parse(context2, borderRightWidth, declaration.borderRightWidth);
+      this.borderBottomWidth = parse(context2, borderBottomWidth, declaration.borderBottomWidth);
+      this.borderLeftWidth = parse(context2, borderLeftWidth, declaration.borderLeftWidth);
+      this.boxShadow = parse(context2, boxShadow, declaration.boxShadow);
+      this.color = parse(context2, color, declaration.color);
+      this.direction = parse(context2, direction, declaration.direction);
+      this.display = parse(context2, display, declaration.display);
+      this.float = parse(context2, float, declaration.cssFloat);
+      this.fontFamily = parse(context2, fontFamily, declaration.fontFamily);
+      this.fontSize = parse(context2, fontSize, declaration.fontSize);
+      this.fontStyle = parse(context2, fontStyle, declaration.fontStyle);
+      this.fontVariant = parse(context2, fontVariant, declaration.fontVariant);
+      this.fontWeight = parse(context2, fontWeight, declaration.fontWeight);
+      this.letterSpacing = parse(context2, letterSpacing, declaration.letterSpacing);
+      this.lineBreak = parse(context2, lineBreak, declaration.lineBreak);
+      this.lineHeight = parse(context2, lineHeight, declaration.lineHeight);
+      this.listStyleImage = parse(context2, listStyleImage, declaration.listStyleImage);
+      this.listStylePosition = parse(context2, listStylePosition, declaration.listStylePosition);
+      this.listStyleType = parse(context2, listStyleType, declaration.listStyleType);
+      this.marginTop = parse(context2, marginTop, declaration.marginTop);
+      this.marginRight = parse(context2, marginRight, declaration.marginRight);
+      this.marginBottom = parse(context2, marginBottom, declaration.marginBottom);
+      this.marginLeft = parse(context2, marginLeft, declaration.marginLeft);
+      this.opacity = parse(context2, opacity, declaration.opacity);
+      var overflowTuple = parse(context2, overflow, declaration.overflow);
       this.overflowX = overflowTuple[0];
       this.overflowY = overflowTuple[overflowTuple.length > 1 ? 1 : 0];
-      this.overflowWrap = parse(context, overflowWrap, declaration.overflowWrap);
-      this.paddingTop = parse(context, paddingTop, declaration.paddingTop);
-      this.paddingRight = parse(context, paddingRight, declaration.paddingRight);
-      this.paddingBottom = parse(context, paddingBottom, declaration.paddingBottom);
-      this.paddingLeft = parse(context, paddingLeft, declaration.paddingLeft);
-      this.paintOrder = parse(context, paintOrder, declaration.paintOrder);
-      this.position = parse(context, position, declaration.position);
-      this.textAlign = parse(context, textAlign, declaration.textAlign);
-      this.textDecorationColor = parse(context, textDecorationColor, (_a3 = declaration.textDecorationColor) !== null && _a3 !== void 0 ? _a3 : declaration.color);
-      this.textDecorationLine = parse(context, textDecorationLine, (_b3 = declaration.textDecorationLine) !== null && _b3 !== void 0 ? _b3 : declaration.textDecoration);
-      this.textShadow = parse(context, textShadow, declaration.textShadow);
-      this.textTransform = parse(context, textTransform, declaration.textTransform);
-      this.transform = parse(context, transform$1, declaration.transform);
-      this.transformOrigin = parse(context, transformOrigin, declaration.transformOrigin);
-      this.visibility = parse(context, visibility, declaration.visibility);
-      this.webkitTextStrokeColor = parse(context, webkitTextStrokeColor, declaration.webkitTextStrokeColor);
-      this.webkitTextStrokeWidth = parse(context, webkitTextStrokeWidth, declaration.webkitTextStrokeWidth);
-      this.wordBreak = parse(context, wordBreak, declaration.wordBreak);
-      this.zIndex = parse(context, zIndex, declaration.zIndex);
+      this.overflowWrap = parse(context2, overflowWrap, declaration.overflowWrap);
+      this.paddingTop = parse(context2, paddingTop, declaration.paddingTop);
+      this.paddingRight = parse(context2, paddingRight, declaration.paddingRight);
+      this.paddingBottom = parse(context2, paddingBottom, declaration.paddingBottom);
+      this.paddingLeft = parse(context2, paddingLeft, declaration.paddingLeft);
+      this.paintOrder = parse(context2, paintOrder, declaration.paintOrder);
+      this.position = parse(context2, position, declaration.position);
+      this.textAlign = parse(context2, textAlign, declaration.textAlign);
+      this.textDecorationColor = parse(context2, textDecorationColor, (_a3 = declaration.textDecorationColor) !== null && _a3 !== void 0 ? _a3 : declaration.color);
+      this.textDecorationLine = parse(context2, textDecorationLine, (_b3 = declaration.textDecorationLine) !== null && _b3 !== void 0 ? _b3 : declaration.textDecoration);
+      this.textShadow = parse(context2, textShadow, declaration.textShadow);
+      this.textTransform = parse(context2, textTransform, declaration.textTransform);
+      this.transform = parse(context2, transform$1, declaration.transform);
+      this.transformOrigin = parse(context2, transformOrigin, declaration.transformOrigin);
+      this.visibility = parse(context2, visibility, declaration.visibility);
+      this.webkitTextStrokeColor = parse(context2, webkitTextStrokeColor, declaration.webkitTextStrokeColor);
+      this.webkitTextStrokeWidth = parse(context2, webkitTextStrokeWidth, declaration.webkitTextStrokeWidth);
+      this.wordBreak = parse(context2, wordBreak, declaration.wordBreak);
+      this.zIndex = parse(context2, zIndex, declaration.zIndex);
     }
     CSSParsedDeclaration2.prototype.isVisible = function() {
       return this.display > 0 && this.opacity > 0 && this.visibility === 0;
@@ -66219,9 +70736,9 @@ var CSSParsedDeclaration = (
 var CSSParsedPseudoDeclaration = (
   /** @class */
   /* @__PURE__ */ function() {
-    function CSSParsedPseudoDeclaration2(context, declaration) {
-      this.content = parse(context, content, declaration.content);
-      this.quotes = parse(context, quotes, declaration.quotes);
+    function CSSParsedPseudoDeclaration2(context2, declaration) {
+      this.content = parse(context2, content, declaration.content);
+      this.quotes = parse(context2, quotes, declaration.quotes);
     }
     return CSSParsedPseudoDeclaration2;
   }()
@@ -66229,14 +70746,14 @@ var CSSParsedPseudoDeclaration = (
 var CSSParsedCounterDeclaration = (
   /** @class */
   /* @__PURE__ */ function() {
-    function CSSParsedCounterDeclaration2(context, declaration) {
-      this.counterIncrement = parse(context, counterIncrement, declaration.counterIncrement);
-      this.counterReset = parse(context, counterReset, declaration.counterReset);
+    function CSSParsedCounterDeclaration2(context2, declaration) {
+      this.counterIncrement = parse(context2, counterIncrement, declaration.counterIncrement);
+      this.counterReset = parse(context2, counterReset, declaration.counterReset);
     }
     return CSSParsedCounterDeclaration2;
   }()
 );
-var parse = function(context, descriptor, style2) {
+var parse = function(context2, descriptor, style2) {
   var tokenizer = new Tokenizer();
   var value = style2 !== null && typeof style2 !== "undefined" ? style2.toString() : descriptor.initialValue;
   tokenizer.write(value);
@@ -66244,21 +70761,21 @@ var parse = function(context, descriptor, style2) {
   switch (descriptor.type) {
     case 2:
       var token = parser.parseComponentValue();
-      return descriptor.parse(context, isIdentToken(token) ? token.value : descriptor.initialValue);
+      return descriptor.parse(context2, isIdentToken(token) ? token.value : descriptor.initialValue);
     case 0:
-      return descriptor.parse(context, parser.parseComponentValue());
+      return descriptor.parse(context2, parser.parseComponentValue());
     case 1:
-      return descriptor.parse(context, parser.parseComponentValues());
+      return descriptor.parse(context2, parser.parseComponentValues());
     case 4:
       return parser.parseComponentValue();
     case 3:
       switch (descriptor.format) {
         case "angle":
-          return angle.parse(context, parser.parseComponentValue());
+          return angle.parse(context2, parser.parseComponentValue());
         case "color":
-          return color$1.parse(context, parser.parseComponentValue());
+          return color$1.parse(context2, parser.parseComponentValue());
         case "image":
-          return image.parse(context, parser.parseComponentValue());
+          return image.parse(context2, parser.parseComponentValue());
         case "length":
           var length_1 = parser.parseComponentValue();
           return isLength(length_1) ? length_1 : ZERO_LENGTH;
@@ -66266,7 +70783,7 @@ var parse = function(context, descriptor, style2) {
           var value_1 = parser.parseComponentValue();
           return isLengthPercentage(value_1) ? value_1 : ZERO_LENGTH;
         case "time":
-          return time.parse(context, parser.parseComponentValue());
+          return time.parse(context2, parser.parseComponentValue());
       }
       break;
   }
@@ -66294,8 +70811,8 @@ var isDebugging = function(element, type) {
 var ElementContainer = (
   /** @class */
   /* @__PURE__ */ function() {
-    function ElementContainer2(context, element) {
-      this.context = context;
+    function ElementContainer2(context2, element) {
+      this.context = context2;
       this.textNodes = [];
       this.elements = [];
       this.flags = 0;
@@ -66306,7 +70823,7 @@ var ElementContainer = (
       )) {
         debugger;
       }
-      this.styles = new CSSParsedDeclaration(context, window.getComputedStyle(element, null));
+      this.styles = new CSSParsedDeclaration(context2, window.getComputedStyle(element, null));
       if (isHTMLElementNode(element)) {
         if (this.styles.animationDuration.some(function(duration2) {
           return duration2 > 0;
@@ -66796,7 +71313,7 @@ var TextBounds = (
     return TextBounds2;
   }()
 );
-var parseTextBounds = function(context, value, styles, node) {
+var parseTextBounds = function(context2, value, styles, node) {
   var textList = breakText(value, styles);
   var textBounds = [];
   var offset = 0;
@@ -66808,15 +71325,15 @@ var parseTextBounds = function(context, value, styles, node) {
           var subSegments = segmentGraphemes(text);
           var subOffset_1 = 0;
           subSegments.forEach(function(subSegment) {
-            textBounds.push(new TextBounds(subSegment, Bounds.fromDOMRectList(context, createRange(node, subOffset_1 + offset, subSegment.length).getClientRects())));
+            textBounds.push(new TextBounds(subSegment, Bounds.fromDOMRectList(context2, createRange(node, subOffset_1 + offset, subSegment.length).getClientRects())));
             subOffset_1 += subSegment.length;
           });
         } else {
-          textBounds.push(new TextBounds(text, Bounds.fromDOMRectList(context, clientRects)));
+          textBounds.push(new TextBounds(text, Bounds.fromDOMRectList(context2, clientRects)));
         }
       } else {
         var replacementNode = node.splitText(text.length);
-        textBounds.push(new TextBounds(text, getWrapperBounds(context, node)));
+        textBounds.push(new TextBounds(text, getWrapperBounds(context2, node)));
         node = replacementNode;
       }
     } else if (!FEATURES.SUPPORT_RANGE_BOUNDS) {
@@ -66826,7 +71343,7 @@ var parseTextBounds = function(context, value, styles, node) {
   });
   return textBounds;
 };
-var getWrapperBounds = function(context, node) {
+var getWrapperBounds = function(context2, node) {
   var ownerDocument = node.ownerDocument;
   if (ownerDocument) {
     var wrapper = ownerDocument.createElement("html2canvaswrapper");
@@ -66834,7 +71351,7 @@ var getWrapperBounds = function(context, node) {
     var parentNode = node.parentNode;
     if (parentNode) {
       parentNode.replaceChild(wrapper, node);
-      var bounds = parseBounds(context, wrapper);
+      var bounds = parseBounds(context2, wrapper);
       if (wrapper.firstChild) {
         parentNode.replaceChild(wrapper.firstChild, wrapper);
       }
@@ -66913,9 +71430,9 @@ var breakWords = function(str, styles) {
 var TextContainer = (
   /** @class */
   /* @__PURE__ */ function() {
-    function TextContainer2(context, node, styles) {
+    function TextContainer2(context2, node, styles) {
       this.text = transform(node.data, styles.textTransform);
-      this.textBounds = parseTextBounds(context, this.text, styles, node);
+      this.textBounds = parseTextBounds(context2, this.text, styles, node);
     }
     return TextContainer2;
   }()
@@ -66943,8 +71460,8 @@ var ImageElementContainer = (
   /** @class */
   function(_super) {
     __extends(ImageElementContainer2, _super);
-    function ImageElementContainer2(context, img2) {
-      var _this = _super.call(this, context, img2) || this;
+    function ImageElementContainer2(context2, img2) {
+      var _this = _super.call(this, context2, img2) || this;
       _this.src = img2.currentSrc || img2.src;
       _this.intrinsicWidth = img2.naturalWidth;
       _this.intrinsicHeight = img2.naturalHeight;
@@ -66958,8 +71475,8 @@ var CanvasElementContainer = (
   /** @class */
   function(_super) {
     __extends(CanvasElementContainer2, _super);
-    function CanvasElementContainer2(context, canvas) {
-      var _this = _super.call(this, context, canvas) || this;
+    function CanvasElementContainer2(context2, canvas) {
+      var _this = _super.call(this, context2, canvas) || this;
       _this.canvas = canvas;
       _this.intrinsicWidth = canvas.width;
       _this.intrinsicHeight = canvas.height;
@@ -66972,10 +71489,10 @@ var SVGElementContainer = (
   /** @class */
   function(_super) {
     __extends(SVGElementContainer2, _super);
-    function SVGElementContainer2(context, img2) {
-      var _this = _super.call(this, context, img2) || this;
+    function SVGElementContainer2(context2, img2) {
+      var _this = _super.call(this, context2, img2) || this;
       var s = new XMLSerializer();
-      var bounds = parseBounds(context, img2);
+      var bounds = parseBounds(context2, img2);
       img2.setAttribute("width", bounds.width + "px");
       img2.setAttribute("height", bounds.height + "px");
       _this.svg = "data:image/svg+xml," + encodeURIComponent(s.serializeToString(img2));
@@ -66991,8 +71508,8 @@ var LIElementContainer = (
   /** @class */
   function(_super) {
     __extends(LIElementContainer2, _super);
-    function LIElementContainer2(context, element) {
-      var _this = _super.call(this, context, element) || this;
+    function LIElementContainer2(context2, element) {
+      var _this = _super.call(this, context2, element) || this;
       _this.value = element.value;
       return _this;
     }
@@ -67003,8 +71520,8 @@ var OLElementContainer = (
   /** @class */
   function(_super) {
     __extends(OLElementContainer2, _super);
-    function OLElementContainer2(context, element) {
-      var _this = _super.call(this, context, element) || this;
+    function OLElementContainer2(context2, element) {
+      var _this = _super.call(this, context2, element) || this;
       _this.start = element.start;
       _this.reversed = typeof element.reversed === "boolean" && element.reversed === true;
       return _this;
@@ -67047,8 +71564,8 @@ var InputElementContainer = (
   /** @class */
   function(_super) {
     __extends(InputElementContainer2, _super);
-    function InputElementContainer2(context, input) {
-      var _this = _super.call(this, context, input) || this;
+    function InputElementContainer2(context2, input) {
+      var _this = _super.call(this, context2, input) || this;
       _this.type = input.type.toLowerCase();
       _this.checked = input.checked;
       _this.value = getInputValue(input);
@@ -67084,8 +71601,8 @@ var SelectElementContainer = (
   /** @class */
   function(_super) {
     __extends(SelectElementContainer2, _super);
-    function SelectElementContainer2(context, element) {
-      var _this = _super.call(this, context, element) || this;
+    function SelectElementContainer2(context2, element) {
+      var _this = _super.call(this, context2, element) || this;
       var option = element.options[element.selectedIndex || 0];
       _this.value = option ? option.text || "" : "";
       return _this;
@@ -67097,8 +71614,8 @@ var TextareaElementContainer = (
   /** @class */
   function(_super) {
     __extends(TextareaElementContainer2, _super);
-    function TextareaElementContainer2(context, element) {
-      var _this = _super.call(this, context, element) || this;
+    function TextareaElementContainer2(context2, element) {
+      var _this = _super.call(this, context2, element) || this;
       _this.value = element.value;
       return _this;
     }
@@ -67109,17 +71626,17 @@ var IFrameElementContainer = (
   /** @class */
   function(_super) {
     __extends(IFrameElementContainer2, _super);
-    function IFrameElementContainer2(context, iframe) {
-      var _this = _super.call(this, context, iframe) || this;
+    function IFrameElementContainer2(context2, iframe) {
+      var _this = _super.call(this, context2, iframe) || this;
       _this.src = iframe.src;
       _this.width = parseInt(iframe.width, 10) || 0;
       _this.height = parseInt(iframe.height, 10) || 0;
       _this.backgroundColor = _this.styles.backgroundColor;
       try {
         if (iframe.contentWindow && iframe.contentWindow.document && iframe.contentWindow.document.documentElement) {
-          _this.tree = parseTree(context, iframe.contentWindow.document.documentElement);
-          var documentBackgroundColor = iframe.contentWindow.document.documentElement ? parseColor(context, getComputedStyle(iframe.contentWindow.document.documentElement).backgroundColor) : COLORS$1.TRANSPARENT;
-          var bodyBackgroundColor = iframe.contentWindow.document.body ? parseColor(context, getComputedStyle(iframe.contentWindow.document.body).backgroundColor) : COLORS$1.TRANSPARENT;
+          _this.tree = parseTree(context2, iframe.contentWindow.document.documentElement);
+          var documentBackgroundColor = iframe.contentWindow.document.documentElement ? parseColor(context2, getComputedStyle(iframe.contentWindow.document.documentElement).backgroundColor) : COLORS$1.TRANSPARENT;
+          var bodyBackgroundColor = iframe.contentWindow.document.body ? parseColor(context2, getComputedStyle(iframe.contentWindow.document.body).backgroundColor) : COLORS$1.TRANSPARENT;
           _this.backgroundColor = isTransparent(documentBackgroundColor) ? isTransparent(bodyBackgroundColor) ? _this.styles.backgroundColor : bodyBackgroundColor : documentBackgroundColor;
         }
       } catch (e2) {
@@ -67130,18 +71647,18 @@ var IFrameElementContainer = (
   }(ElementContainer)
 );
 var LIST_OWNERS = ["OL", "UL", "MENU"];
-var parseNodeTree = function(context, node, parent, root2) {
+var parseNodeTree = function(context2, node, parent, root2) {
   for (var childNode = node.firstChild, nextNode = void 0; childNode; childNode = nextNode) {
     nextNode = childNode.nextSibling;
     if (isTextNode(childNode) && childNode.data.trim().length > 0) {
-      parent.textNodes.push(new TextContainer(context, childNode, parent.styles));
+      parent.textNodes.push(new TextContainer(context2, childNode, parent.styles));
     } else if (isElementNode(childNode)) {
       if (isSlotElement(childNode) && childNode.assignedNodes) {
         childNode.assignedNodes().forEach(function(childNode2) {
-          return parseNodeTree(context, childNode2, parent, root2);
+          return parseNodeTree(context2, childNode2, parent, root2);
         });
       } else {
-        var container = createContainer(context, childNode);
+        var container = createContainer(context2, childNode);
         if (container.styles.isVisible()) {
           if (createsRealStackingContext(childNode, container, root2)) {
             container.flags |= 4;
@@ -67154,49 +71671,49 @@ var parseNodeTree = function(context, node, parent, root2) {
           parent.elements.push(container);
           childNode.slot;
           if (childNode.shadowRoot) {
-            parseNodeTree(context, childNode.shadowRoot, container, root2);
+            parseNodeTree(context2, childNode.shadowRoot, container, root2);
           } else if (!isTextareaElement(childNode) && !isSVGElement(childNode) && !isSelectElement(childNode)) {
-            parseNodeTree(context, childNode, container, root2);
+            parseNodeTree(context2, childNode, container, root2);
           }
         }
       }
     }
   }
 };
-var createContainer = function(context, element) {
+var createContainer = function(context2, element) {
   if (isImageElement(element)) {
-    return new ImageElementContainer(context, element);
+    return new ImageElementContainer(context2, element);
   }
   if (isCanvasElement(element)) {
-    return new CanvasElementContainer(context, element);
+    return new CanvasElementContainer(context2, element);
   }
   if (isSVGElement(element)) {
-    return new SVGElementContainer(context, element);
+    return new SVGElementContainer(context2, element);
   }
   if (isLIElement(element)) {
-    return new LIElementContainer(context, element);
+    return new LIElementContainer(context2, element);
   }
   if (isOLElement(element)) {
-    return new OLElementContainer(context, element);
+    return new OLElementContainer(context2, element);
   }
   if (isInputElement(element)) {
-    return new InputElementContainer(context, element);
+    return new InputElementContainer(context2, element);
   }
   if (isSelectElement(element)) {
-    return new SelectElementContainer(context, element);
+    return new SelectElementContainer(context2, element);
   }
   if (isTextareaElement(element)) {
-    return new TextareaElementContainer(context, element);
+    return new TextareaElementContainer(context2, element);
   }
   if (isIFrameElement(element)) {
-    return new IFrameElementContainer(context, element);
+    return new IFrameElementContainer(context2, element);
   }
-  return new ElementContainer(context, element);
+  return new ElementContainer(context2, element);
 };
-var parseTree = function(context, element) {
-  var container = createContainer(context, element);
+var parseTree = function(context2, element) {
+  var container = createContainer(context2, element);
   container.flags |= 4;
-  parseNodeTree(context, element, container, container);
+  parseNodeTree(context2, element, container, container);
   return container;
 };
 var createsRealStackingContext = function(node, container, root2) {
@@ -67740,8 +72257,8 @@ var IGNORE_ATTRIBUTE = "data-html2canvas-ignore";
 var DocumentCloner = (
   /** @class */
   function() {
-    function DocumentCloner2(context, element, options) {
-      this.context = context;
+    function DocumentCloner2(context2, element, options) {
+      this.context = context2;
       this.options = options;
       this.scrolledElements = [];
       this.referenceElement = element;
@@ -68223,8 +72740,8 @@ var CacheStorage = (
 var Cache = (
   /** @class */
   function() {
-    function Cache2(context, _options7) {
-      this.context = context;
+    function Cache2(context2, _options7) {
+      this.context = context2;
       this._options = _options7;
       this._cache = {};
     }
@@ -69095,8 +73612,8 @@ var FontMetrics = (
 var Renderer = (
   /** @class */
   /* @__PURE__ */ function() {
-    function Renderer2(context, options) {
-      this.context = context;
+    function Renderer2(context2, options) {
+      this.context = context2;
       this.options = options;
     }
     return Renderer2;
@@ -69107,8 +73624,8 @@ var CanvasRenderer = (
   /** @class */
   function(_super) {
     __extends(CanvasRenderer2, _super);
-    function CanvasRenderer2(context, options) {
-      var _this = _super.call(this, context, options) || this;
+    function CanvasRenderer2(context2, options) {
+      var _this = _super.call(this, context2, options) || this;
       _this._activeEffects = [];
       _this.canvas = options.canvas ? options.canvas : document.createElement("canvas");
       _this.ctx = _this.canvas.getContext("2d");
@@ -70094,8 +74611,8 @@ var ForeignObjectRenderer = (
   /** @class */
   function(_super) {
     __extends(ForeignObjectRenderer2, _super);
-    function ForeignObjectRenderer2(context, options) {
-      var _this = _super.call(this, context, options) || this;
+    function ForeignObjectRenderer2(context2, options) {
+      var _this = _super.call(this, context2, options) || this;
       _this.canvas = options.canvas ? options.canvas : document.createElement("canvas");
       _this.ctx = _this.canvas.getContext("2d");
       _this.options = options;
@@ -70232,7 +74749,7 @@ if (typeof window !== "undefined") {
 }
 var renderElement = function(element, opts) {
   return __awaiter(void 0, void 0, void 0, function() {
-    var ownerDocument, defaultView, resourceOptions, contextOptions, windowOptions, windowBounds, context, foreignObjectRendering, cloneOptions, documentCloner, clonedElement, container, _a3, width, height, left, top, backgroundColor2, renderOptions, canvas, renderer, root2, renderer;
+    var ownerDocument, defaultView, resourceOptions, contextOptions, windowOptions, windowBounds, context2, foreignObjectRendering, cloneOptions, documentCloner, clonedElement, container, _a3, width, height, left, top, backgroundColor2, renderOptions, canvas, renderer, root2, renderer;
     var _b3, _c2, _d2, _e2, _f2, _g2, _h2, _j2, _k2, _l2, _m2, _o2, _p2, _q2, _r, _s, _t;
     return __generator(this, function(_u) {
       switch (_u.label) {
@@ -70262,7 +74779,7 @@ var renderElement = function(element, opts) {
             scrollY: (_j2 = opts.scrollY) !== null && _j2 !== void 0 ? _j2 : defaultView.pageYOffset
           };
           windowBounds = new Bounds(windowOptions.scrollX, windowOptions.scrollY, windowOptions.windowWidth, windowOptions.windowHeight);
-          context = new Context(contextOptions, windowBounds);
+          context2 = new Context(contextOptions, windowBounds);
           foreignObjectRendering = (_k2 = opts.foreignObjectRendering) !== null && _k2 !== void 0 ? _k2 : false;
           cloneOptions = {
             allowTaint: (_l2 = opts.allowTaint) !== null && _l2 !== void 0 ? _l2 : false,
@@ -70271,8 +74788,8 @@ var renderElement = function(element, opts) {
             inlineImages: foreignObjectRendering,
             copyStyles: foreignObjectRendering
           };
-          context.logger.debug("Starting document clone with size " + windowBounds.width + "x" + windowBounds.height + " scrolled to " + -windowBounds.left + "," + -windowBounds.top);
-          documentCloner = new DocumentCloner(context, element, cloneOptions);
+          context2.logger.debug("Starting document clone with size " + windowBounds.width + "x" + windowBounds.height + " scrolled to " + -windowBounds.left + "," + -windowBounds.top);
+          documentCloner = new DocumentCloner(context2, element, cloneOptions);
           clonedElement = documentCloner.clonedReferenceElement;
           if (!clonedElement) {
             return [2, Promise.reject("Unable to find element in cloned iframe")];
@@ -70280,8 +74797,8 @@ var renderElement = function(element, opts) {
           return [4, documentCloner.toIFrame(ownerDocument, windowBounds)];
         case 1:
           container = _u.sent();
-          _a3 = isBodyElement(clonedElement) || isHTMLElement(clonedElement) ? parseDocumentSize(clonedElement.ownerDocument) : parseBounds(context, clonedElement), width = _a3.width, height = _a3.height, left = _a3.left, top = _a3.top;
-          backgroundColor2 = parseBackgroundColor(context, clonedElement, opts.backgroundColor);
+          _a3 = isBodyElement(clonedElement) || isHTMLElement(clonedElement) ? parseDocumentSize(clonedElement.ownerDocument) : parseBounds(context2, clonedElement), width = _a3.width, height = _a3.height, left = _a3.left, top = _a3.top;
+          backgroundColor2 = parseBackgroundColor(context2, clonedElement, opts.backgroundColor);
           renderOptions = {
             canvas: opts.canvas,
             backgroundColor: backgroundColor2,
@@ -70292,21 +74809,21 @@ var renderElement = function(element, opts) {
             height: (_s = opts.height) !== null && _s !== void 0 ? _s : Math.ceil(height)
           };
           if (!foreignObjectRendering) return [3, 3];
-          context.logger.debug("Document cloned, using foreign object rendering");
-          renderer = new ForeignObjectRenderer(context, renderOptions);
+          context2.logger.debug("Document cloned, using foreign object rendering");
+          renderer = new ForeignObjectRenderer(context2, renderOptions);
           return [4, renderer.render(clonedElement)];
         case 2:
           canvas = _u.sent();
           return [3, 5];
         case 3:
-          context.logger.debug("Document cloned, element located at " + left + "," + top + " with size " + width + "x" + height + " using computed rendering");
-          context.logger.debug("Starting DOM parsing");
-          root2 = parseTree(context, clonedElement);
+          context2.logger.debug("Document cloned, element located at " + left + "," + top + " with size " + width + "x" + height + " using computed rendering");
+          context2.logger.debug("Starting DOM parsing");
+          root2 = parseTree(context2, clonedElement);
           if (backgroundColor2 === root2.styles.backgroundColor) {
             root2.styles.backgroundColor = COLORS$1.TRANSPARENT;
           }
-          context.logger.debug("Starting renderer for element at " + renderOptions.x + "," + renderOptions.y + " with size " + renderOptions.width + "x" + renderOptions.height);
-          renderer = new CanvasRenderer(context, renderOptions);
+          context2.logger.debug("Starting renderer for element at " + renderOptions.x + "," + renderOptions.y + " with size " + renderOptions.width + "x" + renderOptions.height);
+          renderer = new CanvasRenderer(context2, renderOptions);
           return [4, renderer.render(root2)];
         case 4:
           canvas = _u.sent();
@@ -70314,20 +74831,20 @@ var renderElement = function(element, opts) {
         case 5:
           if ((_t = opts.removeContainer) !== null && _t !== void 0 ? _t : true) {
             if (!DocumentCloner.destroy(container)) {
-              context.logger.error("Cannot detach cloned iframe as it is not in the DOM anymore");
+              context2.logger.error("Cannot detach cloned iframe as it is not in the DOM anymore");
             }
           }
-          context.logger.debug("Finished rendering");
+          context2.logger.debug("Finished rendering");
           return [2, canvas];
       }
     });
   });
 };
-var parseBackgroundColor = function(context, element, backgroundColorOverride) {
+var parseBackgroundColor = function(context2, element, backgroundColorOverride) {
   var ownerDocument = element.ownerDocument;
-  var documentBackgroundColor = ownerDocument.documentElement ? parseColor(context, getComputedStyle(ownerDocument.documentElement).backgroundColor) : COLORS$1.TRANSPARENT;
-  var bodyBackgroundColor = ownerDocument.body ? parseColor(context, getComputedStyle(ownerDocument.body).backgroundColor) : COLORS$1.TRANSPARENT;
-  var defaultBackgroundColor = typeof backgroundColorOverride === "string" ? parseColor(context, backgroundColorOverride) : backgroundColorOverride === null ? COLORS$1.TRANSPARENT : 4294967295;
+  var documentBackgroundColor = ownerDocument.documentElement ? parseColor(context2, getComputedStyle(ownerDocument.documentElement).backgroundColor) : COLORS$1.TRANSPARENT;
+  var bodyBackgroundColor = ownerDocument.body ? parseColor(context2, getComputedStyle(ownerDocument.body).backgroundColor) : COLORS$1.TRANSPARENT;
+  var defaultBackgroundColor = typeof backgroundColorOverride === "string" ? parseColor(context2, backgroundColorOverride) : backgroundColorOverride === null ? COLORS$1.TRANSPARENT : 4294967295;
   return element === ownerDocument.documentElement ? isTransparent(documentBackgroundColor) ? isTransparent(bodyBackgroundColor) ? defaultBackgroundColor : bodyBackgroundColor : documentBackgroundColor : defaultBackgroundColor;
 };
 const EXPORT_W = 1536;
@@ -72013,124 +76530,6 @@ function GldtPage() {
     ) }),
     /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "hidden", children: /* @__PURE__ */ jsxRuntimeExports.jsx(ImageEditor, { ref: editorRef }) })
   ] });
-}
-const GOLDAO_LEDGER = "tyyy3-4aaaa-aaaaq-aab7a-cai";
-const GOLDAO_ORIGINAL_SUPPLY = 1e9;
-const ICRC_API$1 = `https://icrc-api.internetcomputer.org/api/v2/ledgers/${GOLDAO_LEDGER}/transactions`;
-const ledgerIdlFactory = ({ IDL: IDL2 }) => {
-  const Account = IDL2.Record({
-    owner: IDL2.Principal,
-    subaccount: IDL2.Opt(IDL2.Vec(IDL2.Nat8))
-  });
-  const Burn = IDL2.Record({
-    from: Account,
-    memo: IDL2.Opt(IDL2.Vec(IDL2.Nat8)),
-    created_at_time: IDL2.Opt(IDL2.Nat64),
-    amount: IDL2.Nat,
-    spender: IDL2.Opt(Account)
-  });
-  const Mint = IDL2.Record({
-    to: Account,
-    memo: IDL2.Opt(IDL2.Vec(IDL2.Nat8)),
-    created_at_time: IDL2.Opt(IDL2.Nat64),
-    amount: IDL2.Nat
-  });
-  const Transfer = IDL2.Record({
-    to: Account,
-    fee: IDL2.Opt(IDL2.Nat),
-    from: Account,
-    memo: IDL2.Opt(IDL2.Vec(IDL2.Nat8)),
-    created_at_time: IDL2.Opt(IDL2.Nat64),
-    amount: IDL2.Nat,
-    spender: IDL2.Opt(Account)
-  });
-  const Approve = IDL2.Record({
-    fee: IDL2.Opt(IDL2.Nat),
-    from: Account,
-    memo: IDL2.Opt(IDL2.Vec(IDL2.Nat8)),
-    created_at_time: IDL2.Opt(IDL2.Nat64),
-    amount: IDL2.Nat,
-    expected_allowance: IDL2.Opt(IDL2.Nat),
-    expires_at: IDL2.Opt(IDL2.Nat64),
-    spender: Account
-  });
-  const Transaction = IDL2.Record({
-    burn: IDL2.Opt(Burn),
-    kind: IDL2.Text,
-    mint: IDL2.Opt(Mint),
-    approve: IDL2.Opt(Approve),
-    timestamp: IDL2.Nat64,
-    transfer: IDL2.Opt(Transfer)
-  });
-  const GetTransactionsRequest = IDL2.Record({
-    start: IDL2.Nat,
-    length: IDL2.Nat
-  });
-  const TransactionRange = IDL2.Record({ transactions: IDL2.Vec(Transaction) });
-  const ArchivedRange = IDL2.Record({
-    callback: IDL2.Func(
-      [GetTransactionsRequest],
-      [TransactionRange],
-      ["query"]
-    ),
-    start: IDL2.Nat,
-    length: IDL2.Nat
-  });
-  return IDL2.Service({
-    icrc1_total_supply: IDL2.Func([], [IDL2.Nat], ["query"]),
-    get_transactions: IDL2.Func(
-      [GetTransactionsRequest],
-      [
-        IDL2.Record({
-          first_index: IDL2.Nat,
-          log_length: IDL2.Nat,
-          transactions: IDL2.Vec(Transaction),
-          archived_transactions: IDL2.Vec(ArchivedRange)
-        })
-      ],
-      ["query"]
-    )
-  });
-};
-let actorPromise$1 = null;
-function getLedger() {
-  if (!actorPromise$1) {
-    actorPromise$1 = HttpAgent.create({ host: "https://icp-api.io" }).then(
-      (agent) => Actor2.createActor(ledgerIdlFactory, {
-        agent,
-        canisterId: GOLDAO_LEDGER
-      })
-    );
-  }
-  return actorPromise$1;
-}
-const e8s = (v2) => Number(v2) / 1e8;
-async function fetchTotalSupply() {
-  try {
-    const ledger = await getLedger();
-    return e8s(await ledger.icrc1_total_supply());
-  } catch {
-    return null;
-  }
-}
-async function fetchLastBurn() {
-  var _a3;
-  try {
-    const res = await fetch(
-      `${ICRC_API$1}?limit=1&sort_by=-index&include_kind=burn`
-    );
-    if (!res.ok) return null;
-    const body = await res.json();
-    const tx = (_a3 = body.data) == null ? void 0 : _a3[0];
-    if (!tx) return null;
-    return {
-      index: Number(tx.index),
-      amount: Number(tx.amount) / 1e8,
-      timestamp: Math.floor(Number(tx.timestamp) / 1e6)
-    };
-  } catch {
-    return null;
-  }
 }
 const POLL_MS = 5e3;
 const LAST_BURN_REFRESH_MS = 6e4;
@@ -75273,7 +79672,7 @@ function SnapshotDebug() {
   const [envJsonId, setEnvJsonId] = reactExports.useState(null);
   const [todaySaved, setTodaySaved] = reactExports.useState(null);
   const [err, setErr] = reactExports.useState(false);
-  async function load2() {
+  async function load() {
     setLoading(true);
     setErr(false);
     try {
@@ -75296,7 +79695,7 @@ function SnapshotDebug() {
   function toggle() {
     const next = !open;
     setOpen(next);
-    if (next && snaps === null && !loading) load2();
+    if (next && snaps === null && !loading) load();
   }
   return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "mt-4 flex flex-col items-center", children: [
     /* @__PURE__ */ jsxRuntimeExports.jsx(
@@ -75315,7 +79714,7 @@ function SnapshotDebug() {
           "button",
           {
             type: "button",
-            onClick: load2,
+            onClick: load,
             disabled: loading,
             className: "text-muted-foreground/70 hover:text-foreground disabled:opacity-40",
             children: "refresh"

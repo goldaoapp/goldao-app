@@ -64,7 +64,6 @@ export interface Dashboard {
   'stats' : TournamentStats,
   'bestReturn' : bigint,
   'allowance' : bigint,
-  'faucetRemaining' : bigint,
   'top10Entry' : bigint,
   'pendingPayout' : bigint,
   'paused' : boolean,
@@ -114,6 +113,12 @@ export interface ExcavationView {
   'picks' : bigint,
   'safePctX100' : bigint,
 }
+export interface FaucetConfig {
+  'presets' : Array<bigint>,
+  'usedE8s' : bigint,
+  'enabled' : boolean,
+  'capE8s' : bigint,
+}
 export interface GameConfig {
   'mines' : bigint,
   'loadMax' : bigint,
@@ -121,22 +126,24 @@ export interface GameConfig {
   'top10Bps' : bigint,
   'ledgerId' : string,
   'top10Weights' : Array<bigint>,
+  'diamond2PerGoldao' : bigint,
   'stakeCapE8s' : bigint,
   'feeE8s' : bigint,
   'diamond1Bps' : bigint,
-  'diamond2Bps' : bigint,
   'cells' : bigint,
   'pointsTable' : Array<bigint>,
+  'miniBps' : bigint,
   'creditCapE8s' : bigint,
   'maxPicks' : bigint,
+  'diamond3Odds' : bigint,
   'top10MinVolumeE8s' : bigint,
+  'poolSeedMaxE8s' : bigint,
+  'poolSeedE8s' : bigint,
   'payoutBps' : bigint,
   'safePicks' : bigint,
   'minPayoutE8s' : bigint,
   'stakeMinE8s' : bigint,
-  'faucetCapE8s' : bigint,
   'realLedger' : boolean,
-  'diamond3PerGoldao' : bigint,
 }
 export interface JackpotWin {
   'at' : bigint,
@@ -149,9 +156,12 @@ export interface Payout {
   'id' : bigint,
   'to' : Principal,
   'paid' : boolean,
+  'txId' : [] | [bigint],
   'tournament' : bigint,
+  'uncertain' : boolean,
   'stamp' : bigint,
   'amount' : bigint,
+  'paidAt' : bigint,
 }
 export interface PickResult {
   'end' : [] | [EndResult],
@@ -170,6 +180,7 @@ export interface PlayerRow {
   'excavations' : bigint,
   'rank' : bigint,
   'bestPoints' : bigint,
+  'bestReturn' : bigint,
   'prize' : bigint,
   'returned' : bigint,
 }
@@ -182,6 +193,7 @@ export interface PlayerTournamentResult {
 export interface Ranking {
   'top10Pool' : bigint,
   'staked' : bigint,
+  'totalPlayers' : bigint,
   'pool' : bigint,
   'tournament' : bigint,
   'lastTop10' : Array<TopPrize>,
@@ -193,6 +205,16 @@ export type Result = { 'ok' : bigint } |
   { 'err' : string };
 export type Result_1 = { 'ok' : EndResult } |
   { 'err' : string };
+export type Result_10 = {
+    'ok' : { 'paid' : bigint, 'remaining' : bigint, 'failed' : bigint }
+  } |
+  { 'err' : string };
+export type Result_11 = { 'ok' : boolean } |
+  { 'err' : string };
+export type Result_12 = { 'ok' : Array<[Principal, UserRole]> } |
+  { 'err' : string };
+export type Result_13 = { 'ok' : null } |
+  { 'err' : Error };
 export type Result_2 = { 'ok' : PickResult } |
   { 'err' : string };
 export type Result_3 = { 'ok' : AutoResult } |
@@ -201,17 +223,37 @@ export type Result_4 = { 'ok' : AdminView } |
   { 'err' : string };
 export type Result_5 = { 'ok' : null } |
   { 'err' : string };
-export type Result_6 = { 'ok' : SecurityView } |
+export type Result_6 = { 'ok' : SecurityLogView } |
   { 'err' : string };
-export type Result_7 = {
-    'ok' : { 'paid' : bigint, 'remaining' : bigint, 'failed' : bigint }
-  } |
+export type Result_7 = { 'ok' : SecurityView } |
   { 'err' : string };
-export type Result_8 = { 'ok' : Array<[Principal, UserRole]> } |
+export type Result_8 = { 'ok' : Array<Payout> } |
   { 'err' : string };
-export type Result_9 = { 'ok' : null } |
-  { 'err' : Error };
+export type Result_9 = { 'ok' : [] | [bigint] } |
+  { 'err' : string };
 export interface Result__1 { 'hasMore' : boolean, 'rows' : Array<Array<Cell>> }
+export interface SecurityDay {
+  'day' : bigint,
+  'events' : bigint,
+  'attention' : bigint,
+}
+export interface SecurityEvent {
+  'at' : bigint,
+  'title' : string,
+  'code' : string,
+  'count' : bigint,
+  'lastAt' : bigint,
+  'description' : string,
+  'level' : SecurityLevel,
+}
+export type SecurityLevel = { 'warning' : null } |
+  { 'info' : null } |
+  { 'critical' : null };
+export interface SecurityLogView {
+  'day' : bigint,
+  'days' : Array<SecurityDay>,
+  'events' : Array<SecurityEvent>,
+}
 export interface SecurityView {
   'haltCode' : bigint,
   'ledgerFails' : bigint,
@@ -232,10 +274,12 @@ export interface TopPrize {
 }
 export interface TournamentStats {
   'staked' : bigint,
+  'minis' : bigint,
   'jackpotWon' : bigint,
   'deepest' : bigint,
   'excavations' : bigint,
   'collapses' : bigint,
+  'miniWon' : bigint,
   'bestPoints' : bigint,
   'charged' : bigint,
   'returned' : bigint,
@@ -243,6 +287,8 @@ export interface TournamentStats {
 }
 export interface TournamentSummary {
   'staked' : bigint,
+  'minis' : bigint,
+  'miniPaid' : bigint,
   'excavations' : bigint,
   'jackpotPaid' : bigint,
   'tournament' : bigint,
@@ -277,39 +323,43 @@ export type WithdrawKind = { 'all' : null } |
   { 'available' : null };
 export interface _SERVICE {
   '_initialize_access_control' : ActorMethod<[], undefined>,
-  '_internet_identity_sign_in_finish' : ActorMethod<[], Result_9>,
+  '_internet_identity_sign_in_finish' : ActorMethod<[], Result_13>,
   '_internet_identity_sign_in_start' : ActorMethod<[], Uint8Array>,
-  'adminListRoles' : ActorMethod<[], Result_8>,
+  'adminListRoles' : ActorMethod<[], Result_12>,
   'adminSyncBootstrap' : ActorMethod<[], boolean>,
   'assignCallerUserRole' : ActorMethod<[Principal, UserRole], undefined>,
   'execute' : ActorMethod<[string], Result__1>,
   'gameAdminAckAccounting' : ActorMethod<[], Result_5>,
+  'gameAdminChangeLedger' : ActorMethod<[], Result>,
+  'gameAdminCheckPay' : ActorMethod<[], Result_5>,
+  'gameAdminCheckWithdraw' : ActorMethod<[WithdrawKind], Result_5>,
   'gameAdminCloseAll' : ActorMethod<[], Result_5>,
   'gameAdminCloseTournament' : ActorMethod<[], Result_5>,
+  'gameAdminEnsureConnected' : ActorMethod<[], Result_11>,
   'gameAdminHalt' : ActorMethod<[], Result_5>,
   'gameAdminLedgerAllowance' : ActorMethod<[Principal, Principal], Result>,
   'gameAdminLedgerBalance' : ActorMethod<[Principal], Result>,
-  'gameAdminPay' : ActorMethod<[], Result_7>,
+  'gameAdminMarkPaid' : ActorMethod<[bigint, bigint], Result_5>,
+  'gameAdminPay' : ActorMethod<[bigint], Result_10>,
+  'gameAdminPayOne' : ActorMethod<[bigint, boolean], Result_9>,
+  'gameAdminPayouts' : ActorMethod<[bigint], Result_8>,
   'gameAdminRefreshBank' : ActorMethod<[], Result>,
   'gameAdminReleaseBusy' : ActorMethod<[Principal], Result_5>,
   'gameAdminResume' : ActorMethod<[], Result_5>,
-  'gameAdminSecurity' : ActorMethod<[], Result_6>,
+  'gameAdminSecurity' : ActorMethod<[], Result_7>,
+  'gameAdminSecurityLog' : ActorMethod<[bigint], Result_6>,
   'gameAdminSeedPool' : ActorMethod<[bigint], Result>,
   'gameAdminSetDuration' : ActorMethod<[bigint], Result_5>,
-  'gameAdminSetRealLedger' : ActorMethod<[Principal], Result>,
-  'gameAdminTestDeposit' : ActorMethod<[bigint], Result>,
   'gameAdminView' : ActorMethod<[], Result_4>,
   'gameAdminWithdraw' : ActorMethod<[WithdrawKind], Result>,
-  'gameAuto' : ActorMethod<[StakeOption, bigint], Result_3>,
+  'gameAuto' : ActorMethod<[StakeOption, bigint, bigint], Result_3>,
   'gameBurned' : ActorMethod<[], bigint>,
   'gameConfig' : ActorMethod<[], GameConfig>,
   'gameLoadCredit' : ActorMethod<[bigint], Result>,
   'gameMyDashboard' : ActorMethod<[], Dashboard>,
-  'gamePick' : ActorMethod<[[] | [StakeOption]], Result_2>,
+  'gamePick' : ActorMethod<[[] | [StakeOption], bigint, bigint], Result_2>,
   'gameRanking' : ActorMethod<[], Ranking>,
-  'gameRequestTestTokens' : ActorMethod<[bigint], Result>,
   'gameSave' : ActorMethod<[], Result_1>,
-  'gameTestApprove' : ActorMethod<[bigint], Result>,
   'gameTournaments' : ActorMethod<[], Array<TournamentSummary>>,
   'getCallerUserRole' : ActorMethod<[], UserRole>,
   /**
@@ -322,10 +372,12 @@ export interface _SERVICE {
   'hasSnapshot' : ActorMethod<[string], boolean>,
   'isCallerAdmin' : ActorMethod<[], boolean>,
   /**
-   * / Save a daily snapshot. Write-once per day — rejects if date exists.
+   * / Save a daily snapshot. Write-once per day, only for today's date (UTC), validated in the lib.
    */
   'saveTreasurySnapshot' : ActorMethod<[TreasurySnapshot], boolean>,
   'schema' : ActorMethod<[], string>,
+  'testFaucetClaim' : ActorMethod<[bigint], Result>,
+  'testFaucetConfig' : ActorMethod<[], FaucetConfig>,
   'whoAmI' : ActorMethod<[], string>,
 }
 export declare const idlService: IDL.ServiceClass;
