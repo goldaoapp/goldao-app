@@ -1,4 +1,4 @@
-import type { Dashboard, GameConfig } from "@/backend";
+import type { GameConfig } from "@/backend";
 import { useAuth } from "@/context/AuthContext";
 import { loadEnv } from "@/hooks/useBackendActor";
 import {
@@ -8,30 +8,24 @@ import {
   fetchWalletBalance,
 } from "@/lib/goldao-ledger";
 import { useInternetIdentity } from "@/lib/internet-identity";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { useCallback } from "react";
 import { AUTHORIZE_DAYS, AUTHORIZE_GOLDAO } from "./game-utils";
 
 const E8S = 100_000_000n;
 
 /**
- * Wallet balance and game authorization, in test and real ledger mode.
+ * Wallet balance and game authorization on the ledger the game uses.
  * ensureAllowance authorizes the game automatically when a stake needs it.
  */
-export function useWallet(
-  dashboard: Dashboard | undefined,
-  config: GameConfig | undefined,
-) {
-  const { actor, principalId } = useAuth();
+export function useWallet(config: GameConfig | undefined) {
+  const { principalId } = useAuth();
   const { identity } = useInternetIdentity();
-  const queryClient = useQueryClient();
-  const real = config?.realLedger ?? false;
   const ledgerId = config?.ledgerId;
 
   const spender = useQuery({
     queryKey: ["game", "spender"],
     queryFn: async () => (await loadEnv()).backend_canister_id ?? "",
-    enabled: real,
     staleTime: Number.POSITIVE_INFINITY,
   });
 
@@ -44,63 +38,38 @@ export function useWallet(
       ]);
       return { balance, allowance };
     },
-    enabled: real && !!principalId && !!spender.data,
+    enabled: !!principalId && !!spender.data && !!ledgerId,
     refetchInterval: 15_000,
   });
 
-  const balance = real
-    ? (ledger.data?.balance ?? 0n)
-    : (dashboard?.balance ?? 0n);
-  const allowance = real
-    ? (ledger.data?.allowance ?? 0n)
-    : (dashboard?.allowance ?? 0n);
+  const balance = ledger.data?.balance ?? 0n;
+  const allowance = ledger.data?.allowance ?? 0n;
 
   /** Authorizes the game when `need` (e8s, fee included) is not covered. */
   const ensureAllowance = useCallback(
     async (need: bigint): Promise<void> => {
       if (need === 0n) return;
-      const wallet = real
-        ? (await ledger.refetch()).data
-        : { balance, allowance };
+      const wallet = (await ledger.refetch()).data;
       const have = wallet?.allowance ?? 0n;
       const funds = wallet?.balance ?? 0n;
       if (have >= need) return;
       if (funds < need + GOLDAO_FEE_E8S) {
         throw new Error("Insufficient GOLDAO in your wallet.");
       }
-      if (real) {
-        if (!identity || !spender.data) {
-          throw new Error("Sign in again to continue.");
-        }
-        await approveSpender(
-          identity,
-          spender.data,
-          BigInt(AUTHORIZE_GOLDAO) * E8S,
-          AUTHORIZE_DAYS * 24 * 60 * 60 * 1000,
-          ledgerId,
-        );
-        await ledger.refetch();
-      } else {
-        if (!actor) throw new Error("Sign in again to continue.");
-        const res = await actor.gameTestApprove(BigInt(AUTHORIZE_GOLDAO));
-        if (res.__kind__ === "err") throw new Error(res.err);
-        await queryClient.invalidateQueries({
-          queryKey: ["game", "dashboard"],
-        });
+      if (!identity || !spender.data) {
+        throw new Error("Sign in again to continue.");
       }
+      await approveSpender(
+        identity,
+        spender.data,
+        BigInt(AUTHORIZE_GOLDAO) * E8S,
+        AUTHORIZE_DAYS * 24 * 60 * 60 * 1000,
+        ledgerId,
+      );
+      await ledger.refetch();
     },
-    [
-      real,
-      ledger,
-      balance,
-      allowance,
-      identity,
-      spender.data,
-      ledgerId,
-      actor,
-      queryClient,
-    ],
+    [ledger, identity, spender.data, ledgerId],
   );
 
-  return { balance, allowance, real, ensureAllowance };
+  return { balance, allowance, ensureAllowance };
 }
