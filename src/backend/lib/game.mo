@@ -71,9 +71,9 @@ module {
   // this list; anywhere else it stays disconnected. Internet Identity gives a different principal
   // per login origin, so each deployment has its own bank.
   public let BANKS : [(Text, Text)] = [
-    // Test canister.
-    ("jeog3-giaaa-aaaaf-qd6tq-cai", "nxdvu-ipwv3-xgadl-ws3fw-ply6m-vf5st-nd5mq-4hv5c-nzvgc-o6swr-oae"),
-    // Production canister.
+    // Draft (test) backend canister.
+    ("cohf5-6aaaa-aaaaa-qajya-cai", "nxdvu-ipwv3-xgadl-ws3fw-ply6m-vf5st-nd5mq-4hv5c-nzvgc-o6swr-oae"),
+    // Production backend canister.
     ("epksw-wiaaa-aaaad-agwna-cai", "o4k5k-q4hdh-hmf4x-qnqbw-m53ao-c4u6t-6vyft-ejkie-iepjy-ziitc-3ae"),
   ];
 
