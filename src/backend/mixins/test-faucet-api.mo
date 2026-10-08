@@ -41,6 +41,14 @@ mixin (
     };
   };
 
+  func fTotal() : Nat {
+    var total = 0;
+    for ((_, (t, used)) in fClaimed.entries()) {
+      if (t == gameState.tournament) total += used;
+    };
+    total;
+  };
+
   // Gives back a reserved amount when the ledger definitely did not send it.
   func fRelease(p : Principal, amount : Nat) {
     let used = fUsed(p);
@@ -69,6 +77,9 @@ mixin (
     if (used + amount > Faucet.CAP_PER_TOURNAMENT) {
       let left = (if (Faucet.CAP_PER_TOURNAMENT > used) Faucet.CAP_PER_TOURNAMENT - used else 0) / Faucet.E8S;
       return #err("Cap of " # Nat.toText(Faucet.CAP_PER_TOURNAMENT / Faucet.E8S) # " test tokens per tournament reached. Remaining: " # Nat.toText(left) # ".");
+    };
+    if (fTotal() + amount > Faucet.GLOBAL_CAP_PER_TOURNAMENT) {
+      return #err("The faucet is empty for this tournament.");
     };
     switch (fLocked.get(caller)) {
       case (?since) {
