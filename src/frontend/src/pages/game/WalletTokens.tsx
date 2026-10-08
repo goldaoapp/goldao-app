@@ -12,9 +12,8 @@ import { Principal } from "@icp-sdk/core/principal";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { ConfirmDialog } from "./ConfirmDialog";
-import { CopyField } from "./CopyField";
 import { Spinner } from "./Spinner";
-import { eyebrow, fmtGoldao, gold, inkFaint, inkMid } from "./game-utils";
+import { fmtGoldao, inkFaint } from "./game-utils";
 import { TEST_TOKEN_LABEL } from "./ledger-mode";
 import { errorMessage } from "./useGame";
 
@@ -34,41 +33,27 @@ function formatE8s(v: bigint): string {
   return frac ? `${whole}.${frac}` : `${whole}`;
 }
 
-interface Token {
+export interface Token {
   ledgerId: string;
   label: string;
 }
 
 /**
- * The player's address and the balance of each token it holds, with a send form that works the
- * same for every token. The token the game uses right now is marked. The list comes from the
- * game's ledger id: with the real GOLDAO there is a single token and this shows just that one.
+ * The tokens the wallet shows and their balances. The list comes from the game's ledger id: with
+ * the real GOLDAO there is a single token; while testing there are two, and the second one is the
+ * one the game uses.
  */
-export function WalletTokens({ config }: { config: GameConfig | undefined }) {
+export function useTokenBalances(config: GameConfig | undefined) {
   const { principalId } = useAuth();
-  const { identity } = useInternetIdentity();
-  const queryClient = useQueryClient();
-
   const active = config?.ledgerId ?? GOLDAO_LEDGER;
   const tokens: Token[] = [{ ledgerId: GOLDAO_LEDGER, label: "GOLDAO" }];
   if (active !== GOLDAO_LEDGER) {
     tokens.push({ ledgerId: active, label: TEST_TOKEN_LABEL });
   }
+  const ids = tokens.map((t) => t.ledgerId);
 
-  const [picked, setPicked] = useState<string | null>(null);
-  const selected =
-    tokens.find((t) => t.ledgerId === picked) ??
-    tokens.find((t) => t.ledgerId === active) ??
-    tokens[0];
-
-  const balances = useQuery({
-    queryKey: [
-      "game",
-      "wallet",
-      "tokens",
-      principalId,
-      tokens.map((t) => t.ledgerId),
-    ],
+  const query = useQuery({
+    queryKey: ["game", "wallet", "tokens", principalId, ids],
     queryFn: async () => {
       const out: Record<string, bigint | null> = {};
       await Promise.all(
@@ -89,14 +74,43 @@ export function WalletTokens({ config }: { config: GameConfig | undefined }) {
     refetchInterval: 15_000,
   });
 
+  return {
+    tokens,
+    active: tokens.find((t) => t.ledgerId === active) ?? tokens[0],
+    balances: query.data,
+  };
+}
+
+/**
+ * Send from the player's wallet. The same for every token. It signs with the player's own
+ * identity straight to the ledger: the game backend is not involved.
+ */
+export function SendForm({
+  config,
+  tokens,
+  active,
+  balances,
+  onResult,
+}: {
+  config: GameConfig | undefined;
+  tokens: Token[];
+  active: Token;
+  balances: Record<string, bigint | null> | undefined;
+  onResult: (m: { ok: boolean; text: string }) => void;
+}) {
+  const { principalId } = useAuth();
+  const { identity } = useInternetIdentity();
+  const queryClient = useQueryClient();
+
+  const [picked, setPicked] = useState<string | null>(null);
+  const selected = tokens.find((t) => t.ledgerId === picked) ?? active;
+  const balance = balances?.[selected.ledgerId] ?? 0n;
   const fee = config?.feeE8s ?? 1_000_000_000n;
-  const selectedBalance = balances.data?.[selected.ledgerId] ?? 0n;
 
   const [dest, setDest] = useState("");
-  const [sendText, setSendText] = useState("");
+  const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
   const [ask, setAsk] = useState(false);
-  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
   const destPrincipal = (() => {
     try {
@@ -106,18 +120,17 @@ export function WalletTokens({ config }: { config: GameConfig | undefined }) {
       return null;
     }
   })();
-  const amount = parseAmount(sendText.trim());
+  const amount = parseAmount(text.trim());
   const block = !destPrincipal
     ? "Enter a valid destination address."
     : !amount
       ? "Enter an amount."
-      : amount + fee > selectedBalance
-        ? `Not enough ${selected.label} in your wallet (the fee is paid on top).`
+      : amount + fee > balance
+        ? "Not enough balance (the fee is paid on top)."
         : null;
 
   const send = async () => {
     if (!identity || !destPrincipal || !amount || sending) return;
-    setMsg(null);
     setSending(true);
     try {
       await transferGoldao(
@@ -127,136 +140,76 @@ export function WalletTokens({ config }: { config: GameConfig | undefined }) {
         selected.ledgerId,
       );
       await queryClient.invalidateQueries({ queryKey: ["game", "wallet"] });
-      setSendText("");
-      setMsg({
+      setText("");
+      setDest("");
+      onResult({
         ok: true,
         text: `Sent ${formatE8s(amount)} ${selected.label} to ${destPrincipal.toText().slice(0, 5)}…`,
       });
     } catch (e) {
-      setMsg({ ok: false, text: errorMessage(e) });
+      onResult({ ok: false, text: errorMessage(e) });
     } finally {
       setSending(false);
     }
   };
 
-  if (!principalId) return null;
+  const field =
+    "rounded-md border border-[color:var(--term-border)] bg-transparent px-3 py-1.5 font-mono text-xs";
 
   return (
-    <div className="flex flex-col gap-5 border-t border-[color:var(--term-border-faint)] p-5 md:col-span-3">
-      <CopyField
-        label="Your wallet address: send tokens here from any wallet to deposit"
-        value={principalId}
-      />
-
-      <div className="flex flex-col gap-2">
-        <span className={cn(eyebrow, inkFaint)}>Your tokens</span>
-        <ul className="flex flex-col gap-1.5">
-          {tokens.map((t) => {
-            const b = balances.data?.[t.ledgerId];
-            const used = t.ledgerId === active;
-            return (
-              <li
-                key={t.ledgerId}
-                className="flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-xs"
-              >
-                <span className={cn("w-28 font-semibold", gold)}>
-                  {t.label}
-                </span>
-                <span className="w-40 tabular-nums">
-                  {balances.isLoading ? (
-                    <Spinner />
-                  ) : b == null ? (
-                    "unavailable"
-                  ) : (
-                    fmtGoldao(b)
-                  )}
-                </span>
-                {used ? (
-                  <span className="rounded-md border border-[color:var(--term-green)] px-2 py-0.5 text-[11px] text-[color:var(--term-green)]">
-                    Used by the game
-                  </span>
-                ) : (
-                  <span className={cn("text-[11px]", inkFaint)}>
-                    Not used by the game
-                  </span>
-                )}
-              </li>
-            );
-          })}
-        </ul>
-      </div>
-
-      <div className="flex flex-col gap-2">
-        <span className={cn(eyebrow, inkFaint)}>Send from wallet</span>
-        <div className="flex flex-wrap items-center gap-2">
-          {tokens.length > 1 && (
-            <select
-              value={selected.ledgerId}
-              onChange={(e) => setPicked(e.target.value)}
-              disabled={sending}
-              className="rounded-md border border-[color:var(--term-border)] bg-transparent px-3 py-1.5 font-mono text-xs"
-            >
-              {tokens.map((t) => (
-                <option key={t.ledgerId} value={t.ledgerId}>
-                  {t.label}
-                </option>
-              ))}
-            </select>
-          )}
-          <input
-            value={dest}
-            onChange={(e) => setDest(e.target.value)}
-            placeholder="Destination address"
+    <div className="flex flex-col gap-2">
+      <div className="flex flex-wrap items-center gap-2">
+        {tokens.length > 1 && (
+          <select
+            value={selected.ledgerId}
+            onChange={(e) => setPicked(e.target.value)}
             disabled={sending}
-            className="w-80 max-w-full rounded-md border border-[color:var(--term-border)] bg-transparent px-3 py-1.5 font-mono text-xs"
-          />
-          <input
-            value={sendText}
-            onChange={(e) => setSendText(e.target.value.replace(/[^\d.]/g, ""))}
-            placeholder="Amount"
-            inputMode="decimal"
-            disabled={sending}
-            className="w-32 rounded-md border border-[color:var(--term-border)] bg-transparent px-3 py-1.5 font-mono text-xs"
-          />
-          <Button
-            size="sm"
-            variant="outline"
-            disabled={sending || selectedBalance <= fee}
-            onClick={() => setSendText(formatE8s(selectedBalance - fee))}
+            className={field}
           >
-            Max
-          </Button>
-          <Button
-            size="sm"
-            disabled={sending || !!block}
-            onClick={() => setAsk(true)}
-            className="gradient-primary text-primary-foreground"
-          >
-            {sending ? <Spinner /> : null}
-            Send
-          </Button>
-        </div>
-        <span className={cn("font-mono text-[11px]", inkFaint)}>
-          {dest || sendText
-            ? (block ??
-              `Network fee ${fmtGoldao(fee)} ${selected.label}, paid on top.`)
-            : `Sends ${selected.label} from your wallet to any address. Network fee ${fmtGoldao(fee)} ${selected.label}, paid on top. Accumulated prize is not affected.`}
-        </span>
-        {msg && (
-          <span
-            className={cn(
-              "font-mono text-xs",
-              msg.ok ? "text-[color:var(--term-green)]" : "text-destructive",
-            )}
-          >
-            {msg.text}
-          </span>
+            {tokens.map((t) => (
+              <option key={t.ledgerId} value={t.ledgerId}>
+                {t.label}
+              </option>
+            ))}
+          </select>
         )}
+        <input
+          value={dest}
+          onChange={(e) => setDest(e.target.value)}
+          placeholder="To (address)"
+          disabled={sending}
+          className={cn(field, "w-80 max-w-full")}
+        />
+        <input
+          value={text}
+          onChange={(e) => setText(e.target.value.replace(/[^\d.]/g, ""))}
+          placeholder="Amount"
+          inputMode="decimal"
+          disabled={sending}
+          className={cn(field, "w-28")}
+        />
+        <Button
+          size="sm"
+          variant="outline"
+          disabled={sending || balance <= fee}
+          onClick={() => setText(formatE8s(balance - fee))}
+        >
+          Max
+        </Button>
+        <Button
+          size="sm"
+          disabled={sending || !!block}
+          onClick={() => setAsk(true)}
+          className="gradient-primary text-primary-foreground"
+        >
+          {sending ? <Spinner /> : null}
+          Send
+        </Button>
       </div>
-
-      <span className={cn("text-[11px]", inkMid)}>
-        The game only uses the token marked "Used by the game". The other one
-        stays in your wallet and is never touched.
+      <span className={cn("font-mono text-[11px]", inkFaint)}>
+        {dest || text
+          ? (block ?? `Fee ${fmtGoldao(fee)} ${selected.label}, paid on top.`)
+          : `Fee ${fmtGoldao(fee)} ${selected.label}, paid on top.`}
       </span>
 
       {ask && destPrincipal && amount && (
