@@ -288,24 +288,30 @@ export const PickResult = IDL.Record({
   'excavation' : IDL.Opt(ExcavationView),
 });
 export const Result_2 = IDL.Variant({ 'ok' : PickResult, 'err' : IDL.Text });
+export const RankingSort = IDL.Variant({
+  'net' : IDL.Null,
+  'jackpot' : IDL.Null,
+  'volume' : IDL.Null,
+  'bestPrize' : IDL.Null,
+});
+export const PlayerRow = IDL.Record({
+  'net' : IDL.Int,
+  'pos' : IDL.Nat,
+  'staked' : IDL.Nat,
+  'jackpotWon' : IDL.Nat,
+  'player' : IDL.Principal,
+  'excavations' : IDL.Nat,
+  'rank' : IDL.Nat,
+  'bestReturn' : IDL.Nat,
+  'prize' : IDL.Nat,
+  'returned' : IDL.Nat,
+});
 export const TopPrize = IDL.Record({
   'player' : IDL.Principal,
   'rank' : IDL.Nat,
   'tournament' : IDL.Nat,
   'volume' : IDL.Nat,
   'prize' : IDL.Nat,
-});
-export const PlayerRow = IDL.Record({
-  'staked' : IDL.Nat,
-  'jackpotWon' : IDL.Nat,
-  'deepest' : IDL.Nat,
-  'player' : IDL.Principal,
-  'excavations' : IDL.Nat,
-  'rank' : IDL.Nat,
-  'bestPoints' : IDL.Nat,
-  'bestReturn' : IDL.Nat,
-  'prize' : IDL.Nat,
-  'returned' : IDL.Nat,
 });
 export const JackpotWin = IDL.Record({
   'at' : IDL.Int,
@@ -314,18 +320,26 @@ export const JackpotWin = IDL.Record({
   'stake' : IDL.Nat,
   'amount' : IDL.Nat,
 });
-export const Ranking = IDL.Record({
+export const RankingPage = IDL.Record({
+  'totalPlayers' : IDL.Nat,
+  'mine' : IDL.Opt(PlayerRow),
+  'page' : IDL.Nat,
+  'rows' : IDL.Vec(PlayerRow),
+  'sort' : RankingSort,
+  'pageSize' : IDL.Nat,
+  'lastTop10' : IDL.Vec(TopPrize),
+  'jackpots' : IDL.Vec(JackpotWin),
+});
+export const Result_1 = IDL.Variant({ 'ok' : EndResult, 'err' : IDL.Text });
+export const GameSummary = IDL.Record({
   'top10Pool' : IDL.Nat,
   'staked' : IDL.Nat,
   'totalPlayers' : IDL.Nat,
   'pool' : IDL.Nat,
   'tournament' : IDL.Nat,
-  'lastTop10' : IDL.Vec(TopPrize),
-  'players' : IDL.Vec(PlayerRow),
-  'jackpots' : IDL.Vec(JackpotWin),
+  'paused' : IDL.Bool,
   'endsAt' : IDL.Int,
 });
-export const Result_1 = IDL.Variant({ 'ok' : EndResult, 'err' : IDL.Text });
 export const TreasurySnapshot = IDL.Record({
   'ogy_usd' : IDL.Float64,
   'date' : IDL.Text,
@@ -389,8 +403,13 @@ export const idlService = IDL.Service({
       [Result_2],
       [],
     ),
-  'gameRanking' : IDL.Func([], [Ranking], ['query']),
+  'gameRankingPage' : IDL.Func(
+      [RankingSort, IDL.Nat],
+      [RankingPage],
+      ['query'],
+    ),
   'gameSave' : IDL.Func([], [Result_1], []),
+  'gameSummary' : IDL.Func([], [GameSummary], ['query']),
   'gameTournaments' : IDL.Func([], [IDL.Vec(TournamentSummary)], ['query']),
   'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
   'getTreasuryHistory' : IDL.Func([], [IDL.Vec(TreasurySnapshot)], ['query']),
@@ -677,24 +696,30 @@ export const idlFactory = ({ IDL }) => {
     'excavation' : IDL.Opt(ExcavationView),
   });
   const Result_2 = IDL.Variant({ 'ok' : PickResult, 'err' : IDL.Text });
+  const RankingSort = IDL.Variant({
+    'net' : IDL.Null,
+    'jackpot' : IDL.Null,
+    'volume' : IDL.Null,
+    'bestPrize' : IDL.Null,
+  });
+  const PlayerRow = IDL.Record({
+    'net' : IDL.Int,
+    'pos' : IDL.Nat,
+    'staked' : IDL.Nat,
+    'jackpotWon' : IDL.Nat,
+    'player' : IDL.Principal,
+    'excavations' : IDL.Nat,
+    'rank' : IDL.Nat,
+    'bestReturn' : IDL.Nat,
+    'prize' : IDL.Nat,
+    'returned' : IDL.Nat,
+  });
   const TopPrize = IDL.Record({
     'player' : IDL.Principal,
     'rank' : IDL.Nat,
     'tournament' : IDL.Nat,
     'volume' : IDL.Nat,
     'prize' : IDL.Nat,
-  });
-  const PlayerRow = IDL.Record({
-    'staked' : IDL.Nat,
-    'jackpotWon' : IDL.Nat,
-    'deepest' : IDL.Nat,
-    'player' : IDL.Principal,
-    'excavations' : IDL.Nat,
-    'rank' : IDL.Nat,
-    'bestPoints' : IDL.Nat,
-    'bestReturn' : IDL.Nat,
-    'prize' : IDL.Nat,
-    'returned' : IDL.Nat,
   });
   const JackpotWin = IDL.Record({
     'at' : IDL.Int,
@@ -703,18 +728,26 @@ export const idlFactory = ({ IDL }) => {
     'stake' : IDL.Nat,
     'amount' : IDL.Nat,
   });
-  const Ranking = IDL.Record({
+  const RankingPage = IDL.Record({
+    'totalPlayers' : IDL.Nat,
+    'mine' : IDL.Opt(PlayerRow),
+    'page' : IDL.Nat,
+    'rows' : IDL.Vec(PlayerRow),
+    'sort' : RankingSort,
+    'pageSize' : IDL.Nat,
+    'lastTop10' : IDL.Vec(TopPrize),
+    'jackpots' : IDL.Vec(JackpotWin),
+  });
+  const Result_1 = IDL.Variant({ 'ok' : EndResult, 'err' : IDL.Text });
+  const GameSummary = IDL.Record({
     'top10Pool' : IDL.Nat,
     'staked' : IDL.Nat,
     'totalPlayers' : IDL.Nat,
     'pool' : IDL.Nat,
     'tournament' : IDL.Nat,
-    'lastTop10' : IDL.Vec(TopPrize),
-    'players' : IDL.Vec(PlayerRow),
-    'jackpots' : IDL.Vec(JackpotWin),
+    'paused' : IDL.Bool,
     'endsAt' : IDL.Int,
   });
-  const Result_1 = IDL.Variant({ 'ok' : EndResult, 'err' : IDL.Text });
   const TreasurySnapshot = IDL.Record({
     'ogy_usd' : IDL.Float64,
     'date' : IDL.Text,
@@ -778,8 +811,13 @@ export const idlFactory = ({ IDL }) => {
         [Result_2],
         [],
       ),
-    'gameRanking' : IDL.Func([], [Ranking], ['query']),
+    'gameRankingPage' : IDL.Func(
+        [RankingSort, IDL.Nat],
+        [RankingPage],
+        ['query'],
+      ),
     'gameSave' : IDL.Func([], [Result_1], []),
+    'gameSummary' : IDL.Func([], [GameSummary], ['query']),
     'gameTournaments' : IDL.Func([], [IDL.Vec(TournamentSummary)], ['query']),
     'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
     'getTreasuryHistory' : IDL.Func([], [IDL.Vec(TreasurySnapshot)], ['query']),
