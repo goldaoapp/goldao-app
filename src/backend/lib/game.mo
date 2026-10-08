@@ -66,6 +66,25 @@ module {
   "nxdvu-ipwv3-xgadl-ws3fw-ply6m-vf5st-nd5mq-4hv5c-nzvgc-o6swr-oae",
   ];
 
+  // The bank wallet of each deployment, by game canister id. It is an admin principal that signs
+  // the payments. The game connects to the ledger by itself only when its own canister id is in
+  // this list; anywhere else it stays disconnected. Internet Identity gives a different principal
+  // per login origin, so each deployment has its own bank.
+  public let BANKS : [(Text, Text)] = [
+    // Test canister.
+    ("jeog3-giaaa-aaaaf-qd6tq-cai", "nxdvu-ipwv3-xgadl-ws3fw-ply6m-vf5st-nd5mq-4hv5c-nzvgc-o6swr-oae"),
+    // Production canister.
+    ("epksw-wiaaa-aaaad-agwna-cai", "o4k5k-q4hdh-hmf4x-qnqbw-m53ao-c4u6t-6vyft-ejkie-iepjy-ziitc-3ae"),
+  ];
+
+  public func bankFor(game : Principal) : ?Principal {
+    let t = Principal.toText(game);
+    for ((id, bank) in BANKS.values()) {
+      if (id == t) return ?Principal.fromText(bank);
+    };
+    null;
+  };
+
   public let TREASURY : Text = "mkbc4-kaq3u-voc2z-j7yut-xgc3h-2gcgd-hfuzl-ss6uo-4q5q7-egfp4-qqe";
 
   public func treasury() : Principal { Principal.fromText(TREASURY) };
