@@ -204,12 +204,7 @@ export default function GamePage() {
         )}
       </Tabs>
 
-      {tab === "mine" && (
-        <JackpotNotice
-          dashboard={dashboard}
-          readAt={dashboardQuery.dataUpdatedAt}
-        />
-      )}
+      <JackpotNotice summary={summary} readAt={summaryQuery.dataUpdatedAt} />
 
       <p className={cn("text-center font-mono text-[11px]", inkFaint)}>
         Every pick is resolved on chain with ICP randomness (raw_rand). The page
