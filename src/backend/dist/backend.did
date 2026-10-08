@@ -192,17 +192,23 @@ type Result =
    err: text;
    ok: nat;
  };
-type Ranking = 
+type RankingSort = 
+ variant {
+   bestPrize;
+   jackpot;
+   net;
+   volume;
+ };
+type RankingPage = 
  record {
-   endsAt: int;
    jackpots: vec JackpotWin;
    lastTop10: vec TopPrize;
-   players: vec PlayerRow;
-   pool: nat;
-   staked: nat;
-   top10Pool: nat;
+   mine: opt PlayerRow;
+   page: nat;
+   pageSize: nat;
+   rows: vec PlayerRow;
+   sort: RankingSort;
    totalPlayers: nat;
-   tournament: nat;
  };
 type PlayerTournamentResult = 
  record {
@@ -213,12 +219,12 @@ type PlayerTournamentResult =
  };
 type PlayerRow = 
  record {
-   bestPoints: nat;
    bestReturn: nat;
-   deepest: nat;
    excavations: nat;
    jackpotWon: nat;
+   net: int;
    player: principal;
+   pos: nat;
    prize: nat;
    rank: nat;
    returned: nat;
@@ -252,6 +258,16 @@ type JackpotWin =
    at: int;
    player: principal;
    stake: nat;
+   tournament: nat;
+ };
+type GameSummary = 
+ record {
+   endsAt: int;
+   paused: bool;
+   pool: nat;
+   staked: nat;
+   top10Pool: nat;
+   totalPlayers: nat;
    tournament: nat;
  };
 type GameConfig = 
@@ -454,8 +470,9 @@ service : {
   gameMyDashboard: () -> (Dashboard) query;
   gamePick: (stake: opt StakeOption, expectedStake: nat, expectedPicks:
    nat) -> (Result_2);
-  gameRanking: () -> (Ranking) query;
+  gameRankingPage: (sort: RankingSort, page: nat) -> (RankingPage) query;
   gameSave: () -> (Result_1);
+  gameSummary: () -> (GameSummary) query;
   gameTournaments: () -> (vec TournamentSummary) query;
   getCallerUserRole: () -> (UserRole) query;
   /// Full history sorted by date ascending.
