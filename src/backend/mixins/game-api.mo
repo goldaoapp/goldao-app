@@ -928,7 +928,7 @@ mixin (
       top10Weights = Game.TOP10_WEIGHTS;
       top10MinVolumeE8s = Game.TOP10_MIN_VOLUME;
       realLedger = gameState.realLedger;
-      ledgerId = Ledger.GOLDAO_LEDGER;
+      ledgerId = Ledger.ledgerId();
       poolSeedE8s = Game.POOL_SEED;
       poolSeedMaxE8s = Game.POOL_SEED_MAX;
     };
@@ -1819,7 +1819,7 @@ mixin (
     gameState.realLedger := true;
     gameState.ledgerFails := 0;
     gFundReset();
-    gLogAction("real_ledger", "Ledger set", "The game now uses the ledger " # Ledger.GOLDAO_LEDGER # ". Bank balance: " # SecLog.fmt(balance) # " GOLDAO.");
+    gLogAction("real_ledger", "Ledger set", "The game now uses the ledger " # Ledger.ledgerId() # ". Bank balance: " # SecLog.fmt(balance) # " GOLDAO.");
     #ok(balance);
   };
 };
