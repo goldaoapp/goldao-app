@@ -6,7 +6,7 @@ import { useInternetIdentity } from "@/lib/internet-identity";
 import { cn } from "@/lib/utils";
 import { Principal } from "@icp-sdk/core/principal";
 import { useQueryClient } from "@tanstack/react-query";
-import { Coins, Droplets, ShieldCheck, Wallet } from "lucide-react";
+import { Coins, ShieldCheck, Wallet } from "lucide-react";
 import { motion } from "motion/react";
 import { useEffect, useState } from "react";
 import { ConfirmDialog } from "./ConfirmDialog";
@@ -18,7 +18,6 @@ import { TEST_TOKEN_LABEL, isTestLedger } from "./ledger-mode";
 import { errorMessage, useGameAction } from "./useGame";
 import { useWallet } from "./useWallet";
 
-const FAUCET_PRESETS = [1_000, 5_000, 10_000, 20_000];
 const LOAD_PRESETS = [200, 500, 1_000, 2_000, 5_000];
 const E8S = 100_000_000n;
 
@@ -168,23 +167,6 @@ export function WalletPanel({ dashboard, config }: Props) {
       setLoading(false);
     }
   };
-  const faucetLeft = dashboard ? Number(dashboard.faucetRemaining) / 1e8 : 0;
-
-  const act = async (
-    name: string,
-    call: () => Promise<
-      { __kind__: "ok"; ok: bigint } | { __kind__: "err"; err: string }
-    >,
-    text: string,
-  ) => {
-    setMsg(null);
-    try {
-      await run(name, call);
-      setMsg({ ok: true, text });
-    } catch (e) {
-      setMsg({ ok: false, text: errorMessage(e) });
-    }
-  };
 
   return (
     <div className={cn(panel, "grid gap-0 overflow-hidden md:grid-cols-3")}>
@@ -299,41 +281,10 @@ export function WalletPanel({ dashboard, config }: Props) {
             {testLedger && <TestFaucetCard />}
           </>
         ) : (
-          <>
-            <span
-              className={cn(eyebrow, inkFaint, "flex items-center gap-1.5")}
-            >
-              <Droplets className="size-3.5" /> Test faucet
-            </span>
-            <span className={cn("text-xs", inkFaint)}>
-              {config
-                ? `Up to ${fmtGoldao(config.faucetCapE8s)} test GOLDAO per tournament. `
-                : ""}
-              {faucetLeft >= FAUCET_PRESETS[0]
-                ? `${faucetLeft.toLocaleString("en-US")} left.`
-                : "You have used them for this tournament. They come back with the next one."}
-            </span>
-            <div className="flex flex-wrap gap-2">
-              {FAUCET_PRESETS.map((a) => (
-                <Button
-                  key={a}
-                  size="sm"
-                  variant="outline"
-                  disabled={!!pending || a > faucetLeft}
-                  onClick={() =>
-                    void act(
-                      "faucet",
-                      () => actor!.gameRequestTestTokens(BigInt(a)),
-                      `${a.toLocaleString("en-US")} test GOLDAO added.`,
-                    )
-                  }
-                  className="font-mono text-xs"
-                >
-                  +{a.toLocaleString("en-US")}
-                </Button>
-              ))}
-            </div>
-          </>
+          <span className={cn("text-xs", inkFaint)}>
+            The real ledger is not enabled yet, so there is no wallet to play
+            with.
+          </span>
         )}
       </div>
 
