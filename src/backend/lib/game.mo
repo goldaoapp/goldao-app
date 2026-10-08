@@ -55,8 +55,6 @@ module {
   public let PAYOUT_KEEP : Nat = 10;
   // The ledger fee is read once per this many ticks (one tick per minute).
   public let FEE_CHECK_TICKS : Nat = 60;
-  public let FAUCET_CAP : Nat = 2_000_000_000_000;
-  public let FAUCET_GLOBAL_CAP : Nat = 200_000_000_000_000;
   public let TEST_DEPOSITS : [Nat] = [10_000, 30_000, 100_000, 200_000];
   public let LOAD_MIN : Nat = 100;
   public let LOAD_MAX : Nat = 5_000;
