@@ -145,6 +145,15 @@ export interface GameConfig {
   'stakeMinE8s' : bigint,
   'realLedger' : boolean,
 }
+export interface GameSummary {
+  'top10Pool' : bigint,
+  'staked' : bigint,
+  'totalPlayers' : bigint,
+  'pool' : bigint,
+  'tournament' : bigint,
+  'paused' : boolean,
+  'endsAt' : bigint,
+}
 export interface JackpotWin {
   'at' : bigint,
   'player' : Principal,
@@ -173,13 +182,13 @@ export interface PickResult {
   'excavation' : [] | [ExcavationView],
 }
 export interface PlayerRow {
+  'net' : bigint,
+  'pos' : bigint,
   'staked' : bigint,
   'jackpotWon' : bigint,
-  'deepest' : bigint,
   'player' : Principal,
   'excavations' : bigint,
   'rank' : bigint,
-  'bestPoints' : bigint,
   'bestReturn' : bigint,
   'prize' : bigint,
   'returned' : bigint,
@@ -190,17 +199,20 @@ export interface PlayerTournamentResult {
   'stats' : TournamentStats,
   'payout' : bigint,
 }
-export interface Ranking {
-  'top10Pool' : bigint,
-  'staked' : bigint,
+export interface RankingPage {
   'totalPlayers' : bigint,
-  'pool' : bigint,
-  'tournament' : bigint,
+  'mine' : [] | [PlayerRow],
+  'page' : bigint,
+  'rows' : Array<PlayerRow>,
+  'sort' : RankingSort,
+  'pageSize' : bigint,
   'lastTop10' : Array<TopPrize>,
-  'players' : Array<PlayerRow>,
   'jackpots' : Array<JackpotWin>,
-  'endsAt' : bigint,
 }
+export type RankingSort = { 'net' : null } |
+  { 'jackpot' : null } |
+  { 'volume' : null } |
+  { 'bestPrize' : null };
 export type Result = { 'ok' : bigint } |
   { 'err' : string };
 export type Result_1 = { 'ok' : EndResult } |
@@ -358,8 +370,9 @@ export interface _SERVICE {
   'gameLoadCredit' : ActorMethod<[bigint], Result>,
   'gameMyDashboard' : ActorMethod<[], Dashboard>,
   'gamePick' : ActorMethod<[[] | [StakeOption], bigint, bigint], Result_2>,
-  'gameRanking' : ActorMethod<[], Ranking>,
+  'gameRankingPage' : ActorMethod<[RankingSort, bigint], RankingPage>,
   'gameSave' : ActorMethod<[], Result_1>,
+  'gameSummary' : ActorMethod<[], GameSummary>,
   'gameTournaments' : ActorMethod<[], Array<TournamentSummary>>,
   'getCallerUserRole' : ActorMethod<[], UserRole>,
   /**
