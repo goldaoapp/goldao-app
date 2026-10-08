@@ -26,7 +26,7 @@ mixin (
 
   // The faucet works only when the game runs on the test ledger, in ledger mode.
   func fOn() : Bool {
-    Ledger.MODE == #test and Ledger.GOLDAO_LEDGER == Faucet.TEST_LEDGER and gameState.realLedger;
+    Ledger.MODE == #test and Ledger.ledgerId() == Faucet.TEST_LEDGER and gameState.realLedger;
   };
 
   func fIsAdminOrBank(p : Principal) : Bool {
