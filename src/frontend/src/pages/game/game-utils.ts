@@ -42,6 +42,16 @@ export function fmtGoldao(e8s: bigint): string {
   return fmtCents(e8s / CENT);
 }
 
+/**
+ * Mini jackpot (exactly two diamonds) for a given pool: `miniBps` of the pool, rounded down to
+ * whole cents. Same integer math as the backend (Game.miniPrize), so the number shown is the one
+ * that would be paid for that pool. Display only: the backend computes the real prize when the
+ * pick happens, from the pool at that moment, and nothing here is ever sent to it.
+ */
+export function miniPrizeOf(pool: bigint, miniBps: bigint | number): bigint {
+  return ((pool * BigInt(miniBps)) / 10_000n / CENT) * CENT;
+}
+
 /** Exact amount for copying into a sheet: whole units, up to 8 decimals, no separators. */
 export function plainGoldao(e8s: bigint): string {
   const whole = e8s / 100_000_000n;
