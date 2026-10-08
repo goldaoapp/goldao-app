@@ -45,6 +45,7 @@ import {
   ink,
   inkFaint,
   inkMid,
+  miniPrizeOf,
   prizeName,
   toGoldao,
 } from "./game-utils";
@@ -1183,6 +1184,89 @@ export function CreditBar({
   );
 }
 
+/** One diamond with a subtle glint sweeping across it, clipped to the diamond silhouette. */
+function ShinyDiamond({
+  className,
+  rotate,
+  lift,
+  delay,
+  z,
+}: {
+  className?: string;
+  rotate: number;
+  lift: number;
+  delay: number;
+  z: number;
+}) {
+  const mask = `url(${DIAMOND_IMG})`;
+  return (
+    <span
+      className={cn("relative block shrink-0", className)}
+      style={{
+        transform: `rotate(${rotate}deg) translateY(${lift}px)`,
+        zIndex: z,
+      }}
+    >
+      <img
+        src={DIAMOND_IMG ?? ""}
+        alt=""
+        className="block w-full object-contain drop-shadow-[0_6px_14px_oklch(0.7_0.14_350/0.4)]"
+      />
+      <span
+        className="diamond-shine"
+        style={{
+          WebkitMaskImage: mask,
+          maskImage: mask,
+          WebkitMaskSize: "contain",
+          maskSize: "contain",
+          WebkitMaskRepeat: "no-repeat",
+          maskRepeat: "no-repeat",
+          WebkitMaskPosition: "center",
+          maskPosition: "center",
+          animationDelay: `${delay}s`,
+        }}
+      />
+    </span>
+  );
+}
+
+/**
+ * Fixed-width column so the 3-diamond and 2-diamond clusters share the same vertical axis.
+ * Sizes follow the card width (container queries), not the screen, and it hides below ~260px.
+ */
+function DiamondColumn({ count }: { count: 2 | 3 }) {
+  if (!DIAMOND_IMG) return null;
+  const three = count === 3;
+  const rot = three ? [-14, 0, 14] : [-9, 9];
+  const lift = three ? [6, 0, 6] : [2, 2];
+  return (
+    <div
+      aria-hidden
+      className="hidden w-[60px] shrink-0 items-end justify-center @[260px]:flex @[340px]:w-[76px] @[380px]:w-[88px] @[480px]:w-[108px]"
+    >
+      {rot.map((r, i) => (
+        <ShinyDiamond
+          // biome-ignore lint/suspicious/noArrayIndexKey: static decoration
+          key={i}
+          rotate={r}
+          lift={lift[i]}
+          delay={(three ? 0 : 1.6) + i * 0.5}
+          z={three && i === 1 ? 2 : 1}
+          className={cn(
+            three
+              ? "w-6 @[340px]:w-8 @[380px]:w-9 @[480px]:w-11"
+              : "w-4 @[340px]:w-5 @[380px]:w-6 @[480px]:w-[30px]",
+            i > 0 &&
+              (three
+                ? "-ml-1.5 @[340px]:-ml-2 @[380px]:-ml-2.5 @[480px]:-ml-3"
+                : "-ml-1 @[380px]:-ml-1.5 @[480px]:-ml-2"),
+          )}
+        />
+      ))}
+    </div>
+  );
+}
+
 export function JackpotCard({
   pool,
   miniBps,
@@ -1193,45 +1277,68 @@ export function JackpotCard({
   miniBps?: number;
   className?: string;
 }) {
+  // Display only: the backend computes the real prize when the pick happens.
+  const mini =
+    pool !== undefined && miniBps !== undefined
+      ? miniPrizeOf(pool, miniBps)
+      : 0n;
   return (
     <div
       className={cn(
-        "flex min-w-0 items-center justify-between gap-3 rounded-xl border border-[oklch(0.68_0.16_350/0.45)] bg-[oklch(0.7_0.14_350/0.08)] px-3 py-3 sm:px-5",
+        "@container flex min-w-0 flex-col overflow-hidden rounded-xl border border-[oklch(0.68_0.16_350/0.45)] bg-[oklch(0.7_0.14_350/0.08)]",
         className,
       )}
     >
-      <div className="flex min-w-0 flex-col gap-0.5">
-        <span
-          className={cn(
-            eyebrow,
-            DIAMOND_TEXT,
-            "flex items-center gap-1.5 text-[10px] sm:text-xs",
-          )}
-        >
-          <Gem className="size-3.5" /> Diamond jackpot
-        </span>
-        <span
-          className={cn(
-            "font-display text-[40px] font-bold leading-[1.05] tabular-nums md:text-[clamp(38px,4.6vw,56px)]",
-            DIAMOND_TEXT,
-          )}
-        >
-          <RollingNumber value={pool ? toGoldao(pool) : 0} />
-          <span className={cn("ml-2 font-mono text-xs", inkFaint)}>GOLDAO</span>
-        </span>
-        <span className={cn("font-mono text-[11px]", inkMid)}>
-          3 diamonds win it all
-          {miniBps !== undefined && ` · 2 win ${miniBps / 100}%`}
-        </span>
+      <div className="flex flex-1 items-center justify-between gap-3 px-3 py-3 sm:px-5">
+        <div className="flex min-w-0 flex-col gap-0.5">
+          <span
+            className={cn(
+              eyebrow,
+              DIAMOND_TEXT,
+              "flex items-center gap-1.5 text-[10px] sm:text-xs",
+            )}
+          >
+            <Gem className="size-3.5" /> Diamond jackpot
+          </span>
+          <span
+            className={cn(
+              "font-display text-[30px] font-bold leading-[1.05] tabular-nums @[380px]:text-[36px] @[480px]:text-[44px] @[540px]:text-[52px]",
+              DIAMOND_TEXT,
+            )}
+          >
+            <RollingNumber value={pool ? toGoldao(pool) : 0} />
+            <span className={cn("ml-2 font-mono text-xs", inkFaint)}>
+              GOLDAO
+            </span>
+          </span>
+        </div>
+        <DiamondColumn count={3} />
       </div>
-      {DIAMOND_IMG && (
-        <img
-          src={DIAMOND_IMG}
-          alt=""
-          aria-hidden
-          className="block w-16 shrink-0 object-contain drop-shadow-[0_6px_18px_oklch(0.7_0.14_350/0.35)] md:hidden xl:block xl:w-24"
-        />
-      )}
+      <div className="flex items-center justify-between gap-3 border-t border-dashed border-[oklch(0.68_0.16_350/0.45)] bg-[oklch(0.7_0.14_350/0.05)] px-3 py-2.5 sm:px-5">
+        <div className="flex min-w-0 flex-col gap-0.5">
+          <span
+            className={cn(
+              eyebrow,
+              DIAMOND_TEXT,
+              "flex items-center gap-1.5 text-[10px]",
+            )}
+          >
+            <Gem className="size-3" /> Mini Diamond jackpot
+          </span>
+          <span
+            className={cn(
+              "font-display text-[22px] font-bold leading-[1.05] tabular-nums @[380px]:text-[24px] @[480px]:text-[28px]",
+              DIAMOND_TEXT,
+            )}
+          >
+            <RollingNumber value={toGoldao(mini)} />
+            <span className={cn("ml-2 font-mono text-xs", inkFaint)}>
+              GOLDAO
+            </span>
+          </span>
+        </div>
+        <DiamondColumn count={2} />
+      </div>
     </div>
   );
 }
