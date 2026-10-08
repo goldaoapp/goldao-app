@@ -15,6 +15,7 @@ import TreasuryTypes "types/treasury";
 import TreasuryMixin "mixins/treasury-api";
 import GameTypes "types/game";
 import GameMixin "mixins/game-api";
+import TestFaucetMixin "mixins/test-faucet-api";
 
 actor {
   let accessControlState : AccessControl.AccessControlState;
@@ -29,6 +30,9 @@ actor {
   let gameState : GameTypes.GameState;
 
   include GameMixin(gameState, accessControlState);
+
+  // Test faucet (GOLDAO TEST only). Remove together with its files before the real GOLDAO.
+  include TestFaucetMixin(gameState);
 
   // ── OQL (Data Intelligence) ────────────────────────────────────────────
   include Expose({
