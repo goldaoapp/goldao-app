@@ -28,6 +28,10 @@ module {
   // Most a single player can receive per tournament (e8s): 20,000 tokens.
   public let CAP_PER_TOURNAMENT : Nat = 2_000_000_000_000;
 
+  // Most the faucet hands out to everyone together per tournament (e8s): 2,000,000 tokens.
+  // Anyone can create principals for free, so this is what protects the pool.
+  public let GLOBAL_CAP_PER_TOURNAMENT : Nat = 200_000_000_000_000;
+
   // A claim lock older than this is ignored, so a lost continuation can never block a player.
   public let LOCK_STALE_NS : Int = 120_000_000_000;
 
