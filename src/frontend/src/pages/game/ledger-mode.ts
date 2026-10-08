@@ -5,18 +5,10 @@ import { GOLDAO_LEDGER } from "@/lib/goldao-ledger";
 export const TEST_TOKEN_LABEL = "GOLDAO TEST";
 
 /**
- * True when the game runs on a ledger that is not the real GOLDAO one. The mode itself is the
+ * True when the game points at a ledger that is not the real GOLDAO one. The mode itself is the
  * MODE constant in the backend (lib/ledger.mo); the frontend only reads which ledger it
  * resulted in, so the two can never disagree.
  */
 export function isTestLedger(config: GameConfig | undefined): boolean {
-  return !!config && config.realLedger && config.ledgerId !== GOLDAO_LEDGER;
-}
-
-/**
- * True when the backend points the game at the test token, whether or not ledger mode has been
- * enabled yet (before that, the game still runs on simulated balances).
- */
-export function targetsTestLedger(config: GameConfig | undefined): boolean {
   return !!config && !!config.ledgerId && config.ledgerId !== GOLDAO_LEDGER;
 }
