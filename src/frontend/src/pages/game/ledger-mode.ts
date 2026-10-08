@@ -12,3 +12,11 @@ export const TEST_TOKEN_LABEL = "GOLDAO TEST";
 export function isTestLedger(config: GameConfig | undefined): boolean {
   return !!config && config.realLedger && config.ledgerId !== GOLDAO_LEDGER;
 }
+
+/**
+ * True when the backend points the game at the test token, whether or not ledger mode has been
+ * enabled yet (before that, the game still runs on simulated balances).
+ */
+export function targetsTestLedger(config: GameConfig | undefined): boolean {
+  return !!config && !!config.ledgerId && config.ledgerId !== GOLDAO_LEDGER;
+}
