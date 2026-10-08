@@ -336,7 +336,7 @@ module {
   };
 
   func upgradeResult(r : OldPlayerTournamentResult) : NewPlayerTournamentResult {
-    { r with stats = upgradeStatsRecord(r.stats) };
+    { tournament = r.tournament; stats = upgradeStatsRecord(r.stats); credit = r.credit; payout = r.payout };
   };
 
   func upgradeHistory(_p : Principal, l : List.List<OldPlayerTournamentResult>) : List.List<NewPlayerTournamentResult> {
