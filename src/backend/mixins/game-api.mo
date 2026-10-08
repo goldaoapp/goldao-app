@@ -800,6 +800,7 @@ mixin (
 
   func gTick() : async () {
     gTicks += 1;
+    await gAutoConnect();
     gMaybeClose();
     gWatchFund();
     gExpireLoads();
@@ -1703,26 +1704,16 @@ mixin (
     } catch (_) { #err("The ledger is unavailable.") };
   };
 
-  public shared ({ caller }) func gameAdminSetRealLedger(selfId : Principal) : async Result.Result<Nat, Text> {
-    if (not gIsAdmin(caller)) return #err("Admin only.");
-    if (Principal.isAnonymous(selfId)) return #err("Invalid principal.");
-    // Running it again (to move to another ledger, e.g. from a test token to the real one) is
-    // only allowed with the game paused by the admin, nothing in flight and nothing owed.
-    if (gameState.realLedger) {
-      if (not gameState.halted) return #err("Pause new excavations first.");
-      if (gAnyBusy()) return #err("Excavations in progress. Try again in a few seconds.");
-      if (gameState.payingSince != 0 and Time.now() - gameState.payingSince < Game.BUSY_STALE_NS) {
-        return #err("A money movement is in progress.");
-      };
-      if (gameState.bankAccount != ?caller) return #err("Only the current bank wallet can change the ledger.");
-    };
+  // Connects the game to the ledger of this deployment (lib/ledger.mo): checks the fee and, in
+  // production, the symbol, reads the bank balance and erases all game data. Used by the automatic
+  // connection at start and by "Change ledger".
+  func gConnect(bankAccount : Principal, selfId : Principal) : async Result.Result<Nat, Text> {
     let idle = func() : Bool {
       gameState.owed == 0 and gameState.open.size() == 0 and gameState.credits.size() == 0
       and gameState.pendingLoads.size() == 0
       and gameState.payouts.values().filter(func(po : Types.Payout) : Bool { not po.paid }).toArray().size() == 0;
     };
     if (not idle()) return #err("The game must be empty: close the tournament and pay everything first.");
-    let bankAccount = caller;
     let balance = try {
       let fee = await Ledger.ledger().icrc1_fee();
       if (fee != Game.FEE) return #err("The ledger fee differs from the game fee.");
@@ -1741,7 +1732,7 @@ mixin (
     gameState.lastTop10 := [];
     gameState.burned := 0;
     gameState.loaded.clear();
-    // Fresh start: all test statistics, history and tournaments are erased.
+    // Fresh start: all statistics, history and tournaments are erased.
     gameState.stats.clear();
     gameState.best.clear();
     gameState.history.clear();
@@ -1761,5 +1752,48 @@ mixin (
     gFundReset();
     gLogAction("real_ledger", "Ledger set", "The game now uses the ledger " # Ledger.ledgerId() # ". Bank balance: " # SecLog.fmt(balance) # " GOLDAO.");
     #ok(balance);
+  };
+
+  // Connection at start: only a game that was never connected, and only in a canister that has
+  // a bank in Game.BANKS. It runs on every tick of the game timer until it works.
+  func gAutoConnect() : async () {
+    if (gameState.realLedger or gameState.bankAccount != null) return;
+    if (gAutoBusy) return;
+    let me = Prim.getSelfPrincipal();
+    switch (Game.bankFor(me)) {
+      case (?bank) {
+        gAutoBusy := true;
+        try { ignore await gConnect(bank, me) } finally { gAutoBusy := false };
+      };
+      case null {};
+    };
+  };
+
+  transient var gAutoBusy = false;
+
+  // The admin panel calls this when the game is not connected yet: it starts the game timer (which
+  // keeps retrying the connection) and tries the connection right away.
+  public shared ({ caller }) func gameAdminEnsureConnected() : async Result.Result<Bool, Text> {
+    gArmTimer<system>();
+    if (not gIsAdmin(caller)) return #err("Admin only.");
+    await gAutoConnect();
+    #ok(gameState.realLedger);
+  };
+
+  // Moves the game to the ledger set in the backend code (MODE in lib/ledger.mo). Only the bank
+  // wallet of this deployment, with the game paused, nothing in flight and nothing owed.
+  public shared ({ caller }) func gameAdminChangeLedger() : async Result.Result<Nat, Text> {
+    if (not gIsAdmin(caller)) return #err("Admin only.");
+    let me = Prim.getSelfPrincipal();
+    let bank = switch (Game.bankFor(me)) { case (?b) b; case null return #err("This canister has no bank configured.") };
+    if (caller != bank) return #err("Only the bank wallet can change the ledger.");
+    if (gameState.realLedger) {
+      if (not gameState.halted) return #err("Pause new excavations first.");
+      if (gAnyBusy()) return #err("Excavations in progress. Try again in a few seconds.");
+      if (gameState.payingSince != 0 and Time.now() - gameState.payingSince < Game.BUSY_STALE_NS) {
+        return #err("A money movement is in progress.");
+      };
+    };
+    await gConnect(bank, me);
   };
 };
