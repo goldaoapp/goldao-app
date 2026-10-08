@@ -202,21 +202,6 @@ mixin (
     gameState.cycles + (if (extra > 0) Int.abs(extra) else 0);
   };
 
-  func gFaucetUsed(p : Principal) : Nat {
-    switch (gameState.faucet.get(p)) {
-      case (?(t, used)) if (t == gameState.tournament) used else 0;
-      case null 0;
-    };
-  };
-
-  func gFaucetTotal() : Nat {
-    var total = 0;
-    for ((_, (t, used)) in gameState.faucet.entries()) {
-      if (t == gameState.tournament) total += used;
-    };
-    total;
-  };
-
   func gPaused() : Bool {
     // A new tournament does not start while the previous one still has unpaid payouts.
     gameState.halted or gStakes().size() == 0 or gAnyUnpaid();
@@ -917,7 +902,7 @@ mixin (
     #ok(started);
   };
 
-  // Test wallet and faucet
+  // Test wallet
 
   public query func gameBurned() : async Nat { gameState.burned };
 
@@ -935,7 +920,6 @@ mixin (
       diamond1Bps = Game.DIAMOND1_BPS;
       diamond2Bps = Game.DIAMOND2_BPS;
       diamond3PerGoldao = Game.DIAMOND3_PER_GOLDAO;
-      faucetCapE8s = Game.FAUCET_CAP;
       loadMin = Game.LOAD_MIN;
       loadMax = Game.LOAD_MAX;
       creditCapE8s = Game.CREDIT_CAP;
@@ -948,25 +932,6 @@ mixin (
       poolSeedE8s = Game.POOL_SEED;
       poolSeedMaxE8s = Game.POOL_SEED_MAX;
     };
-  };
-
-  public shared ({ caller }) func gameRequestTestTokens(goldao : Nat) : async Result.Result<Nat, Text> {
-    switch (gRequireUser(caller)) { case (?e) return #err(e); case null {} };
-    if (gameState.realLedger) return #err("The faucet is disabled.");
-    if (goldao == 0 or goldao > Game.FAUCET_CAP / Game.E8S) return #err("Enter an amount.");
-    let amount = goldao * Game.E8S;
-    let used = gFaucetUsed(caller);
-    if (used + amount > Game.FAUCET_CAP) {
-      let left = Game.sub(Game.FAUCET_CAP, used) / Game.E8S;
-      return #err("Cap of " # Nat.toText(Game.FAUCET_CAP / Game.E8S) # " test GOLDAO per tournament reached. Remaining: " # Nat.toText(left) # ".");
-    };
-    if (gFaucetTotal() + amount > Game.FAUCET_GLOBAL_CAP) {
-      return #err("The faucet is empty for this tournament.");
-    };
-    gameState.faucet.add(caller, (gameState.tournament, used + amount));
-    let b = gBalance(caller) + amount;
-    gameState.balances.add(caller, b);
-    #ok(b);
   };
 
   public shared ({ caller }) func gameTestApprove(goldao : Nat) : async Result.Result<Nat, Text> {
@@ -1282,7 +1247,6 @@ mixin (
       top10Rank = gRankOf(caller);
       top10Prize = Game.top10Prize(gameState.top10, gRankOf(caller), gStats(caller).staked);
       top10Entry = gTopEntry();
-      faucetRemaining = Game.sub(Game.FAUCET_CAP, gFaucetUsed(caller));
       open;
       stats = gStats(caller);
       bestReturn = switch (gameState.best.get(caller)) { case (?v) v; case null 0 };
