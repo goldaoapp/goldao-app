@@ -47,8 +47,6 @@ type TournamentSummary =
  };
 type TournamentStats = 
  record {
-   bestPoints: nat;
-   charged: nat;
    collapses: nat;
    deepest: nat;
    excavations: nat;
@@ -210,11 +208,18 @@ type RankingPage =
    sort: RankingSort;
    totalPlayers: nat;
  };
+type PastStats = 
+ record {
+   excavations: nat;
+   jackpotWon: nat;
+   returned: nat;
+   staked: nat;
+ };
 type PlayerTournamentResult = 
  record {
    credit: nat;
    payout: nat;
-   stats: TournamentStats;
+   stats: PastStats;
    tournament: nat;
  };
 type PlayerRow = 
