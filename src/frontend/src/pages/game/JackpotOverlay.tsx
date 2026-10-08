@@ -251,9 +251,12 @@ function Slot({
 
 /**
  * Three slots the player taps one by one: each charges with suspense and then
- * shows a diamond or an empty slot. Stage 3 is the jackpot. The board stays
- * locked while it is open; stages 1 and 2 close by themselves once the three
- * slots are open.
+ * shows a diamond or an empty slot. Stage 3 is the full jackpot and stage 2 with a prize is
+ * the mini jackpot (two diamonds). The board stays locked while it is open; a stage without
+ * prize closes by itself once the three slots are open.
+ *
+ * The prize of the mini jackpot is a share of the pool, so the band keeps showing the whole
+ * pool until the celebration starts: otherwise the amount would give the result away.
  *
  * The slots are drawn in `bandHost`, the gap that opens in the middle of the
  * split board. The jackpot celebration covers the whole panel.
@@ -279,7 +282,9 @@ export function JackpotOverlay({
   const { inPlay } = useBoard();
   const stage = view?.stage ?? 0;
   const won = view?.won ?? 0n;
-  const jackpot = stage >= 3 && won > 0n;
+  const full = stage >= 3 && won > 0n;
+  const mini = stage === 2 && won > 0n;
+  const jackpot = full || mini;
   const shown = slots.filter((x) => x === "hit" || x === "miss").length;
   const charging = slots.includes("charging");
   const celebrating = jackpot && shown >= 3;
@@ -308,7 +313,7 @@ export function JackpotOverlay({
         );
         playSound(hit ? "diamond" : "miss");
         if (order < 3) return;
-        if (view.stage >= 3 && view.won > 0n) {
+        if (view.stage >= 2 && view.won > 0n) {
           timers.current.push(
             window.setTimeout(() => playSound("jackpot"), 300),
           );
@@ -347,14 +352,14 @@ export function JackpotOverlay({
             >
               DIAMOND JACKPOT
             </motion.span>
-            {(jackpot ? won : pool) !== undefined && (
+            {(full ? won : pool) !== undefined && (
               <span
                 className={cn(
                   "font-display text-xl font-semibold tabular-nums",
                   DIAMOND_TEXT,
                 )}
               >
-                {fmtGoldao(jackpot ? won : (pool ?? 0n))}{" "}
+                {fmtGoldao(full ? won : (pool ?? 0n))}{" "}
                 <span className={cn("font-mono text-xs", inkMid)}>GOLDAO</span>
               </span>
             )}
@@ -393,7 +398,8 @@ export function JackpotOverlay({
           className="pointer-events-none fixed inset-0 z-[90] flex transform-gpu flex-col items-center justify-center gap-3 p-4 text-center"
         >
           <div className="flex items-center gap-2">
-            {[0, 0.2, 0.4].map((delay, i) => (
+            {/* Two diamonds for the mini jackpot, three for the full one */}
+            {(mini ? [0, 0.2] : [0, 0.2, 0.4]).map((delay, i) => (
               <motion.div
                 key={delay}
                 animate={{ scale: [1, 1.12, 1] }}
@@ -403,15 +409,26 @@ export function JackpotOverlay({
                   repeat: Number.POSITIVE_INFINITY,
                 }}
                 className={
-                  i === 1 ? "size-20 sm:size-28" : "size-14 sm:size-20"
+                  mini
+                    ? "size-12 sm:size-16"
+                    : i === 1
+                      ? "size-20 sm:size-28"
+                      : "size-14 sm:size-20"
                 }
               >
                 <DiamondIcon fill />
               </motion.div>
             ))}
           </div>
-          <span className="text-gradient-gold font-display text-[clamp(44px,12vw,120px)] font-bold leading-none tracking-wide">
-            JACKPOT
+          <span
+            className={cn(
+              "text-gradient-gold font-display font-bold leading-none tracking-wide",
+              mini
+                ? "text-[clamp(30px,8vw,72px)]"
+                : "text-[clamp(44px,12vw,120px)]",
+            )}
+          >
+            {mini ? "MINI JACKPOT" : "JACKPOT"}
           </span>
           <span className="relative inline-flex">
             {/* Static glow behind the number: a blur filter on the animated number is repainted every frame */}
@@ -422,7 +439,12 @@ export function JackpotOverlay({
             <motion.span
               animate={{ scale: [1, 1.04, 1] }}
               transition={{ duration: 1.4, repeat: Number.POSITIVE_INFINITY }}
-              className="text-gradient-gold font-display text-[clamp(52px,14vw,140px)] font-bold leading-none tabular-nums"
+              className={cn(
+                "text-gradient-gold font-display font-bold leading-none tabular-nums",
+                mini
+                  ? "text-[clamp(40px,11vw,100px)]"
+                  : "text-[clamp(52px,14vw,140px)]",
+              )}
             >
               +
               <RollingNumber
@@ -476,7 +498,7 @@ export function JackpotOverlay({
         )}
       </AnimatePresence>
       {celebrating && <SunRays color="oklch(0.7 0.14 350 / 0.55)" />}
-      {celebrating && <DiamondRain />}
+      {celebrating && full && <DiamondRain />}
       {typeof document !== "undefined" &&
         createPortal(celebration, document.body)}
     </>
