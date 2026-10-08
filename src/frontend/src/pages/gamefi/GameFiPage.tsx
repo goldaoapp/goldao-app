@@ -18,7 +18,7 @@ import {
   inkMid,
   panel,
 } from "../game/game-utils";
-import { useRanking } from "../game/useGame";
+import { useSummary } from "../game/useGame";
 
 /** GameFi portal — /gamefi. Lists every game; each card opens its page. */
 export default function GameFiPage() {
@@ -41,8 +41,8 @@ export default function GameFiPage() {
 }
 
 function GoldMineCard() {
-  const { data: ranking } = useRanking();
-  const players = ranking?.players.length;
+  const { data: summary } = useSummary();
+  const players = summary ? Number(summary.totalPlayers) : undefined;
 
   return (
     <motion.div
@@ -82,7 +82,7 @@ function GoldMineCard() {
               ) : (
                 <Gem className={cn("size-3.5", DIAMOND_TEXT)} />
               )}
-              {ranking ? fmtGoldao(ranking.pool) : <Spinner />}
+              {summary ? fmtGoldao(summary.pool) : <Spinner />}
             </span>
           </span>
           <span className="flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border border-[color:var(--term-green)]/50 bg-[color:var(--term-green)]/10 px-2 py-0.5 text-[10px] text-[color:var(--term-green)]">
