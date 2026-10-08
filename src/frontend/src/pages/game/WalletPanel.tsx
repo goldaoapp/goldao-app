@@ -12,7 +12,9 @@ import { useEffect, useState } from "react";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { CopyField } from "./CopyField";
 import { Spinner } from "./Spinner";
+import { TestFaucetCard } from "./TestFaucetCard";
 import { eyebrow, fmtGoldao, gold, ink, inkFaint, panel } from "./game-utils";
+import { TEST_TOKEN_LABEL, isTestLedger } from "./ledger-mode";
 import { errorMessage, useGameAction } from "./useGame";
 import { useWallet } from "./useWallet";
 
@@ -50,6 +52,8 @@ export function WalletPanel({ dashboard, config }: Props) {
     dashboard,
     config,
   );
+  // GOLDAO TEST: the game runs on the test ledger. Only the wallet shows the test name.
+  const testLedger = isTestLedger(config);
   const [amount, setAmount] = useState(500);
   const [loading, setLoading] = useState(false);
   const fee = config?.feeE8s ?? 1_000_000_000n;
@@ -123,7 +127,13 @@ export function WalletPanel({ dashboard, config }: Props) {
     setMsg(null);
     setSending(true);
     try {
-      await transferGoldao(identity, destPrincipal.toText(), sendAmount);
+      // The ledger the game uses, not always the real GOLDAO one (test mode).
+      await transferGoldao(
+        identity,
+        destPrincipal.toText(),
+        sendAmount,
+        config?.ledgerId,
+      );
       await queryClient.invalidateQueries({ queryKey: ["game", "wallet"] });
       setSendText("");
       setMsg({
@@ -192,10 +202,16 @@ export function WalletPanel({ dashboard, config }: Props) {
           )}
         >
           {dashboard ? fmtGoldao(balance) : <Spinner />}
-          <span className={cn("ml-2 font-mono text-xs", gold)}>GOLDAO</span>
+          <span className={cn("ml-2 font-mono text-xs", gold)}>
+            {testLedger ? TEST_TOKEN_LABEL : "GOLDAO"}
+          </span>
         </motion.span>
         <span className={cn("font-mono text-[11px]", inkFaint)}>
-          {real ? "GOLDAO ledger" : "Test tokens"}
+          {testLedger
+            ? `${TEST_TOKEN_LABEL} ledger (no value)`
+            : real
+              ? "GOLDAO ledger"
+              : "Test tokens"}
         </span>
       </div>
 
@@ -280,6 +296,7 @@ export function WalletPanel({ dashboard, config }: Props) {
               The game authorizes itself the first time you load balance. Your
               wallet is only charged when you load.
             </span>
+            {testLedger && <TestFaucetCard />}
           </>
         ) : (
           <>
