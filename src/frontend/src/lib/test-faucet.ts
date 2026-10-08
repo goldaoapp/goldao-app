@@ -2,7 +2,7 @@
  * TEST FAUCET client (GOLDAO TEST only). Temporary.
  *
  * Before the game moves to the real GOLDAO ledger, delete this file, pages/game/TestFaucetCard.tsx
- * and the card's line in pages/game/WalletPanel.tsx (see lib/test-faucet.mo in the backend).
+ * and the faucet button and card line in pages/game/WalletPanel.tsx (see lib/test-faucet.mo in the backend).
  *
  * It talks to the backend through its own small Candid interface, so it does not depend on the
  * generated bindings and removing it leaves nothing behind.
