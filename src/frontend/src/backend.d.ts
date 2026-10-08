@@ -64,7 +64,6 @@ export interface Dashboard {
     stats: TournamentStats;
     bestReturn: bigint;
     allowance: bigint;
-    faucetRemaining: bigint;
     top10Entry: bigint;
     pendingPayout: bigint;
     paused: boolean;
@@ -143,73 +142,12 @@ export interface ExcavationView {
     picks: bigint;
     safePctX100: bigint;
 }
-export type GResult = {
-    __kind__: "ok";
-    ok: bigint;
-} | {
-    __kind__: "err";
-    err: string;
-};
-export type GResult_1 = {
-    __kind__: "ok";
-    ok: EndResult;
-} | {
-    __kind__: "err";
-    err: string;
-};
-export type GResult_2 = {
-    __kind__: "ok";
-    ok: PickResult;
-} | {
-    __kind__: "err";
-    err: string;
-};
-export type GResult_3 = {
-    __kind__: "ok";
-    ok: AutoResult;
-} | {
-    __kind__: "err";
-    err: string;
-};
-export type GResult_4 = {
-    __kind__: "ok";
-    ok: AdminView;
-} | {
-    __kind__: "err";
-    err: string;
-};
-export type GResult_5 = {
-    __kind__: "ok";
-    ok: null;
-} | {
-    __kind__: "err";
-    err: string;
-};
-export type GResult_6 = {
-    __kind__: "ok";
-    ok: SecurityView;
-} | {
-    __kind__: "err";
-    err: string;
-};
-export type GResult_7 = {
-    __kind__: "ok";
-    ok: {
-        paid: bigint;
-        remaining: bigint;
-        failed: bigint;
-    };
-} | {
-    __kind__: "err";
-    err: string;
-};
-export type GResult_8 = {
-    __kind__: "ok";
-    ok: Array<[Principal, UserRole]>;
-} | {
-    __kind__: "err";
-    err: string;
-};
+export interface FaucetConfig {
+    presets: Array<bigint>;
+    usedE8s: bigint;
+    enabled: boolean;
+    capE8s: bigint;
+}
 export interface GameConfig {
     mines: bigint;
     loadMax: bigint;
@@ -217,22 +155,33 @@ export interface GameConfig {
     top10Bps: bigint;
     ledgerId: string;
     top10Weights: Array<bigint>;
+    diamond2PerGoldao: bigint;
     stakeCapE8s: bigint;
     feeE8s: bigint;
     diamond1Bps: bigint;
-    diamond2Bps: bigint;
     cells: bigint;
     pointsTable: Array<bigint>;
+    miniBps: bigint;
     creditCapE8s: bigint;
     maxPicks: bigint;
+    diamond3Odds: bigint;
     top10MinVolumeE8s: bigint;
+    poolSeedMaxE8s: bigint;
+    poolSeedE8s: bigint;
     payoutBps: bigint;
     safePicks: bigint;
     minPayoutE8s: bigint;
     stakeMinE8s: bigint;
-    faucetCapE8s: bigint;
     realLedger: boolean;
-    diamond3PerGoldao: bigint;
+}
+export interface GameSummary {
+    top10Pool: bigint;
+    staked: bigint;
+    totalPlayers: bigint;
+    pool: bigint;
+    tournament: bigint;
+    paused: boolean;
+    endsAt: bigint;
 }
 export interface JackpotWin {
     at: bigint;
@@ -245,9 +194,12 @@ export interface Payout {
     id: bigint;
     to: Principal;
     paid: boolean;
+    txId?: bigint;
     tournament: bigint;
+    uncertain: boolean;
     stamp: bigint;
     amount: bigint;
+    paidAt: bigint;
 }
 export interface PickResult {
     end?: EndResult;
@@ -259,13 +211,14 @@ export interface PickResult {
     excavation?: ExcavationView;
 }
 export interface PlayerRow {
+    net: bigint;
+    pos: bigint;
     staked: bigint;
     jackpotWon: bigint;
-    deepest: bigint;
     player: Principal;
     excavations: bigint;
     rank: bigint;
-    bestPoints: bigint;
+    bestReturn: bigint;
     prize: bigint;
     returned: bigint;
 }
@@ -275,26 +228,140 @@ export interface PlayerTournamentResult {
     stats: TournamentStats;
     payout: bigint;
 }
-export interface Ranking {
-    top10Pool: bigint;
-    staked: bigint;
-    pool: bigint;
-    tournament: bigint;
+export interface RankingPage {
+    totalPlayers: bigint;
+    mine?: PlayerRow;
+    page: bigint;
+    rows: Array<PlayerRow>;
+    sort: RankingSort;
+    pageSize: bigint;
     lastTop10: Array<TopPrize>;
-    players: Array<PlayerRow>;
     jackpots: Array<JackpotWin>;
-    endsAt: bigint;
 }
-export type Result_7 = {
+export type Result = {
+    __kind__: "ok";
+    ok: bigint;
+} | {
+    __kind__: "err";
+    err: string;
+};
+export type Result_1 = {
+    __kind__: "ok";
+    ok: EndResult;
+} | {
+    __kind__: "err";
+    err: string;
+};
+export type Result_10 = {
+    __kind__: "ok";
+    ok: {
+        paid: bigint;
+        remaining: bigint;
+        failed: bigint;
+    };
+} | {
+    __kind__: "err";
+    err: string;
+};
+export type Result_11 = {
+    __kind__: "ok";
+    ok: boolean;
+} | {
+    __kind__: "err";
+    err: string;
+};
+export type Result_12 = {
+    __kind__: "ok";
+    ok: Array<[Principal, UserRole]>;
+} | {
+    __kind__: "err";
+    err: string;
+};
+export type Result_13 = {
     __kind__: "ok";
     ok: null;
 } | {
     __kind__: "err";
     err: Error_;
 };
+export type Result_2 = {
+    __kind__: "ok";
+    ok: PickResult;
+} | {
+    __kind__: "err";
+    err: string;
+};
+export type Result_3 = {
+    __kind__: "ok";
+    ok: AutoResult;
+} | {
+    __kind__: "err";
+    err: string;
+};
+export type Result_4 = {
+    __kind__: "ok";
+    ok: AdminView;
+} | {
+    __kind__: "err";
+    err: string;
+};
+export type Result_5 = {
+    __kind__: "ok";
+    ok: null;
+} | {
+    __kind__: "err";
+    err: string;
+};
+export type Result_6 = {
+    __kind__: "ok";
+    ok: SecurityLogView;
+} | {
+    __kind__: "err";
+    err: string;
+};
+export type Result_7 = {
+    __kind__: "ok";
+    ok: SecurityView;
+} | {
+    __kind__: "err";
+    err: string;
+};
+export type Result_8 = {
+    __kind__: "ok";
+    ok: Array<Payout>;
+} | {
+    __kind__: "err";
+    err: string;
+};
+export type Result_9 = {
+    __kind__: "ok";
+    ok: bigint | null;
+} | {
+    __kind__: "err";
+    err: string;
+};
 export interface Result__1 {
     hasMore: boolean;
     rows: Array<Array<Cell>>;
+}
+export interface SecurityDay {
+    day: bigint;
+    events: bigint;
+    attention: bigint;
+}
+export interface SecurityEvent {
+    at: bigint;
+    title: string;
+    code: string;
+    count: bigint;
+    lastAt: bigint;
+    description: string;
+    level: SecurityLevel;
+}
+export interface SecurityLogView {
+    day: bigint;
+    days: Array<SecurityDay>;
+    events: Array<SecurityEvent>;
 }
 export interface SecurityView {
     haltCode: bigint;
@@ -313,10 +380,12 @@ export interface TopPrize {
 }
 export interface TournamentStats {
     staked: bigint;
+    minis: bigint;
     jackpotWon: bigint;
     deepest: bigint;
     excavations: bigint;
     collapses: bigint;
+    miniWon: bigint;
     bestPoints: bigint;
     charged: bigint;
     returned: bigint;
@@ -324,6 +393,8 @@ export interface TournamentStats {
 }
 export interface TournamentSummary {
     staked: bigint;
+    minis: bigint;
+    miniPaid: bigint;
     excavations: bigint;
     jackpotPaid: bigint;
     tournament: bigint;
@@ -369,6 +440,17 @@ export enum EndKind {
     collapsed = "collapsed",
     saved = "saved"
 }
+export enum RankingSort {
+    net = "net",
+    jackpot = "jackpot",
+    volume = "volume",
+    bestPrize = "bestPrize"
+}
+export enum SecurityLevel {
+    warning = "warning",
+    info = "info",
+    critical = "critical"
+}
 export enum StakeOption {
     max = "max",
     mid = "mid",
@@ -384,37 +466,42 @@ export enum WithdrawKind {
     available = "available"
 }
 export interface backendInterface {
-    adminListRoles(): Promise<GResult_8>;
+    adminListRoles(): Promise<Result_12>;
     adminSyncBootstrap(): Promise<boolean>;
     assignCallerUserRole(user: Principal, role: UserRole): Promise<void>;
     execute(qJson: string): Promise<Result__1>;
-    gameAdminAckAccounting(): Promise<GResult_5>;
-    gameAdminCloseAll(): Promise<GResult_5>;
-    gameAdminCloseTournament(): Promise<GResult_5>;
-    gameAdminHalt(): Promise<GResult_5>;
-    gameAdminLedgerAllowance(who: Principal, spender: Principal): Promise<GResult>;
-    gameAdminLedgerBalance(who: Principal): Promise<GResult>;
-    gameAdminPay(): Promise<GResult_7>;
-    gameAdminRefreshBank(): Promise<GResult>;
-    gameAdminReleaseBusy(player: Principal): Promise<GResult_5>;
-    gameAdminResume(): Promise<GResult_5>;
-    gameAdminSecurity(): Promise<GResult_6>;
-    gameAdminSeedPool(goldao: bigint): Promise<GResult>;
-    gameAdminSetDuration(days: bigint): Promise<GResult_5>;
-    gameAdminSetRealLedger(selfId: Principal): Promise<GResult>;
-    gameAdminTestDeposit(goldao: bigint): Promise<GResult>;
-    gameAdminView(): Promise<GResult_4>;
-    gameAdminWithdraw(kind: WithdrawKind): Promise<GResult>;
-    gameAuto(stake: StakeOption, stopAt: bigint): Promise<GResult_3>;
+    gameAdminAckAccounting(): Promise<Result_5>;
+    gameAdminChangeLedger(): Promise<Result>;
+    gameAdminCheckPay(): Promise<Result_5>;
+    gameAdminCheckWithdraw(kind: WithdrawKind): Promise<Result_5>;
+    gameAdminCloseAll(): Promise<Result_5>;
+    gameAdminCloseTournament(): Promise<Result_5>;
+    gameAdminEnsureConnected(): Promise<Result_11>;
+    gameAdminHalt(): Promise<Result_5>;
+    gameAdminLedgerAllowance(who: Principal, spender: Principal): Promise<Result>;
+    gameAdminLedgerBalance(who: Principal): Promise<Result>;
+    gameAdminMarkPaid(id: bigint, txId: bigint): Promise<Result_5>;
+    gameAdminPay(max: bigint): Promise<Result_10>;
+    gameAdminPayOne(id: bigint, renew: boolean): Promise<Result_9>;
+    gameAdminPayouts(tournament: bigint): Promise<Result_8>;
+    gameAdminRefreshBank(): Promise<Result>;
+    gameAdminReleaseBusy(player: Principal): Promise<Result_5>;
+    gameAdminResume(): Promise<Result_5>;
+    gameAdminSecurity(): Promise<Result_7>;
+    gameAdminSecurityLog(day: bigint): Promise<Result_6>;
+    gameAdminSeedPool(goldao: bigint): Promise<Result>;
+    gameAdminSetDuration(days: bigint): Promise<Result_5>;
+    gameAdminView(): Promise<Result_4>;
+    gameAdminWithdraw(kind: WithdrawKind): Promise<Result>;
+    gameAuto(stake: StakeOption, stopAt: bigint, expectedStake: bigint): Promise<Result_3>;
     gameBurned(): Promise<bigint>;
     gameConfig(): Promise<GameConfig>;
-    gameLoadCredit(goldao: bigint): Promise<GResult>;
+    gameLoadCredit(goldao: bigint): Promise<Result>;
     gameMyDashboard(): Promise<Dashboard>;
-    gamePick(stake: StakeOption | null): Promise<GResult_2>;
-    gameRanking(): Promise<Ranking>;
-    gameRequestTestTokens(goldao: bigint): Promise<GResult>;
-    gameSave(): Promise<GResult_1>;
-    gameTestApprove(goldao: bigint): Promise<GResult>;
+    gamePick(stake: StakeOption | null, expectedStake: bigint, expectedPicks: bigint): Promise<Result_2>;
+    gameRankingPage(sort: RankingSort, page: bigint): Promise<RankingPage>;
+    gameSave(): Promise<Result_1>;
+    gameSummary(): Promise<GameSummary>;
     gameTournaments(): Promise<Array<TournamentSummary>>;
     getCallerUserRole(): Promise<UserRole>;
     /**
@@ -427,9 +514,11 @@ export interface backendInterface {
     hasSnapshot(date: string): Promise<boolean>;
     isCallerAdmin(): Promise<boolean>;
     /**
-     * / Save a daily snapshot. Write-once per day — rejects if date exists.
+     * / Save a daily snapshot. Write-once per day, only for today's date (UTC), validated in the lib.
      */
     saveTreasurySnapshot(snapshot: TreasurySnapshot): Promise<boolean>;
     schema(): Promise<string>;
+    testFaucetClaim(goldao: bigint): Promise<Result>;
+    testFaucetConfig(): Promise<FaucetConfig>;
     whoAmI(): Promise<string>;
 }
