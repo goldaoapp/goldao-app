@@ -46,14 +46,18 @@ export function ModeStatusCard({
   const [asking, setAsking] = useState(false);
   const [working, setWorking] = useState(false);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const [connectErr, setConnectErr] = useState<string | null>(null);
 
   // A game that is not connected yet connects by itself: asking once starts the retries.
   useEffect(() => {
     if (!actor || !config || config.realLedger) return;
     void actor
       .gameAdminEnsureConnected()
-      .then(() => queryClient.invalidateQueries({ queryKey: ["game"] }))
-      .catch(() => {});
+      .then((r) => {
+        setConnectErr("err" in r ? r.err : null);
+        void queryClient.invalidateQueries({ queryKey: ["game"] });
+      })
+      .catch((e) => setConnectErr(errorMessage(e)));
   }, [actor, config, queryClient]);
 
   const changeLedger = async () => {
@@ -148,6 +152,12 @@ export function ModeStatusCard({
                 ? `The game runs on the ${TEST_TOKEN_LABEL} ledger. These tokens have no value and the test faucet is available.`
                 : "The game runs on the real GOLDAO ledger. The test faucet is not available."}
         </span>
+
+        {!real && connectErr && (
+          <span className="font-mono text-xs text-destructive">
+            Could not connect: {connectErr}
+          </span>
+        )}
 
         {config && (
           <dl className="grid gap-3 font-mono text-xs sm:grid-cols-2">
