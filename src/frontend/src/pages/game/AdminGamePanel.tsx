@@ -58,19 +58,9 @@ const POOL_SEED_MAX_FALLBACK = 20_000;
 // The wallet authorization given to the backend lives only this long.
 const WITHDRAW_WINDOW_MS = 2 * 60_000;
 const PAY_WINDOW_MS = 10 * 60_000;
-
-/** "12.5" -> e8s. Null when the text is not a positive amount. */
-function parseE8s(text: string): bigint | null {
-  if (!/^\d+(\.\d{1,8})?$/.test(text)) return null;
-  const [whole, frac = ""] = text.split(".");
-  const v = BigInt(whole) * E8S + BigInt(frac.padEnd(8, "0"));
-  return v > 0n ? v : null;
-}
-
-function plainE8s(v: bigint): string {
-  const frac = (v % E8S).toString().padStart(8, "0").replace(/0+$/, "");
-  return frac ? `${v / E8S}.${frac}` : `${v / E8S}`;
-}
+// Hard ceiling for any single authorization signed from this panel. The amounts come from
+// unverified queries, so a wrong answer can never make the wallet approve more than this.
+const MAX_AUTHORIZE_E8S = 1_000_000n * E8S;
 
 type Res<T> = { __kind__: "ok"; ok: T } | { __kind__: "err"; err: string };
 
@@ -99,7 +89,6 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
   const [days, setDays] = useState("");
   const [seed, setSeed] = useState(String(POOL_SEED_MIN_FALLBACK));
   const [who, setWho] = useState("");
-  const [earn, setEarn] = useState("");
   const [busy, setBusy] = useState(false);
 
   const working = !!pending || busy;
@@ -170,6 +159,11 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
         "The game account does not match this canister. Nothing was authorized.",
       );
     }
+    if (required > MAX_AUTHORIZE_E8S) {
+      throw new Error(
+        "The amount is above the safety limit. Nothing was authorized.",
+      );
+    }
     if (identity.getPrincipal().toText() !== bankText) {
       throw new Error("This session is not the bank wallet.");
     }
@@ -226,18 +220,11 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
 
   const halted = !!security?.halted;
   const bank = view?.bank ?? 0n;
-  // Most that can be withdrawn as earnings: the backend's own rule (cycles plus the surplus over
-  // the fund target, the network fee on top). The backend checks it again on every withdrawal.
-  const outflow = view
-    ? view.withdrawable < bank
-      ? view.withdrawable
-      : bank
-    : 0n;
-  const maxEarn = outflow > GOLDAO_FEE_E8S ? outflow - GOLDAO_FEE_E8S : 0n;
-  const earnText = earn.trim();
-  const earnAmount = earnText === "" ? maxEarn : parseE8s(earnText);
-  const earnValid =
-    earnAmount !== null && earnAmount > 0n && earnAmount <= maxEarn;
+  const availableOut = (() => {
+    if (!view) return 0n;
+    const cap = bank > GOLDAO_FEE_E8S ? bank - GOLDAO_FEE_E8S : 0n;
+    return view.withdrawable < cap ? view.withdrawable : cap;
+  })();
   const poolSeedMin = config
     ? Number(config.poolSeedE8s / E8S)
     : POOL_SEED_MIN_FALLBACK;
@@ -560,53 +547,33 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
 
           <Row
             title="Withdraw earnings"
-            hint={`Up to ${fmtGoldao(maxEarn)} GOLDAO now: the accrued cycles plus whatever the fund holds above its target. The fund never goes under the target. Sent to the fixed treasury address. Network fee: ${fmtGoldao(GOLDAO_FEE_E8S)}, on top.${connected ? " The wallet authorization is set for that amount only and expires in 2 minutes." : ""}`}
+            hint={`Takes ${fmtGoldao(availableOut)} GOLDAO (cycles first, then the surplus over the fund target) to the fixed treasury address. Network fee: ${fmtGoldao(GOLDAO_FEE_E8S)}.${connected ? " The wallet authorization is set for that amount only and expires in 2 minutes." : ""}`}
           >
-            <input
-              type="text"
-              inputMode="decimal"
-              placeholder={plainE8s(maxEarn)}
-              value={earn}
-              onChange={(e) => setEarn(e.target.value)}
-              disabled={working}
-              className={inputCls}
-            />
             <Button
               variant="outline"
-              disabled={working}
-              onClick={() => setEarn(plainE8s(maxEarn))}
-            >
-              Max
-            </Button>
-            <Button
-              variant="outline"
-              disabled={working || !view || !earnValid}
-              onClick={() => {
-                if (earnAmount === null) return;
+              disabled={working || !view || availableOut === 0n}
+              onClick={() =>
                 confirmThen({
-                  title: `Withdraw ${fmtGoldao(earnAmount)} GOLDAO?`,
+                  title: `Withdraw ${fmtGoldao(availableOut)} GOLDAO?`,
                   detail: "Sent to the fixed treasury address.",
                   go: () =>
                     act(
                       "withdraw",
-                      () => actor!.gameAdminWithdrawAmount(earnAmount),
-                      (v) => {
-                        setEarn("");
-                        return `Withdrew ${fmtGoldao(v)} GOLDAO.`;
-                      },
+                      () => actor!.gameAdminWithdraw(WithdrawKind.available),
+                      (v) => `Done. Bank is now ${fmtGoldao(v)}.`,
                       async () => {
                         await preflight(() =>
-                          actor!.gameAdminCheckWithdrawAmount(earnAmount),
+                          actor!.gameAdminCheckWithdraw(WithdrawKind.available),
                         );
                         await authorize(
-                          earnAmount + GOLDAO_FEE_E8S,
+                          availableOut + GOLDAO_FEE_E8S,
                           WITHDRAW_WINDOW_MS,
                         );
                       },
                       revokeLeftover,
                     ),
-                });
-              }}
+                })
+              }
             >
               Withdraw earnings
             </Button>
@@ -971,12 +938,16 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
             <Item label="Volume" value={fmtGoldao(view.lastClose.staked)} />
             <Item label="Returned" value={fmtGoldao(view.lastClose.returned)} />
             <Item
-              label="Jackpots"
+              label="Jackpots (full + mini)"
               value={String(Number(view.lastClose.jackpots))}
             />
             <Item
-              label="Jackpot paid"
+              label="Jackpot paid (full + mini)"
               value={fmtGoldao(view.lastClose.jackpotPaid)}
+            />
+            <Item
+              label="Of which mini"
+              value={`${Number(view.lastClose.minis)} · ${fmtGoldao(view.lastClose.miniPaid)}`}
             />
             <Item
               label="Payouts"
