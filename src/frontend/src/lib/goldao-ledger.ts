@@ -8,7 +8,10 @@
 
 import { Actor, HttpAgent } from "@dfinity/agent";
 import type { IDL as IDLType } from "@dfinity/candid";
-import { HttpAgent as SignedAgent } from "@icp-sdk/core/agent";
+import {
+  Actor as SignedActor,
+  HttpAgent as SignedAgent,
+} from "@icp-sdk/core/agent";
 import { Principal } from "@icp-sdk/core/principal";
 
 export const GOLDAO_LEDGER = "tyyy3-4aaaa-aaaaq-aab7a-cai";
@@ -71,11 +74,7 @@ const ledgerIdlFactory = (({ IDL }: { IDL: typeof IDLType }) => {
   });
   const TransactionRange = IDL.Record({ transactions: IDL.Vec(Transaction) });
   const ArchivedRange = IDL.Record({
-    callback: IDL.Func(
-      [GetTransactionsRequest],
-      [TransactionRange],
-      ["query"],
-    ),
+    callback: IDL.Func([GetTransactionsRequest], [TransactionRange], ["query"]),
     start: IDL.Nat,
     length: IDL.Nat,
   });
@@ -397,11 +396,19 @@ async function signedLedger(
     identity: identity as never,
     host: "https://icp-api.io",
   });
-  return Actor.createActor(ledgerIdlFactory, {
-    agent: agent as never,
+  // Same SDK as the agent: mixing Actor/agent from two packages breaks the
+  // certificate check of update calls ("Could not find canister ranges").
+  return SignedActor.createActor(ledgerIdlFactory as never, {
+    agent,
     canisterId: ledgerId || GOLDAO_LEDGER,
   }) as unknown as LedgerActor;
 }
+
+/** The SDK failed verifying the reply certificate; the call itself may have gone through. */
+const isCertError = (e: unknown) =>
+  /canister ranges|certificate|Lookup status/i.test(
+    e instanceof Error ? e.message : String(e),
+  );
 
 /**
  * Signs an icrc2_approve with the caller's identity. It replaces any previous
@@ -442,14 +449,29 @@ export async function transferGoldao(
   ledgerId?: string,
 ): Promise<void> {
   const l = await signedLedger(identity, ledgerId);
-  const res = await l.icrc1_transfer({
-    to: acct(to),
-    fee: [GOLDAO_FEE_E8S],
-    memo: [],
-    from_subaccount: [],
-    created_at_time: [],
-    amount,
-  });
+  const owner = (identity as { getPrincipal(): Principal })
+    .getPrincipal()
+    .toText();
+  const before = await fetchWalletBalance(owner, ledgerId);
+  let res: { Ok: bigint } | { Err: Record<string, unknown> };
+  try {
+    res = await l.icrc1_transfer({
+      to: acct(to),
+      fee: [GOLDAO_FEE_E8S],
+      memo: [],
+      from_subaccount: [],
+      created_at_time: [],
+      amount,
+    });
+  } catch (e) {
+    // Reply could not be verified: trust the ledger's balance instead.
+    if (isCertError(e)) {
+      await new Promise((r) => setTimeout(r, 1500));
+      const after = await fetchWalletBalance(owner, ledgerId);
+      if (after < before) return;
+    }
+    throw e;
+  }
   if ("Err" in res) {
     if ("InsufficientFunds" in res.Err) {
       throw new Error("Insufficient GOLDAO in your wallet.");
