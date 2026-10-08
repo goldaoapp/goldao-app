@@ -1726,6 +1726,9 @@ mixin (
     let balance = try {
       let fee = await Ledger.ledger().icrc1_fee();
       if (fee != Game.FEE) return #err("The ledger fee differs from the game fee.");
+      if (Ledger.MODE == #production and (await Ledger.ledger().icrc1_symbol()) != Ledger.PRODUCTION_SYMBOL) {
+        return #err("The ledger symbol is not the real GOLDAO one.");
+      };
       await Ledger.ledger().icrc1_balance_of(Ledger.account(bankAccount));
     } catch (_) { return #err("The ledger is unavailable.") };
     if (not idle()) return #err("The game changed. Try again.");
