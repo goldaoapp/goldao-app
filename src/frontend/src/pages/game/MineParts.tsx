@@ -1185,9 +1185,12 @@ export function CreditBar({
 
 export function JackpotCard({
   pool,
+  miniBps,
   className,
 }: {
   pool: bigint | undefined;
+  /** Share of the pool that two diamonds win, in basis points. */
+  miniBps?: number;
   className?: string;
 }) {
   return (
@@ -1218,6 +1221,7 @@ export function JackpotCard({
         </span>
         <span className={cn("font-mono text-[11px]", inkMid)}>
           3 diamonds win it all
+          {miniBps !== undefined && ` · 2 win ${miniBps / 100}%`}
         </span>
       </div>
       {DIAMOND_IMG && (
@@ -1282,13 +1286,14 @@ function FitNumber({
 /**
  * End of the excavation, shown over the board. Prize: pill + number + profit.
  * Collapse: label + number + how much of the stake was rescued. With a jackpot
- * (also after a collapse) the title is DIAMOND JACKPOT and prize + jackpot are added.
- * Nothing here is ever red.
+ * (also after a collapse) the title is DIAMOND JACKPOT (MINI JACKPOT when the excavation only
+ * found a mini jackpot) and prize + jackpot are added. Nothing here is ever red.
  */
 export function ResultCard({
   result,
+  mini = false,
   onNew,
-}: { result: EndResult; onNew: () => void }) {
+}: { result: EndResult; mini?: boolean; onNew: () => void }) {
   const collapsed = result.kind === EndKind.collapsed;
   const jackpot = result.jackpotWon > 0n;
   const prize = prizeName(Number(result.picks));
@@ -1315,7 +1320,7 @@ export function ResultCard({
         {jackpot ? (
           <span className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-[#d6336c] px-4 py-1.5 font-display text-[clamp(16px,4.4vw,24px)] font-bold uppercase leading-none tracking-wider text-white dark:bg-[#b8337a] dark:text-[#fff5fa]">
             <Gem className="size-[1em]" />
-            Diamond jackpot
+            {mini ? "Mini jackpot" : "Diamond jackpot"}
           </span>
         ) : collapsed ? (
           <span className={cn(eyebrow, gold)}>Collapse · GOLDAO secured</span>
