@@ -29,6 +29,7 @@ import {
   panelHeader,
   shortPrincipal,
 } from "./game-utils";
+import { TEST_TOKEN_LABEL, targetsTestLedger } from "./ledger-mode";
 import {
   errorMessage,
   useGameAction,
@@ -90,6 +91,8 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
 
   const working = !!pending || busy;
   const real = !!view?.realLedger;
+  // The backend MODE points at the GOLDAO TEST ledger: the "Enable" button below must say so.
+  const toTest = targetsTestLedger(config);
   const bankText = view?.bankAccount?.toText();
   const selfText = view?.selfId?.toText();
   // The game account comes from the deployment itself (env.json), not from a query to the
@@ -910,8 +913,12 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
 
           {view && !real && (
             <Row
-              title="Real ledger"
-              hint="Switches from test to real GOLDAO. Needs no pending payouts. Irreversible."
+              title={toTest ? `${TEST_TOKEN_LABEL} ledger` : "Real ledger"}
+              hint={
+                toTest
+                  ? `Switches from simulated balances to the ${TEST_TOKEN_LABEL} ledger (no value). Needs no pending payouts and erases the simulated game data.`
+                  : "Switches from test to real GOLDAO. Needs no pending payouts. Irreversible."
+              }
             >
               <span className="font-mono text-xs">
                 {envId ? `Game account ${envId}` : "Game account unknown"}
@@ -921,15 +928,20 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
                 disabled={working || !parsePrincipal(envId)}
                 onClick={() =>
                   confirmThen({
-                    title: "Enable the real ledger?",
-                    detail: "From now on the admin wallet holds real GOLDAO.",
-                    word: "GO REAL",
+                    title: toTest
+                      ? `Enable the ${TEST_TOKEN_LABEL} ledger?`
+                      : "Enable the real ledger?",
+                    detail: toTest
+                      ? `From now on the admin wallet holds ${TEST_TOKEN_LABEL} (no value).`
+                      : "From now on the admin wallet holds real GOLDAO.",
+                    word: toTest ? "GO TEST" : "GO REAL",
                     go: () =>
                       act(
                         "real",
                         () =>
                           actor!.gameAdminSetRealLedger(parsePrincipal(envId)!),
-                        (v) => `Real ledger enabled. Bank is ${fmtGoldao(v)}.`,
+                        (v) =>
+                          `${toTest ? TEST_TOKEN_LABEL : "Real"} ledger enabled. Bank is ${fmtGoldao(v)}.`,
                       ),
                   })
                 }
