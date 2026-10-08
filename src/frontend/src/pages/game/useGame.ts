@@ -1,8 +1,18 @@
-import type { Dashboard, ExcavationView, Ranking } from "@/backend";
+import type {
+  Dashboard,
+  ExcavationView,
+  GameSummary,
+  RankingSort,
+} from "@/backend";
 import { useAuth } from "@/context/AuthContext";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  keepPreviousData,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { useCallback, useState } from "react";
 import { getBoard } from "./board-store";
+import { rebasePool } from "./jackpot-watch";
 
 const KEY = "game";
 
@@ -17,8 +27,11 @@ export function useGameConfig() {
   });
 }
 
-/** Personal dashboard of the signed-in player. */
-export function useDashboard() {
+/**
+ * Personal dashboard of the signed-in player. It is fetched once, and kept fresh only while
+ * `live` is true (the Mine and My stats tabs); the other tabs do not need it.
+ */
+export function useDashboard(live: boolean) {
   const { actor, isAuthenticated, principalId } = useAuth();
   const queryClient = useQueryClient();
   return useQuery({
@@ -37,28 +50,51 @@ export function useDashboard() {
         : fresh;
     },
     enabled: !!actor && isAuthenticated && !!principalId,
-    refetchInterval: 20_000,
+    refetchInterval: live ? 20_000 : false,
+    // Coming back to a live tab shows fresh numbers right away.
+    staleTime: 20_000,
   });
 }
 
-export function useRanking() {
+/**
+ * Totals of the tournament (jackpot pool, Top 10 pool, volume, players, end time). Small and
+ * public, the same whatever page of the ranking is open. The jackpot notice reads the pool here.
+ */
+export function useSummary() {
   const { actor } = useAuth();
   return useQuery({
-    queryKey: [KEY, "ranking"],
-    queryFn: () => actor!.gameRanking(),
+    queryKey: [KEY, "summary"],
+    queryFn: () => actor!.gameSummary(),
     enabled: !!actor,
     refetchInterval: 20_000,
   });
 }
 
-/** Total GOLDAO burned by the game (public). */
+/**
+ * One page of the ranking, ordered by `sort` over all the players. The Ranking tab is the only
+ * user, and a closed tab is unmounted, so nothing is fetched while nobody looks at it. The
+ * previous page stays on screen while the next one loads.
+ */
+export function useRankingPage(sort: RankingSort, page: number) {
+  const { actor, principalId } = useAuth();
+  return useQuery({
+    // `mine` depends on who is asking, so the principal is part of the key.
+    queryKey: [KEY, "ranking", principalId, sort, page],
+    queryFn: () => actor!.gameRankingPage(sort, BigInt(page)),
+    enabled: !!actor,
+    refetchInterval: 20_000,
+    placeholderData: keepPreviousData,
+  });
+}
+
+/** Total GOLDAO burned by the game (public). Slow on purpose: it is only a counter. */
 export function useBurned() {
   const { actor } = useAuth();
   return useQuery({
     queryKey: [KEY, "burned"],
     queryFn: () => actor!.gameBurned(),
     enabled: !!actor,
-    refetchInterval: 15_000,
+    refetchInterval: 10 * 60_000,
   });
 }
 
@@ -149,7 +185,7 @@ export function useGameAction() {
   const queryClient = useQueryClient();
   const [pending, setPending] = useState<string | null>(null);
 
-  // "live": only what changes while playing (dashboard and ranking).
+  // "live": only what changes while playing (dashboard, summary and ranking).
   // "all": every game query, for admin actions that change the tournament.
   const refresh = useCallback(
     (scope: "live" | "all") => {
@@ -158,6 +194,7 @@ export function useGameAction() {
       }
       return Promise.all([
         queryClient.invalidateQueries({ queryKey: [KEY, "dashboard"] }),
+        queryClient.invalidateQueries({ queryKey: [KEY, "summary"] }),
         queryClient.invalidateQueries({ queryKey: [KEY, "ranking"] }),
         queryClient.invalidateQueries({ queryKey: [KEY, "wallet"] }),
       ]);
@@ -205,15 +242,16 @@ export function useGameAction() {
     async (credit: bigint, pool: bigint) => {
       await Promise.all([
         queryClient.cancelQueries({ queryKey: [KEY, "dashboard"] }),
-        queryClient.cancelQueries({ queryKey: [KEY, "ranking"] }),
+        queryClient.cancelQueries({ queryKey: [KEY, "summary"] }),
       ]);
+      // The player already saw this pool in their own result: no jackpot notice for it.
+      rebasePool(pool);
       queryClient.setQueriesData<Dashboard>(
         { queryKey: [KEY, "dashboard"] },
         (old) => (old ? { ...old, credit, pool } : old),
       );
-      queryClient.setQueriesData<Ranking>(
-        { queryKey: [KEY, "ranking"] },
-        (old) => (old ? { ...old, pool } : old),
+      queryClient.setQueryData<GameSummary>([KEY, "summary"], (old) =>
+        old ? { ...old, pool } : old,
       );
     },
     [queryClient],
