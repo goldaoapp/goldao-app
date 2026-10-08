@@ -246,30 +246,49 @@ module {
     history : [PlayerTournamentResult];
   };
 
+  // Order of the ranking table. Every order is computed over all the players of the tournament.
+  public type RankingSort = { #volume; #net; #bestPrize; #jackpot };
+
   public type PlayerRow = {
     player : Principal;
+    /** Position in the order asked for (1 is first). */
+    pos : Nat;
     excavations : Nat;
     staked : Nat;
     returned : Nat;
     jackpotWon : Nat;
-    bestPoints : Nat;
+    /** Returned plus jackpots minus staked. Negative when the player is behind. */
+    net : Int;
     /** Biggest return of a single excavation (prize plus jackpot, stake included). */
     bestReturn : Nat;
-    deepest : Nat;
+    /** Top 10 rank, always by volume, and the prize it pays (0 when it pays nothing). */
     rank : Nat;
     prize : Nat;
   };
 
-  public type Ranking = {
+  // Totals of the tournament, the same whatever page of the ranking is open. Cheap: no per-player rows.
+  public type GameSummary = {
     tournament : Nat;
     endsAt : Int;
+    paused : Bool;
     pool : Nat;
     top10Pool : Nat;
-    lastTop10 : [TopPrize];
     staked : Nat;
-    // Players with stats this tournament. `players` carries at most the first 200 of them.
     totalPlayers : Nat;
-    players : [PlayerRow];
+  };
+
+  // One page of the ranking (Game.RANKING_PAGE rows) plus what only the Ranking tab shows.
+  public type RankingPage = {
+    sort : RankingSort;
+    /** Page returned, zero-based. A page past the end comes back as the last one. */
+    page : Nat;
+    pageSize : Nat;
+    totalPlayers : Nat;
+    rows : [PlayerRow];
+    /** The caller's own row in this order, whatever page it is on. Null without stats. */
+    mine : ?PlayerRow;
+    lastTop10 : [TopPrize];
+    /** Most recent jackpots, newest first. */
     jackpots : [JackpotWin];
   };
 
