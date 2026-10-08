@@ -1,51 +1,40 @@
-import { beforeEach, describe, expect, it } from "vitest";
-import {
-  MAX_GAP_MS,
-  observePool,
-  poolFell,
-  rebasePool,
-  resetPoolWatch,
-} from "./jackpot-watch";
+/**
+ * Detects that someone won a jackpot, from the public pool alone.
+ *
+ * The pool only grows (every excavation adds to it) unless a jackpot is paid: a full jackpot
+ * reseeds it and a mini jackpot takes a share of it. So a lower pool than the one seen before
+ * means a win. The backend stays the only source of the number; this file only compares two
+ * values it handed out.
+ */
 
-const read = (pool: bigint, at: number, tournament = 1n) => ({
-  tournament,
-  pool,
-  at,
-});
+/** Two readings further apart than this tell nothing (a background tab stops polling). */
+export const MAX_GAP_MS = 45_000;
 
-describe("jackpot watch", () => {
-  beforeEach(resetPoolWatch);
+interface Reading {
+  tournament: bigint;
+  pool: bigint;
+  at: number;
+}
 
-  it("stays quiet on the first reading and while the pool grows", () => {
-    expect(observePool(read(100n, 0))).toBe(false);
-    expect(observePool(read(100n, 20_000))).toBe(false);
-    expect(observePool(read(150n, 40_000))).toBe(false);
-  });
+let last: Reading | null = null;
 
-  it("fires when the pool falls", () => {
-    observePool(read(500n, 0));
-    expect(observePool(read(100n, 20_000))).toBe(true);
-    // the new level is the baseline: no second notice
-    expect(observePool(read(120n, 40_000))).toBe(false);
-  });
+/** Pure rule: did the pool fall between two readings of the same tournament, close in time? */
+export function poolFell(prev: Reading | null, next: Reading): boolean {
+  return (
+    prev !== null &&
+    prev.tournament === next.tournament &&
+    next.at - prev.at <= MAX_GAP_MS &&
+    next.pool < prev.pool
+  );
+}
 
-  it("ignores a fall seen after a long gap", () => {
-    observePool(read(500n, 0));
-    expect(observePool(read(100n, MAX_GAP_MS + 1))).toBe(false);
-  });
+/** Feed every pool reading from the server. True when it shows that a jackpot was paid. */
+export function observePool(reading: Reading): boolean {
+  const fell = poolFell(last, reading);
+  last = reading;
+  return fell;
+}
 
-  it("ignores a change of tournament", () => {
-    observePool(read(500n, 0));
-    expect(observePool(read(100n, 20_000, 2n))).toBe(false);
-  });
-
-  it("does not fire for the player's own win", () => {
-    observePool(read(500n, Date.now()));
-    rebasePool(50n);
-    expect(observePool(read(50n, Date.now() + 1_000))).toBe(false);
-  });
-
-  it("poolFell needs a previous reading", () => {
-    expect(poolFell(null, read(1n, 0))).toBe(false);
-  });
-});
+export function resetPoolWatch(): void {
+  last = null;
+}
