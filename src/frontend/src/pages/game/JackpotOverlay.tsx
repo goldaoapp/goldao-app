@@ -398,8 +398,7 @@ export function JackpotOverlay({
           className="pointer-events-none fixed inset-0 z-[90] flex transform-gpu flex-col items-center justify-center gap-3 p-4 text-center"
         >
           <div className="flex items-center gap-2">
-            {/* Two diamonds for the mini jackpot, three for the full one */}
-            {(mini ? [0, 0.2] : [0, 0.2, 0.4]).map((delay, i) => (
+            {[0, 0.2, 0.4].map((delay, i) => (
               <motion.div
                 key={delay}
                 animate={{ scale: [1, 1.12, 1] }}
@@ -409,25 +408,14 @@ export function JackpotOverlay({
                   repeat: Number.POSITIVE_INFINITY,
                 }}
                 className={
-                  mini
-                    ? "size-12 sm:size-16"
-                    : i === 1
-                      ? "size-20 sm:size-28"
-                      : "size-14 sm:size-20"
+                  i === 1 ? "size-20 sm:size-28" : "size-14 sm:size-20"
                 }
               >
                 <DiamondIcon fill />
               </motion.div>
             ))}
           </div>
-          <span
-            className={cn(
-              "text-gradient-gold font-display font-bold leading-none tracking-wide",
-              mini
-                ? "text-[clamp(30px,8vw,72px)]"
-                : "text-[clamp(44px,12vw,120px)]",
-            )}
-          >
+          <span className="text-gradient-gold font-display text-[clamp(44px,12vw,120px)] font-bold leading-none tracking-wide">
             {mini ? "MINI JACKPOT" : "JACKPOT"}
           </span>
           <span className="relative inline-flex">
@@ -439,12 +427,7 @@ export function JackpotOverlay({
             <motion.span
               animate={{ scale: [1, 1.04, 1] }}
               transition={{ duration: 1.4, repeat: Number.POSITIVE_INFINITY }}
-              className={cn(
-                "text-gradient-gold font-display font-bold leading-none tabular-nums",
-                mini
-                  ? "text-[clamp(40px,11vw,100px)]"
-                  : "text-[clamp(52px,14vw,140px)]",
-              )}
+              className="text-gradient-gold font-display text-[clamp(52px,14vw,140px)] font-bold leading-none tabular-nums"
             >
               +
               <RollingNumber
@@ -498,7 +481,7 @@ export function JackpotOverlay({
         )}
       </AnimatePresence>
       {celebrating && <SunRays color="oklch(0.7 0.14 350 / 0.55)" />}
-      {celebrating && full && <DiamondRain />}
+      {celebrating && <DiamondRain />}
       {typeof document !== "undefined" &&
         createPortal(celebration, document.body)}
     </>
