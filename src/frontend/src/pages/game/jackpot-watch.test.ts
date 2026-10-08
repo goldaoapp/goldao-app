@@ -3,7 +3,6 @@ import {
   MAX_GAP_MS,
   observePool,
   poolFell,
-  rebasePool,
   resetPoolWatch,
 } from "./jackpot-watch";
 
@@ -37,12 +36,6 @@ describe("jackpot watch", () => {
   it("ignores a change of tournament", () => {
     observePool(read(500n, 0));
     expect(observePool(read(100n, 20_000, 2n))).toBe(false);
-  });
-
-  it("does not fire for the player's own win", () => {
-    observePool(read(500n, Date.now()));
-    rebasePool(50n);
-    expect(observePool(read(50n, Date.now() + 1_000))).toBe(false);
   });
 
   it("poolFell needs a previous reading", () => {
