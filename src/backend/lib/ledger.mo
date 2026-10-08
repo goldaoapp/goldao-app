@@ -1,7 +1,21 @@
 import Principal "mo:core/Principal";
 
 module {
-  public let GOLDAO_LEDGER : Text = "tyyy3-4aaaa-aaaaq-aab7a-cai";
+  // The one switch that decides which ledger the game uses.
+  //   #test: the GOLDAO TEST token (no value), with the test faucet available.
+  //   #production: the real GOLDAO. The test faucet refuses to run.
+  // To move between them, change this single line, deploy a new version and follow
+  // "Switching ledger" in the admin panel (the game must be empty: the switch erases game data).
+  public type Mode = { #test; #production };
+  public let MODE : Mode = #test;
+
+  public let GOLDAO_LEDGER_PRODUCTION : Text = "tyyy3-4aaaa-aaaaq-aab7a-cai";
+  public let GOLDAO_LEDGER_TEST : Text = "q4yq5-miaaa-aaaaj-qsjca-cai";
+
+  public let GOLDAO_LEDGER : Text = switch (MODE) {
+    case (#test) GOLDAO_LEDGER_TEST;
+    case (#production) GOLDAO_LEDGER_PRODUCTION;
+  };
 
   public type Account = { owner : Principal; subaccount : ?Blob };
 
