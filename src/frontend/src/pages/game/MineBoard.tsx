@@ -94,6 +94,14 @@ function fillCells(
   return out;
 }
 
+/** Remember the biggest jackpot of the excavation (mini = two diamonds) for the result card. */
+function noteJackpot(stage: number, won: bigint) {
+  if (won <= 0n) return;
+  setBoard((s) => ({
+    jackpotKind: stage >= 3 || s.jackpotKind === "full" ? "full" : "mini",
+  }));
+}
+
 interface Props {
   dashboard: Dashboard | undefined;
   config: GameConfig | undefined;
@@ -111,6 +119,7 @@ export function MineBoard({ dashboard }: Props) {
     error,
     notice,
     jackpot,
+    jackpotKind,
     treasure,
     working,
     autoRun,
@@ -329,6 +338,7 @@ export function MineBoard({ dashboard }: Props) {
         digging: index,
         cells: starting ? {} : s.cells,
         result: null,
+        jackpotKind: starting ? "none" : s.jackpotKind,
       }));
       const res = await run(
         "pick",
@@ -348,8 +358,8 @@ export function MineBoard({ dashboard }: Props) {
           ? { kind: "diamond" }
           : { kind: "token", token: tokenForPick(picks) };
       setBoard((s) => ({ cells: { ...s.cells, [index]: cell } }));
-      // A jackpot is revealed slot by slot: keep the old balance on screen until it closes.
-      if (stage >= 3 && res.diamond.won > 0n) {
+      // A jackpot (full or mini) is revealed slot by slot: keep the old balance on screen until it closes.
+      if (stage >= 2 && res.diamond.won > 0n) {
         setBoard({
           hold: true,
           heldBalance: { credit: res.credit, pool: res.pool },
@@ -375,6 +385,8 @@ export function MineBoard({ dashboard }: Props) {
             held: (res.excavation?.held ?? 0n) > 0n,
           },
         });
+        noteJackpot(stage, res.diamond.won);
+        // The diamond rain is only for the full jackpot.
         if (stage >= 3 && res.diamond.won > 0n) {
           setBoard((s) => ({ rain: s.rain + 1 }));
         }
@@ -445,6 +457,7 @@ export function MineBoard({ dashboard }: Props) {
       error: null,
       notice: null,
       result: null,
+      jackpotKind: "none",
       cells: {},
       hold: true,
       inPlay: stakeAmount,
@@ -494,6 +507,7 @@ export function MineBoard({ dashboard }: Props) {
             setBoard({
               jackpot: { stage, won: step.diamond.won, held: false },
             });
+            noteJackpot(stage, step.diamond.won);
             if (stage >= 3 && step.diamond.won > 0n) {
               setBoard((s) => ({ rain: s.rain + 1 }));
             }
@@ -688,7 +702,11 @@ export function MineBoard({ dashboard }: Props) {
                 </motion.div>
               </motion.div>
               {result && !exc && !treasure && !jackpot && (
-                <ResultCard result={result} onNew={newGame} />
+                <ResultCard
+                  result={result}
+                  mini={jackpotKind === "mini"}
+                  onNew={newGame}
+                />
               )}
               {message && (
                 <BoardMessage
@@ -707,6 +725,7 @@ export function MineBoard({ dashboard }: Props) {
               />
               <JackpotCard
                 pool={dashboard?.pool}
+                miniBps={config ? Number(config.miniBps) : undefined}
                 className="order-3 col-span-2 md:order-none md:flex-1"
               />
               {/* Stake and auto dig share one card. No stake options while the fund is under
