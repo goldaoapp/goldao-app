@@ -293,3 +293,34 @@
     opacity: 1;
   }
 }
+
+/* Subtle glint sweeping across the jackpot diamonds (masked to the diamond shape in JackpotCard) */
+.diamond-shine {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    112deg,
+    transparent 38%,
+    rgba(255, 255, 255, 0.6) 50%,
+    transparent 62%
+  );
+  background-size: 300% 100%;
+  background-position: 130% 0;
+  animation: diamondShine 5s ease-in-out infinite;
+}
+@keyframes diamondShine {
+  0%,
+  60% {
+    background-position: 130% 0;
+  }
+  100% {
+    background-position: -30% 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .diamond-shine {
+    animation: none;
+    opacity: 0;
+  }
+}
