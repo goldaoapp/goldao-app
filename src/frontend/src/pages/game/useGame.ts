@@ -1,9 +1,4 @@
-import type {
-  Dashboard,
-  ExcavationView,
-  GameSummary,
-  RankingSort,
-} from "@/backend";
+import type { Dashboard, ExcavationView, RankingSort } from "@/backend";
 import { useAuth } from "@/context/AuthContext";
 import {
   keepPreviousData,
@@ -12,7 +7,6 @@ import {
 } from "@tanstack/react-query";
 import { useCallback, useState } from "react";
 import { getBoard } from "./board-store";
-import { rebasePool } from "./jackpot-watch";
 
 const KEY = "game";
 
@@ -240,18 +234,10 @@ export function useGameAction() {
 
   const setCredit = useCallback(
     async (credit: bigint, pool: bigint) => {
-      await Promise.all([
-        queryClient.cancelQueries({ queryKey: [KEY, "dashboard"] }),
-        queryClient.cancelQueries({ queryKey: [KEY, "summary"] }),
-      ]);
-      // The player already saw this pool in their own result: no jackpot notice for it.
-      rebasePool(pool);
+      await queryClient.cancelQueries({ queryKey: [KEY, "dashboard"] });
       queryClient.setQueriesData<Dashboard>(
         { queryKey: [KEY, "dashboard"] },
         (old) => (old ? { ...old, credit, pool } : old),
-      );
-      queryClient.setQueryData<GameSummary>([KEY, "summary"], (old) =>
-        old ? { ...old, pool } : old,
       );
     },
     [queryClient],
