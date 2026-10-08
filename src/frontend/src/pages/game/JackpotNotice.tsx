@@ -1,35 +1,32 @@
-import type { Dashboard } from "@/backend";
+import type { GameSummary } from "@/backend";
 import { cn } from "@/lib/utils";
 import { Gem, X } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useState } from "react";
 import { ShinyDiamond } from "./Diamonds";
-import { getBoard } from "./board-store";
 import { DIAMOND_IMG, DIAMOND_TEXT, eyebrow, inkFaint } from "./game-utils";
 import { observePool } from "./jackpot-watch";
 
 const SHOWN_MS = 7_000;
 
 /**
- * Floating notice for the Mine page: someone else won a jackpot. No amounts and no names, it
- * only lets the player know. Driven by the pool of the dashboard, the same value the Diamond jackpot card shows
+ * Floating notice, shown on every tab of the game page when a jackpot was paid to anyone,
+ * the viewer included. No amounts and no names. Driven by the pool of the public summary
  * (see jackpot-watch).
  */
 export function JackpotNotice({
-  dashboard,
+  summary,
   readAt,
-}: { dashboard: Dashboard | undefined; readAt: number }) {
+}: { summary: GameSummary | undefined; readAt: number }) {
   const [shown, setShown] = useState(0);
-  const pool = dashboard?.pool;
-  const tournament = dashboard?.tournament;
+  const pool = summary?.pool;
+  const tournament = summary?.tournament;
 
   // One reading per answer from the server (readAt changes even when the pool does not).
   useEffect(() => {
     if (pool === undefined || tournament === undefined) return;
-    const fell = observePool({ tournament, pool, at: readAt });
-    // While the player's own pick or auto run is in flight a fall can be their own win.
-    const own = getBoard().working || getBoard().hold;
-    if (fell && !own) setShown((n) => n + 1);
+    // Also shown to the winner: it proves the notice appears whenever a jackpot is paid.
+    if (observePool({ tournament, pool, at: readAt })) setShown((n) => n + 1);
   }, [readAt, pool, tournament]);
 
   useEffect(() => {
