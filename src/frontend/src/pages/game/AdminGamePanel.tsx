@@ -2,7 +2,11 @@ import { type AdminView, type Payout, WithdrawKind } from "@/backend";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/context/AuthContext";
 import { loadEnv } from "@/hooks/useBackendActor";
-import { GOLDAO_FEE_E8S, approveSpender } from "@/lib/goldao-ledger";
+import {
+  GOLDAO_FEE_E8S,
+  approveSpender,
+  fetchWalletBalance,
+} from "@/lib/goldao-ledger";
 import { useInternetIdentity } from "@/lib/internet-identity";
 import { cn } from "@/lib/utils";
 import { Principal } from "@icp-sdk/core/principal";
@@ -29,6 +33,7 @@ import {
   panelHeader,
   shortPrincipal,
 } from "./game-utils";
+import { TEST_TOKEN_LABEL, isTestLedger } from "./ledger-mode";
 import {
   errorMessage,
   useGameAction,
@@ -89,6 +94,14 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
   const working = !!pending || busy;
   const connected = !!view?.realLedger;
   const bankText = view?.bankAccount?.toText();
+  // Display only: the admin wallet balance read straight from the ledger. The backend does its own reads.
+  const walletAddr = bankText ?? principalId ?? "";
+  const { data: ledgerBalance } = useQuery({
+    queryKey: ["game", "admin-wallet", walletAddr, config?.ledgerId],
+    queryFn: () => fetchWalletBalance(walletAddr, config?.ledgerId),
+    enabled: !!walletAddr && !!config?.ledgerId,
+    refetchInterval: 15_000,
+  });
   const selfText = view?.selfId?.toText();
   // The game account comes from the deployment itself (env.json), not from a query to the
   // canister. The view is only used to check that both agree.
@@ -474,6 +487,15 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
           </span>
         </div>
         <div className="flex flex-col gap-5 p-5">
+          <div className="flex items-baseline gap-2">
+            <span className={cn("font-mono text-[11px]", inkFaint)}>
+              Wallet balance on the ledger
+            </span>
+            <span className={cn("font-mono text-sm", ink)}>
+              {ledgerBalance === undefined ? "-" : fmtGoldao(ledgerBalance)}{" "}
+              {isTestLedger(config) ? TEST_TOKEN_LABEL : "GOLDAO"}
+            </span>
+          </div>
           <CopyField
             label={
               connected
