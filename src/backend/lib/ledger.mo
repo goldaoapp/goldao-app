@@ -12,9 +12,12 @@ module {
   public let GOLDAO_LEDGER_PRODUCTION : Text = "tyyy3-4aaaa-aaaaq-aab7a-cai";
   public let GOLDAO_LEDGER_TEST : Text = "q4yq5-miaaa-aaaaj-qsjca-cai";
 
-  public let GOLDAO_LEDGER : Text = switch (MODE) {
-    case (#test) GOLDAO_LEDGER_TEST;
-    case (#production) GOLDAO_LEDGER_PRODUCTION;
+  // A function, not a constant: a switch is not allowed at module level.
+  public func ledgerId() : Text {
+    switch (MODE) {
+      case (#test) GOLDAO_LEDGER_TEST;
+      case (#production) GOLDAO_LEDGER_PRODUCTION;
+    };
   };
 
   public type Account = { owner : Principal; subaccount : ?Blob };
@@ -52,7 +55,7 @@ module {
     icrc2_transfer_from : shared TransferFromArgs -> async { #Ok : Nat; #Err : TransferFromError };
   };
 
-  public func ledger() : Ledger { actor (GOLDAO_LEDGER) : Ledger };
+  public func ledger() : Ledger { actor (ledgerId()) : Ledger };
 
   public func account(p : Principal) : Account { { owner = p; subaccount = null } };
 };
