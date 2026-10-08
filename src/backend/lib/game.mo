@@ -32,9 +32,16 @@ module {
   public let FUND_FLOOR : Nat = 9_000_000_000_000;
   public let FUND_TARGET : Nat = 22_000_000_000_000;
   public let DIAMOND1_BPS : Nat = 200;
-  public let DIAMOND2_BPS : Nat = 2_000;
-  public let DIAMOND3_PER_GOLDAO : Nat = 15_625;
-  public let DIAMOND3_BASE : Nat = 100_000_000;
+  // Diamond chain, rolled on every safe pick. One diamond pays nothing, two diamonds pay the mini
+  // jackpot (MINI_BPS of the pool) and three diamonds pay the whole pool.
+  // The second diamond hits with DIAMOND2_PER_GOLDAO / DIAMOND2_BASE per whole GOLDAO staked and the
+  // third with 1 in DIAMOND3_ODDS, so the full jackpot keeps its odds of 6.25e-7 per GOLDAO staked:
+  // 0.02 * (18_750 / 100_000_000) / 6 = 0.02 * 0.2 * (15_625 / 100_000_000).
+  // Exactly two diamonds are DIAMOND3_ODDS - 1 times more frequent than three.
+  public let DIAMOND2_PER_GOLDAO : Nat = 18_750;
+  public let DIAMOND2_BASE : Nat = 100_000_000;
+  public let DIAMOND3_ODDS : Nat = 6;
+  public let MINI_BPS : Nat = 2_000;
   public let DEFAULT_DURATION_DAYS : Nat = 7;
   public let MAX_DURATION_DAYS : Nat = 60;
   public let JACKPOT_LOG : Nat = 50;
@@ -188,9 +195,14 @@ module {
   };
 
   public func diamond1Hit(r : Nat) : Bool { r % 10_000 < DIAMOND1_BPS };
-  public func diamond2Hit(r : Nat) : Bool { r % 10_000 < DIAMOND2_BPS };
-  public func diamond3Hit(r : Nat, stake : Nat) : Bool {
-    r % DIAMOND3_BASE < stake / E8S * DIAMOND3_PER_GOLDAO;
+  public func diamond2Hit(r : Nat, stake : Nat) : Bool {
+    r % DIAMOND2_BASE < stake / E8S * DIAMOND2_PER_GOLDAO;
+  };
+  public func diamond3Hit(r : Nat) : Bool { r % DIAMOND3_ODDS == 0 };
+
+  // The mini jackpot is rounded down to whole cents (0.01 GOLDAO), like the Top-10 prizes.
+  public func miniPrize(pool : Nat) : Nat {
+    pool * MINI_BPS / 10_000 / CENT * CENT;
   };
 
   public class Prng(seed : Nat64) {
