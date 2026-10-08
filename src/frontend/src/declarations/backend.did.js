@@ -240,6 +240,18 @@ export const ExcavationView = IDL.Record({
   'picks' : IDL.Nat,
   'safePctX100' : IDL.Nat,
 });
+export const PastStats = IDL.Record({
+  'staked' : IDL.Nat,
+  'jackpotWon' : IDL.Nat,
+  'excavations' : IDL.Nat,
+  'returned' : IDL.Nat,
+});
+export const PlayerTournamentResult = IDL.Record({
+  'tournament' : IDL.Nat,
+  'credit' : IDL.Nat,
+  'stats' : PastStats,
+  'payout' : IDL.Nat,
+});
 export const TournamentStats = IDL.Record({
   'staked' : IDL.Nat,
   'minis' : IDL.Nat,
@@ -248,16 +260,8 @@ export const TournamentStats = IDL.Record({
   'excavations' : IDL.Nat,
   'collapses' : IDL.Nat,
   'miniWon' : IDL.Nat,
-  'bestPoints' : IDL.Nat,
-  'charged' : IDL.Nat,
   'returned' : IDL.Nat,
   'jackpots' : IDL.Nat,
-});
-export const PlayerTournamentResult = IDL.Record({
-  'tournament' : IDL.Nat,
-  'credit' : IDL.Nat,
-  'stats' : TournamentStats,
-  'payout' : IDL.Nat,
 });
 export const Dashboard = IDL.Record({
   'top10Pool' : IDL.Nat,
@@ -648,6 +652,18 @@ export const idlFactory = ({ IDL }) => {
     'picks' : IDL.Nat,
     'safePctX100' : IDL.Nat,
   });
+  const PastStats = IDL.Record({
+    'staked' : IDL.Nat,
+    'jackpotWon' : IDL.Nat,
+    'excavations' : IDL.Nat,
+    'returned' : IDL.Nat,
+  });
+  const PlayerTournamentResult = IDL.Record({
+    'tournament' : IDL.Nat,
+    'credit' : IDL.Nat,
+    'stats' : PastStats,
+    'payout' : IDL.Nat,
+  });
   const TournamentStats = IDL.Record({
     'staked' : IDL.Nat,
     'minis' : IDL.Nat,
@@ -656,16 +672,8 @@ export const idlFactory = ({ IDL }) => {
     'excavations' : IDL.Nat,
     'collapses' : IDL.Nat,
     'miniWon' : IDL.Nat,
-    'bestPoints' : IDL.Nat,
-    'charged' : IDL.Nat,
     'returned' : IDL.Nat,
     'jackpots' : IDL.Nat,
-  });
-  const PlayerTournamentResult = IDL.Record({
-    'tournament' : IDL.Nat,
-    'credit' : IDL.Nat,
-    'stats' : TournamentStats,
-    'payout' : IDL.Nat,
   });
   const Dashboard = IDL.Record({
     'top10Pool' : IDL.Nat,
