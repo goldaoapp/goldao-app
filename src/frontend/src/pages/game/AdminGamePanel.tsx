@@ -29,7 +29,7 @@ import {
   panelHeader,
   shortPrincipal,
 } from "./game-utils";
-import { TEST_TOKEN_LABEL, targetsTestLedger } from "./ledger-mode";
+import { TEST_TOKEN_LABEL, isTestLedger } from "./ledger-mode";
 import {
   errorMessage,
   useGameAction,
@@ -47,7 +47,6 @@ const HALT_TEXT: Record<number, string> = {
 
 const E8S = 100_000_000n;
 // Fixed choices only: no free-text numbers, so a typo cannot reach the canister.
-const TEST_DEPOSITS = [10_000, 30_000, 100_000, 200_000];
 const DURATIONS = [1, 3, 7, 14, 30];
 // Fallback pool range while the config loads. The backend's own range (gameConfig) wins.
 const POOL_SEED_MIN_FALLBACK = 5_000;
@@ -83,16 +82,15 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
   const minPayout = config ? fmtGoldao(config.minPayoutE8s) : "-";
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [ask, setAsk] = useState<Ask | null>(null);
-  const [deposit, setDeposit] = useState(String(TEST_DEPOSITS[1]));
   const [days, setDays] = useState("");
   const [seed, setSeed] = useState(String(POOL_SEED_MIN_FALLBACK));
   const [who, setWho] = useState("");
   const [busy, setBusy] = useState(false);
 
   const working = !!pending || busy;
-  const real = !!view?.realLedger;
+  const connected = !!view?.realLedger;
   // The backend MODE points at the GOLDAO TEST ledger: the "Enable" button below must say so.
-  const toTest = targetsTestLedger(config);
+  const toTest = isTestLedger(config);
   const bankText = view?.bankAccount?.toText();
   const selfText = view?.selfId?.toText();
   // The game account comes from the deployment itself (env.json), not from a query to the
@@ -142,7 +140,7 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
     windowMs: number,
     reuseMin?: bigint,
   ) => {
-    if (!real) return;
+    if (!connected) return;
     if (!identity || !bankText || !envId) {
       throw new Error("Sign in with the admin wallet first.");
     }
@@ -172,7 +170,7 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
   // Asks the backend (a free query) whether it would refuse the action, before the wallet signs
   // an authorization: that signature costs a network fee even when the action is then refused.
   const preflight = async (check: () => Promise<Res<unknown>>) => {
-    if (!real || !actor) return;
+    if (!connected || !actor) return;
     const r = await check();
     if (r.__kind__ === "err") throw new Error(r.err);
   };
@@ -181,7 +179,7 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
   // amount is not worth another network fee: it expires within minutes.
   const revokeLeftover = async () => {
     if (
-      !real ||
+      !connected ||
       !actor ||
       !identity ||
       !bankText ||
@@ -370,7 +368,7 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
         <Kpi
           label="Admin wallet"
           value={view ? fmtGoldao(view.bank) : <Spinner />}
-          sub={real ? "GOLDAO (ledger)" : "GOLDAO (test)"}
+          sub="GOLDAO (ledger)"
         />
         <Kpi
           label="Owed to players"
@@ -481,48 +479,12 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
         <div className="flex flex-col gap-5 p-5">
           <CopyField
             label={
-              real
+              connected
                 ? "Admin wallet address: send GOLDAO here to fund the game"
-                : "Admin wallet address: it becomes the bank when you enable the real ledger"
+                : "Admin wallet address: it becomes the bank when you connect the ledger"
             }
             value={bankText ?? principalId ?? ""}
           />
-          {view && !real && (
-            <Row title="Test bank" hint="Adds the preset to the test balance.">
-              <select
-                value={deposit}
-                onChange={(e) => setDeposit(e.target.value)}
-                disabled={working}
-                className={selectCls}
-              >
-                {TEST_DEPOSITS.map((d) => (
-                  <option key={d} value={d}>
-                    {d.toLocaleString("en-US")} GOLDAO
-                  </option>
-                ))}
-              </select>
-              <Button
-                variant="outline"
-                disabled={working}
-                onClick={() =>
-                  confirmThen({
-                    title: `Add ${Number(deposit).toLocaleString("en-US")} GOLDAO to the test bank?`,
-                    detail:
-                      "Test mode only. The amount is added to the current test balance.",
-                    go: () =>
-                      act(
-                        "deposit",
-                        () => actor!.gameAdminTestDeposit(BigInt(deposit)),
-                        (v) => `Bank is now ${fmtGoldao(v)}.`,
-                      ),
-                  })
-                }
-              >
-                Add to test bank
-              </Button>
-            </Row>
-          )}
-
           <Row
             title="Jackpot pool"
             hint={
@@ -566,7 +528,7 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
 
           <Row
             title="Withdraw earnings"
-            hint={`Takes ${fmtGoldao(availableOut)} GOLDAO (cycles first, then the surplus over the fund target) to the fixed treasury address. Network fee: ${fmtGoldao(GOLDAO_FEE_E8S)}.${real ? " The wallet authorization is set for that amount only and expires in 2 minutes." : ""}`}
+            hint={`Takes ${fmtGoldao(availableOut)} GOLDAO (cycles first, then the surplus over the fund target) to the fixed treasury address. Network fee: ${fmtGoldao(GOLDAO_FEE_E8S)}.${connected ? " The wallet authorization is set for that amount only and expires in 2 minutes." : ""}`}
           >
             <Button
               variant="outline"
@@ -643,7 +605,7 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
             </Button>
           </Row>
 
-          {real && (
+          {connected && (
             <Row
               title="Refresh bank"
               hint="Reads the wallet balance from the ledger."
@@ -772,7 +734,7 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
             hint={
               unpaid.length === 0
                 ? "Nothing to pay."
-                : `${fmtGoldao(unpaidTotal)} GOLDAO pending including fees, smallest first, in batches of 20 until done. A payout that does not fit the funds or the authorization waits for the next run.${real ? " The wallet authorization is set automatically for exactly that amount and expires in 10 minutes." : ""}`
+                : `${fmtGoldao(unpaidTotal)} GOLDAO pending including fees, smallest first, in batches of 20 until done. A payout that does not fit the funds or the authorization waits for the next run.${connected ? " The wallet authorization is set automatically for exactly that amount and expires in 10 minutes." : ""}`
             }
           >
             <Button
@@ -789,7 +751,7 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
             >
               Pay pending ({unpaid.length})
             </Button>
-            {real && (
+            {connected && (
               <Button
                 variant="outline"
                 disabled={working}
@@ -879,7 +841,7 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
             </div>
           )}
 
-          {view && real && (
+          {view && connected && (
             <Row
               title="Change ledger"
               hint={`The game uses ${config?.ledgerId ?? "-"}. After changing the ledger code, pause the game, close the tournament, pay everything and withdraw everything. This re-reads the bank, checks the fee and erases all game data.`}
@@ -911,13 +873,13 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
             </Row>
           )}
 
-          {view && !real && (
+          {view && !connected && (
             <Row
-              title={toTest ? `${TEST_TOKEN_LABEL} ledger` : "Real ledger"}
+              title="Connect ledger"
               hint={
                 toTest
-                  ? `Switches from simulated balances to the ${TEST_TOKEN_LABEL} ledger (no value). Needs no pending payouts and erases the simulated game data.`
-                  : "Switches from test to real GOLDAO. Needs no pending payouts. Irreversible."
+                  ? `Connects the game to the ${TEST_TOKEN_LABEL} ledger (no value). The admin wallet becomes the bank.`
+                  : "Connects the game to the real GOLDAO ledger. The admin wallet becomes the bank."
               }
             >
               <span className="font-mono text-xs">
@@ -929,8 +891,8 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
                 onClick={() =>
                   confirmThen({
                     title: toTest
-                      ? `Enable the ${TEST_TOKEN_LABEL} ledger?`
-                      : "Enable the real ledger?",
+                      ? `Connect the ${TEST_TOKEN_LABEL} ledger?`
+                      : "Connect the real ledger?",
                     detail: toTest
                       ? `From now on the admin wallet holds ${TEST_TOKEN_LABEL} (no value).`
                       : "From now on the admin wallet holds real GOLDAO.",
@@ -941,12 +903,12 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
                         () =>
                           actor!.gameAdminSetRealLedger(parsePrincipal(envId)!),
                         (v) =>
-                          `${toTest ? TEST_TOKEN_LABEL : "Real"} ledger enabled. Bank is ${fmtGoldao(v)}.`,
+                          `${toTest ? TEST_TOKEN_LABEL : "Real"} ledger connected. Bank is ${fmtGoldao(v)}.`,
                       ),
                   })
                 }
               >
-                Enable
+                Connect
               </Button>
             </Row>
           )}
