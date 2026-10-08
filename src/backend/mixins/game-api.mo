@@ -143,7 +143,7 @@ mixin (
   };
 
   func gEmptyStats() : Types.TournamentStats {
-    { excavations = 0; staked = 0; returned = 0; jackpotWon = 0; jackpots = 0; minis = 0; miniWon = 0; charged = 0; collapses = 0; bestPoints = 0; deepest = 0 };
+    { excavations = 0; staked = 0; returned = 0; jackpotWon = 0; jackpots = 0; minis = 0; miniWon = 0; collapses = 0; deepest = 0 };
   };
 
   func gStats(p : Principal) : Types.TournamentStats {
@@ -645,9 +645,7 @@ mixin (
         jackpots = s.jackpots;
         minis = s.minis;
         miniWon = s.miniWon;
-        charged = s.charged;
         collapses = s.collapses + (if (kind == #collapsed) 1 else 0);
-        bestPoints = if (kind == #collapsed) s.bestPoints else Nat.max(s.bestPoints, points);
         deepest = Nat.max(s.deepest, e.picks);
       },
     );
@@ -741,7 +739,8 @@ mixin (
       minis += s.minis;
       miniPaid += s.miniWon;
       let credit = gCredit(p);
-      let result : Types.PlayerTournamentResult = { tournament = t; stats = s; credit; payout = if (pays(credit)) credit - Game.FEE else 0 };
+      let past : Types.PastStats = { excavations = s.excavations; staked = s.staked; returned = s.returned; jackpotWon = s.jackpotWon };
+      let result : Types.PlayerTournamentResult = { tournament = t; stats = past; credit; payout = if (pays(credit)) credit - Game.FEE else 0 };
       let l = switch (gameState.history.get(p)) {
         case (?l) l;
         case null {
