@@ -386,8 +386,8 @@ export function MineBoard({ dashboard }: Props) {
           },
         });
         noteJackpot(stage, res.diamond.won);
-        // The diamond rain is only for the full jackpot.
-        if (stage >= 3 && res.diamond.won > 0n) {
+        // The full and the mini jackpot have the same celebration.
+        if (stage >= 2 && res.diamond.won > 0n) {
           setBoard((s) => ({ rain: s.rain + 1 }));
         }
       }
@@ -508,7 +508,7 @@ export function MineBoard({ dashboard }: Props) {
               jackpot: { stage, won: step.diamond.won, held: false },
             });
             noteJackpot(stage, step.diamond.won);
-            if (stage >= 3 && step.diamond.won > 0n) {
+            if (stage >= 2 && step.diamond.won > 0n) {
               setBoard((s) => ({ rain: s.rain + 1 }));
             }
           });
