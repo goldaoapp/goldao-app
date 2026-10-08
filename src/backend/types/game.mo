@@ -41,10 +41,16 @@ module {
     // Internal counters: how many of `jackpots` and how much of `jackpotWon` were mini jackpots.
     minis : Nat;
     miniWon : Nat;
-    charged : Nat;
     collapses : Nat;
-    bestPoints : Nat;
     deepest : Nat;
+  };
+
+  // What a player keeps of a closed tournament: only what "Past tournaments" shows.
+  public type PastStats = {
+    excavations : Nat;
+    staked : Nat;
+    returned : Nat;
+    jackpotWon : Nat;
   };
 
   // txId is the ledger block index of the payment (null while pending, and in test mode).
@@ -75,7 +81,7 @@ module {
 
   public type PlayerTournamentResult = {
     tournament : Nat;
-    stats : TournamentStats;
+    stats : PastStats;
     credit : Nat;
     payout : Nat;
   };
