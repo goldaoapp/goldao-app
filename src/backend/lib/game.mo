@@ -45,6 +45,10 @@ module {
   public let DEFAULT_DURATION_DAYS : Nat = 7;
   public let MAX_DURATION_DAYS : Nat = 60;
   public let JACKPOT_LOG : Nat = 50;
+  // Players per page of the ranking. Fixed here: the caller picks a page, never its size.
+  public let RANKING_PAGE : Nat = 50;
+  // Most recent jackpots sent along with the ranking (the log itself keeps JACKPOT_LOG).
+  public let JACKPOT_SHOWN : Nat = 10;
   public let DAY_NS : Int = 86_400_000_000_000;
   public let BUSY_STALE_NS : Int = 600_000_000_000;
   public let STAMP_MAX_AGE_NS : Nat64 = 72_000_000_000_000;
@@ -149,6 +153,21 @@ module {
   public func top10Prize(bucket : Nat, rank : Nat, volume : Nat) : Nat {
     if (rank == 0 or rank > TOP10_WEIGHTS.size() or volume < TOP10_MIN_VOLUME) return 0;
     bucket * TOP10_WEIGHTS[rank - 1] / 100 / CENT * CENT;
+  };
+
+  // Net result of a player in a tournament: what came back (prizes and jackpots) minus what was staked.
+  public func net(returned : Nat, jackpotWon : Nat, staked : Nat) : Int {
+    (returned + jackpotWon).toInt() - staked.toInt();
+  };
+
+  // Page `page` (zero-based) of `total` rows, `size` per page. A page past the end is clamped to the
+  // last one, so the call never traps and never returns an empty page for a non-empty list.
+  // Returns (page used, first index, index after the last).
+  public func pageBounds(total : Nat, page : Nat, size : Nat) : (Nat, Nat, Nat) {
+    if (total == 0 or size == 0) return (0, 0, 0);
+    let used = Nat.min(page, (total - 1) / size);
+    let from = used * size;
+    (used, from, Nat.min(from + size, total));
   };
 
   public func canSave(picks : Nat) : Bool { picks > SAFE };
