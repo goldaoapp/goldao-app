@@ -1436,22 +1436,52 @@ mixin (
     #ok(());
   };
 
+  // Most that can be sent to the treasury as "earnings" right now (the network fee comes on top).
+  // The whole outflow (amount plus fee) is capped by the accrued cycles plus whatever the fund
+  // holds above Game.FUND_TARGET, and by the bank balance, so a withdrawal can never leave the
+  // fund under the target. The fee is paid out of the cycles first.
+  func gWithdrawMax() : Nat {
+    Game.sub(Nat.min(gWithdrawable(), gameState.bank), Game.FEE);
+  };
+
+  // The amount a withdrawal would send, or the reason it is refused. Used by the check and by
+  // the withdrawal itself, so both answer the same.
+  func gWithdrawAmount(kind : Types.WithdrawKind, requested : ?Nat) : Result.Result<Nat, Text> {
+    switch (gWithdrawBlocked(kind)) { case (?m) return #err(m); case null {} };
+    switch (kind) {
+      case (#all) {
+        let amount = Game.sub(gameState.bank, Game.FEE);
+        if (amount == 0) return #err("Nothing to withdraw.");
+        #ok(amount);
+      };
+      case (#available) {
+        let max = gWithdrawMax();
+        let amount = switch (requested) { case (?r) r; case null max };
+        if (amount == 0 or max == 0) return #err("Nothing to withdraw.");
+        if (amount > max) {
+          return #err("You can withdraw at most " # SecLog.fmt(max) # " GOLDAO: the fund must stay at or above " # SecLog.fmt(Game.FUND_TARGET) # ".");
+        };
+        #ok(amount);
+      };
+    };
+  };
+
   public shared query ({ caller }) func gameAdminCheckWithdraw(kind : Types.WithdrawKind) : async Result.Result<(), Text> {
     if (not gIsAdmin(caller)) return #err("Admin only.");
     if (gBusyNow()) return #err("A money movement is in progress.");
-    switch (gWithdrawBlocked(kind)) { case (?m) return #err(m); case null {} };
-    let spendable = Game.sub(gameState.bank, Game.FEE);
-    let amount = switch (kind) {
-      case (#all) spendable;
-      case (#available) Nat.min(gWithdrawable(), spendable);
-    };
-    if (amount == 0) return #err("Nothing to withdraw.");
-    #ok(());
+    switch (gWithdrawAmount(kind, null)) { case (#err m) #err(m); case (#ok _) #ok(()) };
+  };
+
+  public shared query ({ caller }) func gameAdminCheckWithdrawAmount(amount : Nat) : async Result.Result<(), Text> {
+    if (not gIsAdmin(caller)) return #err("Admin only.");
+    if (gBusyNow()) return #err("A money movement is in progress.");
+    switch (gWithdrawAmount(#available, ?amount)) { case (#err m) #err(m); case (#ok _) #ok(()) };
   };
 
   // Pays pending payouts, smallest first, at most `max` of them (and never more than PAY_BATCH).
   public shared ({ caller }) func gameAdminPay(max : Nat) : async Result.Result<{ paid : Nat; failed : Nat; remaining : Nat }, Text> {
     if (not gIsAdmin(caller)) return #err("Admin only.");
+    if (not gIsBank(caller)) return #err("Only the bank wallet can move funds.");
     switch (await gPayBegin()) { case (?m) return #err(m); case null {} };
     let pending = Array.sort(
       gameState.payouts.values().filter(func(po : Types.Payout) : Bool { not po.paid }).toArray(),
@@ -1501,6 +1531,7 @@ mixin (
   // admin has checked in the ledger: it was NOT sent, so it gets a new timestamp.
   public shared ({ caller }) func gameAdminPayOne(id : Nat, renew : Bool) : async Result.Result<?Nat, Text> {
     if (not gIsAdmin(caller)) return #err("Admin only.");
+    if (not gIsBank(caller)) return #err("Only the bank wallet can move funds.");
     let po = switch (gameState.payouts.get(id)) { case (?po) po; case null return #err("Payout not found.") };
     if (po.paid) return #err("Already paid.");
     switch (await gPayBegin()) { case (?m) return #err(m); case null {} };
@@ -1578,33 +1609,24 @@ mixin (
     };
   };
 
-  public shared ({ caller }) func gameAdminWithdraw(kind : Types.WithdrawKind) : async Result.Result<Nat, Text> {
-    if (not gIsAdmin(caller)) return #err("Admin only.");
+  func gWithdrawRun(kind : Types.WithdrawKind, requested : ?Nat) : async Result.Result<Nat, Text> {
     let now = Time.now();
     if (gameState.payingSince != 0 and now - gameState.payingSince < Game.BUSY_STALE_NS) {
       return #err("A money movement is in progress.");
     };
-    switch (gWithdrawBlocked(kind)) { case (?m) return #err(m); case null {} };
+    switch (gWithdrawAmount(kind, requested)) { case (#err m) return #err(m); case (#ok _) {} };
     gameState.payingSince := now;
     if (not (await lBankRefresh())) {
       gameState.payingSince := 0;
       return #err("The ledger is unavailable.");
     };
-    switch (gWithdrawBlocked(kind)) {
-      case (?m) {
+    // Everything is checked again on the fresh balance.
+    let amount = switch (gWithdrawAmount(kind, requested)) {
+      case (#err m) {
         gameState.payingSince := 0;
         return #err(m);
       };
-      case null {};
-    };
-    let spendable = Game.sub(gameState.bank, Game.FEE);
-    let amount = switch (kind) {
-      case (#all) spendable;
-      case (#available) Nat.min(gWithdrawable(), spendable);
-    };
-    if (amount == 0) {
-      gameState.payingSince := 0;
-      return #err("Nothing to withdraw.");
+      case (#ok a) a;
     };
     let res = await lWithdraw(amount);
     gameState.payingSince := 0;
@@ -1620,13 +1642,27 @@ mixin (
         gameState.top10 := 0;
       };
       case (#available) {
-        gameState.cycles := Game.sub(gameState.cycles, amount);
+        gameState.cycles := Game.sub(gameState.cycles, amount + Game.FEE);
       };
     };
     ignore await lBankRefresh();
     gFundReset();
-    gLogAction("withdraw", "Admin withdrawal", "Withdrew " # SecLog.fmt(amount) # " GOLDAO to the treasury (" # (switch (kind) { case (#all) "everything"; case (#available) "available excess" }) # ")" # (switch (txId) { case (?t) ", ledger transaction " # Nat.toText(t); case null "" }) # ".");
+    gLogAction("withdraw", "Admin withdrawal", "Withdrew " # SecLog.fmt(amount) # " GOLDAO to the treasury (" # (switch (kind) { case (#all) "everything"; case (#available) "earnings" }) # ")" # (switch (txId) { case (?t) ", ledger transaction " # Nat.toText(t); case null "" }) # ".");
     #ok(amount);
+  };
+
+  // Everything that may be withdrawn as earnings (cycles plus the surplus over the fund target).
+  public shared ({ caller }) func gameAdminWithdraw(kind : Types.WithdrawKind) : async Result.Result<Nat, Text> {
+    if (not gIsAdmin(caller)) return #err("Admin only.");
+    if (not gIsBank(caller)) return #err("Only the bank wallet can move funds.");
+    await gWithdrawRun(kind, null);
+  };
+
+  // Earnings, an amount of the admin's choice (e8s, the fee comes on top).
+  public shared ({ caller }) func gameAdminWithdrawAmount(amount : Nat) : async Result.Result<Nat, Text> {
+    if (not gIsAdmin(caller)) return #err("Admin only.");
+    if (not gIsBank(caller)) return #err("Only the bank wallet can move funds.");
+    await gWithdrawRun(#available, ?amount);
   };
 
   public shared ({ caller }) func gameAdminRefreshBank() : async Result.Result<Nat, Text> {
