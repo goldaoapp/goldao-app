@@ -64,19 +64,19 @@ export function ModeStatusCard({
 
   const pill = !config
     ? null
-    : test
+    : !real
       ? {
-          text: TEST_TOKEN_LABEL,
-          cls: "border-[color:var(--term-gold)] text-[color:var(--term-gold)]",
+          text: "NOT CONNECTED",
+          cls: "border-[color:var(--term-border)] text-[color:var(--term-ink-faint)]",
         }
-      : real
+      : test
         ? {
-            text: "PRODUCTION",
-            cls: "border-[color:var(--term-green)] text-[color:var(--term-green)]",
+            text: TEST_TOKEN_LABEL,
+            cls: "border-[color:var(--term-gold)] text-[color:var(--term-gold)]",
           }
         : {
-            text: "SIMULATED",
-            cls: "border-[color:var(--term-border)] text-[color:var(--term-ink-faint)]",
+            text: "PRODUCTION",
+            cls: "border-[color:var(--term-green)] text-[color:var(--term-green)]",
           };
 
   return (
@@ -102,11 +102,11 @@ export function ModeStatusCard({
         <span className={cn("text-xs", inkMid)}>
           {!config
             ? "Loading"
-            : test
-              ? `The game runs on the ${TEST_TOKEN_LABEL} ledger. These tokens have no value and the test faucet is available.`
-              : real
-                ? "The game runs on the real GOLDAO ledger. The test faucet is not available."
-                : "The game runs without a ledger (simulated balances)."}
+            : !real
+              ? `The game is not connected to a ledger yet. Use "Connect ledger" below to start it on ${test ? TEST_TOKEN_LABEL : "the real GOLDAO"}.`
+              : test
+                ? `The game runs on the ${TEST_TOKEN_LABEL} ledger. These tokens have no value and the test faucet is available.`
+                : "The game runs on the real GOLDAO ledger. The test faucet is not available."}
         </span>
 
         {config && (
