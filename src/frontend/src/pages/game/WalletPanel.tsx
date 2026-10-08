@@ -64,16 +64,17 @@ export function WalletPanel({ dashboard, config }: Props) {
     (a) => !config || (a >= loadMin && a <= maxLoad),
   );
   const showMax = !!config && canLoad && !presets.includes(maxLoad);
+  const tokenName = testLedger ? TEST_TOKEN_LABEL : "GOLDAO";
   const loadBlock = !dashboard
     ? "Loading"
     : dashboard.paused
       ? "Bets are paused."
       : !canLoad
-        ? `Accumulated prize is full (limit ${fmtGoldao(config?.creditCapE8s ?? 0n)} GOLDAO). You can load again after you use some of it.`
+        ? `Accumulated prize is full (limit ${fmtGoldao(config?.creditCapE8s ?? 0n)} ${tokenName}). You can load again after you use some of it.`
         : amount < loadMin || amount > maxLoad
-          ? `Choose between ${loadMin.toLocaleString("en-US")} and ${maxLoad.toLocaleString("en-US")} GOLDAO.`
+          ? `Choose between ${loadMin.toLocaleString("en-US")} and ${maxLoad.toLocaleString("en-US")} ${tokenName}.`
           : balance < need
-            ? "Not enough GOLDAO in your wallet."
+            ? `Not enough ${tokenName} in your wallet.`
             : null;
 
   // If the chosen amount no longer fits (the Accumulated prize grew), move it to the biggest one that does.
@@ -103,7 +104,7 @@ export function WalletPanel({ dashboard, config }: Props) {
       );
       setMsg({
         ok: true,
-        text: `Accumulated prize is now ${fmtGoldao(total)} GOLDAO.`,
+        text: `Accumulated prize is now ${fmtGoldao(total)} ${tokenName}.`,
       });
     } catch (e) {
       setMsg({ ok: false, text: errorMessage(e) });
@@ -129,7 +130,7 @@ export function WalletPanel({ dashboard, config }: Props) {
         >
           {dashboard ? fmtGoldao(balance) : <Spinner />}
           <span className={cn("ml-2 font-mono text-xs", gold)}>
-            {testLedger ? TEST_TOKEN_LABEL : "GOLDAO"}
+            {tokenName}
           </span>
         </motion.span>
         {other && (
@@ -175,7 +176,9 @@ export function WalletPanel({ dashboard, config }: Props) {
           )}
         >
           {dashboard ? fmtGoldao(dashboard.credit) : <Spinner />}
-          <span className={cn("ml-2 font-mono text-xs", gold)}>GOLDAO</span>
+          <span className={cn("ml-2 font-mono text-xs", gold)}>
+            {tokenName}
+          </span>
         </span>
         <div className="flex flex-wrap items-center gap-2">
           {presets.map((a) => (
