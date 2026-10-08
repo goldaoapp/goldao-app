@@ -18,10 +18,18 @@ import {
   panelHeader,
   prizeName,
 } from "./game-utils";
+import {
+  LIVE_RTP_MIN_POOL,
+  LONG_RUN_RTP_TEXT,
+  diamondChances,
+  liveRtpPct,
+} from "./rtp";
 
 interface Props {
   config: GameConfig | undefined;
   stakes: bigint[] | undefined;
+  /** Current jackpot pool (e8s), used for the live RTP. */
+  pool: bigint | undefined;
 }
 
 /** Chance (%) of reaching `picks` safe picks: the first two are free. */
@@ -31,7 +39,7 @@ function reachPct(picks: number, cells: number, mines: number, safe: number) {
   return p * 100;
 }
 
-export function PrizeGuide({ config, stakes }: Props) {
+export function PrizeGuide({ config, stakes, pool }: Props) {
   if (!config) {
     return (
       <div className={cn(panel, "flex justify-center p-8")}>
@@ -44,11 +52,10 @@ export function PrizeGuide({ config, stakes }: Props) {
   const safe = Number(config.safePicks);
   const pts = config.pointsTable.map(Number);
   const bps = Number(config.payoutBps);
-  const d1 = Number(config.diamond1Bps) / 10_000;
-  const d2 = Number(config.diamond2Bps) / 10_000;
-  const perGoldao = Number(config.diamond3PerGoldao) / Number(1e8);
-  const jackpotChance = (stake: bigint) =>
-    d1 * d2 * (Number(stake / 100_000_000n) * perGoldao);
+  const miniPct = Number(config.miniBps) / 100;
+  const showLiveRtp = pool !== undefined && pool > LIVE_RTP_MIN_POOL;
+  const oneIn = (chance: number) =>
+    Math.round(1 / chance).toLocaleString("en-US");
 
   const rows = pts
     .map((p, picks) => ({ picks, p }))
@@ -94,6 +101,32 @@ export function PrizeGuide({ config, stakes }: Props) {
             shares nobody qualifies for stay in the pool for the next
             tournament. Your place shows next to your Accumulated prize.
           </p>
+          <div className="mt-2 flex flex-col gap-2 border-t border-[color:var(--term-border-faint)] pt-4">
+            <span className={cn(eyebrow, gold)}>RTP</span>
+            <p>
+              <span className={cn("font-mono text-lg font-semibold", ink)}>
+                RTP: {LONG_RUN_RTP_TEXT}
+              </span>
+              <br />
+              Return to player: on average, about 98.5 GOLDAO come back for
+              every 100 GOLDAO staked, counting the jackpots. It is an average
+              over many excavations and jackpot pool sizes.
+            </p>
+            {showLiveRtp && pool !== undefined && (
+              <p>
+                <span className={cn("font-mono text-lg font-semibold", gold)}>
+                  Live RTP: {liveRtpPct(config, pool).toFixed(1)}%
+                </span>
+                <br />
+                The jackpot pool is above {fmtGoldao(LIVE_RTP_MIN_POOL)} GOLDAO
+                ({fmtGoldao(pool)} now), so the return of your next excavation
+                is above average. It counts the prizes, the Top 10 share and the
+                part of the pool that two or three diamonds pay, for a player
+                who saves between pick 3 and pick 10, and it changes as the pool
+                changes.
+              </p>
+            )}
+          </div>
         </div>
       </div>
 
@@ -190,9 +223,11 @@ export function PrizeGuide({ config, stakes }: Props) {
         </div>
         <div className={cn("flex flex-col gap-3 p-5 text-sm", inkMid)}>
           <p>
-            Any safe pick can reveal a diamond. Three diamonds in a row win the
-            whole jackpot. A jackpot found on the first two picks is confirmed
-            from the third pick on. The bigger the stake, the better the chance.
+            Every safe pick can reveal up to three diamonds. One diamond pays
+            nothing, two diamonds win the mini jackpot ({miniPct}% of the pool)
+            and three diamonds win the whole jackpot. A jackpot found on the
+            first two picks is confirmed from the third pick on. The bigger the
+            stake, the better the chance.
           </p>
           {stakes && stakes.length === 3 && (
             <div className="flex flex-wrap gap-3 font-mono text-xs">
@@ -201,10 +236,13 @@ export function PrizeGuide({ config, stakes }: Props) {
                   key={STAKE_LABELS[i]}
                   className="rounded-md border border-[color:var(--term-border)] px-3 py-1.5"
                 >
-                  {STAKE_LABELS[i]} {fmtGoldao(s)}:{" "}
+                  {STAKE_LABELS[i]} {fmtGoldao(s)}: mini{" "}
                   <span className={ink}>
-                    1 in{" "}
-                    {Math.round(1 / jackpotChance(s)).toLocaleString("en-US")}
+                    1 in {oneIn(diamondChances(config, s).mini)}
+                  </span>
+                  , full{" "}
+                  <span className={ink}>
+                    1 in {oneIn(diamondChances(config, s).full)}
                   </span>{" "}
                   per safe pick
                 </span>
