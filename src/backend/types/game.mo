@@ -232,7 +232,6 @@ module {
     top10Rank : Nat;
     top10Prize : Nat;
     top10Entry : Nat;
-    faucetRemaining : Nat;
     open : ?ExcavationView;
     stats : TournamentStats;
     bestReturn : Nat;
@@ -279,7 +278,6 @@ module {
     diamond1Bps : Nat;
     diamond2Bps : Nat;
     diamond3PerGoldao : Nat;
-    faucetCapE8s : Nat;
     loadMin : Nat;
     loadMax : Nat;
     creditCapE8s : Nat;
