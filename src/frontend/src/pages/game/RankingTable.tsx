@@ -1,8 +1,9 @@
-import type { Ranking, TournamentSummary } from "@/backend";
+import type { GameSummary, PlayerRow, TournamentSummary } from "@/backend";
+import { RankingSort } from "@/backend";
 import { useAuth } from "@/context/AuthContext";
 import { cn } from "@/lib/utils";
-import { Gem, ListOrdered } from "lucide-react";
-import { useMemo, useState } from "react";
+import { ChevronLeft, ChevronRight, Gem, ListOrdered } from "lucide-react";
+import { useState } from "react";
 import { Spinner } from "./Spinner";
 import {
   DIAMOND_TEXT,
@@ -14,58 +15,61 @@ import {
   gold,
   ink,
   inkFaint,
-  netOf,
   panel,
   panelHeader,
   shortPrincipal,
 } from "./game-utils";
+import { useRankingPage } from "./useGame";
 
-type SortKey = "volume" | "net" | "points" | "jackpot";
-
-const TOP = 20;
+const SORTS: ReadonlyArray<readonly [RankingSort, string]> = [
+  [RankingSort.volume, "Volume"],
+  [RankingSort.net, "Net"],
+  [RankingSort.bestPrize, "Best prize"],
+  [RankingSort.jackpot, "Jackpots"],
+];
 
 interface Props {
-  ranking: Ranking | undefined;
+  summary: GameSummary | undefined;
   tournaments: TournamentSummary[] | undefined;
 }
 
-export function RankingTable({ ranking, tournaments }: Props) {
+/**
+ * The ranking tab. It is mounted only while the tab is open, so the ranking is requested only
+ * when someone looks at it. The backend orders all the players and sends one page.
+ */
+export function RankingTable({ summary, tournaments }: Props) {
   const { principalId } = useAuth();
-  const [sort, setSort] = useState<SortKey>("volume");
-  const [showAll, setShowAll] = useState(false);
+  const [sort, setSort] = useState<RankingSort>(RankingSort.volume);
+  const [asked, setAsked] = useState(0);
+  const { data: ranking, isError, refetch } = useRankingPage(sort, asked);
 
-  const rows = useMemo(() => {
-    if (!ranking) return [];
-    const base = [...ranking.players];
-    const key = (p: (typeof base)[number]) =>
-      sort === "volume"
-        ? Number(p.staked)
-        : sort === "points"
-          ? Number(p.bestReturn)
-          : sort === "jackpot"
-            ? Number(p.jackpotWon)
-            : Number(netOf(p));
-    return base
-      .sort((a, b) => key(b) - key(a))
-      .map((p, i) => ({ ...p, pos: i + 1 }));
-  }, [ranking, sort]);
+  const rows: PlayerRow[] = ranking?.rows ?? [];
+  // The backend may clamp the page asked for; what it sent is what is shown.
+  const page = ranking ? Number(ranking.page) : asked;
+  const pageSize = ranking ? Number(ranking.pageSize) : 1;
+  const total = ranking ? Number(ranking.totalPlayers) : 0;
+  const pages = Math.max(1, Math.ceil(total / pageSize));
+  const mine = ranking?.mine;
+  // The player's own row is pinned under the page when it is on another page.
+  const pinned =
+    mine && !rows.some((r) => r.player.toText() === mine.player.toText())
+      ? mine
+      : undefined;
 
-  const visible = useMemo(() => {
-    if (showAll || rows.length <= TOP) return rows;
-    const top = rows.slice(0, TOP);
-    const mine = rows.find((r) => r.player.toText() === principalId);
-    return mine && !top.includes(mine) ? [...top, mine] : top;
-  }, [rows, showAll, principalId]);
+  const pick = (k: RankingSort) => {
+    setSort(k);
+    setAsked(0);
+  };
 
   return (
     <div className="flex flex-col gap-6">
-      {ranking && (
+      {summary && (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-          <Kpi label="Jackpot pool" value={fmtGoldao(ranking.pool)} diamond />
-          <Kpi label="Top 10 pool" value={fmtGoldao(ranking.top10Pool)} />
-          <Kpi label="Volume" value={fmtGoldao(ranking.staked)} />
-          <Kpi label="Players" value={String(Number(ranking.totalPlayers))} />
-          <Kpi label="Ends in" value={fmtCountdown(ranking.endsAt)} />
+          <Kpi label="Jackpot pool" value={fmtGoldao(summary.pool)} diamond />
+          <Kpi label="Top 10 pool" value={fmtGoldao(summary.top10Pool)} />
+          <Kpi label="Volume" value={fmtGoldao(summary.staked)} />
+          <Kpi label="Players" value={String(Number(summary.totalPlayers))} />
+          <Kpi label="Ends in" value={fmtCountdown(summary.endsAt)} />
         </div>
       )}
 
@@ -75,18 +79,11 @@ export function RankingTable({ ranking, tournaments }: Props) {
             <ListOrdered className="size-3.5" /> Ranking
           </span>
           <div className="inline-flex rounded-md border border-[color:var(--term-border)] p-0.5 font-mono text-[11px]">
-            {(
-              [
-                ["volume", "Volume"],
-                ["net", "Net"],
-                ["points", "Best prize"],
-                ["jackpot", "Jackpots"],
-              ] as const
-            ).map(([k, l]) => (
+            {SORTS.map(([k, l]) => (
               <button
                 key={k}
                 type="button"
-                onClick={() => setSort(k)}
+                onClick={() => pick(k)}
                 className={cn(
                   "rounded px-2 py-1",
                   sort === k ? "bg-primary text-primary-foreground" : inkFaint,
@@ -98,9 +95,22 @@ export function RankingTable({ ranking, tournaments }: Props) {
           </div>
         </div>
         {!ranking ? (
-          <div className="flex justify-center p-8">
-            <Spinner />
-          </div>
+          isError ? (
+            <p className={cn("p-5 text-sm", inkFaint)}>
+              The ranking could not be loaded.{" "}
+              <button
+                type="button"
+                onClick={() => void refetch()}
+                className="underline"
+              >
+                Try again
+              </button>
+            </p>
+          ) : (
+            <div className="flex justify-center p-8">
+              <Spinner />
+            </div>
+          )
         ) : rows.length === 0 ? (
           <p className={cn("p-5 text-sm", inkFaint)}>No players yet.</p>
         ) : (
@@ -125,7 +135,7 @@ export function RankingTable({ ranking, tournaments }: Props) {
                 </tr>
               </thead>
               <tbody>
-                {visible.map((p) => {
+                {(pinned ? [...rows, pinned] : rows).map((p) => {
                   const me = p.player.toText() === principalId;
                   return (
                     <tr
@@ -157,12 +167,10 @@ export function RankingTable({ ranking, tournaments }: Props) {
                       <td
                         className={cn(
                           "px-3 py-2.5 tabular-nums",
-                          netOf(p) > 0n
-                            ? "text-[color:var(--term-green)]"
-                            : ink,
+                          p.net > 0n ? "text-[color:var(--term-green)]" : ink,
                         )}
                       >
-                        {fmtSigned(netOf(p))}
+                        {fmtSigned(p.net)}
                       </td>
                       <td className="hidden px-3 py-2.5 sm:table-cell">
                         {p.bestReturn > 0n ? fmtGoldao(p.bestReturn) : "-"}
@@ -182,17 +190,35 @@ export function RankingTable({ ranking, tournaments }: Props) {
             </table>
           </div>
         )}
-        {rows.length > TOP && (
-          <button
-            type="button"
-            onClick={() => setShowAll((v) => !v)}
+        {pages > 1 && (
+          <div
             className={cn(
-              "w-full border-t px-5 py-2 font-mono text-xs",
+              "flex items-center justify-between border-t border-[color:var(--term-border-faint)] px-5 py-2 font-mono text-xs",
               inkFaint,
             )}
           >
-            {showAll ? "Show top 20" : `Show all ${rows.length}`}
-          </button>
+            <button
+              type="button"
+              aria-label="Previous page"
+              disabled={page === 0}
+              onClick={() => setAsked(Math.max(0, page - 1))}
+              className="rounded p-1 disabled:opacity-30"
+            >
+              <ChevronLeft className="size-4" />
+            </button>
+            <span className="tabular-nums">
+              Page {page + 1} of {pages} · {total} players
+            </span>
+            <button
+              type="button"
+              aria-label="Next page"
+              disabled={page + 1 >= pages}
+              onClick={() => setAsked(page + 1)}
+              className="rounded p-1 disabled:opacity-30"
+            >
+              <ChevronRight className="size-4" />
+            </button>
+          </div>
         )}
       </div>
 
@@ -233,23 +259,18 @@ export function RankingTable({ ranking, tournaments }: Props) {
             </span>
           </div>
           <ul className="divide-y divide-[color:var(--term-border-faint)] font-mono text-xs">
-            {[...ranking.jackpots]
-              .reverse()
-              .slice(0, 10)
-              .map((j) => (
-                <li
-                  key={`${j.player.toText()}-${String(j.at)}`}
-                  className="flex items-center justify-between px-5 py-2.5"
-                >
-                  <span className={ink}>
-                    {shortPrincipal(j.player.toText())}
-                  </span>
-                  <span className={inkFaint}>{fmtDate(j.at)}</span>
-                  <span className={cn("tabular-nums", DIAMOND_TEXT)}>
-                    {fmtGoldao(j.amount)}
-                  </span>
-                </li>
-              ))}
+            {ranking.jackpots.map((j) => (
+              <li
+                key={`${j.player.toText()}-${String(j.at)}`}
+                className="flex items-center justify-between px-5 py-2.5"
+              >
+                <span className={ink}>{shortPrincipal(j.player.toText())}</span>
+                <span className={inkFaint}>{fmtDate(j.at)}</span>
+                <span className={cn("tabular-nums", DIAMOND_TEXT)}>
+                  {fmtGoldao(j.amount)}
+                </span>
+              </li>
+            ))}
           </ul>
         </div>
       )}
