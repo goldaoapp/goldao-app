@@ -93,24 +93,9 @@ export function fmtPct1(part: bigint, whole: bigint): string {
   return `${(tenths / 10n).toLocaleString("en-US")}.${tenths % 10n}`;
 }
 
-/** Best prize of a player as "Ingot · 1.62x", or "-" when there is none yet. Same text everywhere. */
-export function bestPrizeText(table: number[], bestPoints: number): string {
-  if (bestPoints <= 0) return "-";
-  const meta = prizeName(picksForPoints(table, bestPoints));
-  return `${meta.name} · ${fmtMult(bestPoints)}`;
-}
-
 /** Same as fmtGoldao for a number that already has at most 2 decimals (animations). */
 export function fmtGoldaoNumber(value: number): string {
   return fmtCents(BigInt(Math.round(value * 100)));
-}
-
-/** Average points are sent as x100 integers. */
-export function fmtAvg(x100: bigint | number): string {
-  return (Number(x100) / 100).toLocaleString("en-US", {
-    minimumFractionDigits: 1,
-    maximumFractionDigits: 1,
-  });
 }
 
 export function fmtPct(x100: bigint): string {
@@ -162,11 +147,6 @@ export function fmtMultOf(gross: bigint, stake: bigint): string {
   return fmtMultX100(stake > 0n ? Number((gross * 100n) / stake) : 0);
 }
 
-/** Gross payout (e8s) for a stake and points, same integer math as the backend (Game.gross). */
-export function grossOf(stake: bigint, points: number): bigint {
-  return (stake * BigInt(multX100(points))) / 100n;
-}
-
 /** Points that pay when the mine collapses after `picks` safe picks, same as the backend (collapsePoints). */
 export function collapsePoints(points: number): number {
   return Math.floor((points + 1) / 2);
@@ -202,13 +182,6 @@ export function prizeName(picks: number): PrizeMeta {
   if (picks >= TREASURE_MIN_PICKS) return TREASURE;
   if (picks >= 4) return INGOT;
   return GOLD_DUST;
-}
-
-/** Depth (picks) that corresponds to a points value of the table. */
-export function picksForPoints(table: number[], points: number): number {
-  let best = 0;
-  for (let i = 0; i < table.length; i++) if (table[i] <= points) best = i;
-  return best;
 }
 
 /** Net result of a ranking row: returned + jackpots - staked, in e8s. */
