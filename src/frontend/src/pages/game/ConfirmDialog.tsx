@@ -24,8 +24,8 @@ export function ConfirmDialog({
 }: Props) {
   const [typed, setTyped] = useState("");
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-      <div className="flex w-full max-w-md flex-col gap-4 rounded-xl border border-[color:var(--term-border)] bg-[var(--term-card)] p-6">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+      <div className="flex w-full max-w-md flex-col gap-4 rounded-xl border border-[color:var(--term-border)] bg-card text-card-foreground shadow-2xl p-6">
         <p className={cn("font-display text-lg font-semibold", ink)}>{title}</p>
         <p className={cn("text-sm", inkMid)}>{detail}</p>
         {word && (
