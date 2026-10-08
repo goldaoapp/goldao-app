@@ -776,6 +776,9 @@ mixin (
     };
     gameState.stats.clear();
     gameState.best.clear();
+    // The recent jackpots list belongs to the tournament that just closed. Every excavation was
+    // flushed at the top of this function, so nothing is added to the log after this point.
+    gameState.jackpots := [];
     gameState.tournament := t + 1;
     gameState.endsAt := Time.now() + gameState.durationDays * Game.DAY_NS;
   };
