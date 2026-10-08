@@ -142,7 +142,7 @@ mixin (
   };
 
   func gEmptyStats() : Types.TournamentStats {
-    { excavations = 0; staked = 0; returned = 0; jackpotWon = 0; jackpots = 0; charged = 0; collapses = 0; bestPoints = 0; deepest = 0 };
+    { excavations = 0; staked = 0; returned = 0; jackpotWon = 0; jackpots = 0; minis = 0; miniWon = 0; charged = 0; collapses = 0; bestPoints = 0; deepest = 0 };
   };
 
   func gStats(p : Principal) : Types.TournamentStats {
@@ -571,15 +571,40 @@ mixin (
     ({ stage = 3; won }, { e with held = e.held + won; jackpotWon = e.jackpotWon + won });
   };
 
+  // Mini jackpot: exactly two diamonds on a safe pick pay MINI_BPS of the pool. It is held and
+  // released exactly like the full jackpot, but it never touches the reserve or the bank fund and
+  // does not reseed the pool: the pool only shrinks by the prize and keeps growing from the stakes.
+  // gAward is deliberately left as it was, so the full jackpot and its reseed do not change.
+  func gAwardMini(p : Principal, e : Types.Excavation) : (Types.DiamondResult, Types.Excavation) {
+    let won = Game.miniPrize(gameState.pool);
+    if (won == 0) return ({ stage = 2; won = 0 }, e);
+    gameState.pool := gSub(gameState.pool, won);
+    gameState.owed += won;
+    ({ stage = 2; won }, { e with held = e.held + won; heldMini = e.heldMini + won; jackpotWon = e.jackpotWon + won });
+  };
+
   func gFlush(p : Principal, e : Types.Excavation) : Types.Excavation {
     if (e.held == 0) return e;
     gameState.credits.add(p, gCredit(p) + e.held);
+    // Full and mini jackpots are counted together in jackpots and jackpotWon (that is what the
+    // players see); minis and miniWon keep the mini part apart for internal use.
+    let mini = Nat.min(e.heldMini, e.held);
+    let full = e.held - mini;
     let s = gStats(p);
-    gameState.stats.add(p, { s with jackpots = s.jackpots + 1; jackpotWon = s.jackpotWon + e.held });
+    gameState.stats.add(
+      p,
+      {
+        s with
+        jackpots = s.jackpots + (if (full > 0) 1 else 0) + (if (mini > 0) 1 else 0);
+        jackpotWon = s.jackpotWon + e.held;
+        minis = s.minis + (if (mini > 0) 1 else 0);
+        miniWon = s.miniWon + mini;
+      },
+    );
     let entry : Types.JackpotWin = { tournament = gameState.tournament; player = p; amount = e.held; stake = e.stake; at = Time.now() };
     let all = Array.concat(gameState.jackpots, [entry]);
     gameState.jackpots := if (all.size() > Game.JACKPOT_LOG) Array.sliceToArray(all, all.size() - Game.JACKPOT_LOG, all.size()) else all;
-    { e with held = 0 };
+    { e with held = 0; heldMini = 0 };
   };
 
   func gSettle(p : Principal, e : Types.Excavation, points : Nat, kind : Types.EndKind) : Types.EndResult {
@@ -617,6 +642,8 @@ mixin (
         returned = s.returned + g;
         jackpotWon = s.jackpotWon;
         jackpots = s.jackpots;
+        minis = s.minis;
+        miniWon = s.miniWon;
         charged = s.charged;
         collapses = s.collapses + (if (kind == #collapsed) 1 else 0);
         bestPoints = if (kind == #collapsed) s.bestPoints else Nat.max(s.bestPoints, points);
@@ -702,12 +729,16 @@ mixin (
     var returned = 0;
     var jackpots = 0;
     var jackpotPaid = 0;
+    var minis = 0;
+    var miniPaid = 0;
     for ((p, s) in gameState.stats.entries().toArray().values()) {
       excavations += s.excavations;
       staked += s.staked;
       returned += s.returned;
       jackpots += s.jackpots;
       jackpotPaid += s.jackpotWon;
+      minis += s.minis;
+      miniPaid += s.miniWon;
       let credit = gCredit(p);
       let result : Types.PlayerTournamentResult = { tournament = t; stats = s; credit; payout = if (pays(credit)) credit - Game.FEE else 0 };
       let l = switch (gameState.history.get(p)) {
@@ -728,6 +759,8 @@ mixin (
       returned;
       jackpots;
       jackpotPaid;
+      minis;
+      miniPaid;
       payoutTotal;
       forfeited;
       closedAt = Time.now();
@@ -833,6 +866,7 @@ mixin (
       diamonds = 0;
       jackpotWon = 0;
       held = 0;
+      heldMini = 0;
       busy = true;
       token = gNextToken();
       busyAt = Time.now();
@@ -897,8 +931,9 @@ mixin (
       stakeMinE8s = Game.STAKE_MIN;
       stakeCapE8s = Game.STAKE_CAP;
       diamond1Bps = Game.DIAMOND1_BPS;
-      diamond2Bps = Game.DIAMOND2_BPS;
-      diamond3PerGoldao = Game.DIAMOND3_PER_GOLDAO;
+      diamond2PerGoldao = Game.DIAMOND2_PER_GOLDAO;
+      diamond3Odds = Game.DIAMOND3_ODDS;
+      miniBps = Game.MINI_BPS;
       loadMin = Game.LOAD_MIN;
       loadMax = Game.LOAD_MAX;
       creditCapE8s = Game.CREDIT_CAP;
@@ -1020,8 +1055,9 @@ mixin (
 
     let r1 = Game.bytesToNat(bytes, 0, 4);
     let r2 = Game.bytesToNat(bytes, 4, 4);
-    let r3 = Game.bytesToNat(bytes, 8, 4);
-    let r4 = Game.bytesToNat(bytes, 12, 8);
+    // r3 and r4 use 8 bytes each so the modulo bias stays negligible (r3 is taken modulo 1e8).
+    let r3 = Game.bytesToNat(bytes, 8, 8);
+    let r4 = Game.bytesToNat(bytes, 16, 8);
 
     if (Game.collapseHit(ex.picks, r1)) {
       let points = Game.collapsePoints(ex.picks);
@@ -1044,13 +1080,12 @@ mixin (
     if (Game.diamond1Hit(r2)) {
       next := { next with diamonds = next.diamonds + 1 };
       diamond := { stage = 1; won = 0 };
-      if (Game.diamond2Hit(r3)) {
+      if (Game.diamond2Hit(r3, ex.stake)) {
         diamond := { stage = 2; won = 0 };
-        if (Game.diamond3Hit(r4, ex.stake)) {
-          let (d, n) = gAward(caller, next);
-          diamond := d;
-          next := n;
-        };
+        // Three diamonds pay the whole pool, exactly two pay the mini jackpot.
+        let (d, n) = if (Game.diamond3Hit(r4)) gAward(caller, next) else gAwardMini(caller, next);
+        diamond := d;
+        next := n;
       };
     };
 
@@ -1150,9 +1185,9 @@ mixin (
         var stage = 0;
         if (Game.diamond1Hit(rng.below(10_000))) {
           stage := 1;
-          if (Game.diamond2Hit(rng.below(10_000))) {
+          if (Game.diamond2Hit(rng.below(Game.DIAMOND2_BASE), ex.stake)) {
             stage := 2;
-            if (Game.diamond3Hit(rng.below(Game.DIAMOND3_BASE), ex.stake)) stage := 3;
+            if (Game.diamond3Hit(rng.below(Game.DIAMOND3_ODDS))) stage := 3;
           };
         };
         plan.add((picks, false, stage));
@@ -1172,8 +1207,9 @@ mixin (
       } else {
         var d : Types.DiamondResult = { stage = Nat.min(stage, 2); won = 0 };
         if (stage >= 1) cur := { cur with diamonds = cur.diamonds + 1 };
-        if (stage == 3) {
-          let (r, n) = gAward(caller, cur);
+        // Stage 3 pays the whole pool, stage 2 (exactly two diamonds) the mini jackpot.
+        if (stage >= 2) {
+          let (r, n) = if (stage == 3) gAward(caller, cur) else gAwardMini(caller, cur);
           d := r;
           cur := n;
         };
@@ -1436,52 +1472,22 @@ mixin (
     #ok(());
   };
 
-  // Most that can be sent to the treasury as "earnings" right now (the network fee comes on top).
-  // The whole outflow (amount plus fee) is capped by the accrued cycles plus whatever the fund
-  // holds above Game.FUND_TARGET, and by the bank balance, so a withdrawal can never leave the
-  // fund under the target. The fee is paid out of the cycles first.
-  func gWithdrawMax() : Nat {
-    Game.sub(Nat.min(gWithdrawable(), gameState.bank), Game.FEE);
-  };
-
-  // The amount a withdrawal would send, or the reason it is refused. Used by the check and by
-  // the withdrawal itself, so both answer the same.
-  func gWithdrawAmount(kind : Types.WithdrawKind, requested : ?Nat) : Result.Result<Nat, Text> {
-    switch (gWithdrawBlocked(kind)) { case (?m) return #err(m); case null {} };
-    switch (kind) {
-      case (#all) {
-        let amount = Game.sub(gameState.bank, Game.FEE);
-        if (amount == 0) return #err("Nothing to withdraw.");
-        #ok(amount);
-      };
-      case (#available) {
-        let max = gWithdrawMax();
-        let amount = switch (requested) { case (?r) r; case null max };
-        if (amount == 0 or max == 0) return #err("Nothing to withdraw.");
-        if (amount > max) {
-          return #err("You can withdraw at most " # SecLog.fmt(max) # " GOLDAO: the fund must stay at or above " # SecLog.fmt(Game.FUND_TARGET) # ".");
-        };
-        #ok(amount);
-      };
-    };
-  };
-
   public shared query ({ caller }) func gameAdminCheckWithdraw(kind : Types.WithdrawKind) : async Result.Result<(), Text> {
     if (not gIsAdmin(caller)) return #err("Admin only.");
     if (gBusyNow()) return #err("A money movement is in progress.");
-    switch (gWithdrawAmount(kind, null)) { case (#err m) #err(m); case (#ok _) #ok(()) };
-  };
-
-  public shared query ({ caller }) func gameAdminCheckWithdrawAmount(amount : Nat) : async Result.Result<(), Text> {
-    if (not gIsAdmin(caller)) return #err("Admin only.");
-    if (gBusyNow()) return #err("A money movement is in progress.");
-    switch (gWithdrawAmount(#available, ?amount)) { case (#err m) #err(m); case (#ok _) #ok(()) };
+    switch (gWithdrawBlocked(kind)) { case (?m) return #err(m); case null {} };
+    let spendable = Game.sub(gameState.bank, Game.FEE);
+    let amount = switch (kind) {
+      case (#all) spendable;
+      case (#available) Nat.min(gWithdrawable(), spendable);
+    };
+    if (amount == 0) return #err("Nothing to withdraw.");
+    #ok(());
   };
 
   // Pays pending payouts, smallest first, at most `max` of them (and never more than PAY_BATCH).
   public shared ({ caller }) func gameAdminPay(max : Nat) : async Result.Result<{ paid : Nat; failed : Nat; remaining : Nat }, Text> {
     if (not gIsAdmin(caller)) return #err("Admin only.");
-    if (not gIsBank(caller)) return #err("Only the bank wallet can move funds.");
     switch (await gPayBegin()) { case (?m) return #err(m); case null {} };
     let pending = Array.sort(
       gameState.payouts.values().filter(func(po : Types.Payout) : Bool { not po.paid }).toArray(),
@@ -1531,7 +1537,6 @@ mixin (
   // admin has checked in the ledger: it was NOT sent, so it gets a new timestamp.
   public shared ({ caller }) func gameAdminPayOne(id : Nat, renew : Bool) : async Result.Result<?Nat, Text> {
     if (not gIsAdmin(caller)) return #err("Admin only.");
-    if (not gIsBank(caller)) return #err("Only the bank wallet can move funds.");
     let po = switch (gameState.payouts.get(id)) { case (?po) po; case null return #err("Payout not found.") };
     if (po.paid) return #err("Already paid.");
     switch (await gPayBegin()) { case (?m) return #err(m); case null {} };
@@ -1609,24 +1614,33 @@ mixin (
     };
   };
 
-  func gWithdrawRun(kind : Types.WithdrawKind, requested : ?Nat) : async Result.Result<Nat, Text> {
+  public shared ({ caller }) func gameAdminWithdraw(kind : Types.WithdrawKind) : async Result.Result<Nat, Text> {
+    if (not gIsAdmin(caller)) return #err("Admin only.");
     let now = Time.now();
     if (gameState.payingSince != 0 and now - gameState.payingSince < Game.BUSY_STALE_NS) {
       return #err("A money movement is in progress.");
     };
-    switch (gWithdrawAmount(kind, requested)) { case (#err m) return #err(m); case (#ok _) {} };
+    switch (gWithdrawBlocked(kind)) { case (?m) return #err(m); case null {} };
     gameState.payingSince := now;
     if (not (await lBankRefresh())) {
       gameState.payingSince := 0;
       return #err("The ledger is unavailable.");
     };
-    // Everything is checked again on the fresh balance.
-    let amount = switch (gWithdrawAmount(kind, requested)) {
-      case (#err m) {
+    switch (gWithdrawBlocked(kind)) {
+      case (?m) {
         gameState.payingSince := 0;
         return #err(m);
       };
-      case (#ok a) a;
+      case null {};
+    };
+    let spendable = Game.sub(gameState.bank, Game.FEE);
+    let amount = switch (kind) {
+      case (#all) spendable;
+      case (#available) Nat.min(gWithdrawable(), spendable);
+    };
+    if (amount == 0) {
+      gameState.payingSince := 0;
+      return #err("Nothing to withdraw.");
     };
     let res = await lWithdraw(amount);
     gameState.payingSince := 0;
@@ -1642,27 +1656,13 @@ mixin (
         gameState.top10 := 0;
       };
       case (#available) {
-        gameState.cycles := Game.sub(gameState.cycles, amount + Game.FEE);
+        gameState.cycles := Game.sub(gameState.cycles, amount);
       };
     };
     ignore await lBankRefresh();
     gFundReset();
-    gLogAction("withdraw", "Admin withdrawal", "Withdrew " # SecLog.fmt(amount) # " GOLDAO to the treasury (" # (switch (kind) { case (#all) "everything"; case (#available) "earnings" }) # ")" # (switch (txId) { case (?t) ", ledger transaction " # Nat.toText(t); case null "" }) # ".");
+    gLogAction("withdraw", "Admin withdrawal", "Withdrew " # SecLog.fmt(amount) # " GOLDAO to the treasury (" # (switch (kind) { case (#all) "everything"; case (#available) "available excess" }) # ")" # (switch (txId) { case (?t) ", ledger transaction " # Nat.toText(t); case null "" }) # ".");
     #ok(amount);
-  };
-
-  // Everything that may be withdrawn as earnings (cycles plus the surplus over the fund target).
-  public shared ({ caller }) func gameAdminWithdraw(kind : Types.WithdrawKind) : async Result.Result<Nat, Text> {
-    if (not gIsAdmin(caller)) return #err("Admin only.");
-    if (not gIsBank(caller)) return #err("Only the bank wallet can move funds.");
-    await gWithdrawRun(kind, null);
-  };
-
-  // Earnings, an amount of the admin's choice (e8s, the fee comes on top).
-  public shared ({ caller }) func gameAdminWithdrawAmount(amount : Nat) : async Result.Result<Nat, Text> {
-    if (not gIsAdmin(caller)) return #err("Admin only.");
-    if (not gIsBank(caller)) return #err("Only the bank wallet can move funds.");
-    await gWithdrawRun(#available, ?amount);
   };
 
   public shared ({ caller }) func gameAdminRefreshBank() : async Result.Result<Nat, Text> {
