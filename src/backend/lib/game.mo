@@ -29,8 +29,8 @@ module {
   public let POOL_SEED : Nat = 500_000_000_000;
   public let POOL_SEED_MAX : Nat = 2_000_000_000_000;
   public let RESERVE_CAP : Nat = 2_000_000_000_000;
-  public let FUND_FLOOR : Nat = 2_000_000_000_000;
-  public let FUND_TARGET : Nat = 20_000_000_000_000;
+  public let FUND_FLOOR : Nat = 9_000_000_000_000;
+  public let FUND_TARGET : Nat = 22_000_000_000_000;
   public let DIAMOND1_BPS : Nat = 200;
   public let DIAMOND2_BPS : Nat = 2_000;
   public let DIAMOND3_PER_GOLDAO : Nat = 15_625;
