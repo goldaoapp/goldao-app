@@ -29,7 +29,6 @@ import {
   panelHeader,
   shortPrincipal,
 } from "./game-utils";
-import { TEST_TOKEN_LABEL, isTestLedger } from "./ledger-mode";
 import {
   errorMessage,
   useGameAction,
@@ -89,8 +88,6 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
 
   const working = !!pending || busy;
   const connected = !!view?.realLedger;
-  // The backend MODE points at the GOLDAO TEST ledger: the "Enable" button below must say so.
-  const toTest = isTestLedger(config);
   const bankText = view?.bankAccount?.toText();
   const selfText = view?.selfId?.toText();
   // The game account comes from the deployment itself (env.json), not from a query to the
@@ -800,118 +797,6 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
               Release busy
             </Button>
           </Row>
-
-          {view && (
-            <div className="flex flex-col gap-2 border-b border-[color:var(--term-border-faint)] pb-5">
-              <span className={cn("text-sm font-medium", ink)}>
-                Switching ledger (test token to real GOLDAO)
-              </span>
-              <ol
-                className={cn(
-                  "list-decimal space-y-1 pl-5 font-mono text-[11px]",
-                  inkFaint,
-                )}
-              >
-                <li>
-                  Check your admin principal: it must be the same one that holds
-                  the bank. A different login origin gives a different
-                  principal.
-                </li>
-                <li>
-                  Pause new excavations by hand, wait for the tournament to
-                  close, and pay or mark as paid every payout.
-                </li>
-                <li>
-                  Withdraw everything (all) to the treasury. Owed, credits and
-                  open excavations must be zero.
-                </li>
-                <li>
-                  Change the ledger id in the backend code and deploy. Nothing
-                  changes in the game until step 5.
-                </li>
-                <li>
-                  Run the ledger change below with the bank wallet. It checks
-                  the fee, reads the bank balance and erases all game data.
-                </li>
-                <li>
-                  Fund the pool again, check the bank balance and the ledger id
-                  shown here, then resume the game.
-                </li>
-              </ol>
-            </div>
-          )}
-
-          {view && connected && (
-            <Row
-              title="Change ledger"
-              hint={`The game uses ${config?.ledgerId ?? "-"}. After changing the ledger code, pause the game, close the tournament, pay everything and withdraw everything. This re-reads the bank, checks the fee and erases all game data.`}
-            >
-              <span className="font-mono text-xs">
-                {envId ? `Game account ${envId}` : "Game account unknown"}
-              </span>
-              <Button
-                variant="outline"
-                disabled={working || !parsePrincipal(envId)}
-                onClick={() =>
-                  confirmThen({
-                    title: "Change the ledger?",
-                    detail:
-                      "The game must be paused and empty. All game data is erased and the bank is read from the new ledger.",
-                    word: "CHANGE LEDGER",
-                    go: () =>
-                      act(
-                        "real",
-                        () =>
-                          actor!.gameAdminSetRealLedger(parsePrincipal(envId)!),
-                        (v) => `Ledger changed. Bank is ${fmtGoldao(v)}.`,
-                      ),
-                  })
-                }
-              >
-                Change
-              </Button>
-            </Row>
-          )}
-
-          {view && !connected && (
-            <Row
-              title="Connect ledger"
-              hint={
-                toTest
-                  ? `Connects the game to the ${TEST_TOKEN_LABEL} ledger (no value). The admin wallet becomes the bank.`
-                  : "Connects the game to the real GOLDAO ledger. The admin wallet becomes the bank."
-              }
-            >
-              <span className="font-mono text-xs">
-                {envId ? `Game account ${envId}` : "Game account unknown"}
-              </span>
-              <Button
-                variant="outline"
-                disabled={working || !parsePrincipal(envId)}
-                onClick={() =>
-                  confirmThen({
-                    title: toTest
-                      ? `Connect the ${TEST_TOKEN_LABEL} ledger?`
-                      : "Connect the real ledger?",
-                    detail: toTest
-                      ? `From now on the admin wallet holds ${TEST_TOKEN_LABEL} (no value).`
-                      : "From now on the admin wallet holds real GOLDAO.",
-                    word: toTest ? "GO TEST" : "GO REAL",
-                    go: () =>
-                      act(
-                        "real",
-                        () =>
-                          actor!.gameAdminSetRealLedger(parsePrincipal(envId)!),
-                        (v) =>
-                          `${toTest ? TEST_TOKEN_LABEL : "Real"} ledger connected. Bank is ${fmtGoldao(v)}.`,
-                      ),
-                  })
-                }
-              >
-                Connect
-              </Button>
-            </Row>
-          )}
         </div>
       </div>
 
