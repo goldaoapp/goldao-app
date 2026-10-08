@@ -60,7 +60,7 @@ const WITHDRAW_WINDOW_MS = 2 * 60_000;
 const PAY_WINDOW_MS = 10 * 60_000;
 // Hard ceiling for any single authorization signed from this panel. The amounts come from
 // unverified queries, so a wrong answer can never make the wallet approve more than this.
-const MAX_AUTHORIZE_E8S = 1_000_000n * E8S;
+const MAX_AUTHORIZE_E8S = 2_000_000n * E8S;
 
 type Res<T> = { __kind__: "ok"; ok: T } | { __kind__: "err"; err: string };
 
