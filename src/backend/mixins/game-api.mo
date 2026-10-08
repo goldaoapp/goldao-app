@@ -1,6 +1,7 @@
 import Types "../types/game";
 import Game "../lib/game";
 import Ledger "../lib/ledger";
+import Ranking "../lib/ranking";
 import SecLog "../lib/security-log";
 import Map "mo:core/Map";
 import List "mo:core/List";
@@ -155,7 +156,7 @@ mixin (
 
   // Top-10 ranking by volume staked in the current tournament. Ties go to the lower principal.
   func gBetter(a : (Principal, Nat), b : (Principal, Nat)) : Bool {
-    a.1 > b.1 or (a.1 == b.1 and Principal.compare(a.0, b.0) == #less);
+    Ranking.better(a, b);
   };
 
   func gTopList() : [(Principal, Nat)] {
@@ -1256,36 +1257,58 @@ mixin (
     };
   };
 
-  public query func gameRanking() : async Types.Ranking {
+  // Totals of the tournament, for every viewer of the game. No per-player rows are built or sent.
+  public query func gameSummary() : async Types.GameSummary {
     var staked = 0;
-    let rows = List.empty<Types.PlayerRow>();
-    for ((p, s) in gameState.stats.entries()) {
-      staked += s.staked;
-      rows.add({ player = p; excavations = s.excavations; staked = s.staked; returned = s.returned; jackpotWon = s.jackpotWon; bestPoints = s.bestPoints; bestReturn = switch (gameState.best.get(p)) { case (?v) v; case null 0 }; deepest = s.deepest; rank = 0; prize = 0 });
-    };
-    let sorted = Array.sort(
-      rows.toArray(),
-      func(a : Types.PlayerRow, b : Types.PlayerRow) : { #less; #equal; #greater } {
-        if (gBetter((a.player, a.staked), (b.player, b.staked))) #less else #greater;
-      },
-    );
-    let ranked = Array.tabulate<Types.PlayerRow>(
-      sorted.size(),
-      func(i : Nat) : Types.PlayerRow {
-        let r = sorted[i];
-        { r with rank = i + 1; prize = Game.top10Prize(gameState.top10, i + 1, r.staked) };
-      },
-    );
+    for ((_, s) in gameState.stats.entries()) staked += s.staked;
     {
       tournament = gameState.tournament;
       endsAt = gameState.endsAt;
+      paused = gPaused();
       pool = gameState.pool;
       top10Pool = gameState.top10;
-      lastTop10 = gameState.lastTop10;
       staked;
-      totalPlayers = ranked.size();
-      players = if (ranked.size() > 200) Array.sliceToArray(ranked, 0, 200) else ranked;
-      jackpots = gameState.jackpots;
+      totalPlayers = gameState.stats.size();
+    };
+  };
+
+  // One row per player with stats this tournament, in no particular order. pos, rank and prize are
+  // filled in by Ranking.byVolume.
+  func gPlayerRows() : [Types.PlayerRow] {
+    let rows = List.empty<Types.PlayerRow>();
+    for ((p, s) in gameState.stats.entries()) {
+      rows.add({
+        player = p;
+        pos = 0;
+        excavations = s.excavations;
+        staked = s.staked;
+        returned = s.returned;
+        jackpotWon = s.jackpotWon;
+        net = Game.net(s.returned, s.jackpotWon, s.staked);
+        bestReturn = switch (gameState.best.get(p)) { case (?v) v; case null 0 };
+        rank = 0;
+        prize = 0;
+      });
+    };
+    rows.toArray();
+  };
+
+  // One page of the ranking. The size is fixed (Game.RANKING_PAGE) and the order is computed here over
+  // all the players, so the client only draws what it receives. A page past the end is clamped.
+  public shared query ({ caller }) func gameRankingPage(sort : Types.RankingSort, page : Nat) : async Types.RankingPage {
+    let ordered = Ranking.order(Ranking.byVolume(gPlayerRows(), gameState.top10), sort);
+    let (used, from, to) = Game.pageBounds(ordered.size(), page, Game.RANKING_PAGE);
+    let log = gameState.jackpots;
+    let shown = Nat.min(log.size(), Game.JACKPOT_SHOWN);
+    {
+      sort;
+      page = used;
+      pageSize = Game.RANKING_PAGE;
+      totalPlayers = ordered.size();
+      rows = ordered.sliceToArray(from, to);
+      mine = ordered.find(func(r : Types.PlayerRow) : Bool { r.player == caller });
+      lastTop10 = gameState.lastTop10;
+      jackpots = Array.tabulate(shown, func(i : Nat) : Types.JackpotWin { log[log.size() - 1 - i] });
     };
   };
 
