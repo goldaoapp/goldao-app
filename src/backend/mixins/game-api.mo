@@ -386,12 +386,11 @@ mixin (
   // Pulls the amount from the player's wallet into the bank. The caller grants
   // the credit only after this returns #ok, i.e. after the ledger confirmed it.
   // The first successful load of a player also counts the 10 GOLDAO fee the
-  // player burned when authorizing the game account (simulated mode already
-  // counts that fee when the test authorization is made).
+  // player burned when authorizing the game account.
   func gMarkLoaded(p : Principal) {
     if (gameState.loaded.contains(p)) return;
     gameState.loaded.add(p);
-    if (gameState.realLedger) gameState.burned += Game.FEE;
+    gameState.burned += Game.FEE;
   };
 
   // `stamp` is the ledger timestamp of this load. A retry after a call without an answer reuses
@@ -399,17 +398,6 @@ mixin (
   func lLoad(p : Principal, amount : Nat, stamp : Nat64) : async Types.Charge {
     gameState.movSeq += 1;
     let need = amount + Game.FEE;
-    if (not gameState.realLedger) {
-      if (gAllowance(p) < need) return #allowance;
-      if (gBalance(p) < need) return #funds;
-      gameState.balances.add(p, gSub(gBalance(p), need));
-      gameState.allowances.add(p, gSub(gAllowance(p), need));
-      gameState.bank += amount;
-      gameState.burned += Game.FEE;
-      gMarkLoaded(p);
-      gameState.movSeq += 1;
-      return #ok;
-    };
     let bankAcct = switch (gameState.bankAccount) { case (?a) a; case null return #down };
     let answer = await lTransfer(p, bankAcct, amount, stamp);
     gameState.movSeq += 1;
@@ -449,7 +437,7 @@ mixin (
   };
 
   // Marks a payout as paid and removes it from what the game owes. The tx id is the ledger block
-  // of the transfer (null in simulated mode). True if it was marked now.
+  // of the transfer (null when unknown). True if it was marked now.
   func gMarkPaid(id : Nat, txId : ?Nat) : Bool {
     switch (gameState.payouts.get(id)) {
       case (?po) {
@@ -473,16 +461,6 @@ mixin (
     if (po.paid) return #err("Already paid.");
     gameState.movSeq += 1;
     let need = po.amount + Game.FEE;
-    if (not gameState.realLedger) {
-      if (gameState.bank < need) return #err(Game.ERR_PAY_FUNDS);
-      if (gameState.bankAllowance < need) return #err(Game.ERR_PAY_ALLOWANCE);
-      gameState.bank := gSub(gameState.bank, need);
-      gameState.bankAllowance := gSub(gameState.bankAllowance, need);
-      gameState.balances.add(po.to, gBalance(po.to) + po.amount);
-      gameState.burned += Game.FEE;
-      gameState.movSeq += 1;
-      return #ok(null);
-    };
     let bankAcct = switch (gameState.bankAccount) { case (?a) a; case null return #err("Ledger mode is not configured.") };
     let now = Nat.toNat64(Int.abs(Time.now()));
     var stamp : Nat64 = po.stamp;
@@ -934,19 +912,6 @@ mixin (
     };
   };
 
-  public shared ({ caller }) func gameTestApprove(goldao : Nat) : async Result.Result<Nat, Text> {
-    switch (gRequireUser(caller)) { case (?e) return #err(e); case null {} };
-    if (gameState.realLedger) return #err("Authorize from your wallet.");
-    let amount = goldao * Game.E8S;
-    if (goldao > Game.MAX_APPROVE / Game.E8S) return #err("Amount too large.");
-    let b = gBalance(caller);
-    if (b < Game.FEE) return #err("You need " # Nat.toText(Game.FEE / Game.E8S) # " GOLDAO to pay the authorization fee.");
-    gameState.balances.add(caller, b - Game.FEE);
-    gameState.burned += Game.FEE;
-    gameState.allowances.add(caller, amount);
-    #ok(amount);
-  };
-
   // Credit: the player loads the Accumulated prize from the wallet. It backs every stake.
 
   public shared ({ caller }) func gameLoadCredit(goldao : Nat) : async Result.Result<Nat, Text> {
@@ -977,7 +942,7 @@ mixin (
       };
       case null {};
     };
-    if (gameState.realLedger) gameState.pendingLoads.add(caller, { amount; stamp });
+    gameState.pendingLoads.add(caller, { amount; stamp });
     gLoading.add(caller, Time.now());
     let res = try { await lLoad(caller, amount, stamp) } finally { gLoading.remove(caller) };
     let need = amount + Game.FEE;
@@ -1421,25 +1386,16 @@ mixin (
     #ok(gameState.pool);
   };
 
-  public shared ({ caller }) func gameAdminTestDeposit(goldao : Nat) : async Result.Result<Nat, Text> {
-    if (not gIsAdmin(caller)) return #err("Admin only.");
-    if (gameState.realLedger) return #err("Not available with the real ledger.");
-    if (Array.indexOf<Nat>(Game.TEST_DEPOSITS, Nat.equal, goldao) == null) return #err("Choose one of the listed amounts.");
-    gameState.bank += goldao * Game.E8S;
-    #ok(gameState.bank);
-  };
-
   // Common start of every payment action. Returns an error text, or null when payments may go
-  // ahead; in that case the caller must clear payingSince when it is done. `needed` is the amount
-  // (with fees) that the bank authorization must cover in simulated mode.
-  func gPayBegin(needed : Nat) : async ?Text {
+  // ahead; in that case the caller must clear payingSince when it is done.
+  func gPayBegin() : async ?Text {
     let now = Time.now();
     if (gameState.payingSince != 0 and now - gameState.payingSince < Game.BUSY_STALE_NS) {
       return ?"A payment run is in progress.";
     };
     if (gameState.saturations > 0 or not gAccountingOk()) return ?"Accounting check failed. Payments are blocked.";
     gameState.payingSince := now;
-    if (gameState.realLedger and not (await lBankRefresh())) {
+    if (not (await lBankRefresh())) {
       gameState.payingSince := 0;
       return ?"The ledger is unavailable.";
     };
@@ -1447,22 +1403,12 @@ mixin (
       gameState.payingSince := 0;
       return ?"Accounting check failed. Payments are blocked.";
     };
-    if (not gameState.realLedger and gameState.bankAllowance < needed) {
-      let total = gUnpaidTotal();
-      if (gameState.bank < total + Game.FEE) {
-        gameState.payingSince := 0;
-        return ?"The bank wallet does not cover the pending payouts.";
-      };
-      gameState.bank := gSub(gameState.bank, Game.FEE);
-      gameState.burned += Game.FEE;
-      gameState.bankAllowance := total;
-    };
     null;
   };
 
-  // Ends a payment action: in real mode the bank is read again so the books match the ledger.
+  // Ends a payment action: the bank is read again so the books match the ledger.
   func gPayEnd() : async () {
-    if (gameState.realLedger) { ignore await lBankRefresh() };
+    ignore await lBankRefresh();
     gameState.payingSince := 0;
   };
 
@@ -1470,7 +1416,7 @@ mixin (
     gLogAction(
       "payout_sent",
       "Payout sent",
-      "Payout #" # Nat.toText(id) # ": " # SecLog.fmt(amount) # " GOLDAO to " # Principal.toText(to) # (switch (txId) { case (?t) ", ledger transaction " # Nat.toText(t); case null ", simulated" }) # ".",
+      "Payout #" # Nat.toText(id) # ": " # SecLog.fmt(amount) # " GOLDAO to " # Principal.toText(to) # (switch (txId) { case (?t) ", ledger transaction " # Nat.toText(t); case null "" }) # ".",
     );
   };
 
@@ -1505,7 +1451,7 @@ mixin (
   // Pays pending payouts, smallest first, at most `max` of them (and never more than PAY_BATCH).
   public shared ({ caller }) func gameAdminPay(max : Nat) : async Result.Result<{ paid : Nat; failed : Nat; remaining : Nat }, Text> {
     if (not gIsAdmin(caller)) return #err("Admin only.");
-    switch (await gPayBegin(gUnpaidTotal())) { case (?m) return #err(m); case null {} };
+    switch (await gPayBegin()) { case (?m) return #err(m); case null {} };
     let pending = Array.sort(
       gameState.payouts.values().filter(func(po : Types.Payout) : Bool { not po.paid }).toArray(),
       func(a : Types.Payout, b : Types.Payout) : { #less; #equal; #greater } {
@@ -1556,7 +1502,7 @@ mixin (
     if (not gIsAdmin(caller)) return #err("Admin only.");
     let po = switch (gameState.payouts.get(id)) { case (?po) po; case null return #err("Payout not found.") };
     if (po.paid) return #err("Already paid.");
-    switch (await gPayBegin(po.amount + Game.FEE)) { case (?m) return #err(m); case null {} };
+    switch (await gPayBegin()) { case (?m) return #err(m); case null {} };
     let res = await lPay(id, renew);
     let out : Result.Result<?Nat, Text> = switch (res) {
       case (#ok txId) {
@@ -1573,7 +1519,6 @@ mixin (
   // as paid with its transaction id. Only for payouts that are flagged uncertain.
   public shared ({ caller }) func gameAdminMarkPaid(id : Nat, txId : Nat) : async Result.Result<(), Text> {
     if (not gIsAdmin(caller)) return #err("Admin only.");
-    if (not gameState.realLedger) return #err("Only with the real ledger.");
     let po = switch (gameState.payouts.get(id)) { case (?po) po; case null return #err("Payout not found.") };
     if (po.paid) return #err("Already paid.");
     if (not po.uncertain) return #err("Only a payout without a confirmed answer can be marked as paid.");
@@ -1613,14 +1558,6 @@ mixin (
 
   func lWithdraw(amount : Nat) : async Result.Result<?Nat, Text> {
     gameState.movSeq += 1;
-    if (not gameState.realLedger) {
-      let need = amount + Game.FEE;
-      if (gameState.bank < need) return #err("Above the available amount.");
-      gameState.bank := gSub(gameState.bank, need);
-      gameState.burned += Game.FEE;
-      gameState.movSeq += 1;
-      return #ok(null);
-    };
     let bankAcct = switch (gameState.bankAccount) { case (?a) a; case null return #err("Ledger mode is not configured.") };
     let answer = await lTransfer(bankAcct, Game.treasury(), amount, Nat.toNat64(Int.abs(Time.now())));
     gameState.movSeq += 1;
@@ -1648,7 +1585,7 @@ mixin (
     };
     switch (gWithdrawBlocked(kind)) { case (?m) return #err(m); case null {} };
     gameState.payingSince := now;
-    if (gameState.realLedger and not (await lBankRefresh())) {
+    if (not (await lBankRefresh())) {
       gameState.payingSince := 0;
       return #err("The ledger is unavailable.");
     };
@@ -1685,7 +1622,7 @@ mixin (
         gameState.cycles := Game.sub(gameState.cycles, amount);
       };
     };
-    if (gameState.realLedger) { ignore await lBankRefresh() };
+    ignore await lBankRefresh();
     gFundReset();
     gLogAction("withdraw", "Admin withdrawal", "Withdrew " # SecLog.fmt(amount) # " GOLDAO to the treasury (" # (switch (kind) { case (#all) "everything"; case (#available) "available excess" }) # ")" # (switch (txId) { case (?t) ", ledger transaction " # Nat.toText(t); case null "" }) # ".");
     #ok(amount);
