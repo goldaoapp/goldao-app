@@ -14,6 +14,9 @@ export type Cell =
   | { kind: "diamond" }
   | { kind: "rock" };
 
+/** Biggest jackpot the current excavation found: nothing, a mini jackpot (two diamonds) or the full one. */
+export type JackpotKind = "none" | "mini" | "full";
+
 export interface JackpotView {
   stage: number;
   won: bigint;
@@ -50,6 +53,8 @@ export interface BoardState {
   /** Stake option remembered between excavations: 0 min, 1 mid, 2 max. */
   stake: 0 | 1 | 2;
   jackpot: JackpotView | null;
+  /** Shown on the result card; the backend result does not tell a mini from a full jackpot. */
+  jackpotKind: JackpotKind;
   auto: AutoView | null;
   rain: number;
   /** Ignore the backend's open excavation until this time (ms), right after one ends. */
@@ -78,6 +83,7 @@ const EMPTY: BoardState = {
   notice: null,
   stake: 0,
   jackpot: null,
+  jackpotKind: "none",
   auto: null,
   rain: 0,
   skipRestoreUntil: 0,
