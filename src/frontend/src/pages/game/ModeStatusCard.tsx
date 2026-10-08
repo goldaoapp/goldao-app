@@ -1,9 +1,13 @@
 import type { AdminView, GameConfig } from "@/backend";
+import { Button } from "@/components/ui/button";
+import { useAuth } from "@/context/AuthContext";
 import { loadEnv } from "@/hooks/useBackendActor";
 import { fetchWalletBalance } from "@/lib/goldao-ledger";
 import { cn } from "@/lib/utils";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Check, FlaskConical, X } from "lucide-react";
+import { useEffect, useState } from "react";
+import { ConfirmDialog } from "./ConfirmDialog";
 import { CopyField } from "./CopyField";
 import { Spinner } from "./Spinner";
 import {
@@ -16,14 +20,17 @@ import {
   panelHeader,
 } from "./game-utils";
 import { TEST_TOKEN_LABEL, isTestLedger } from "./ledger-mode";
+import { errorMessage } from "./useGame";
 
 /**
- * Which ledger the game runs on, and whether it is safe to switch. Read-only: the mode is the
- * MODE constant in the backend (lib/ledger.mo), changed only with a deploy, and the switch itself
- * is done with "Change ledger" further down. This card never changes anything.
+ * Which ledger the game runs on, and the one button that moves it to another ledger.
  *
- * Temporary, like the test faucet: delete this file and its line in AdminGamePanel.tsx when the
- * game is on the real GOLDAO ledger.
+ * The ledger itself is the MODE constant in the backend (lib/ledger.mo), changed only with a
+ * deploy. The game connects to it by itself at start (the bank wallet of each deployment is fixed
+ * in Game.BANKS). "Change ledger" is only for moving to another ledger after such a deploy.
+ *
+ * The faucet pool and the "Switching to real GOLDAO" steps are temporary: remove them together
+ * with the test faucet when the game is on the real GOLDAO ledger.
  */
 export function ModeStatusCard({
   view,
@@ -34,6 +41,39 @@ export function ModeStatusCard({
 }) {
   const test = isTestLedger(config);
   const real = !!config?.realLedger;
+  const { actor } = useAuth();
+  const queryClient = useQueryClient();
+  const [asking, setAsking] = useState(false);
+  const [working, setWorking] = useState(false);
+  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+
+  // A game that is not connected yet connects by itself: asking once starts the retries.
+  useEffect(() => {
+    if (!actor || !config || config.realLedger) return;
+    void actor
+      .gameAdminEnsureConnected()
+      .then(() => queryClient.invalidateQueries({ queryKey: ["game"] }))
+      .catch(() => {});
+  }, [actor, config, queryClient]);
+
+  const changeLedger = async () => {
+    if (!actor || working) return;
+    setMsg(null);
+    setWorking(true);
+    try {
+      const res = await actor.gameAdminChangeLedger();
+      if (res.__kind__ === "err") throw new Error(res.err);
+      await queryClient.invalidateQueries({ queryKey: ["game"] });
+      setMsg({
+        ok: true,
+        text: `Ledger changed. Bank is ${fmtGoldao(res.ok)} GOLDAO.`,
+      });
+    } catch (e) {
+      setMsg({ ok: false, text: errorMessage(e) });
+    } finally {
+      setWorking(false);
+    }
+  };
 
   // Same query as the admin panel: the game account is the deployed canister itself.
   const envQuery = useQuery({
@@ -103,7 +143,7 @@ export function ModeStatusCard({
           {!config
             ? "Loading"
             : !real
-              ? `The game is not connected to a ledger yet. Use "Connect ledger" below to start it on ${test ? TEST_TOKEN_LABEL : "the real GOLDAO"}.`
+              ? `The game is connecting to ${test ? TEST_TOKEN_LABEL : "the real GOLDAO"} by itself. If it stays like this, the ledger is unreachable or this canister has no bank configured in the backend.`
               : test
                 ? `The game runs on the ${TEST_TOKEN_LABEL} ledger. These tokens have no value and the test faucet is available.`
                 : "The game runs on the real GOLDAO ledger. The test faucet is not available."}
@@ -159,35 +199,77 @@ export function ModeStatusCard({
           </div>
         )}
 
-        {test && (
+        {real && (
           <div className="flex flex-col gap-2">
-            <span className={cn(eyebrow, inkFaint)}>
-              Switching to real GOLDAO
-            </span>
+            <span className={cn(eyebrow, inkFaint)}>Change ledger</span>
             <span className={cn("text-[11px]", inkFaint)}>
-              The order matters: the ledger id is in the backend code, and only
-              a deploy can change it.
+              Moves the game to the ledger set in the backend code. It checks
+              the fee and the symbol, reads the bank balance and erases all game
+              data. Only the bank wallet can do it, with the game paused.
             </span>
-            <ol
-              className={cn(
-                "list-decimal space-y-1 pl-5 font-mono text-[11px]",
-                inkMid,
+            {test && (
+              <ol
+                className={cn(
+                  "list-decimal space-y-1 pl-5 font-mono text-[11px]",
+                  inkMid,
+                )}
+              >
+                <li>
+                  With MODE still #test: pause new excavations, wait for the
+                  tournament to close and pay or mark as paid every payout.
+                </li>
+                <li>
+                  Withdraw everything (all) to the treasury. Owed, credits and
+                  open excavations must be zero.
+                </li>
+                <li>
+                  Deploy with MODE = #production and without the test faucet
+                  files. Nothing changes in the game until step 4.
+                </li>
+                <li>
+                  Press "Change ledger" here. The game stays paused: fund the
+                  jackpot pool, check the bank balance and the ledger id, then
+                  resume.
+                </li>
+              </ol>
+            )}
+            <div className="flex flex-wrap items-center gap-3">
+              <Button
+                variant="outline"
+                disabled={working || !actor}
+                onClick={() => setAsking(true)}
+              >
+                {working ? <Spinner /> : null}
+                Change ledger
+              </Button>
+              {msg && (
+                <span
+                  className={cn(
+                    "font-mono text-xs",
+                    msg.ok
+                      ? "text-[color:var(--term-green)]"
+                      : "text-destructive",
+                  )}
+                >
+                  {msg.text}
+                </span>
               )}
-            >
-              <li>
-                With MODE still #test: close the tournament, pay everything,
-                withdraw the bank and pause the game.
-              </li>
-              <li>
-                Deploy the version with MODE = #production and without the test
-                faucet files. Keep the game paused.
-              </li>
-              <li>
-                Only then use "Change ledger" below. It erases all game data and
-                starts clean on the real ledger.
-              </li>
-            </ol>
+            </div>
           </div>
+        )}
+
+        {asking && (
+          <ConfirmDialog
+            title="Change the ledger?"
+            detail="The game must be paused and empty. All game data is erased and the bank is read from the ledger set in the backend code."
+            word="CHANGE LEDGER"
+            busy={working}
+            onCancel={() => setAsking(false)}
+            onConfirm={() => {
+              setAsking(false);
+              void changeLedger();
+            }}
+          />
         )}
       </div>
     </div>
