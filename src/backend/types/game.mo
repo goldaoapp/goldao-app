@@ -115,7 +115,6 @@ module {
     var nextPayoutId : Nat;
     balances : Map.Map<Principal, Nat>;
     allowances : Map.Map<Principal, Nat>;
-    faucet : Map.Map<Principal, (Nat, Nat)>;
     credits : Map.Map<Principal, Nat>;
     open : Map.Map<Principal, Excavation>;
     stats : Map.Map<Principal, TournamentStats>;
