@@ -161,6 +161,12 @@ export interface JackpotWin {
   'stake' : bigint,
   'amount' : bigint,
 }
+export interface PastStats {
+  'staked' : bigint,
+  'jackpotWon' : bigint,
+  'excavations' : bigint,
+  'returned' : bigint,
+}
 export interface Payout {
   'id' : bigint,
   'to' : Principal,
@@ -196,7 +202,7 @@ export interface PlayerRow {
 export interface PlayerTournamentResult {
   'tournament' : bigint,
   'credit' : bigint,
-  'stats' : TournamentStats,
+  'stats' : PastStats,
   'payout' : bigint,
 }
 export interface RankingPage {
@@ -292,8 +298,6 @@ export interface TournamentStats {
   'excavations' : bigint,
   'collapses' : bigint,
   'miniWon' : bigint,
-  'bestPoints' : bigint,
-  'charged' : bigint,
   'returned' : bigint,
   'jackpots' : bigint,
 }
