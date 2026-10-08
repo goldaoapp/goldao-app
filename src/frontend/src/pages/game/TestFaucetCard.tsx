@@ -4,9 +4,9 @@ import { useInternetIdentity } from "@/lib/internet-identity";
 import { claimTestTokens, fetchFaucetConfig } from "@/lib/test-faucet";
 import { cn } from "@/lib/utils";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Droplets } from "lucide-react";
 import { useEffect, useState } from "react";
-import { eyebrow, inkFaint } from "./game-utils";
+import { Spinner } from "./Spinner";
+import { inkFaint } from "./game-utils";
 import { TEST_TOKEN_LABEL } from "./ledger-mode";
 import { errorMessage } from "./useGame";
 
@@ -14,7 +14,7 @@ const E8S = 100_000_000n;
 
 /**
  * Test faucet (GOLDAO TEST only). Temporary: delete this file, lib/test-faucet.ts and the
- * `<TestFaucetCard />` line in WalletPanel.tsx before moving to the real GOLDAO ledger.
+ * faucet button and the `<TestFaucetCard />` line in WalletPanel.tsx before moving to the real GOLDAO ledger.
  *
  * The tokens are sent by the game canister, from its own account, straight to the player's wallet.
  */
@@ -67,40 +67,31 @@ export function TestFaucetCard() {
   };
 
   return (
-    <div className="flex flex-col gap-3">
-      <span className={cn(eyebrow, inkFaint, "flex items-center gap-1.5")}>
-        <Droplets className="size-3.5" /> Test faucet
-      </span>
-      {cfg.isError ? (
+    <div className="flex flex-col gap-2">
+      {cfg.isError || (data && !data.enabled) ? (
         <span className="text-xs text-destructive">
           The test faucet is not available right now.
         </span>
-      ) : data && !data.enabled ? (
-        <span className={cn("text-xs", inkFaint)}>
-          The test faucet is not available.
-        </span>
       ) : (
-        <>
-          <span className={cn("text-xs", inkFaint)}>
-            {data
-              ? `Up to ${(Number(data.capE8s / E8S)).toLocaleString("en-US")} ${TEST_TOKEN_LABEL} per tournament. ${left.toLocaleString("en-US")} left.`
-              : "Loading"}
-          </span>
-          <div className="flex flex-wrap gap-2">
-            {(data?.presets ?? []).map((a) => (
-              <Button
-                key={a}
-                size="sm"
-                variant="outline"
-                disabled={pending !== null || a > left}
-                onClick={() => void claim(a)}
-                className="font-mono text-xs"
-              >
-                +{a.toLocaleString("en-US")}
-              </Button>
-            ))}
-          </div>
-        </>
+        <div className="flex flex-wrap items-center gap-2">
+          {(data?.presets ?? []).map((a) => (
+            <Button
+              key={a}
+              size="sm"
+              variant="outline"
+              disabled={pending !== null || a > left}
+              onClick={() => void claim(a)}
+              className="font-mono text-xs"
+            >
+              {pending === a ? <Spinner /> : null}+{a.toLocaleString("en-US")}
+            </Button>
+          ))}
+          {data && (
+            <span className={cn("font-mono text-[11px]", inkFaint)}>
+              {left.toLocaleString("en-US")} left this tournament
+            </span>
+          )}
+        </div>
       )}
       {msg && (
         <span
