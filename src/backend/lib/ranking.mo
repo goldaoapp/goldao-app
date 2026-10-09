@@ -11,7 +11,8 @@ module {
     a.1 > b.1 or (a.1 == b.1 and Principal.compare(a.0, b.0) == #less);
   };
 
-  // Players in Top 10 order (volume). Fills in pos, rank and the Top 10 prize paid at that rank.
+  // Players in Top 10 order (volume). Fills in pos, rank, the Top 10 prize paid at that rank and the net
+  // result, which counts that prize.
   public func byVolume(rows : [Types.PlayerRow], top10 : Nat) : [Types.PlayerRow] {
     let sorted = rows.sort(
       func(a : Types.PlayerRow, b : Types.PlayerRow) : { #less; #equal; #greater } {
@@ -22,7 +23,8 @@ module {
       sorted.size(),
       func(i : Nat) : Types.PlayerRow {
         let r = sorted[i];
-        { r with pos = i + 1; rank = i + 1; prize = Game.top10Prize(top10, i + 1, r.staked) };
+        let prize = Game.top10Prize(top10, i + 1, r.staked);
+        { r with pos = i + 1; rank = i + 1; prize; net = Game.net(r.returned, r.jackpotWon, prize, r.staked) };
       },
     );
   };
