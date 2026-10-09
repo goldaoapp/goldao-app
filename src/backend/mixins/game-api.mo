@@ -700,6 +700,8 @@ mixin (
       rank += 1;
     };
     gameState.top10 := gSub(gameState.top10, topPaid);
+    let topPrizes = Map.empty<Principal, Nat>();
+    for (w in topWinners.values()) topPrizes.add(w.player, w.prize);
     gameState.lastTop10 := topWinners.toArray();
 
     // Small balances stay in the Accumulated prize for the next tournament. A full close
@@ -739,7 +741,8 @@ mixin (
       minis += s.minis;
       miniPaid += s.miniWon;
       let credit = gCredit(p);
-      let past : Types.PastStats = { excavations = s.excavations; staked = s.staked; returned = s.returned; jackpotWon = s.jackpotWon };
+      let top10Prize = switch (topPrizes.get(p)) { case (?v) v; case null 0 };
+      let past : Types.PastStats = { excavations = s.excavations; staked = s.staked; returned = s.returned; jackpotWon = s.jackpotWon; top10Prize };
       let result : Types.PlayerTournamentResult = { tournament = t; stats = past; credit; payout = if (pays(credit)) credit - Game.FEE else 0 };
       let l = switch (gameState.history.get(p)) {
         case (?l) l;
@@ -1238,6 +1241,9 @@ mixin (
       case null null;
     };
     let stakes = gStakes();
+    let stats = gStats(caller);
+    let top10Rank = gRankOf(caller);
+    let top10Prize = Game.top10Prize(gameState.top10, top10Rank, stats.staked);
     {
       tournament = gameState.tournament;
       endsAt = gameState.endsAt;
@@ -1249,13 +1255,31 @@ mixin (
       pendingPayout = pending;
       pool = gameState.pool;
       top10Pool = gameState.top10;
-      top10Rank = gRankOf(caller);
-      top10Prize = Game.top10Prize(gameState.top10, gRankOf(caller), gStats(caller).staked);
+      top10Rank;
+      top10Prize;
       top10Entry = gTopEntry();
       open;
-      stats = gStats(caller);
+      stats;
       bestReturn = switch (gameState.best.get(caller)) { case (?v) v; case null 0 };
-      history = switch (gameState.history.get(caller)) { case (?l) l.toArray(); case null [] };
+      net = Game.net(stats.returned, stats.jackpotWon, top10Prize, stats.staked);
+      history = switch (gameState.history.get(caller)) {
+        case (?l) l.toArray().map(
+          func(r : Types.PlayerTournamentResult) : Types.PastResult {
+            {
+              tournament = r.tournament;
+              excavations = r.stats.excavations;
+              staked = r.stats.staked;
+              returned = r.stats.returned;
+              jackpotWon = r.stats.jackpotWon;
+              top10Prize = r.stats.top10Prize;
+              net = Game.net(r.stats.returned, r.stats.jackpotWon, r.stats.top10Prize, r.stats.staked);
+              credit = r.credit;
+              payout = r.payout;
+            };
+          }
+        );
+        case null [];
+      };
     };
   };
 
@@ -1286,7 +1310,7 @@ mixin (
         staked = s.staked;
         returned = s.returned;
         jackpotWon = s.jackpotWon;
-        net = Game.net(s.returned, s.jackpotWon, s.staked);
+        net = 0;
         bestReturn = switch (gameState.best.get(p)) { case (?v) v; case null 0 };
         rank = 0;
         prize = 0;
