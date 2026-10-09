@@ -12,7 +12,6 @@ import {
   gold,
   ink,
   inkFaint,
-  netOf,
   panel,
   panelHeader,
 } from "./game-utils";
@@ -45,7 +44,7 @@ export function PlayerDashboard({ dashboard }: Props) {
   }
 
   const s = dashboard.stats;
-  const net = netOf(s);
+  const net = dashboard.net;
   // Biggest return of a single excavation in the current tournament (same as the Ranking).
   const bestPrize =
     dashboard.bestReturn > 0n ? fmtGoldao(dashboard.bestReturn) : "-";
@@ -124,12 +123,10 @@ export function PlayerDashboard({ dashboard }: Props) {
                     <td className={cn("px-5 py-2.5", ink)}>
                       #{Number(h.tournament)}
                     </td>
-                    <td className="px-3 py-2.5">
-                      {Number(h.stats.excavations)}
-                    </td>
-                    <td className="px-3 py-2.5">{fmtGoldao(h.stats.staked)}</td>
+                    <td className="px-3 py-2.5">{Number(h.excavations)}</td>
+                    <td className="px-3 py-2.5">{fmtGoldao(h.staked)}</td>
                     <td className="px-3 py-2.5 tabular-nums">
-                      {fmtSigned(netOf(h.stats))}
+                      {fmtSigned(h.net)}
                     </td>
                     <td
                       className={cn("px-5 py-2.5 text-right tabular-nums", ink)}
