@@ -23,7 +23,7 @@ module {
   public let E8S : Nat = 100_000_000;
 
   // Whole tokens that can be requested per click.
-  public let PRESETS : [Nat] = [1_000, 5_000, 10_000, 20_000];
+  public let PRESETS : [Nat] = [5_000, 10_000, 20_000, 50_000];
 
   // Most a single player can receive per tournament (e8s): 50,000 tokens.
   public let CAP_PER_TOURNAMENT : Nat = 5_000_000_000_000;
