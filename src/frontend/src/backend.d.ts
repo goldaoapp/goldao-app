@@ -51,6 +51,7 @@ export interface Cell {
     name: string;
 }
 export interface Dashboard {
+    net: bigint;
     top10Pool: bigint;
     top10Rank: bigint;
     stakes: Array<bigint>;
@@ -59,7 +60,7 @@ export interface Dashboard {
     open?: ExcavationView;
     pool: bigint;
     tournament: bigint;
-    history: Array<PlayerTournamentResult>;
+    history: Array<PastResult>;
     credit: bigint;
     stats: TournamentStats;
     bestReturn: bigint;
@@ -190,11 +191,16 @@ export interface JackpotWin {
     stake: bigint;
     amount: bigint;
 }
-export interface PastStats {
+export interface PastResult {
+    net: bigint;
     staked: bigint;
     jackpotWon: bigint;
+    top10Prize: bigint;
     excavations: bigint;
+    tournament: bigint;
+    credit: bigint;
     returned: bigint;
+    payout: bigint;
 }
 export interface Payout {
     id: bigint;
@@ -227,12 +233,6 @@ export interface PlayerRow {
     bestReturn: bigint;
     prize: bigint;
     returned: bigint;
-}
-export interface PlayerTournamentResult {
-    tournament: bigint;
-    credit: bigint;
-    stats: PastStats;
-    payout: bigint;
 }
 export interface RankingPage {
     totalPlayers: bigint;
