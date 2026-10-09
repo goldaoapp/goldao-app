@@ -66,9 +66,9 @@ module {
   public let PAYOUT_KEEP : Nat = 10;
   // The ledger fee is read once per this many ticks (one tick per minute).
   public let FEE_CHECK_TICKS : Nat = 60;
-  public let LOAD_MIN : Nat = 100;
-  public let LOAD_MAX : Nat = 5_000;
-  public let CREDIT_CAP : Nat = 2_000_000_000_000;
+  public let LOAD_MIN : Nat = 1_000;
+  public let LOAD_MAX : Nat = 50_000;
+  public let CREDIT_CAP : Nat = 20_000_000_000_000;
   public let MIN_PAYOUT : Nat = 5_000_000_000;
 
   // Principals that are always admin. Paste Internet Identity principals here before deploying.
@@ -155,9 +155,10 @@ module {
     bucket * TOP10_WEIGHTS[rank - 1] / 100 / CENT * CENT;
   };
 
-  // Net result of a player in a tournament: what came back (prizes and jackpots) minus what was staked.
-  public func net(returned : Nat, jackpotWon : Nat, staked : Nat) : Int {
-    (returned + jackpotWon).toInt() - staked.toInt();
+  // Net result of a player in a tournament: what came back (prizes, jackpots and the Top 10 prize)
+  // minus what was staked.
+  public func net(returned : Nat, jackpotWon : Nat, top10Prize : Nat, staked : Nat) : Int {
+    (returned + jackpotWon + top10Prize).toInt() - staked.toInt();
   };
 
   // Page `page` (zero-based) of `total` rows, `size` per page. A page past the end is clamped to the
