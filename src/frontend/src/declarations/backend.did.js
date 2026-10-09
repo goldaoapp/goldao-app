@@ -240,16 +240,15 @@ export const ExcavationView = IDL.Record({
   'picks' : IDL.Nat,
   'safePctX100' : IDL.Nat,
 });
-export const PastStats = IDL.Record({
+export const PastResult = IDL.Record({
+  'net' : IDL.Int,
   'staked' : IDL.Nat,
   'jackpotWon' : IDL.Nat,
+  'top10Prize' : IDL.Nat,
   'excavations' : IDL.Nat,
-  'returned' : IDL.Nat,
-});
-export const PlayerTournamentResult = IDL.Record({
   'tournament' : IDL.Nat,
   'credit' : IDL.Nat,
-  'stats' : PastStats,
+  'returned' : IDL.Nat,
   'payout' : IDL.Nat,
 });
 export const TournamentStats = IDL.Record({
@@ -264,6 +263,7 @@ export const TournamentStats = IDL.Record({
   'jackpots' : IDL.Nat,
 });
 export const Dashboard = IDL.Record({
+  'net' : IDL.Int,
   'top10Pool' : IDL.Nat,
   'top10Rank' : IDL.Nat,
   'stakes' : IDL.Vec(IDL.Nat),
@@ -272,7 +272,7 @@ export const Dashboard = IDL.Record({
   'open' : IDL.Opt(ExcavationView),
   'pool' : IDL.Nat,
   'tournament' : IDL.Nat,
-  'history' : IDL.Vec(PlayerTournamentResult),
+  'history' : IDL.Vec(PastResult),
   'credit' : IDL.Nat,
   'stats' : TournamentStats,
   'bestReturn' : IDL.Nat,
@@ -652,16 +652,15 @@ export const idlFactory = ({ IDL }) => {
     'picks' : IDL.Nat,
     'safePctX100' : IDL.Nat,
   });
-  const PastStats = IDL.Record({
+  const PastResult = IDL.Record({
+    'net' : IDL.Int,
     'staked' : IDL.Nat,
     'jackpotWon' : IDL.Nat,
+    'top10Prize' : IDL.Nat,
     'excavations' : IDL.Nat,
-    'returned' : IDL.Nat,
-  });
-  const PlayerTournamentResult = IDL.Record({
     'tournament' : IDL.Nat,
     'credit' : IDL.Nat,
-    'stats' : PastStats,
+    'returned' : IDL.Nat,
     'payout' : IDL.Nat,
   });
   const TournamentStats = IDL.Record({
@@ -676,6 +675,7 @@ export const idlFactory = ({ IDL }) => {
     'jackpots' : IDL.Nat,
   });
   const Dashboard = IDL.Record({
+    'net' : IDL.Int,
     'top10Pool' : IDL.Nat,
     'top10Rank' : IDL.Nat,
     'stakes' : IDL.Vec(IDL.Nat),
@@ -684,7 +684,7 @@ export const idlFactory = ({ IDL }) => {
     'open' : IDL.Opt(ExcavationView),
     'pool' : IDL.Nat,
     'tournament' : IDL.Nat,
-    'history' : IDL.Vec(PlayerTournamentResult),
+    'history' : IDL.Vec(PastResult),
     'credit' : IDL.Nat,
     'stats' : TournamentStats,
     'bestReturn' : IDL.Nat,
