@@ -184,15 +184,6 @@ export function prizeName(picks: number): PrizeMeta {
   return GOLD_DUST;
 }
 
-/** Net result of a ranking row: returned + jackpots - staked, in e8s. */
-export function netOf(row: {
-  returned: bigint;
-  jackpotWon: bigint;
-  staked: bigint;
-}): bigint {
-  return row.returned + row.jackpotWon - row.staked;
-}
-
 /** Picks at which an excavation ends and pays by itself. Same as the backend. */
 export const MAX_PICKS = 10;
 
@@ -203,7 +194,7 @@ export function fmtSigned(e8s: bigint): string {
 }
 
 /** Amount authorized to the game in one step (whole GOLDAO). */
-export const AUTHORIZE_GOLDAO = 10_000;
+export const AUTHORIZE_GOLDAO = 100_000;
 
 /** The authorization expires on its own after this time, used or not. */
 export const AUTHORIZE_DAYS = 7;
