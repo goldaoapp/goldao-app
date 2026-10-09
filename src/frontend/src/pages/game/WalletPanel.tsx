@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 import { motion } from "motion/react";
 import { useEffect, useState } from "react";
-import { CopyField } from "./CopyField";a
+import { CopyField } from "./CopyField";
 import { Spinner } from "./Spinner";
 import { TestFaucetCard } from "./TestFaucetCard";
 import { SendForm, useTokenBalances } from "./WalletTokens";
