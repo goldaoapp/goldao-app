@@ -208,18 +208,16 @@ type RankingPage =
    sort: RankingSort;
    totalPlayers: nat;
  };
-type PastStats = 
- record {
-   excavations: nat;
-   jackpotWon: nat;
-   returned: nat;
-   staked: nat;
- };
-type PlayerTournamentResult = 
+type PastResult = 
  record {
    credit: nat;
+   excavations: nat;
+   jackpotWon: nat;
+   net: int;
    payout: nat;
-   stats: PastStats;
+   returned: nat;
+   staked: nat;
+   top10Prize: nat;
    tournament: nat;
  };
 type PlayerRow = 
@@ -376,7 +374,8 @@ type Dashboard =
    bestReturn: nat;
    credit: nat;
    endsAt: int;
-   history: vec PlayerTournamentResult;
+   history: vec PastResult;
+   net: int;
    open: opt ExcavationView;
    paused: bool;
    pendingPayout: nat;
