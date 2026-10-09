@@ -51,6 +51,8 @@ module {
     staked : Nat;
     returned : Nat;
     jackpotWon : Nat;
+    // Top 10 prize paid as credit when the tournament closed (0 when it paid nothing).
+    top10Prize : Nat;
   };
 
   // txId is the ledger block index of the payment (null while pending, and in test mode).
@@ -249,7 +251,22 @@ module {
     open : ?ExcavationView;
     stats : TournamentStats;
     bestReturn : Nat;
-    history : [PlayerTournamentResult];
+    /** Returned plus jackpots plus the Top 10 prize it would pay now, minus staked. */
+    net : Int;
+    history : [PastResult];
+  };
+
+  // A closed tournament as the player sees it. net counts the jackpots and the Top 10 prize.
+  public type PastResult = {
+    tournament : Nat;
+    excavations : Nat;
+    staked : Nat;
+    returned : Nat;
+    jackpotWon : Nat;
+    top10Prize : Nat;
+    net : Int;
+    credit : Nat;
+    payout : Nat;
   };
 
   // Order of the ranking table. Every order is computed over all the players of the tournament.
@@ -263,7 +280,7 @@ module {
     staked : Nat;
     returned : Nat;
     jackpotWon : Nat;
-    /** Returned plus jackpots minus staked. Negative when the player is behind. */
+    /** Returned plus jackpots plus the Top 10 prize at this rank, minus staked. Negative when behind. */
     net : Int;
     /** Biggest return of a single excavation (prize plus jackpot, stake included). */
     bestReturn : Nat;
