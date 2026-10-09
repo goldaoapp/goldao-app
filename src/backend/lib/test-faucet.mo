@@ -25,8 +25,8 @@ module {
   // Whole tokens that can be requested per click.
   public let PRESETS : [Nat] = [1_000, 5_000, 10_000, 20_000];
 
-  // Most a single player can receive per tournament (e8s): 20,000 tokens.
-  public let CAP_PER_TOURNAMENT : Nat = 2_000_000_000_000;
+  // Most a single player can receive per tournament (e8s): 50,000 tokens.
+  public let CAP_PER_TOURNAMENT : Nat = 5_000_000_000_000;
 
   // Most the faucet hands out to everyone together per tournament (e8s): 2,000,000 tokens.
   // Anyone can create principals for free, so this is what protects the pool.
