@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 import { motion } from "motion/react";
 import { useEffect, useState } from "react";
-import { CopyField } from "./CopyField";
+import { CopyField } from "./CopyField";a
 import { Spinner } from "./Spinner";
 import { TestFaucetCard } from "./TestFaucetCard";
 import { SendForm, useTokenBalances } from "./WalletTokens";
@@ -20,7 +20,7 @@ import { TEST_TOKEN_LABEL, isTestLedger } from "./ledger-mode";
 import { errorMessage, useGameAction } from "./useGame";
 import { useWallet } from "./useWallet";
 
-const LOAD_PRESETS = [200, 500, 1_000, 2_000, 5_000];
+const LOAD_PRESETS = [2_000, 5_000, 10_000, 20_000, 50_000];
 const E8S = 100_000_000n;
 
 interface Props {
@@ -44,7 +44,7 @@ export function WalletPanel({ dashboard, config }: Props) {
     setOpen((cur) => (cur === k ? null : k));
   // GOLDAO TEST: the game runs on the test ledger. Only the wallet shows the test name.
   const testLedger = isTestLedger(config);
-  const [amount, setAmount] = useState(500);
+  const [amount, setAmount] = useState(5_000);
   const [loading, setLoading] = useState(false);
   const fee = config?.feeE8s ?? 1_000_000_000n;
   const credit = dashboard?.credit ?? 0n;
