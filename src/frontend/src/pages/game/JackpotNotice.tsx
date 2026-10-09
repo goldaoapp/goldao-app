@@ -4,6 +4,7 @@ import { Gem, X } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useState } from "react";
 import { ShinyDiamond } from "./Diamonds";
+import { useBoard } from "./board-store";
 import { DIAMOND_IMG, DIAMOND_TEXT, eyebrow, inkFaint } from "./game-utils";
 import { observePool } from "./jackpot-watch";
 
@@ -19,6 +20,11 @@ export function JackpotNotice({
   readAt,
 }: { summary: GameSummary | undefined; readAt: number }) {
   const [shown, setShown] = useState(0);
+  // A fall seen while the player's own jackpot is on screen (or an auto run is replaying) waits
+  // until that celebration is over, so the notice never lands on top of it or spoils it.
+  const [pending, setPending] = useState(false);
+  const { jackpot, hold } = useBoard();
+  const celebrating = jackpot !== null || hold;
   const pool = summary?.pool;
   const tournament = summary?.tournament;
 
@@ -26,8 +32,14 @@ export function JackpotNotice({
   useEffect(() => {
     if (pool === undefined || tournament === undefined) return;
     // Also shown to the winner: it proves the notice appears whenever a jackpot is paid.
-    if (observePool({ tournament, pool, at: readAt })) setShown((n) => n + 1);
+    if (observePool({ tournament, pool, at: readAt })) setPending(true);
   }, [readAt, pool, tournament]);
+
+  useEffect(() => {
+    if (!pending || celebrating) return;
+    setPending(false);
+    setShown((n) => n + 1);
+  }, [pending, celebrating]);
 
   useEffect(() => {
     if (shown === 0) return;
