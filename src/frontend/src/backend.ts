@@ -97,6 +97,7 @@ export interface Cell {
     name: string;
 }
 export interface Dashboard {
+    net: bigint;
     top10Pool: bigint;
     top10Rank: bigint;
     stakes: Array<bigint>;
@@ -105,7 +106,7 @@ export interface Dashboard {
     open?: ExcavationView;
     pool: bigint;
     tournament: bigint;
-    history: Array<PlayerTournamentResult>;
+    history: Array<PastResult>;
     credit: bigint;
     stats: TournamentStats;
     bestReturn: bigint;
@@ -236,11 +237,16 @@ export interface JackpotWin {
     stake: bigint;
     amount: bigint;
 }
-export interface PastStats {
+export interface PastResult {
+    net: bigint;
     staked: bigint;
     jackpotWon: bigint;
+    top10Prize: bigint;
     excavations: bigint;
+    tournament: bigint;
+    credit: bigint;
     returned: bigint;
+    payout: bigint;
 }
 export interface Payout {
     id: bigint;
@@ -273,12 +279,6 @@ export interface PlayerRow {
     bestReturn: bigint;
     prize: bigint;
     returned: bigint;
-}
-export interface PlayerTournamentResult {
-    tournament: bigint;
-    credit: bigint;
-    stats: PastStats;
-    payout: bigint;
 }
 export interface RankingPage {
     totalPlayers: bigint;
@@ -575,7 +575,7 @@ export interface backendInterface {
     testFaucetConfig(): Promise<FaucetConfig>;
     whoAmI(): Promise<string>;
 }
-import type { AdminView as _AdminView, AutoResult as _AutoResult, AutoStep as _AutoStep, Cell as _Cell, Dashboard as _Dashboard, DiamondResult as _DiamondResult, EndKind as _EndKind, EndResult as _EndResult, Error as _Error, ExcavationView as _ExcavationView, JackpotWin as _JackpotWin, Payout as _Payout, PickResult as _PickResult, PlayerRow as _PlayerRow, PlayerTournamentResult as _PlayerTournamentResult, RankingPage as _RankingPage, RankingSort as _RankingSort, Result as _Result, Result_1 as _Result_1, Result_10 as _Result_10, Result_11 as _Result_11, Result_12 as _Result_12, Result_13 as _Result_13, Result_2 as _Result_2, Result_3 as _Result_3, Result_4 as _Result_4, Result_5 as _Result_5, Result_6 as _Result_6, Result_7 as _Result_7, Result_8 as _Result_8, Result_9 as _Result_9, Result__1 as _Result__1, SecurityDay as _SecurityDay, SecurityEvent as _SecurityEvent, SecurityLevel as _SecurityLevel, SecurityLogView as _SecurityLogView, SecurityView as _SecurityView, StakeOption as _StakeOption, TopPrize as _TopPrize, TournamentStats as _TournamentStats, TournamentSummary as _TournamentSummary, UserRole as _UserRole, Value as _Value, WithdrawKind as _WithdrawKind } from "./declarations/backend.did.d.ts";
+import type { AdminView as _AdminView, AutoResult as _AutoResult, AutoStep as _AutoStep, Cell as _Cell, Dashboard as _Dashboard, DiamondResult as _DiamondResult, EndKind as _EndKind, EndResult as _EndResult, Error as _Error, ExcavationView as _ExcavationView, JackpotWin as _JackpotWin, PastResult as _PastResult, Payout as _Payout, PickResult as _PickResult, PlayerRow as _PlayerRow, RankingPage as _RankingPage, RankingSort as _RankingSort, Result as _Result, Result_1 as _Result_1, Result_10 as _Result_10, Result_11 as _Result_11, Result_12 as _Result_12, Result_13 as _Result_13, Result_2 as _Result_2, Result_3 as _Result_3, Result_4 as _Result_4, Result_5 as _Result_5, Result_6 as _Result_6, Result_7 as _Result_7, Result_8 as _Result_8, Result_9 as _Result_9, Result__1 as _Result__1, SecurityDay as _SecurityDay, SecurityEvent as _SecurityEvent, SecurityLevel as _SecurityLevel, SecurityLogView as _SecurityLogView, SecurityView as _SecurityView, StakeOption as _StakeOption, TopPrize as _TopPrize, TournamentStats as _TournamentStats, TournamentSummary as _TournamentSummary, UserRole as _UserRole, Value as _Value, WithdrawKind as _WithdrawKind } from "./declarations/backend.did.d.ts";
 export class Backend implements backendInterface {
     constructor(private actor: ActorSubclass<_SERVICE>, private _uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, private _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, private processError?: (error: unknown) => never){}
     async _initialize_access_control(): Promise<void> {
@@ -1614,6 +1614,7 @@ function from_candid_record_n58(_uploadFile: (file: ExternalBlob) => Promise<Uin
     };
 }
 function from_candid_record_n61(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
+    net: bigint;
     top10Pool: bigint;
     top10Rank: bigint;
     stakes: Array<bigint>;
@@ -1622,7 +1623,7 @@ function from_candid_record_n61(_uploadFile: (file: ExternalBlob) => Promise<Uin
     open: [] | [_ExcavationView];
     pool: bigint;
     tournament: bigint;
-    history: Array<_PlayerTournamentResult>;
+    history: Array<_PastResult>;
     credit: bigint;
     stats: _TournamentStats;
     bestReturn: bigint;
@@ -1632,6 +1633,7 @@ function from_candid_record_n61(_uploadFile: (file: ExternalBlob) => Promise<Uin
     paused: boolean;
     endsAt: bigint;
 }): {
+    net: bigint;
     top10Pool: bigint;
     top10Rank: bigint;
     stakes: Array<bigint>;
@@ -1640,7 +1642,7 @@ function from_candid_record_n61(_uploadFile: (file: ExternalBlob) => Promise<Uin
     open?: ExcavationView;
     pool: bigint;
     tournament: bigint;
-    history: Array<PlayerTournamentResult>;
+    history: Array<PastResult>;
     credit: bigint;
     stats: TournamentStats;
     bestReturn: bigint;
@@ -1651,6 +1653,7 @@ function from_candid_record_n61(_uploadFile: (file: ExternalBlob) => Promise<Uin
     endsAt: bigint;
 } {
     return {
+        net: value.net,
         top10Pool: value.top10Pool,
         top10Rank: value.top10Rank,
         stakes: value.stakes,
