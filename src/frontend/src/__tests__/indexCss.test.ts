@@ -16,13 +16,13 @@ describe("index.css", () => {
     expect(css).toContain("@tailwind utilities;");
     expect(css).toContain("@layer base");
     expect(css).toContain('--font-display: "Space Grotesk", sans-serif;');
-    expect(css).toContain("--primary: 0.78 0.15 85;");
+    expect(css).toContain("--primary: 0.71 0.122 83;");
   });
 
   it("keeps the dark theme tokens unchanged", () => {
     expect(css).toContain(".dark");
-    expect(css).toContain("--background: 0.145 0 0;");
-    expect(css).toContain("--primary: 0.82 0.15 85;");
+    expect(css).toContain("--background: 0.23 0.008 264;");
+    expect(css).toContain("--primary: 0.71 0.122 83;");
   });
 
   it("keeps the existing utility classes unchanged", () => {
