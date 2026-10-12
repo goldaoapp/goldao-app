@@ -76,12 +76,11 @@ export function DataPanel({
       editKey: "volume7dUsd",
     },
     {
-      label: "Vol 7d / backing %",
+      label: "Vol 7d / market cap %",
       value:
         d?.volume7dPctStored != null
           ? `${d.volume7dPctStored.toFixed(2)}%`
           : "—",
-      editKey: "volume7dPctStored",
     },
     {
       label: "Total volume",
