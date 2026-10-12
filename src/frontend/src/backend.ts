@@ -72,7 +72,6 @@ export interface AdminView {
     lastClose?: TournamentSummary;
     withdrawable: bigint;
     smallPlayers: bigint;
-    bankAllowance: bigint;
     burned: bigint;
     heldJackpots: bigint;
     toCollectPlayers: bigint;
@@ -102,7 +101,6 @@ export interface Dashboard {
     top10Rank: bigint;
     stakes: Array<bigint>;
     top10Prize: bigint;
-    balance: bigint;
     open?: ExcavationView;
     pool: bigint;
     tournament: bigint;
@@ -110,7 +108,6 @@ export interface Dashboard {
     credit: bigint;
     stats: TournamentStats;
     bestReturn: bigint;
-    allowance: bigint;
     top10Entry: bigint;
     pendingPayout: bigint;
     paused: boolean;
@@ -123,7 +120,6 @@ export interface DiamondResult {
 export interface EndResult {
     won: bigint;
     jackpotWon: bigint;
-    balance: bigint;
     kind: EndKind;
     lost: bigint;
     credit: bigint;
@@ -1494,7 +1490,6 @@ function from_candid_record_n49(_uploadFile: (file: ExternalBlob) => Promise<Uin
     lastClose: [] | [_TournamentSummary];
     withdrawable: bigint;
     smallPlayers: bigint;
-    bankAllowance: bigint;
     burned: bigint;
     heldJackpots: bigint;
     toCollectPlayers: bigint;
@@ -1522,7 +1517,6 @@ function from_candid_record_n49(_uploadFile: (file: ExternalBlob) => Promise<Uin
     lastClose?: TournamentSummary;
     withdrawable: bigint;
     smallPlayers: bigint;
-    bankAllowance: bigint;
     burned: bigint;
     heldJackpots: bigint;
     toCollectPlayers: bigint;
@@ -1551,7 +1545,6 @@ function from_candid_record_n49(_uploadFile: (file: ExternalBlob) => Promise<Uin
         lastClose: record_opt_to_undefined(from_candid_opt_n51(_uploadFile, _downloadFile, value.lastClose)),
         withdrawable: value.withdrawable,
         smallPlayers: value.smallPlayers,
-        bankAllowance: value.bankAllowance,
         burned: value.burned,
         heldJackpots: value.heldJackpots,
         toCollectPlayers: value.toCollectPlayers,
@@ -1580,7 +1573,6 @@ function from_candid_record_n56(_uploadFile: (file: ExternalBlob) => Promise<Uin
 function from_candid_record_n58(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
     won: bigint;
     jackpotWon: bigint;
-    balance: bigint;
     kind: _EndKind;
     lost: bigint;
     credit: bigint;
@@ -1591,7 +1583,6 @@ function from_candid_record_n58(_uploadFile: (file: ExternalBlob) => Promise<Uin
 }): {
     won: bigint;
     jackpotWon: bigint;
-    balance: bigint;
     kind: EndKind;
     lost: bigint;
     credit: bigint;
@@ -1603,7 +1594,6 @@ function from_candid_record_n58(_uploadFile: (file: ExternalBlob) => Promise<Uin
     return {
         won: value.won,
         jackpotWon: value.jackpotWon,
-        balance: value.balance,
         kind: from_candid_EndKind_n59(_uploadFile, _downloadFile, value.kind),
         lost: value.lost,
         credit: value.credit,
@@ -1619,7 +1609,6 @@ function from_candid_record_n61(_uploadFile: (file: ExternalBlob) => Promise<Uin
     top10Rank: bigint;
     stakes: Array<bigint>;
     top10Prize: bigint;
-    balance: bigint;
     open: [] | [_ExcavationView];
     pool: bigint;
     tournament: bigint;
@@ -1627,7 +1616,6 @@ function from_candid_record_n61(_uploadFile: (file: ExternalBlob) => Promise<Uin
     credit: bigint;
     stats: _TournamentStats;
     bestReturn: bigint;
-    allowance: bigint;
     top10Entry: bigint;
     pendingPayout: bigint;
     paused: boolean;
@@ -1638,7 +1626,6 @@ function from_candid_record_n61(_uploadFile: (file: ExternalBlob) => Promise<Uin
     top10Rank: bigint;
     stakes: Array<bigint>;
     top10Prize: bigint;
-    balance: bigint;
     open?: ExcavationView;
     pool: bigint;
     tournament: bigint;
@@ -1646,7 +1633,6 @@ function from_candid_record_n61(_uploadFile: (file: ExternalBlob) => Promise<Uin
     credit: bigint;
     stats: TournamentStats;
     bestReturn: bigint;
-    allowance: bigint;
     top10Entry: bigint;
     pendingPayout: bigint;
     paused: boolean;
@@ -1658,7 +1644,6 @@ function from_candid_record_n61(_uploadFile: (file: ExternalBlob) => Promise<Uin
         top10Rank: value.top10Rank,
         stakes: value.stakes,
         top10Prize: value.top10Prize,
-        balance: value.balance,
         open: record_opt_to_undefined(from_candid_opt_n62(_uploadFile, _downloadFile, value.open)),
         pool: value.pool,
         tournament: value.tournament,
@@ -1666,7 +1651,6 @@ function from_candid_record_n61(_uploadFile: (file: ExternalBlob) => Promise<Uin
         credit: value.credit,
         stats: value.stats,
         bestReturn: value.bestReturn,
-        allowance: value.allowance,
         top10Entry: value.top10Entry,
         pendingPayout: value.pendingPayout,
         paused: value.paused,
