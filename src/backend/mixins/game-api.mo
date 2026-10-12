@@ -110,8 +110,12 @@ mixin (
     var credits = 0;
     for ((_, c) in gameState.credits.entries()) { credits += c };
     var held = 0;
-    for ((_, e) in gameState.open.entries()) { held += e.held };
-    gameState.owed == credits + held + gUnpaidTotal();
+    var inPlay = 0;
+    for ((_, e) in gameState.open.entries()) {
+      held += e.held;
+      inPlay += e.stake;
+    };
+    gameState.owed == credits + held + inPlay + gUnpaidTotal();
   };
 
   // The game admin comes only from BOOTSTRAP_ADMINS. Roles from the access-control
@@ -516,11 +520,18 @@ mixin (
     };
   };
 
+  // The stake of an excavation is taken from the credit when it starts and stays inside `owed`
+  // while it is in play. Giving it back only moves it from the excavation to the credit.
+  func gRefundStake(p : Principal, e : Types.Excavation) {
+    if (e.stake > 0) gameState.credits.add(p, gCredit(p) + e.stake);
+  };
+
   func gDrop(p : Principal, token : Nat) {
     switch (gameState.open.get(p)) {
       case (?e) {
         if (e.token == token) {
           gReleaseHeld(e);
+          gRefundStake(p, e);
           gameState.open.remove(p);
         };
       };
@@ -612,19 +623,13 @@ mixin (
     gameState.cycles += stake * Game.CYCLES_BPS / 10_000;
     gameState.top10 += stake * Game.TOP10_BPS / 10_000;
 
-    var won = 0;
-    var lost = 0;
-    if (g >= stake) {
-      won := g - stake;
-      gameState.credits.add(p, gCredit(p) + won);
-      gameState.owed += won;
-    } else {
-      lost := stake - g;
-      let c = gCredit(p);
-      let fromCredit = Nat.min(c, lost);
-      gameState.credits.add(p, Nat.sub(c, fromCredit));
-      gameState.owed := gSub(gameState.owed, fromCredit);
-    };
+    // The stake was taken from the credit when the excavation started: the stake leaves the
+    // amount in play and what the excavation pays is added to the credit.
+    gameState.owed := gSub(gameState.owed, stake);
+    gameState.credits.add(p, gCredit(p) + g);
+    gameState.owed += g;
+    let won = Game.sub(g, stake);
+    let lost = Game.sub(stake, g);
 
     let s = gStats(p);
     gameState.stats.add(
@@ -671,6 +676,7 @@ mixin (
         // not pay anything either: a jackpot found on the first two picks goes back to the pool.
         // Otherwise two risk-free picks per account and tournament would be a free jackpot roll.
         gReleaseHeld(e);
+        gRefundStake(p, e);
         gameState.open.remove(p);
       };
     };
@@ -904,11 +910,14 @@ mixin (
       case (?e) ({ e with stake = options[idx]; tournament = gameState.tournament });
       case null return #err("Your excavation changed. Try again.");
     };
-    gameState.open.add(p, started);
+    // Check and charge in the same step, with nothing awaited in between: the stake leaves the
+    // credit as soon as the first pick starts.
     if (gCredit(p) < started.stake) {
       gDrop(p, token);
       return #err(Game.NEED_CREDIT_MSG);
     };
+    gameState.credits.add(p, Nat.sub(gCredit(p), started.stake));
+    gameState.open.add(p, started);
     #ok(started);
   };
 
