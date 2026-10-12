@@ -82,8 +82,11 @@ export function PrizeGuide({ config, stakes, pool }: Props) {
             prize. Every stake comes out of it: wins are added, and if the mine
             collapses you keep GOLDAO secured, about half of your stake or more,
             shown in the If it collapses column; the rest of the stake is
-            deducted. The wallet is only touched when you load balance, and each
-            load pays the {fmtGoldao(config.feeE8s)} GOLDAO network fee.
+            deducted. The stake leaves your Accumulated prize at your first
+            pick. If the excavation cannot start, or the tournament closes
+            before your third pick, it goes back to your Accumulated prize. The
+            wallet is only touched when you load balance, and each load pays the{" "}
+            {fmtGoldao(config.feeE8s)} GOLDAO network fee.
           </p>
           <p>
             When the tournament closes, your Accumulated prize is paid to your
