@@ -28,13 +28,23 @@ export default function GldtPage() {
     [],
   );
 
-  /** API data merged with manual overrides (manual wins when non-null). */
+  /**
+   * API data merged with manual overrides (manual wins when non-null).
+   * "% of stored" is derived: 7d volume as % of market cap.
+   */
   const merged: GldtData | undefined = useMemo(() => {
     if (!data) return undefined;
+    const volume7dUsd = manual.volume7dUsd ?? data.volume7dUsd;
+    const marketCap = data.marketCapUsd;
+    const derivedPct =
+      volume7dUsd != null && marketCap != null && marketCap > 0
+        ? (volume7dUsd / marketCap) * 100
+        : null;
     return {
       ...data,
-      volume7dUsd: manual.volume7dUsd ?? data.volume7dUsd,
-      volume7dPctStored: manual.volume7dPctStored ?? data.volume7dPctStored,
+      volume7dUsd,
+      volume7dPctStored:
+        derivedPct ?? manual.volume7dPctStored ?? data.volume7dPctStored,
       totalVolumeUsd: manual.totalVolumeUsd ?? data.totalVolumeUsd,
     };
   }, [data, manual]);
