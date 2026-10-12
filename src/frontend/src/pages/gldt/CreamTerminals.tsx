@@ -117,15 +117,30 @@ const mono = "'JetBrains Mono', monospace";
 const grotesk = "'Space Grotesk', sans-serif";
 const sans = "'DM Sans', sans-serif";
 
+/** Self-hosted variable fonts (same-origin, so export works under strict CSP). */
+const FONT_BASE = "/assets/gldt/fonts/";
+const FONT_FACES = [
+  { family: "JetBrains Mono", file: "jetbrains-mono.woff2", weights: "100 800" },
+  { family: "Space Grotesk", file: "space-grotesk.woff2", weights: "300 700" },
+  { family: "DM Sans", file: "dm-sans.woff2", weights: "100 1000" },
+];
+
+function fontFaceCss(srcFor: (file: string) => string): string {
+  return FONT_FACES.map(
+    (f) =>
+      `@font-face{font-family:'${f.family}';font-style:normal;font-weight:${f.weights};font-display:block;src:url(${srcFor(f.file)}) format('woff2');}`,
+  ).join("\n");
+}
+
 function injectTerminalFonts() {
   const id = "gldt-terminal-fonts";
   if (document.getElementById(id)) return;
-  const link = document.createElement("link");
-  link.id = id;
-  link.rel = "stylesheet";
-  link.href =
-    "https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=Space+Grotesk:wght@300;400;500;600;700&family=DM+Sans:wght@300;400;500;600;700&display=swap";
-  document.head.appendChild(link);
+  const style = document.createElement("style");
+  style.id = id;
+  style.textContent = fontFaceCss(
+    (file) => new URL(FONT_BASE + file, window.location.origin).href,
+  );
+  document.head.appendChild(style);
 }
 
 function fmtTerminalDate(d: Date): string {
@@ -167,37 +182,19 @@ async function fetchAsDataUrl(url: string): Promise<string> {
 
 let fontCssCache: string | null = null;
 
-/** Google Fonts CSS with the latin subset inlined as base64 data URLs. */
+/** @font-face rules with the self-hosted fonts inlined as base64 data URLs. */
 async function getEmbeddedFontCss(): Promise<string> {
   if (fontCssCache != null) return fontCssCache;
-  const link = document.getElementById(
-    "gldt-terminal-fonts",
-  ) as HTMLLinkElement | null;
-  if (!link) return "";
-  try {
-    const css = await (await fetch(link.href, { mode: "cors" })).text();
-    const blocks: string[] = [];
-    const re = /\/\*\s*([\w-]+)\s*\*\/\s*(@font-face\s*\{[^}]*\})/g;
-    let m = re.exec(css);
-    while (m !== null) {
-      if (m[1] === "latin") blocks.push(m[2]);
-      m = re.exec(css);
-    }
-    const urlCache = new Map<string, Promise<string>>();
-    const embedded = await Promise.all(
-      blocks.map(async (block) => {
-        const urlMatch = /url\(["']?([^"')]+)["']?\)/.exec(block);
-        if (!urlMatch) return block;
-        const u = urlMatch[1];
-        if (!urlCache.has(u)) urlCache.set(u, fetchAsDataUrl(u));
-        const dataUrl = await urlCache.get(u)!;
-        return block.replace(urlMatch[0], `url(${dataUrl})`);
-      }),
-    );
-    fontCssCache = embedded.join("\n");
-  } catch {
-    fontCssCache = "";
-  }
+  const dataUrls = new Map<string, string>();
+  await Promise.all(
+    FONT_FACES.map(async (f) => {
+      dataUrls.set(
+        f.file,
+        await fetchAsDataUrl(new URL(FONT_BASE + f.file, window.location.origin).href),
+      );
+    }),
+  );
+  fontCssCache = fontFaceCss((file) => dataUrls.get(file) ?? "");
   return fontCssCache;
 }
 
