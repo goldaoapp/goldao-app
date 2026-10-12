@@ -26,6 +26,14 @@ export function toGoldao(e8s: bigint): number {
   return Number(e8s / CENT) / 100;
 }
 
+/**
+ * Accumulated prize to show. The backend takes the stake at the first pick; until that balance
+ * reaches the screen, the part of the stake not reflected yet is subtracted here.
+ */
+export function creditOnScreen(credit: bigint, pendingCharge: bigint): bigint {
+  return credit > pendingCharge ? credit - pendingCharge : 0n;
+}
+
 /** Whole cents -> "1,234" or "1,234.56": decimals only when there are cents. */
 export function fmtCents(cents: bigint): string {
   const neg = cents < 0n;
