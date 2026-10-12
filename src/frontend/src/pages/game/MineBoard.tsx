@@ -258,7 +258,7 @@ export function MineBoard({ dashboard }: Props) {
         exc: null,
         inPlay: 0n,
         notice: closed
-          ? "The tournament closed. Your excavation was settled: check your Accumulated prize."
+          ? "The tournament closed. Your excavation was settled or its stake was returned: check your Accumulated prize."
           : null,
       });
     }
@@ -332,9 +332,11 @@ export function MineBoard({ dashboard }: Props) {
         setBoard({ error: "Bets are paused. Try again later." });
         return;
       }
-      if (!coversStake(stakeAmount)) return;
+      // Only a new excavation needs the credit: the stake of one in play was already taken.
+      if (starting && !coversStake(stakeAmount)) return;
       setBoard((s) => ({
         inPlay: stakeAmount,
+        pendingCharge: starting ? stakeAmount : s.pendingCharge,
         digging: index,
         cells: starting ? {} : s.cells,
         result: null,
@@ -424,7 +426,12 @@ export function MineBoard({ dashboard }: Props) {
       }
     } finally {
       setBoard({ working: false, digging: null });
-      if (!getBoard().exc) setBoard({ inPlay: 0n });
+      if (!getBoard().exc) {
+        const hadPending = getBoard().pendingCharge > 0n;
+        setBoard({ inPlay: 0n, pendingCharge: 0n });
+        // The excavation did not start: show the balance the backend really has.
+        if (hadPending) void refreshAll();
+      }
     }
   };
 
@@ -461,6 +468,7 @@ export function MineBoard({ dashboard }: Props) {
       cells: {},
       hold: true,
       inPlay: stakeAmount,
+      pendingCharge: stakeAmount,
     });
     try {
       if (!coversStake(stakeAmount)) return;
@@ -521,7 +529,11 @@ export function MineBoard({ dashboard }: Props) {
       void refreshAll();
     } finally {
       setBoard({ working: false, autoRun: false, hold: false });
-      if (!getBoard().exc) setBoard({ inPlay: 0n });
+      if (!getBoard().exc) {
+        const hadPending = getBoard().pendingCharge > 0n;
+        setBoard({ inPlay: 0n, pendingCharge: 0n });
+        if (hadPending) void refreshAll();
+      }
     }
   };
 
@@ -551,7 +563,7 @@ export function MineBoard({ dashboard }: Props) {
         text: "Bets are paused. Try again later.",
         tone: "err" as const,
       };
-    if (dashboard && credit < (stakes[board.stake] ?? 0n))
+    if (dashboard && !exc && credit < (stakes[board.stake] ?? 0n))
       return {
         text: "Load balance to start digging.",
         tone: "mid" as const,
