@@ -34,6 +34,7 @@ import {
   STAKE_LABELS,
   TOKENS,
   type TokenKey,
+  creditOnScreen,
   eyebrow,
   fmtCountdown,
   fmtFixed2Number,
@@ -1071,12 +1072,11 @@ export function CreditBar({
   dashboard,
   className,
 }: { dashboard: Dashboard | undefined; className?: string }) {
-  // The stake of an excavation in play is already out of the Accumulated prize on screen.
-  const { inPlay } = useBoard();
+  // The backend takes the stake at the first pick. Until that balance reaches the screen, the
+  // stake is shown as spent here.
+  const { pendingCharge } = useBoard();
   const shown = dashboard
-    ? dashboard.credit > inPlay
-      ? dashboard.credit - inPlay
-      : 0n
+    ? creditOnScreen(dashboard.credit, pendingCharge)
     : 0n;
   const credit = toGoldao(shown);
   // Last value that was really on screen (null until the dashboard has loaded).
