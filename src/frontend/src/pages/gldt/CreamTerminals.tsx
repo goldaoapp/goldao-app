@@ -141,12 +141,154 @@ function daysSince(from: Date): number {
   return Math.floor((utcNow - utcFrom) / 86_400_000);
 }
 
+/* ── PNG export (SVG foreignObject, html2canvas as fallback) ─────────────── */
+
+/** CSS the terminals rely on, normally provided by Tailwind preflight. */
+const EXPORT_BASE_CSS = [
+  "*,*::before,*::after{box-sizing:border-box;border-width:0;border-style:solid;}",
+  "img,svg{display:block;vertical-align:middle;}",
+  "img{max-width:100%;height:auto;}",
+].join("");
+
+function blobToDataUrl(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const fr = new FileReader();
+    fr.onload = () => resolve(String(fr.result));
+    fr.onerror = () => reject(fr.error);
+    fr.readAsDataURL(blob);
+  });
+}
+
+async function fetchAsDataUrl(url: string): Promise<string> {
+  const res = await fetch(url, { mode: "cors" });
+  if (!res.ok) throw new Error(`Fetch failed: ${url}`);
+  return blobToDataUrl(await res.blob());
+}
+
+let fontCssCache: string | null = null;
+
+/** Google Fonts CSS with the latin subset inlined as base64 data URLs. */
+async function getEmbeddedFontCss(): Promise<string> {
+  if (fontCssCache != null) return fontCssCache;
+  const link = document.getElementById(
+    "gldt-terminal-fonts",
+  ) as HTMLLinkElement | null;
+  if (!link) return "";
+  try {
+    const css = await (await fetch(link.href, { mode: "cors" })).text();
+    const blocks: string[] = [];
+    const re = /\/\*\s*([\w-]+)\s*\*\/\s*(@font-face\s*\{[^}]*\})/g;
+    let m = re.exec(css);
+    while (m !== null) {
+      if (m[1] === "latin") blocks.push(m[2]);
+      m = re.exec(css);
+    }
+    const urlCache = new Map<string, Promise<string>>();
+    const embedded = await Promise.all(
+      blocks.map(async (block) => {
+        const urlMatch = /url\(["']?([^"')]+)["']?\)/.exec(block);
+        if (!urlMatch) return block;
+        const u = urlMatch[1];
+        if (!urlCache.has(u)) urlCache.set(u, fetchAsDataUrl(u));
+        const dataUrl = await urlCache.get(u)!;
+        return block.replace(urlMatch[0], `url(${dataUrl})`);
+      }),
+    );
+    fontCssCache = embedded.join("\n");
+  } catch {
+    fontCssCache = "";
+  }
+  return fontCssCache;
+}
+
+function triggerPngDownload(canvas: HTMLCanvasElement, name: string) {
+  return new Promise<void>((resolve, reject) => {
+    canvas.toBlob((blob: Blob | null) => {
+      if (!blob) return reject(new Error("Canvas export failed"));
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${name}-${Date.now()}.png`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      resolve();
+    }, "image/png");
+  });
+}
+
 /**
- * Export a terminal element as 1080×1080 PNG.
- * Renders inside an iframe to isolate from Tailwind's oklch() colors
- * that html2canvas cannot parse.
+ * Primary export: serialize the terminal into an SVG foreignObject so the
+ * browser's own layout engine draws it (exact vertical alignment, no oklch
+ * parsing involved), then rasterize at 1080×1080.
  */
+async function exportViaForeignObject(el: HTMLElement, name: string) {
+  const clone = el.cloneNode(true) as HTMLElement;
+  Object.assign(clone.style, {
+    transform: "none",
+    position: "static",
+    width: "1080px",
+    height: "1080px",
+  });
+
+  // Inline every <img> so the standalone SVG needs no network access
+  await Promise.all(
+    Array.from(clone.querySelectorAll("img")).map(async (img) => {
+      const src = img.getAttribute("src");
+      if (src && !src.startsWith("data:")) {
+        img.setAttribute("src", await fetchAsDataUrl(src));
+      }
+    }),
+  );
+
+  const fontCss = await getEmbeddedFontCss();
+
+  const wrapper = document.createElement("div");
+  wrapper.setAttribute("xmlns", "http://www.w3.org/1999/xhtml");
+  wrapper.style.cssText =
+    "width:1080px;height:1080px;line-height:1.5;margin:0;padding:0;";
+  const style = document.createElement("style");
+  style.textContent = `${fontCss}\n${EXPORT_BASE_CSS}`;
+  wrapper.appendChild(style);
+  wrapper.appendChild(clone);
+
+  const xhtml = new XMLSerializer().serializeToString(wrapper);
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1080"><foreignObject x="0" y="0" width="1080" height="1080">${xhtml}</foreignObject></svg>`;
+
+  const img = new Image();
+  img.decoding = "sync";
+  await new Promise<void>((resolve, reject) => {
+    img.onload = () => resolve();
+    img.onerror = () => reject(new Error("SVG render failed"));
+    img.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+  });
+  // Give the engine a frame to decode embedded fonts and images
+  await new Promise((r) => setTimeout(r, 150));
+
+  const canvas = document.createElement("canvas");
+  canvas.width = 1080;
+  canvas.height = 1080;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("No 2d context");
+  ctx.drawImage(img, 0, 0, 1080, 1080);
+  await triggerPngDownload(canvas, name);
+}
+
 async function exportTerminalPng(el: HTMLElement, name: string) {
+  try {
+    await exportViaForeignObject(el, name);
+  } catch (err) {
+    console.warn("foreignObject export failed, using html2canvas", err);
+    await exportViaHtml2Canvas(el, name);
+  }
+}
+
+/**
+ * Fallback export. Renders inside an iframe to isolate from Tailwind's
+ * oklch() colors that html2canvas cannot parse.
+ */
+async function exportViaHtml2Canvas(el: HTMLElement, name: string) {
   const iframe = document.createElement("iframe");
   iframe.style.cssText =
     "position:fixed;left:0;top:0;width:1080px;height:1080px;border:none;opacity:0;pointer-events:none;z-index:-9999;";
@@ -184,7 +326,17 @@ async function exportTerminalPng(el: HTMLElement, name: string) {
   const fontLink = document.getElementById("gldt-terminal-fonts");
   if (fontLink) doc.head.appendChild(fontLink.cloneNode(true));
 
-  doc.body.style.cssText = "margin:0;padding:0;overflow:hidden;";
+  // Replicate Tailwind preflight basics the terminals rely on, otherwise
+  // line-height, box-sizing and img display differ from the on-screen render.
+  const base = doc.createElement("style");
+  base.textContent = [
+    "*,*::before,*::after{box-sizing:border-box;border-width:0;border-style:solid;}",
+    "html{line-height:1.5;-webkit-text-size-adjust:100%;}",
+    "body{margin:0;padding:0;overflow:hidden;line-height:inherit;}",
+    "img,svg{display:block;vertical-align:middle;}",
+    "img{max-width:100%;height:auto;}",
+  ].join("\n");
+  doc.head.appendChild(base);
 
   // Clone terminal into the clean iframe (no Tailwind = no oklch)
   const clone = el.cloneNode(true) as HTMLElement;
@@ -428,7 +580,12 @@ const GldtStatusTerminal = forwardRef<HTMLDivElement, TerminalProps>(
     const marketCap = d?.marketCapUsd ?? null;
     const uptime = daysSince(FIRST_TRADE);
     const vol7d = d?.volume7dUsd ?? null;
-    const vol7dPct = d?.volume7dPctStored ?? null;
+    // Manual override wins; otherwise 7d volume as % of market cap
+    const vol7dPct =
+      d?.volume7dPctStored ??
+      (vol7d != null && marketCap != null && marketCap > 0
+        ? (vol7d / marketCap) * 100
+        : null);
     const totalVol = d?.totalVolumeUsd ?? null;
 
     return (
