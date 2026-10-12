@@ -130,14 +130,6 @@ mixin (
     null;
   };
 
-  func gBalance(p : Principal) : Nat {
-    switch (gameState.balances.get(p)) { case (?b) b; case null 0 };
-  };
-
-  func gAllowance(p : Principal) : Nat {
-    switch (gameState.allowances.get(p)) { case (?b) b; case null 0 };
-  };
-
   func gCredit(p : Principal) : Nat {
     switch (gameState.credits.get(p)) { case (?b) b; case null 0 };
   };
@@ -354,7 +346,7 @@ mixin (
       };
     };
     let all = Array.concat(gameState.fundSamples, [f]);
-    gameState.fundSamples := if (all.size() > Game.FUND_SAMPLES) Array.sliceToArray(all, all.size() - Game.FUND_SAMPLES, all.size()) else all;
+    gameState.fundSamples := if (all.size() > Game.FUND_SAMPLES) Array.sliceToArray(all, Nat.sub(all.size(), Game.FUND_SAMPLES), all.size()) else all;
   };
 
   func gWatchBank() : async () {
@@ -590,7 +582,7 @@ mixin (
     // Full and mini jackpots are counted together in jackpots and jackpotWon (that is what the
     // players see); minis and miniWon keep the mini part apart for internal use.
     let mini = Nat.min(e.heldMini, e.held);
-    let full = e.held - mini;
+    let full = Nat.sub(e.held, mini);
     let s = gStats(p);
     gameState.stats.add(
       p,
@@ -604,7 +596,7 @@ mixin (
     );
     let entry : Types.JackpotWin = { tournament = gameState.tournament; player = p; amount = e.held; stake = e.stake; at = Time.now() };
     let all = Array.concat(gameState.jackpots, [entry]);
-    gameState.jackpots := if (all.size() > Game.JACKPOT_LOG) Array.sliceToArray(all, all.size() - Game.JACKPOT_LOG, all.size()) else all;
+    gameState.jackpots := if (all.size() > Game.JACKPOT_LOG) Array.sliceToArray(all, Nat.sub(all.size(), Game.JACKPOT_LOG), all.size()) else all;
     { e with held = 0; heldMini = 0 };
   };
 
@@ -630,7 +622,7 @@ mixin (
       lost := stake - g;
       let c = gCredit(p);
       let fromCredit = Nat.min(c, lost);
-      gameState.credits.add(p, c - fromCredit);
+      gameState.credits.add(p, Nat.sub(c, fromCredit));
       gameState.owed := gSub(gameState.owed, fromCredit);
     };
 
@@ -663,7 +655,6 @@ mixin (
       lost;
       jackpotWon = e.jackpotWon;
       credit = gCredit(p);
-      balance = gBalance(p);
     };
   };
 
@@ -716,8 +707,8 @@ mixin (
       } else if (pays(c)) {
         let id = gameState.nextPayoutId;
         gameState.nextPayoutId += 1;
-        gameState.payouts.add(id, { id; tournament = t; to = p; amount = c - Game.FEE; paid = false; stamp = (0 : Nat64); txId = null; paidAt = 0; uncertain = false });
-        payoutTotal += c - Game.FEE;
+        gameState.payouts.add(id, { id; tournament = t; to = p; amount = Nat.sub(c, Game.FEE); paid = false; stamp = (0 : Nat64); txId = null; paidAt = 0; uncertain = false });
+        payoutTotal += Nat.sub(c, Game.FEE);
         settled.add((p, 0));
       } else if (payAll) {
         forfeited += c;
@@ -843,7 +834,7 @@ mixin (
     gMaybeClose();
     gWatchFund();
     gExpireLoads();
-    if ((gTicks - 1) % Game.FEE_CHECK_TICKS == 0) await gCheckFee();
+    if (Nat.sub(gTicks, 1) % Game.FEE_CHECK_TICKS == 0) await gCheckFee();
     await gWatchBank();
   };
 
@@ -1249,8 +1240,6 @@ mixin (
       endsAt = gameState.endsAt;
       paused = gPaused();
       stakes;
-      balance = gBalance(caller);
-      allowance = gAllowance(caller);
       credit = gCredit(caller);
       pendingPayout = pending;
       pool = gameState.pool;
@@ -1426,11 +1415,10 @@ mixin (
       stakes;
       paused = gPaused();
       staked;
-      bankAllowance = gameState.bankAllowance;
       bankAccount = gameState.bankAccount;
       selfId = gameState.selfId;
       payouts = shownPayouts;
-      lastClose = if (tn == 0) null else gameState.tournaments.get(tn - 1);
+      lastClose = if (tn == 0) null else gameState.tournaments.get(Nat.sub(tn, 1));
     });
   };
 
@@ -1463,7 +1451,7 @@ mixin (
     let target = goldao * Game.E8S;
     if (target < Game.POOL_SEED or target > Game.POOL_SEED_MAX) return #err("Choose a pool between 5,000 and 20,000 GOLDAO.");
     if (gameState.pool >= target) return #err("The jackpot pool is already at or above that amount.");
-    let amount = target - gameState.pool;
+    let amount = Nat.sub(target, gameState.pool);
     let after : Int = gFund() - amount;
     if (after < Game.FUND_FLOOR) return #err("The bank fund would fall below its floor.");
     gameState.pool += amount;
@@ -1771,7 +1759,6 @@ mixin (
     gameState.halted := false;
     gameState.haltCode := 0;
     gFundReset();
-    gameState.resumedAt := Time.now();
     gameState.ledgerFails := 0;
     #ok(());
   };
@@ -1821,17 +1808,13 @@ mixin (
     gameState.stats.clear();
     gameState.best.clear();
     gameState.history.clear();
-    gameState.blocked.clear();
     gameState.tournaments.clear();
     gameState.payouts.clear();
     gameState.pendingLoads.clear();
     gameState.jackpots := [];
     gameState.tournament := 1;
     gameState.endsAt := Time.now() + gameState.durationDays * Game.DAY_NS;
-    Map.clear(gameState.balances);
-    Map.clear(gameState.allowances);
     gameState.bank := balance;
-    gameState.bankAllowance := 0;
     gameState.realLedger := true;
     gameState.ledgerFails := 0;
     gFundReset();
@@ -1844,7 +1827,7 @@ mixin (
   func gTryConnect() : async Result.Result<Nat, Text> {
     if (gameState.realLedger) return #err("Already connected.");
     if (gAutoBusy) return #err("A connection attempt is already running.");
-    let me = Prim.getSelfPrincipal();
+    let me = Prim.getSelfPrincipal<system>();
     switch (Game.bankFor(me)) {
       case (?bank) {
         gAutoBusy := true;
@@ -1875,7 +1858,7 @@ mixin (
   // wallet of this deployment, with the game paused, nothing in flight and nothing owed.
   public shared ({ caller }) func gameAdminChangeLedger() : async Result.Result<Nat, Text> {
     if (not gIsAdmin(caller)) return #err("Admin only.");
-    let me = Prim.getSelfPrincipal();
+    let me = Prim.getSelfPrincipal<system>();
     let bank = switch (Game.bankFor(me)) { case (?b) b; case null return #err("This canister has no bank configured.") };
     if (caller != bank) return #err("Only the bank wallet can change the ledger.");
     if (gameState.realLedger) {
