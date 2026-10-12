@@ -9,7 +9,14 @@ import { describe, expect, it } from "vitest";
 // public logos directory sits directly under the current working directory.
 const logosDir = join(process.cwd(), "public", "logos");
 
-const logoFiles = ["ogy.png", "icp.png", "goldao.png", "gldt.png"];
+const logoFiles = [
+  "ogy.png",
+  "icp.png",
+  "goldao.png",
+  "goldao_og.png",
+  "gldt.png",
+  "wtn.png",
+];
 
 describe("frontend public logos", () => {
   it("ships the required logo PNG files", () => {
