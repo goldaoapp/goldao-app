@@ -63,8 +63,14 @@ export interface BoardState {
   hold: boolean;
   /** Balance to show once the jackpot reveal is closed. */
   heldBalance: HeldBalance | null;
-  /** Stake of the excavation in play. The Accumulated prize shows it as already spent. */
+  /** Stake of the excavation in play. */
   inPlay: bigint;
+  /**
+   * Part of the stake that the Accumulated prize on screen does not reflect yet: the backend takes
+   * the stake at the first pick, and the screen shows it as spent right away. Cleared when the
+   * balance from the backend is applied.
+   */
+  pendingCharge: bigint;
   /** Treasure celebration to show; kept here so it survives leaving the tab. */
   treasure: TreasureView | null;
   /** A pick, save or auto run is in progress. Kept here so leaving the tab does not unlock the board. */
@@ -90,6 +96,7 @@ const EMPTY: BoardState = {
   hold: false,
   heldBalance: null,
   inPlay: 0n,
+  pendingCharge: 0n,
   treasure: null,
   working: false,
   autoRun: false,
