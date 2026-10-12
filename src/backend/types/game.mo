@@ -125,27 +125,20 @@ module {
     var realLedger : Bool;
     var bankAccount : ?Principal;
     var selfId : ?Principal;
-    var bankAllowance : Nat;
     var seq : Nat;
     var movSeq : Nat;
     var payingSince : Int;
     var nextPayoutId : Nat;
-    balances : Map.Map<Principal, Nat>;
-    allowances : Map.Map<Principal, Nat>;
     credits : Map.Map<Principal, Nat>;
     open : Map.Map<Principal, Excavation>;
     stats : Map.Map<Principal, TournamentStats>;
     history : Map.Map<Principal, List.List<PlayerTournamentResult>>;
-    blocked : Map.Map<Principal, Nat>;
     tournaments : List.List<TournamentSummary>;
     payouts : Map.Map<Nat, Payout>;
     var jackpots : [JackpotWin];
     var halted : Bool;
     var haltCode : Nat;
     var haltedAt : Int;
-    var resumedAt : Int;
-    var breakerMax : Nat;
-    var breakerWindowNs : Int;
     var ledgerFails : Nat;
     var top10 : Nat;
     var lastTop10 : [TopPrize];
@@ -216,7 +209,6 @@ module {
     lost : Nat;
     jackpotWon : Nat;
     credit : Nat;
-    balance : Nat;
   };
 
   public type DiamondResult = { stage : Nat; won : Nat };
@@ -239,8 +231,6 @@ module {
     endsAt : Int;
     paused : Bool;
     stakes : [Nat];
-    balance : Nat;
-    allowance : Nat;
     credit : Nat;
     pendingPayout : Nat;
     pool : Nat;
@@ -368,7 +358,6 @@ module {
     stakes : [Nat];
     paused : Bool;
     staked : Nat;
-    bankAllowance : Nat;
     bankAccount : ?Principal;
     selfId : ?Principal;
     payouts : [Payout];
