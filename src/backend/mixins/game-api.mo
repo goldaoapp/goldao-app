@@ -23,12 +23,10 @@ mixin (
   // Players with a credit load in flight (start time): one at a time. A lock older than
   // BUSY_STALE_NS is ignored, so a lost continuation can never block a player for good.
   transient let gLoading = Map.empty<Principal, Int>();
-  // Rejected loads (no funds, no allowance) in the current window. Every load that reaches the
-  // ledger bumps movSeq, which can make the bank refresh fail, so a flood of loads from accounts
-  // that never paid is cut off before it reaches the ledger. Players who already loaded once
-  // are never throttled.
-  transient var gRejectedSince : Int = 0;
-  transient var gRejected : Nat = 0;
+  // Rejected loads (no funds, no allowance) per account in the current window. Every load that
+  // reaches the ledger bumps movSeq, so an account that keeps failing is cut off before it
+  // reaches the ledger again. Each account has its own counter: one account never blocks others.
+  transient let gRejects = Map.empty<Principal, (Int, Nat)>();
   // Real-ledger transfers started and not yet answered. A bank reading taken while one is in
   // flight is not comparable with the game's own books, so it is neither audited nor adopted.
   transient var gInFlight : Nat = 0;
@@ -74,19 +72,31 @@ mixin (
   };
 
   func gLoadThrottled(p : Principal) : Bool {
-    if (not gameState.realLedger or gameState.loaded.contains(p)) return false;
-    let on = Time.now() - gRejectedSince < Game.LOAD_REJECT_WINDOW_NS and gRejected >= Game.LOAD_REJECT_MAX;
-    if (on) gLog(#warning, "load_throttle", "Load throttle active", "Loads from accounts that never paid are being rejected (" # Nat.toText(gRejected) # " rejected in the last minute).");
-    on;
+    if (not gameState.realLedger) return false;
+    switch (gRejects.get(p)) {
+      case (?(since, count)) Time.now() - since < Game.LOAD_REJECT_WINDOW_NS and count >= Game.LOAD_REJECT_MAX;
+      case null false;
+    };
   };
 
-  func gLoadRejected() {
+  func gLoadRejected(p : Principal) {
     let now = Time.now();
-    if (now - gRejectedSince >= Game.LOAD_REJECT_WINDOW_NS) {
-      gRejectedSince := now;
-      gRejected := 0;
+    let (since, count) = switch (gRejects.get(p)) {
+      case (?(s, c)) if (now - s < Game.LOAD_REJECT_WINDOW_NS) (s, c) else (now, 0);
+      case null {
+        if (gRejects.size() >= Game.LOAD_REJECT_TRACK_MAX) {
+          for ((q, (s, _)) in gRejects.entries().toArray().values()) {
+            if (now - s >= Game.LOAD_REJECT_WINDOW_NS) gRejects.remove(q);
+          };
+        };
+        (now, 0);
+      };
     };
-    gRejected += 1;
+    if (count == 0 and gRejects.size() >= Game.LOAD_REJECT_TRACK_MAX) return;
+    gRejects.add(p, (since, count + 1));
+    if (count + 1 == Game.LOAD_REJECT_MAX) {
+      gLog(#warning, "load_throttle", "Load throttle active", "Loads from " # Principal.toText(p) # " are being rejected: " # Nat.toText(Game.LOAD_REJECT_MAX) # " rejected loads in the last minute.");
+    };
   };
 
   func gUnpaidTotal() : Nat {
@@ -289,11 +299,12 @@ mixin (
   };
 
   // Reads the bank balance from the ledger. The reading is adopted (and audited) only when no
-  // transfer was in flight or started meanwhile; otherwise it is retried. `countFails` is false for
-  // the background check, so an unreachable ledger never halts the game by itself.
-  func lBankRefreshWith(countFails : Bool) : async Bool {
-    if (not gameState.realLedger) return true;
-    let acct = switch (gameState.bankAccount) { case (?a) a; case null return false };
+  // transfer was in flight or started meanwhile; otherwise it is retried, and after three tries
+  // the result is #busy. #down means the ledger gave no answer. `countFails` is false for the
+  // background check, so an unreachable ledger never halts the game by itself.
+  func lBankReading(countFails : Bool) : async Game.BankReading {
+    if (not gameState.realLedger) return #adopted;
+    let acct = switch (gameState.bankAccount) { case (?a) a; case null return #down };
     var tries = 0;
     while (tries < 3) {
       let before = gameState.movSeq;
@@ -305,18 +316,20 @@ mixin (
           if (idle and gInFlight == 0 and gameState.movSeq == before) {
             gAuditBank(b);
             gameState.bank := b;
-            return true;
+            return #adopted;
           };
         };
         case null {
           if (countFails) gLedgerFail();
-          return false;
+          return #down;
         };
       };
       tries += 1;
     };
-    false;
+    #busy;
   };
+
+  func lBankRefreshWith(countFails : Bool) : async Bool { (await lBankReading(countFails)) == #adopted };
 
   func lBankRefresh() : async Bool { await lBankRefreshWith(true) };
 
@@ -890,8 +903,10 @@ mixin (
       gDrop(p, token);
       return #err(Game.STAKE_CHANGED_MSG);
     };
-    let fresh = await lBankRefresh();
-    if (not fresh) {
+    // Other transfers in flight only make the reading not comparable (#busy): the bank in the
+    // books is used then, and the background check audits it. Only a ledger that gives no answer
+    // stops the start.
+    if ((await lBankReading(true)) == #down) {
       gDrop(p, token);
       return #err("The ledger is unavailable. Try again later.");
     };
@@ -996,11 +1011,11 @@ mixin (
         #ok(gCredit(caller));
       };
       case (#allowance) {
-        gLoadRejected();
+        gLoadRejected(caller);
         #err("Authorize the game to charge up to " # Nat.toText(need / Game.E8S) # " GOLDAO.");
       };
       case (#funds) {
-        gLoadRejected();
+        gLoadRejected(caller);
         #err("Insufficient balance: you need " # Nat.toText(need / Game.E8S) # " GOLDAO (amount plus the network fee).");
       };
       case (#down) #err("The ledger is unavailable. Try again later.");
@@ -1478,9 +1493,16 @@ mixin (
     };
     if (gameState.saturations > 0 or not gAccountingOk()) return ?"Accounting check failed. Payments are blocked.";
     gameState.payingSince := now;
-    if (not (await lBankRefresh())) {
-      gameState.payingSince := 0;
-      return ?"The ledger is unavailable.";
+    switch (await lBankReading(true)) {
+      case (#adopted) {};
+      case (#busy) {
+        gameState.payingSince := 0;
+        return ?Game.BUSY_BANK_MSG;
+      };
+      case (#down) {
+        gameState.payingSince := 0;
+        return ?"The ledger is unavailable.";
+      };
     };
     if (gameState.saturations > 0 or not gAccountingOk() or gUnpaidTotal() > gameState.bank) {
       gameState.payingSince := 0;
@@ -1668,9 +1690,16 @@ mixin (
     };
     switch (gWithdrawBlocked(kind)) { case (?m) return #err(m); case null {} };
     gameState.payingSince := now;
-    if (not (await lBankRefresh())) {
-      gameState.payingSince := 0;
-      return #err("The ledger is unavailable.");
+    switch (await lBankReading(true)) {
+      case (#adopted) {};
+      case (#busy) {
+        gameState.payingSince := 0;
+        return #err(Game.BUSY_BANK_MSG);
+      };
+      case (#down) {
+        gameState.payingSince := 0;
+        return #err("The ledger is unavailable.");
+      };
     };
     switch (gWithdrawBlocked(kind)) {
       case (?m) {
@@ -1713,7 +1742,11 @@ mixin (
 
   public shared ({ caller }) func gameAdminRefreshBank() : async Result.Result<Nat, Text> {
     if (not gIsAdmin(caller)) return #err("Admin only.");
-    if (not (await lBankRefresh())) return #err("The ledger is unavailable.");
+    switch (await lBankReading(true)) {
+      case (#adopted) {};
+      case (#busy) return #err(Game.BUSY_BANK_MSG);
+      case (#down) return #err("The ledger is unavailable.");
+    };
     #ok(gameState.bank);
   };
 
