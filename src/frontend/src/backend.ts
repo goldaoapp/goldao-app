@@ -225,6 +225,7 @@ export interface GameConfig {
     safePicks: bigint;
     minPayoutE8s: bigint;
     withdrawMinE8s: bigint;
+    closeWindowNs: bigint;
     stakeMinE8s: bigint;
     realLedger: boolean;
 }
@@ -536,6 +537,7 @@ export interface backendInterface {
     gameAdminChangeLedger(): Promise<Result>;
     gameAdminCloseAll(): Promise<Result_5>;
     gameAdminCloseOpen(): Promise<Result>;
+    gameAdminStartTournament(): Promise<Result_5>;
     gameAdminCloseTournament(): Promise<Result_5>;
     gameAdminEnsureConnected(): Promise<Result_11>;
     gameAdminHalt(): Promise<Result_5>;
@@ -963,6 +965,20 @@ export class Backend implements backendInterface {
         } else {
             const result = await this.actor.gameAdminSeedPool(arg0);
             return from_candid_Result_n21(this._uploadFile, this._downloadFile, result);
+        }
+    }
+    async gameAdminStartTournament(): Promise<Result_5> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.gameAdminStartTournament();
+                return from_candid_Result_5_n19(this._uploadFile, this._downloadFile, result);
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.gameAdminStartTournament();
+            return from_candid_Result_5_n19(this._uploadFile, this._downloadFile, result);
         }
     }
     async gameAdminSetDuration(arg0: bigint): Promise<Result_5> {
