@@ -619,6 +619,36 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
           </Row>
 
           <Row
+            title="Close open excavations"
+            hint={
+              halted
+                ? "Ends every excavation in progress without closing the tournament. Saved ones are paid, the ones still on their free picks get their stake back."
+                : "Not available: pause new excavations first."
+            }
+          >
+            <Button
+              variant="outline"
+              disabled={working || !halted}
+              onClick={() =>
+                confirmThen({
+                  title: "Close all open excavations?",
+                  detail:
+                    "The tournament keeps running. Players who reached the third pick are saved. The others get their stake back and any jackpot found on the free picks returns to the pool.",
+                  word: "CLOSE OPEN",
+                  go: () =>
+                    act(
+                      "close-open",
+                      () => actor!.gameAdminCloseOpen(),
+                      (n) => `${n} open excavation(s) closed.`,
+                    ),
+                })
+              }
+            >
+              Close open excavations
+            </Button>
+          </Row>
+
+          <Row
             title="Pay pending"
             hint={
               unpaid.length === 0
