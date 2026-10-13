@@ -59,8 +59,16 @@ module {
   public let NEED_CREDIT_MSG : Text = "Load balance first: your Accumulated prize must cover the stake.";
   public let STAKE_CHANGED_MSG : Text = "The stake amounts changed. Check the new amounts and try again.";
   public let EXC_CHANGED_MSG : Text = "Your excavation changed (another tab or device?). Reload the board and try again.";
-  public let LOAD_REJECT_MAX : Nat = 20;
+  // Rejected loads (no funds, no allowance) allowed per account in one window. Each one reaches
+  // the ledger, so an account that keeps failing is cut off until the window ends.
+  public let LOAD_REJECT_MAX : Nat = 5;
   public let LOAD_REJECT_WINDOW_NS : Int = 60_000_000_000;
+  // Most accounts tracked at once by the rejected-load counter (expired ones are dropped first).
+  public let LOAD_REJECT_TRACK_MAX : Nat = 10_000;
+  // Outcome of reading the bank balance from the ledger: adopted (clean reading), busy (other
+  // transfers overlapped every attempt, so the reading was not comparable) or down (no answer).
+  public type BankReading = { #adopted; #busy; #down };
+  public let BUSY_BANK_MSG : Text = "Other money movements are in progress. Try again in a few seconds.";
   public let PAY_BATCH : Nat = 20;
   // Paid payouts are kept for this many tournaments: they are the payment record.
   public let PAYOUT_KEEP : Nat = 10;
