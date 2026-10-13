@@ -1,7 +1,6 @@
 import { type AdminView, type Payout, WithdrawKind } from "@/backend";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/context/AuthContext";
-import { loadEnv } from "@/hooks/useBackendActor";
 import { GOLDAO_FEE_E8S, fetchWalletBalance } from "@/lib/goldao-ledger";
 import { cn } from "@/lib/utils";
 import { Principal } from "@icp-sdk/core/principal";
@@ -85,17 +84,8 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
   // The bank is the account of the game canister itself. Until the ledger is changed, a game that
   // was connected by an older version still has another account as its bank and moves no money.
   const bankReady = !!bankText && bankText === selfText;
-  // The game account comes from the deployment itself (env.json), not from a query to the
-  // canister.
-  const envQuery = useQuery({
-    queryKey: ["game", "spender"],
-    queryFn: async () => (await loadEnv()).backend_canister_id ?? "",
-    staleTime: Number.POSITIVE_INFINITY,
-  });
-  const envId =
-    envQuery.data && envQuery.data !== "undefined" ? envQuery.data : "";
   // Display only: the bank balance read straight from the ledger. The backend does its own reads.
-  const bankAddr = bankText ?? envId;
+  const bankAddr = bankText ?? selfText ?? "";
   const { data: ledgerBalance } = useQuery({
     queryKey: ["game", "bank-balance", bankAddr, config?.ledgerId],
     queryFn: () => fetchWalletBalance(bankAddr, config?.ledgerId),
@@ -403,7 +393,10 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
                 ? "Game account address (the bank): send GOLDAO here to fund the game"
                 : "Game account address: it becomes the bank when you change the ledger"
             }
-            value={selfText || envId || ""}
+            value={
+              selfText ??
+              "Not available yet: the backend has not reported the game account."
+            }
           />
           <Row
             title="Jackpot pool"
