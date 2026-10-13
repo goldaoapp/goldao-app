@@ -53,6 +53,12 @@ function record_opt_to_undefined<T>(arg: T | null): T | undefined {
 }
 import { ExternalBlob } from "@caffeineai/object-storage";
 export { ExternalBlob } from "@caffeineai/object-storage";
+export interface WithdrawalView {
+    player: Principal;
+    amount: bigint;
+    at: bigint;
+    expired: boolean;
+}
 export interface AdminView {
     durationDays: bigint;
     staked: bigint;
@@ -79,6 +85,8 @@ export interface AdminView {
     payouts: Array<Payout>;
     paused: boolean;
     unpaidPayouts: bigint;
+    pendingWithdrawals: bigint;
+    withdrawals: Array<WithdrawalView>;
     endsAt: bigint;
 }
 export interface AutoResult {
@@ -110,6 +118,7 @@ export interface Dashboard {
     bestReturn: bigint;
     top10Entry: bigint;
     pendingPayout: bigint;
+    pendingWithdrawal: bigint;
     paused: boolean;
     endsAt: bigint;
 }
@@ -214,6 +223,7 @@ export interface GameConfig {
     payoutBps: bigint;
     safePicks: bigint;
     minPayoutE8s: bigint;
+    withdrawMinE8s: bigint;
     stakeMinE8s: bigint;
     realLedger: boolean;
 }
@@ -521,15 +531,14 @@ export interface backendInterface {
     execute(qJson: string): Promise<Result__1>;
     gameAdminAckAccounting(): Promise<Result_5>;
     gameAdminChangeLedger(): Promise<Result>;
-    gameAdminCheckPay(): Promise<Result_5>;
-    gameAdminCheckWithdraw(kind: WithdrawKind): Promise<Result_5>;
     gameAdminCloseAll(): Promise<Result_5>;
     gameAdminCloseTournament(): Promise<Result_5>;
     gameAdminEnsureConnected(): Promise<Result_11>;
     gameAdminHalt(): Promise<Result_5>;
-    gameAdminLedgerAllowance(who: Principal, spender: Principal): Promise<Result>;
     gameAdminLedgerBalance(who: Principal): Promise<Result>;
     gameAdminMarkPaid(id: bigint, txId: bigint): Promise<Result_5>;
+    gameAdminResolveWithdrawal(player: Principal, sent: boolean): Promise<Result_5>;
+    gameWithdrawCredit(expected: bigint): Promise<Result>;
     gameAdminPay(max: bigint): Promise<Result_10>;
     gameAdminPayOne(id: bigint, renew: boolean): Promise<Result_9>;
     gameAdminPayouts(tournament: bigint): Promise<Result_8>;
@@ -700,34 +709,6 @@ export class Backend implements backendInterface {
             return from_candid_Result_n21(this._uploadFile, this._downloadFile, result);
         }
     }
-    async gameAdminCheckPay(): Promise<Result_5> {
-        if (this.processError) {
-            try {
-                const result = await this.actor.gameAdminCheckPay();
-                return from_candid_Result_5_n19(this._uploadFile, this._downloadFile, result);
-            } catch (e) {
-                this.processError(e);
-                throw new Error("unreachable");
-            }
-        } else {
-            const result = await this.actor.gameAdminCheckPay();
-            return from_candid_Result_5_n19(this._uploadFile, this._downloadFile, result);
-        }
-    }
-    async gameAdminCheckWithdraw(arg0: WithdrawKind): Promise<Result_5> {
-        if (this.processError) {
-            try {
-                const result = await this.actor.gameAdminCheckWithdraw(to_candid_WithdrawKind_n23(this._uploadFile, this._downloadFile, arg0));
-                return from_candid_Result_5_n19(this._uploadFile, this._downloadFile, result);
-            } catch (e) {
-                this.processError(e);
-                throw new Error("unreachable");
-            }
-        } else {
-            const result = await this.actor.gameAdminCheckWithdraw(to_candid_WithdrawKind_n23(this._uploadFile, this._downloadFile, arg0));
-            return from_candid_Result_5_n19(this._uploadFile, this._downloadFile, result);
-        }
-    }
     async gameAdminCloseAll(): Promise<Result_5> {
         if (this.processError) {
             try {
@@ -784,20 +765,6 @@ export class Backend implements backendInterface {
             return from_candid_Result_5_n19(this._uploadFile, this._downloadFile, result);
         }
     }
-    async gameAdminLedgerAllowance(arg0: Principal, arg1: Principal): Promise<Result> {
-        if (this.processError) {
-            try {
-                const result = await this.actor.gameAdminLedgerAllowance(arg0, arg1);
-                return from_candid_Result_n21(this._uploadFile, this._downloadFile, result);
-            } catch (e) {
-                this.processError(e);
-                throw new Error("unreachable");
-            }
-        } else {
-            const result = await this.actor.gameAdminLedgerAllowance(arg0, arg1);
-            return from_candid_Result_n21(this._uploadFile, this._downloadFile, result);
-        }
-    }
     async gameAdminLedgerBalance(arg0: Principal): Promise<Result> {
         if (this.processError) {
             try {
@@ -824,6 +791,34 @@ export class Backend implements backendInterface {
         } else {
             const result = await this.actor.gameAdminMarkPaid(arg0, arg1);
             return from_candid_Result_5_n19(this._uploadFile, this._downloadFile, result);
+        }
+    }
+    async gameAdminResolveWithdrawal(arg0: Principal, arg1: boolean): Promise<Result_5> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.gameAdminResolveWithdrawal(arg0, arg1);
+                return from_candid_Result_5_n19(this._uploadFile, this._downloadFile, result);
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.gameAdminResolveWithdrawal(arg0, arg1);
+            return from_candid_Result_5_n19(this._uploadFile, this._downloadFile, result);
+        }
+    }
+    async gameWithdrawCredit(arg0: bigint): Promise<Result> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.gameWithdrawCredit(arg0);
+                return from_candid_Result_n21(this._uploadFile, this._downloadFile, result);
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.gameWithdrawCredit(arg0);
+            return from_candid_Result_n21(this._uploadFile, this._downloadFile, result);
         }
     }
     async gameAdminPay(arg0: bigint): Promise<Result_10> {
@@ -1497,6 +1492,8 @@ function from_candid_record_n49(_uploadFile: (file: ExternalBlob) => Promise<Uin
     payouts: Array<_Payout>;
     paused: boolean;
     unpaidPayouts: bigint;
+    pendingWithdrawals: bigint;
+    withdrawals: Array<WithdrawalView>;
     endsAt: bigint;
 }): {
     durationDays: bigint;
@@ -1524,6 +1521,8 @@ function from_candid_record_n49(_uploadFile: (file: ExternalBlob) => Promise<Uin
     payouts: Array<Payout>;
     paused: boolean;
     unpaidPayouts: bigint;
+    pendingWithdrawals: bigint;
+    withdrawals: Array<WithdrawalView>;
     endsAt: bigint;
 } {
     return {
@@ -1552,6 +1551,8 @@ function from_candid_record_n49(_uploadFile: (file: ExternalBlob) => Promise<Uin
         payouts: from_candid_vec_n33(_uploadFile, _downloadFile, value.payouts),
         paused: value.paused,
         unpaidPayouts: value.unpaidPayouts,
+        pendingWithdrawals: value.pendingWithdrawals,
+        withdrawals: value.withdrawals,
         endsAt: value.endsAt
     };
 }
@@ -1618,6 +1619,7 @@ function from_candid_record_n61(_uploadFile: (file: ExternalBlob) => Promise<Uin
     bestReturn: bigint;
     top10Entry: bigint;
     pendingPayout: bigint;
+    pendingWithdrawal: bigint;
     paused: boolean;
     endsAt: bigint;
 }): {
@@ -1635,6 +1637,7 @@ function from_candid_record_n61(_uploadFile: (file: ExternalBlob) => Promise<Uin
     bestReturn: bigint;
     top10Entry: bigint;
     pendingPayout: bigint;
+    pendingWithdrawal: bigint;
     paused: boolean;
     endsAt: bigint;
 } {
@@ -1653,6 +1656,7 @@ function from_candid_record_n61(_uploadFile: (file: ExternalBlob) => Promise<Uin
         bestReturn: value.bestReturn,
         top10Entry: value.top10Entry,
         pendingPayout: value.pendingPayout,
+        pendingWithdrawal: value.pendingWithdrawal,
         paused: value.paused,
         endsAt: value.endsAt
     };
