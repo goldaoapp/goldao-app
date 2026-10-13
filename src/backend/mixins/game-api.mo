@@ -234,18 +234,36 @@ mixin (
     };
   };
 
-  func gPaused() : Bool {
+  // Why new excavations cannot start (0 when they can), as the players see it. The cause of a
+  // safety halt stays in the admin view.
+  func gPauseCode() : Nat {
+    if (gameState.halted) {
+      return if (gameState.haltCode == Game.HALT_MANUAL) Game.PAUSE_ADMIN else Game.PAUSE_SAFETY;
+    };
     // A new tournament does not start while the previous one still has unpaid payouts.
-    gameState.halted or gStakes().size() == 0 or gAnyUnpaid() or (gameState.realLedger and not gBankReady());
+    if (gAnyUnpaid()) return Game.PAUSE_PAYOUTS;
+    if (gameState.realLedger and not gBankReady()) return Game.PAUSE_BANK;
+    if (gStakes().size() == 0) return Game.PAUSE_STAKES;
+    0;
+  };
+
+  func gPaused() : Bool { gPauseCode() != 0 };
+
+  // A pause set by the admin only stops new excavations: the open ones can still be finished.
+  // Any other halt is a safety stop that also freezes the picks.
+  func gHardHalt() : Bool {
+    gameState.halted and gameState.haltCode != Game.HALT_MANUAL;
   };
 
   // Halts new bets and records why. The event is logged even if the game was already halted.
+  // A safety halt takes over from a pause by the admin, never the other way around.
   func gHalt(code : Nat, level : Types.SecurityLevel, title : Text, description : Text) {
     gLog(level, "halt_" # Nat.toText(code), title, description);
-    if (gameState.halted) return;
+    if (gameState.halted and (gameState.haltCode != Game.HALT_MANUAL or code == Game.HALT_MANUAL)) return;
     gameState.halted := true;
-    gameState.haltCode := code;
     gameState.haltedAt := Time.now();
+    gameState.haltCode := code;
+    if (code != Game.HALT_MANUAL) gSaveReady();
   };
 
   func gLedgerOk() { gameState.ledgerFails := 0 };
@@ -367,7 +385,8 @@ mixin (
 
   func gWatchFund() {
     let f = gFund();
-    if (gameState.halted) {
+    // Under an admin pause open excavations can still move the fund, so it keeps being watched.
+    if (gHardHalt()) {
       gFundReset();
       return;
     };
@@ -720,23 +739,39 @@ mixin (
     };
   };
 
+  // Ends an excavation on the game's own initiative. One that got past the free picks is saved
+  // like the player pressing Save. One that did not costs the player nothing, so it must not pay
+  // anything either: the stake goes back to the credit and a jackpot found on the free picks goes
+  // back to the pool. Otherwise two risk-free picks per account would be a free jackpot roll.
+  func gEndOpen(p : Principal, e : Types.Excavation) {
+    if (Game.canSave(e.picks) and e.stake > 0) {
+      let f = gFlush(p, e);
+      ignore gSettle(p, f, Game.pointsAt(f.picks), #saved);
+    } else {
+      gReleaseHeld(e);
+      gRefundStake(p, e);
+      gameState.open.remove(p);
+    };
+  };
+
+  // During a safety halt the excavations that can be saved are saved, so nobody has to wait for
+  // the pause to end. A pick still in flight is picked up by the next tick.
+  func gSaveReady() {
+    var n = 0;
+    for ((p, e) in gameState.open.entries().toArray().values()) {
+      if (not gFresh(e) and e.stake > 0 and Game.canSave(e.picks)) {
+        gEndOpen(p, e);
+        n += 1;
+      };
+    };
+    if (n > 0) gLog(#info, "auto_save", "Open excavations saved", Nat.toText(n) # " open excavation(s) were saved because the game was halted.");
+  };
+
   // Tournament lifecycle
 
   func gCloseTournament(payAll : Bool) {
     let t = gameState.tournament;
-    for ((p, e) in gameState.open.entries().toArray().values()) {
-      if (Game.canSave(e.picks) and e.stake > 0) {
-        let f = gFlush(p, e);
-        ignore gSettle(p, f, Game.pointsAt(f.picks), #saved);
-      } else {
-        // An excavation that never got past the free picks costs the player nothing, so it must
-        // not pay anything either: a jackpot found on the first two picks goes back to the pool.
-        // Otherwise two risk-free picks per account and tournament would be a free jackpot roll.
-        gReleaseHeld(e);
-        gRefundStake(p, e);
-        gameState.open.remove(p);
-      };
-    };
+    for ((p, e) in gameState.open.entries().toArray().values()) gEndOpen(p, e);
 
     // The Top-10 prize goes to the biggest volumes as credit, so it is paid like any other balance.
     let bucket = gameState.top10;
@@ -894,6 +929,7 @@ mixin (
   func gTick() : async () {
     gTicks += 1;
     if (not gameState.realLedger) await gAutoConnect();
+    if (gHardHalt()) gSaveReady();
     gMaybeClose();
     gWatchFund();
     gExpireLoads();
@@ -1272,7 +1308,7 @@ mixin (
     gArmTimer<system>();
     switch (gRequireUser(caller)) { case (?e) return #err(e); case null {} };
     if (gCloseIfDue()) return #err(Game.CLOSED_MSG);
-    if (gameState.halted) return #err("Bets are paused. Try again later.");
+    if (gHardHalt()) return #err("Bets are paused. Try again later.");
 
     var ex : Types.Excavation = switch (gameState.open.get(caller)) {
       case (?e) {
@@ -1503,6 +1539,7 @@ mixin (
       tournament = gameState.tournament;
       endsAt = gameState.endsAt;
       paused = gPaused();
+      pauseCode = gPauseCode();
       stakes;
       credit = gCredit(caller);
       pendingPayout = pending;
@@ -1545,6 +1582,8 @@ mixin (
       tournament = gameState.tournament;
       endsAt = gameState.endsAt;
       paused = gPaused();
+      pauseCode = gPauseCode();
+      stakes = gStakes();
       pool = gameState.pool;
       top10Pool = gameState.top10;
       staked;
@@ -1696,6 +1735,18 @@ mixin (
     if (gAnyBusy()) return #err("Excavations in progress. Try again in a few seconds.");
     gCloseTournament(false);
     #ok(());
+  };
+
+  // Ends every open excavation without closing the tournament, with the same rules as the close.
+  public shared ({ caller }) func gameAdminCloseOpen() : async Result.Result<Nat, Text> {
+    gArmTimer<system>();
+    if (not gIsAdmin(caller)) return #err("Admin only.");
+    if (not gameState.halted) return #err("Pause new excavations first.");
+    if (gAnyBusy()) return #err("Excavations in progress. Try again in a few seconds.");
+    let n = gameState.open.size();
+    for ((p, e) in gameState.open.entries().toArray().values()) gEndOpen(p, e);
+    gLogAction("close_open", "Open excavations closed", Nat.toText(n) # " open excavation(s) were ended from the admin panel.");
+    #ok(n);
   };
 
   public shared ({ caller }) func gameAdminCloseAll() : async Result.Result<(), Text> {
