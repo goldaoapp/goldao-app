@@ -111,6 +111,7 @@ export function fmtPct(x100: bigint): string {
 }
 
 export function fmtCountdown(endsAtNs: bigint): string {
+  if (endsAtNs === 0n) return "Waiting to start";
   const ms = Number(endsAtNs / 1_000_000n) - Date.now();
   if (ms <= 0) return "Closing";
   const m = Math.floor(ms / 60_000);
@@ -141,6 +142,8 @@ export function pauseMessage(code: bigint | number | undefined): string {
       return "The prizes of the last tournament are being paid. The next one starts soon.";
     case 4:
       return "The game is not ready yet. Try again later.";
+    case 6:
+      return "The next tournament has not started yet. It starts soon.";
     default:
       return "Bets are paused. Try again later.";
   }
