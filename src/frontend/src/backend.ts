@@ -120,6 +120,7 @@ export interface Dashboard {
     pendingPayout: bigint;
     pendingWithdrawal: bigint;
     paused: boolean;
+    pauseCode: bigint;
     endsAt: bigint;
 }
 export interface DiamondResult {
@@ -234,6 +235,8 @@ export interface GameSummary {
     pool: bigint;
     tournament: bigint;
     paused: boolean;
+    pauseCode: bigint;
+    stakes: Array<bigint>;
     endsAt: bigint;
 }
 export interface JackpotWin {
@@ -532,6 +535,7 @@ export interface backendInterface {
     gameAdminAckAccounting(): Promise<Result_5>;
     gameAdminChangeLedger(): Promise<Result>;
     gameAdminCloseAll(): Promise<Result_5>;
+    gameAdminCloseOpen(): Promise<Result>;
     gameAdminCloseTournament(): Promise<Result_5>;
     gameAdminEnsureConnected(): Promise<Result_11>;
     gameAdminHalt(): Promise<Result_5>;
@@ -721,6 +725,20 @@ export class Backend implements backendInterface {
         } else {
             const result = await this.actor.gameAdminCloseAll();
             return from_candid_Result_5_n19(this._uploadFile, this._downloadFile, result);
+        }
+    }
+    async gameAdminCloseOpen(): Promise<Result> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.gameAdminCloseOpen();
+                return from_candid_Result_n21(this._uploadFile, this._downloadFile, result);
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.gameAdminCloseOpen();
+            return from_candid_Result_n21(this._uploadFile, this._downloadFile, result);
         }
     }
     async gameAdminCloseTournament(): Promise<Result_5> {
@@ -1621,6 +1639,7 @@ function from_candid_record_n61(_uploadFile: (file: ExternalBlob) => Promise<Uin
     pendingPayout: bigint;
     pendingWithdrawal: bigint;
     paused: boolean;
+    pauseCode: bigint;
     endsAt: bigint;
 }): {
     net: bigint;
@@ -1639,6 +1658,7 @@ function from_candid_record_n61(_uploadFile: (file: ExternalBlob) => Promise<Uin
     pendingPayout: bigint;
     pendingWithdrawal: bigint;
     paused: boolean;
+    pauseCode: bigint;
     endsAt: bigint;
 } {
     return {
@@ -1658,6 +1678,7 @@ function from_candid_record_n61(_uploadFile: (file: ExternalBlob) => Promise<Uin
         pendingPayout: value.pendingPayout,
         pendingWithdrawal: value.pendingWithdrawal,
         paused: value.paused,
+        pauseCode: value.pauseCode,
         endsAt: value.endsAt
     };
 }
