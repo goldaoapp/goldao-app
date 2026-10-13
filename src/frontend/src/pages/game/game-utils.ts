@@ -130,6 +130,22 @@ export function fmtDate(ns: bigint): string {
 
 export const STAKE_LABELS = ["Min", "Mid", "Max"];
 
+/** Pause codes sent by the backend (0 means not paused). Only a category is shown, never details. */
+export function pauseMessage(code: bigint | number | undefined): string {
+  switch (Number(code ?? 0)) {
+    case 1:
+      return "Maintenance break: new excavations are paused. An excavation in progress can still be finished.";
+    case 2:
+      return "Bets are paused for a safety check. Excavations that can be saved were saved.";
+    case 3:
+      return "The prizes of the last tournament are being paid. The next one starts soon.";
+    case 4:
+      return "The game is not ready yet. Try again later.";
+    default:
+      return "Bets are paused. Try again later.";
+  }
+}
+
 export const PAYOUT_BPS = 9_250;
 
 /**
