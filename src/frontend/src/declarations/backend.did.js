@@ -231,6 +231,7 @@ export const GameConfig = IDL.Record({
   'safePicks' : IDL.Nat,
   'minPayoutE8s' : IDL.Nat,
   'withdrawMinE8s' : IDL.Nat,
+  'closeWindowNs' : IDL.Nat,
   'stakeMinE8s' : IDL.Nat,
   'realLedger' : IDL.Bool,
 });
@@ -383,6 +384,7 @@ export const idlService = IDL.Service({
   'gameAdminChangeLedger' : IDL.Func([], [Result], []),
   'gameAdminCloseAll' : IDL.Func([], [Result_5], []),
   'gameAdminCloseOpen' : IDL.Func([], [Result], []),
+  'gameAdminStartTournament' : IDL.Func([], [Result_5], []),
   'gameAdminCloseTournament' : IDL.Func([], [Result_5], []),
   'gameAdminEnsureConnected' : IDL.Func([], [Result_11], []),
   'gameAdminHalt' : IDL.Func([], [Result_5], []),
@@ -648,6 +650,7 @@ export const idlFactory = ({ IDL }) => {
     'safePicks' : IDL.Nat,
     'minPayoutE8s' : IDL.Nat,
     'withdrawMinE8s' : IDL.Nat,
+    'closeWindowNs' : IDL.Nat,
     'stakeMinE8s' : IDL.Nat,
     'realLedger' : IDL.Bool,
   });
@@ -800,6 +803,7 @@ export const idlFactory = ({ IDL }) => {
     'gameAdminChangeLedger' : IDL.Func([], [Result], []),
     'gameAdminCloseAll' : IDL.Func([], [Result_5], []),
     'gameAdminCloseOpen' : IDL.Func([], [Result], []),
+    'gameAdminStartTournament' : IDL.Func([], [Result_5], []),
     'gameAdminCloseTournament' : IDL.Func([], [Result_5], []),
     'gameAdminEnsureConnected' : IDL.Func([], [Result_11], []),
     'gameAdminHalt' : IDL.Func([], [Result_5], []),
