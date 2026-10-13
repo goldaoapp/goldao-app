@@ -107,7 +107,9 @@ export default function GamePage() {
             <span className={inkMid}>Tournament #{Number(tournament)}</span>
             <span className={gold}>
               {paused
-                ? "paused"
+                ? summary?.pauseCode === 6n
+                  ? "waiting to start"
+                  : "paused"
                 : summary
                   ? `ends in ${fmtCountdown(summary.endsAt)}`
                   : "open"}
