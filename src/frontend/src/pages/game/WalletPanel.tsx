@@ -46,6 +46,8 @@ export function WalletPanel({ dashboard, config }: Props) {
   const testLedger = isTestLedger(config);
   const [amount, setAmount] = useState(5_000);
   const [loading, setLoading] = useState(false);
+  const [withdrawing, setWithdrawing] = useState(false);
+  const [confirming, setConfirming] = useState(false);
   const fee = config?.feeE8s ?? 1_000_000_000n;
   const credit = dashboard?.credit ?? 0n;
   const need = BigInt(amount) * E8S + fee;
@@ -76,6 +78,29 @@ export function WalletPanel({ dashboard, config }: Props) {
           : balance < need
             ? `Not enough ${tokenName} in your wallet.`
             : null;
+
+  // Withdrawal: the whole game balance goes to the wallet and the network fee comes out of it.
+  // A withdrawal that got no answer from the ledger is repeated with the same button.
+  const withdrawMin = config?.withdrawMinE8s ?? 0n;
+  const waiting = dashboard?.pendingWithdrawal ?? 0n;
+  const withdrawBase = waiting > 0n ? waiting : credit;
+  const receive = withdrawBase > fee ? withdrawBase - fee : 0n;
+  const withdrawBlock = !dashboard
+    ? "Loading"
+    : waiting > 0n
+      ? null
+      : dashboard.paused
+        ? "Withdrawals are not available while the game is paused."
+        : credit < withdrawMin
+          ? `The minimum withdrawal is ${fmtGoldao(withdrawMin)} ${tokenName}.`
+          : null;
+
+  // The confirmation step goes away by itself.
+  useEffect(() => {
+    if (!confirming) return;
+    const t = window.setTimeout(() => setConfirming(false), 6000);
+    return () => window.clearTimeout(t);
+  }, [confirming]);
 
   // If the chosen amount no longer fits (the Accumulated prize grew), move it to the biggest one that does.
   useEffect(() => {
@@ -110,6 +135,28 @@ export function WalletPanel({ dashboard, config }: Props) {
       setMsg({ ok: false, text: errorMessage(e) });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const withdraw = async () => {
+    if (!actor || withdrawing || withdrawBlock) return;
+    setMsg(null);
+    setWithdrawing(true);
+    try {
+      const got = await run(
+        "withdraw",
+        () => actor.gameWithdrawCredit(withdrawBase),
+        "live",
+      );
+      setMsg({
+        ok: true,
+        text: `${fmtGoldao(got)} ${tokenName} sent to your wallet.`,
+      });
+    } catch (e) {
+      setMsg({ ok: false, text: errorMessage(e) });
+    } finally {
+      setWithdrawing(false);
+      setConfirming(false);
     }
   };
 
@@ -221,6 +268,40 @@ export function WalletPanel({ dashboard, config }: Props) {
               ? `Pending payout: ${fmtGoldao(dashboard.pendingPayout)}`
               : `Fee ${fmtGoldao(fee)}${needsAuthFee ? ` + ${fmtGoldao(fee)} to authorize the game` : ""}`}
         </span>
+      </div>
+
+      <div className="flex flex-col gap-2 border-t border-[color:var(--term-border-faint)] p-5 md:col-span-2">
+        <span className={cn(eyebrow, inkFaint, "flex items-center gap-1.5")}>
+          <ArrowUpFromLine className="size-3.5" /> Withdraw
+        </span>
+        <span className={cn("font-mono text-[11px]", inkFaint)}>
+          {waiting > 0n
+            ? `A withdrawal of ${fmtGoldao(waiting)} ${tokenName} is waiting for the ledger. Press Retry: you will not be paid twice.`
+            : `Sends your whole game balance (${fmtGoldao(credit)} ${tokenName}) to your wallet. The network fee ${fmtGoldao(fee)} comes out of it, so you receive ${fmtGoldao(receive)}. Stakes in play stay in the game.`}
+        </span>
+        <div className="flex flex-wrap items-center gap-3">
+          <Button
+            size="sm"
+            variant={confirming ? "default" : "outline"}
+            disabled={withdrawing || !!pending || !!withdrawBlock}
+            onClick={() => {
+              if (waiting > 0n || confirming) void withdraw();
+              else setConfirming(true);
+            }}
+          >
+            {withdrawing ? <Spinner /> : null}
+            {waiting > 0n
+              ? "Retry withdrawal"
+              : confirming
+                ? `Confirm: receive ${fmtGoldao(receive)}`
+                : "Withdraw all"}
+          </Button>
+          {withdrawBlock && dashboard && (
+            <span className={cn("font-mono text-[11px]", inkFaint)}>
+              {withdrawBlock}
+            </span>
+          )}
+        </div>
       </div>
 
       {open && (
