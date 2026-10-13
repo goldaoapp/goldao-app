@@ -150,6 +150,7 @@ export interface GameConfig {
   'safePicks' : bigint,
   'minPayoutE8s' : bigint,
   'withdrawMinE8s' : bigint,
+  'closeWindowNs' : bigint,
   'stakeMinE8s' : bigint,
   'realLedger' : boolean,
 }
@@ -358,6 +359,7 @@ export interface _SERVICE {
   'gameAdminChangeLedger' : ActorMethod<[], Result>,
   'gameAdminCloseAll' : ActorMethod<[], Result_5>,
   'gameAdminCloseOpen' : ActorMethod<[], Result>,
+  'gameAdminStartTournament' : ActorMethod<[], Result_5>,
   'gameAdminCloseTournament' : ActorMethod<[], Result_5>,
   'gameAdminEnsureConnected' : ActorMethod<[], Result_11>,
   'gameAdminHalt' : ActorMethod<[], Result_5>,
