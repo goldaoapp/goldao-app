@@ -240,6 +240,8 @@ module {
     tournament : Nat;
     endsAt : Int;
     paused : Bool;
+    /** Why new excavations cannot start (0 when they can). */
+    pauseCode : Nat;
     stakes : [Nat];
     credit : Nat;
     pendingPayout : Nat;
@@ -296,6 +298,8 @@ module {
     tournament : Nat;
     endsAt : Int;
     paused : Bool;
+    pauseCode : Nat;
+    stakes : [Nat];
     pool : Nat;
     top10Pool : Nat;
     staked : Nat;
