@@ -242,6 +242,8 @@ mixin (
     };
     // A new tournament does not start while the previous one still has unpaid payouts.
     if (gAnyUnpaid()) return Game.PAUSE_PAYOUTS;
+    // A tournament that is not started has no end time yet (see gameAdminStartTournament).
+    if (gameState.endsAt == 0) return Game.PAUSE_WAITING;
     if (gameState.realLedger and not gBankReady()) return Game.PAUSE_BANK;
     if (gStakes().size() == 0) return Game.PAUSE_STAKES;
     0;
@@ -740,15 +742,20 @@ mixin (
   };
 
   // Ends an excavation on the game's own initiative. One that got past the free picks is saved
-  // like the player pressing Save. One that did not costs the player nothing, so it must not pay
-  // anything either: the stake goes back to the credit and a jackpot found on the free picks goes
-  // back to the pool. Otherwise two risk-free picks per account would be a free jackpot roll.
-  func gEndOpen(p : Principal, e : Types.Excavation) {
+  // like the player pressing Save. One that did not never pays a jackpot found on the free picks:
+  // it goes back to the pool, otherwise two risk-free picks per account would be a free jackpot
+  // roll. The stake goes back to the credit, except when `forfeit` is set (the normal close, after
+  // the players had the closing window): then it is lost like a collapse.
+  func gEndOpen(p : Principal, e : Types.Excavation, forfeit : Bool) {
     if (Game.canSave(e.picks) and e.stake > 0) {
       let f = gFlush(p, e);
       ignore gSettle(p, f, Game.pointsAt(f.picks), #saved);
+      return;
+    };
+    gReleaseHeld(e);
+    if (forfeit and e.stake > 0 and not e.busy) {
+      ignore gSettle(p, { e with held = 0; heldMini = 0; jackpotWon = 0 }, 0, #collapsed);
     } else {
-      gReleaseHeld(e);
       gRefundStake(p, e);
       gameState.open.remove(p);
     };
@@ -760,7 +767,7 @@ mixin (
     var n = 0;
     for ((p, e) in gameState.open.entries().toArray().values()) {
       if (not gFresh(e) and e.stake > 0 and Game.canSave(e.picks)) {
-        gEndOpen(p, e);
+        gEndOpen(p, e, false);
         n += 1;
       };
     };
@@ -769,9 +776,10 @@ mixin (
 
   // Tournament lifecycle
 
-  func gCloseTournament(payAll : Bool) {
+  // `forfeit` is set only by the automatic close, which comes after the closing window.
+  func gCloseTournament(payAll : Bool, forfeit : Bool) {
     let t = gameState.tournament;
-    for ((p, e) in gameState.open.entries().toArray().values()) gEndOpen(p, e);
+    for ((p, e) in gameState.open.entries().toArray().values()) gEndOpen(p, e, forfeit);
 
     // The Top-10 prize goes to the biggest volumes as credit, so it is paid like any other balance.
     let bucket = gameState.top10;
@@ -871,26 +879,18 @@ mixin (
     // flushed at the top of this function, so nothing is added to the log after this point.
     gameState.jackpots := [];
     gameState.tournament := t + 1;
-    gameState.endsAt := Time.now() + gameState.durationDays * Game.DAY_NS;
+    // The next tournament waits for the admin to start it.
+    gameState.endsAt := 0;
   };
 
   // Closes the tournament when its time is up and nothing is in flight. True if it closed now.
+  // Open excavations get the closing window to be finished; when none is open it closes at once.
   func gCloseIfDue() : Bool {
-    if (gameState.endsAt == 0) {
-      gameState.endsAt := Time.now() + gameState.durationDays * Game.DAY_NS;
-      return false;
-    };
-    // While payouts are pending the new tournament's clock does not run: its full duration
-    // starts from the moment the last payout is paid or marked paid.
-    if (gAnyUnpaid()) {
-      gameState.endsAt := Time.now() + gameState.durationDays * Game.DAY_NS;
-      return false;
-    };
-    if (Time.now() >= gameState.endsAt and not gAnyBusy()) {
-      gCloseTournament(false);
-      return true;
-    };
-    false;
+    if (gameState.endsAt == 0 or Time.now() < gameState.endsAt or gAnyBusy()) return false;
+    if (gameState.open.size() > 0 and not gWindowOver()) return false;
+    // Nobody could pick during a safety halt, so the stakes are not lost then.
+    gCloseTournament(false, not gHardHalt());
+    true;
   };
 
   func gMaybeClose() {
@@ -934,6 +934,7 @@ mixin (
     gWatchFund();
     gExpireLoads();
     gSweepWithdrawals();
+    await gAutoPay();
     if (Nat.sub(gTicks, 1) % Game.FEE_CHECK_TICKS == 0) await gCheckFee();
     await gWatchBank();
   };
@@ -946,6 +947,11 @@ mixin (
 
   func gClosing() : Bool {
     gameState.endsAt != 0 and Time.now() >= gameState.endsAt;
+  };
+
+  // The closing window is over: not even an open excavation can pick any more.
+  func gWindowOver() : Bool {
+    gameState.endsAt != 0 and Time.now() >= gameState.endsAt + Game.CLOSE_WINDOW_NS;
   };
 
   func gOpen(p : Principal, option : ?Types.StakeOption) : Result.Result<(Types.Excavation, Nat), Text> {
@@ -1041,6 +1047,7 @@ mixin (
       creditCapE8s = Game.CREDIT_CAP;
       minPayoutE8s = Game.MIN_PAYOUT;
       withdrawMinE8s = Game.WITHDRAW_MIN;
+      closeWindowNs = Game.CLOSE_WINDOW_NS;
       top10Bps = Game.TOP10_BPS;
       top10Weights = Game.TOP10_WEIGHTS;
       top10MinVolumeE8s = Game.TOP10_MIN_VOLUME;
@@ -1319,7 +1326,7 @@ mixin (
         };
         // What the player sees must be what the backend has: another tab or device may have moved on.
         if (e.picks != expectedPicks or e.stake != expectedStake) return #err(Game.EXC_CHANGED_MSG);
-        if (gClosing()) return #err("The tournament is closing. Try again in a few seconds.");
+        if (gWindowOver()) return #err("The tournament is closing. Try again in a few seconds.");
         let token = gNextToken();
         let busy = { e with busy = true; token; busyAt = Time.now() };
         gameState.open.add(caller, busy);
@@ -1402,7 +1409,6 @@ mixin (
     };
     if (Game.canSave(next.picks)) next := gFlush(caller, next);
     gameState.open.add(caller, next);
-    gMaybeClose();
     #ok({
       collapsed = false;
       picks = next.picks;
@@ -1731,9 +1737,10 @@ mixin (
   public shared ({ caller }) func gameAdminCloseTournament() : async Result.Result<(), Text> {
     gArmTimer<system>();
     if (not gIsAdmin(caller)) return #err("Admin only.");
+    if (gameState.endsAt == 0) return #err("The tournament has not started.");
     if (gAnyUnpaid()) return #err("Pay or resolve the pending payouts of the previous tournament first.");
     if (gAnyBusy()) return #err("Excavations in progress. Try again in a few seconds.");
-    gCloseTournament(false);
+    gCloseTournament(false, false);
     #ok(());
   };
 
@@ -1744,7 +1751,7 @@ mixin (
     if (not gameState.halted) return #err("Pause new excavations first.");
     if (gAnyBusy()) return #err("Excavations in progress. Try again in a few seconds.");
     let n = gameState.open.size();
-    for ((p, e) in gameState.open.entries().toArray().values()) gEndOpen(p, e);
+    for ((p, e) in gameState.open.entries().toArray().values()) gEndOpen(p, e, false);
     gLogAction("close_open", "Open excavations closed", Nat.toText(n) # " open excavation(s) were ended from the admin panel.");
     #ok(n);
   };
@@ -1753,7 +1760,19 @@ mixin (
     if (not gIsAdmin(caller)) return #err("Admin only.");
     if (not gameState.halted) return #err("Pause new excavations first.");
     if (gAnyBusy()) return #err("Excavations in progress. Try again in a few seconds.");
-    gCloseTournament(true);
+    gCloseTournament(true, false);
+    #ok(());
+  };
+
+  // Starts the waiting tournament: its clock runs from now. Only when every payout of the previous
+  // one is paid.
+  public shared ({ caller }) func gameAdminStartTournament() : async Result.Result<(), Text> {
+    gArmTimer<system>();
+    if (not gIsAdmin(caller)) return #err("Admin only.");
+    if (gameState.endsAt != 0) return #err("The tournament is already running.");
+    if (gAnyUnpaid()) return #err("Pay or resolve the pending payouts of the previous tournament first.");
+    gameState.endsAt := Time.now() + gameState.durationDays * Game.DAY_NS;
+    gLogAction("start", "Tournament started", "Tournament " # Nat.toText(gameState.tournament) # " started from the admin panel.");
     #ok(());
   };
 
@@ -1780,14 +1799,15 @@ mixin (
 
   // Common start of every payment action. Returns an error text, or null when payments may go
   // ahead; in that case the caller must clear payingSince when it is done.
-  func gPayBegin() : async ?Text {
+  // `countFails` is false for the automatic run, so an unreachable ledger never halts the game by itself.
+  func gPayBegin(countFails : Bool) : async ?Text {
     let now = Time.now();
     if (gameState.payingSince != 0 and now - gameState.payingSince < Game.BUSY_STALE_NS) {
       return ?"A payment run is in progress.";
     };
     if (gameState.saturations > 0 or not gAccountingOk()) return ?"Accounting check failed. Payments are blocked.";
     gameState.payingSince := now;
-    switch (await lBankReading(true)) {
+    switch (await lBankReading(countFails)) {
       case (#adopted) {};
       case (#busy) {
         gameState.payingSince := 0;
@@ -1806,8 +1826,8 @@ mixin (
   };
 
   // Ends a payment action: the bank is read again so the books match the ledger.
-  func gPayEnd() : async () {
-    ignore await lBankRefresh();
+  func gPayEnd(countFails : Bool) : async () {
+    ignore await lBankRefreshWith(countFails);
     gameState.payingSince := 0;
   };
 
@@ -1828,9 +1848,24 @@ mixin (
   // Pays pending payouts, smallest first, at most `max` of them (and never more than PAY_BATCH).
   public shared ({ caller }) func gameAdminPay(max : Nat) : async Result.Result<{ paid : Nat; failed : Nat; remaining : Nat }, Text> {
     if (not gIsAdmin(caller)) return #err("Admin only.");
-    switch (await gPayBegin()) { case (?m) return #err(m); case null {} };
+    await gPayBatch(max, false);
+  };
+
+  // The automatic run: every tick, up to PAY_BATCH payouts. A payout whose last attempt got no answer
+  // is never retried here: only the admin decides about it.
+  func gAutoPay() : async () {
+    if (gHardHalt()) return;
+    var due = false;
+    for ((_, po) in gameState.payouts.entries()) {
+      if (not po.paid and not po.uncertain) due := true;
+    };
+    if (due) ignore await gPayBatch(0, true);
+  };
+
+  func gPayBatch(max : Nat, auto : Bool) : async Result.Result<{ paid : Nat; failed : Nat; remaining : Nat }, Text> {
+    switch (await gPayBegin(not auto)) { case (?m) return #err(m); case null {} };
     let pending = Array.sort(
-      gameState.payouts.values().filter(func(po : Types.Payout) : Bool { not po.paid }).toArray(),
+      gameState.payouts.values().filter(func(po : Types.Payout) : Bool { not po.paid and not (auto and po.uncertain) }).toArray(),
       func(a : Types.Payout, b : Types.Payout) : { #less; #equal; #greater } {
         switch (Nat.compare(a.amount, b.amount)) {
           case (#equal) Nat.compare(a.id, b.id);
@@ -1864,7 +1899,7 @@ mixin (
         };
       };
     };
-    await gPayEnd();
+    await gPayEnd(not auto);
     var remaining = 0;
     for ((_, po) in gameState.payouts.entries()) { if (not po.paid) remaining += 1 };
     if (paid == 0 and failed > 0) {
@@ -1879,7 +1914,7 @@ mixin (
     if (not gIsAdmin(caller)) return #err("Admin only.");
     let po = switch (gameState.payouts.get(id)) { case (?po) po; case null return #err("Payout not found.") };
     if (po.paid) return #err("Already paid.");
-    switch (await gPayBegin()) { case (?m) return #err(m); case null {} };
+    switch (await gPayBegin(true)) { case (?m) return #err(m); case null {} };
     let res = await lPay(id, renew);
     let out : Result.Result<?Nat, Text> = switch (res) {
       case (#ok txId) {
@@ -1888,7 +1923,7 @@ mixin (
       };
       case (#err m) #err(m);
     };
-    await gPayEnd();
+    await gPayEnd(true);
     out;
   };
 
@@ -2122,7 +2157,7 @@ mixin (
     gameState.pendingWithdrawals.clear();
     gameState.jackpots := [];
     gameState.tournament := 1;
-    gameState.endsAt := Time.now() + gameState.durationDays * Game.DAY_NS;
+    gameState.endsAt := 0;
     gameState.bank := balance;
     gameState.realLedger := true;
     gameState.ledgerFails := 0;
