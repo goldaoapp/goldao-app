@@ -73,6 +73,15 @@ module {
   // ledger answers Duplicate if the first one went through.
   public type PendingLoad = { amount : Nat; stamp : Nat64 };
 
+  // A withdrawal of the free credit that left the credit but is not settled yet. `amount` is the
+  // whole credit taken (the player receives it minus the network fee). The retry reuses the same
+  // stamp, so the ledger answers Duplicate if the first call went through.
+  public type PendingWithdrawal = { amount : Nat; stamp : Nat64 };
+
+  // What the admin sees of a pending withdrawal. `at`: time of the first attempt (ns). `expired`: the stamp is too old for the player
+  // to retry, so only the admin can settle it.
+  public type WithdrawalView = { player : Principal; amount : Nat; at : Nat; expired : Bool };
+
   public type JackpotWin = {
     tournament : Nat;
     player : Principal;
@@ -148,6 +157,7 @@ module {
     var fundSamples : [Int];
     pendingLoads : Map.Map<Principal, PendingLoad>;
     var saturations : Nat;
+    pendingWithdrawals : Map.Map<Principal, PendingWithdrawal>;
   };
 
   // Security log. #info: something happened (admin action, recovery). #warning: worth a look.
@@ -233,6 +243,8 @@ module {
     stakes : [Nat];
     credit : Nat;
     pendingPayout : Nat;
+    /** Credit taken by a withdrawal that is not settled yet (0 when there is none). */
+    pendingWithdrawal : Nat;
     pool : Nat;
     top10Pool : Nat;
     top10Rank : Nat;
@@ -326,6 +338,7 @@ module {
     loadMax : Nat;
     creditCapE8s : Nat;
     minPayoutE8s : Nat;
+    withdrawMinE8s : Nat;
     top10Bps : Nat;
     top10Weights : [Nat];
     top10MinVolumeE8s : Nat;
@@ -348,6 +361,8 @@ module {
     smallPlayers : Nat;
     heldJackpots : Nat;
     unpaidPayouts : Nat;
+    pendingWithdrawals : Nat;
+    withdrawals : [WithdrawalView];
     pool : Nat;
     reserve : Nat;
     cycles : Nat;
