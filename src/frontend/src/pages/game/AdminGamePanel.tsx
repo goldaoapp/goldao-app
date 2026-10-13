@@ -2,12 +2,7 @@ import { type AdminView, type Payout, WithdrawKind } from "@/backend";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/context/AuthContext";
 import { loadEnv } from "@/hooks/useBackendActor";
-import {
-  GOLDAO_FEE_E8S,
-  approveSpender,
-  fetchWalletBalance,
-} from "@/lib/goldao-ledger";
-import { useInternetIdentity } from "@/lib/internet-identity";
+import { GOLDAO_FEE_E8S, fetchWalletBalance } from "@/lib/goldao-ledger";
 import { cn } from "@/lib/utils";
 import { Principal } from "@icp-sdk/core/principal";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -55,13 +50,6 @@ const DURATIONS = [1, 3, 7, 14, 30];
 // Fallback pool range while the config loads. The backend's own range (gameConfig) wins.
 const POOL_SEED_MIN_FALLBACK = 5_000;
 const POOL_SEED_MAX_FALLBACK = 20_000;
-// The wallet authorization given to the backend lives only this long.
-const WITHDRAW_WINDOW_MS = 2 * 60_000;
-const PAY_WINDOW_MS = 10 * 60_000;
-// Hard ceiling for any single authorization signed from this panel. The amounts come from
-// unverified queries, so a wrong answer can never make the wallet approve more than this.
-const MAX_AUTHORIZE_E8S = 2_000_000n * E8S;
-
 type Res<T> = { __kind__: "ok"; ok: T } | { __kind__: "err"; err: string };
 
 interface Ask {
@@ -77,8 +65,7 @@ const inputCls =
   "w-80 max-w-full rounded-md border border-[color:var(--term-border)] bg-transparent px-3 py-1.5 font-mono text-xs";
 
 export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
-  const { actor, principalId } = useAuth();
-  const { identity } = useInternetIdentity();
+  const { actor } = useAuth();
   const queryClient = useQueryClient();
   const { run, pending } = useGameAction();
   const { data: security } = useSecurityView(!!view);
@@ -94,17 +81,12 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
   const working = !!pending || busy;
   const connected = !!view?.realLedger;
   const bankText = view?.bankAccount?.toText();
-  // Display only: the admin wallet balance read straight from the ledger. The backend does its own reads.
-  const walletAddr = bankText ?? principalId ?? "";
-  const { data: ledgerBalance } = useQuery({
-    queryKey: ["game", "admin-wallet", walletAddr, config?.ledgerId],
-    queryFn: () => fetchWalletBalance(walletAddr, config?.ledgerId),
-    enabled: !!walletAddr && !!config?.ledgerId,
-    refetchInterval: 15_000,
-  });
   const selfText = view?.selfId?.toText();
+  // The bank is the account of the game canister itself. Until the ledger is changed, a game that
+  // was connected by an older version still has another account as its bank and moves no money.
+  const bankReady = !!bankText && bankText === selfText;
   // The game account comes from the deployment itself (env.json), not from a query to the
-  // canister. The view is only used to check that both agree.
+  // canister.
   const envQuery = useQuery({
     queryKey: ["game", "spender"],
     queryFn: async () => (await loadEnv()).backend_canister_id ?? "",
@@ -112,6 +94,14 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
   });
   const envId =
     envQuery.data && envQuery.data !== "undefined" ? envQuery.data : "";
+  // Display only: the bank balance read straight from the ledger. The backend does its own reads.
+  const bankAddr = bankText ?? envId;
+  const { data: ledgerBalance } = useQuery({
+    queryKey: ["game", "bank-balance", bankAddr, config?.ledgerId],
+    queryFn: () => fetchWalletBalance(bankAddr, config?.ledgerId),
+    enabled: !!bankAddr && !!config?.ledgerId,
+    refetchInterval: 15_000,
+  });
 
   const unpaid = view?.payouts.filter((p) => !p.paid) ?? [];
   const unpaidTotal = view?.unpaidPayouts ?? 0n;
@@ -121,94 +111,21 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
     name: string,
     call: () => Promise<Res<T>>,
     text: (v: T) => string,
-    before?: () => Promise<void>,
-    after?: () => Promise<void>,
   ) => {
     if (!actor || working) return;
     setMsg(null);
     setBusy(true);
     try {
-      if (before) await before();
       const v = await run(name, call, "all");
       setMsg({ ok: true, text: text(v) });
     } catch (e) {
       setMsg({ ok: false, text: errorMessage(e) });
     } finally {
-      if (after) await after();
       setBusy(false);
     }
   };
 
   const confirmThen = (a: Ask) => setAsk(a);
-
-  // Real mode: the backend spends an allowance the admin wallet grants.
-  // It is set right before the action to exactly what the action needs, and the
-  // ledger drops it by itself after `windowMs`, used or not.
-  // With `reuseMin`, an authorization that already covers it is kept (no new approval fee).
-  const authorize = async (
-    required: bigint,
-    windowMs: number,
-    reuseMin?: bigint,
-  ) => {
-    if (!connected) return;
-    if (!identity || !bankText || !envId) {
-      throw new Error("Sign in with the admin wallet first.");
-    }
-    if (selfText !== envId) {
-      throw new Error(
-        "The game account does not match this canister. Nothing was authorized.",
-      );
-    }
-    if (required > MAX_AUTHORIZE_E8S) {
-      throw new Error(
-        "The amount is above the safety limit. Nothing was authorized.",
-      );
-    }
-    if (identity.getPrincipal().toText() !== bankText) {
-      throw new Error("This session is not the bank wallet.");
-    }
-    if (reuseMin !== undefined && actor) {
-      const cur = await actor.gameAdminLedgerAllowance(
-        Principal.fromText(bankText),
-        Principal.fromText(envId),
-      );
-      if (cur.__kind__ === "ok" && cur.ok >= reuseMin) return;
-    }
-    await approveSpender(identity, envId, required, windowMs, config?.ledgerId);
-  };
-
-  // Asks the backend (a free query) whether it would refuse the action, before the wallet signs
-  // an authorization: that signature costs a network fee even when the action is then refused.
-  const preflight = async (check: () => Promise<Res<unknown>>) => {
-    if (!connected || !actor) return;
-    const r = await check();
-    if (r.__kind__ === "err") throw new Error(r.err);
-  };
-
-  // Right after an operation, cancels whatever authorization is left. A dust
-  // amount is not worth another network fee: it expires within minutes.
-  const revokeLeftover = async () => {
-    if (
-      !connected ||
-      !actor ||
-      !identity ||
-      !bankText ||
-      !envId ||
-      selfText !== envId
-    )
-      return;
-    try {
-      const cur = await actor.gameAdminLedgerAllowance(
-        Principal.fromText(bankText),
-        Principal.fromText(envId),
-      );
-      if (cur.__kind__ === "ok" && cur.ok > GOLDAO_FEE_E8S) {
-        await approveSpender(identity, envId, 0n, undefined, config?.ledgerId);
-      }
-    } catch {
-      // The expiry set when it was granted still applies.
-    }
-  };
 
   const parsePrincipal = (t: string): Principal | null => {
     try {
@@ -245,10 +162,10 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
         "players still hold an Accumulated prize or unpaid prizes (use Close and pay everything, then Pay pending)",
       );
     if (unpaid.length > 0) allBlockers.push("pending payouts must be paid");
-    if (bank <= GOLDAO_FEE_E8S) allBlockers.push("the wallet is empty");
+    if (bank <= GOLDAO_FEE_E8S) allBlockers.push("the bank is empty");
   }
 
-  // One authorization for the whole run, then every batch of 20 back to back.
+  // Every batch of 20 back to back.
   const payNow = async () => {
     if (!actor || working) return;
     setMsg(null);
@@ -257,8 +174,6 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
     let failed = 0;
     let remaining = unpaid.length;
     try {
-      await preflight(() => actor.gameAdminCheckPay());
-      await authorize(unpaidTotal, PAY_WINDOW_MS);
       for (let i = 0; i < 500; i++) {
         const r = await run("pay", () => actor.gameAdminPay(20n), false);
         paid += Number(r.paid);
@@ -279,26 +194,17 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
             : errorMessage(e),
       });
     } finally {
-      await revokeLeftover();
       await queryClient.invalidateQueries({ queryKey: ["game"] });
       setBusy(false);
     }
   };
 
-  // One payout. The authorization covers every pending payout, and it is reused by the next
-  // clicks while it is enough, so paying one by one does not cost a network fee each time.
+  // One payout.
   const payOne = async (p: Payout, renew: boolean) => {
     if (!actor || working) return;
     setMsg(null);
     setBusy(true);
     try {
-      const need = p.amount + GOLDAO_FEE_E8S;
-      await preflight(() => actor.gameAdminCheckPay());
-      await authorize(
-        unpaidTotal > need ? unpaidTotal : need,
-        PAY_WINDOW_MS,
-        need,
-      );
       const tx = await run(
         "pay-one",
         () => actor.gameAdminPayOne(p.id, renew),
@@ -319,24 +225,12 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
     }
   };
 
-  // The next `n` smallest pending payouts, the same order the backend uses.
+  // The next `n` smallest pending payouts: the backend picks them, smallest first.
   const payNext = async (n: number) => {
     if (!actor || working) return;
     setMsg(null);
     setBusy(true);
     try {
-      const batch = [...unpaid]
-        .sort((a, b) =>
-          a.amount === b.amount
-            ? Number(a.id - b.id)
-            : a.amount < b.amount
-              ? -1
-              : 1,
-        )
-        .slice(0, n);
-      const need = batch.reduce((s, p) => s + p.amount + GOLDAO_FEE_E8S, 0n);
-      await preflight(() => actor.gameAdminCheckPay());
-      await authorize(need, PAY_WINDOW_MS);
       const r = await run("pay", () => actor.gameAdminPay(BigInt(n)), "all");
       setMsg({
         ok: r.failed === 0n,
@@ -345,7 +239,6 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
     } catch (e) {
       setMsg({ ok: false, text: errorMessage(e) });
     } finally {
-      await revokeLeftover();
       await queryClient.invalidateQueries({ queryKey: ["game"] });
       setBusy(false);
     }
@@ -368,6 +261,14 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
             : "play was halted."}
         </div>
       )}
+      {connected && view && !bankReady && (
+        <div className="rounded-lg border border-destructive/50 bg-destructive/10 px-4 py-3 font-mono text-xs text-destructive">
+          The bank is not in the game account yet, so the game moves no money.
+          Pause new excavations, close the tournament and pay everything, send
+          the GOLDAO to the game account address shown under Funds, then use
+          Change ledger.
+        </div>
+      )}
       <ModeStatusCard view={view} config={config} />
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <Kpi
@@ -376,7 +277,7 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
           sub={view ? `ends in ${fmtCountdown(view.endsAt)}` : ""}
         />
         <Kpi
-          label="Admin wallet"
+          label="Bank (game account)"
           value={view ? fmtGoldao(view.bank) : <Spinner />}
           sub="GOLDAO (ledger)"
         />
@@ -489,7 +390,7 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
         <div className="flex flex-col gap-5 p-5">
           <div className="flex items-baseline gap-2">
             <span className={cn("font-mono text-[11px]", inkFaint)}>
-              Wallet balance on the ledger
+              Game account balance on the ledger
             </span>
             <span className={cn("font-mono text-sm", ink)}>
               {ledgerBalance === undefined ? "-" : fmtGoldao(ledgerBalance)}{" "}
@@ -498,11 +399,11 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
           </div>
           <CopyField
             label={
-              connected
-                ? "Admin wallet address: send GOLDAO here to fund the game"
-                : "Admin wallet address: it becomes the bank when you connect the ledger"
+              connected && bankReady
+                ? "Game account address (the bank): send GOLDAO here to fund the game"
+                : "Game account address: it becomes the bank when you change the ledger"
             }
-            value={bankText ?? principalId ?? ""}
+            value={selfText || envId || ""}
           />
           <Row
             title="Jackpot pool"
@@ -547,7 +448,7 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
 
           <Row
             title="Withdraw earnings"
-            hint={`Takes ${fmtGoldao(availableOut)} GOLDAO (cycles first, then the surplus over the fund target) to the fixed treasury address. Network fee: ${fmtGoldao(GOLDAO_FEE_E8S)}.${connected ? " The wallet authorization is set for that amount only and expires in 2 minutes." : ""}`}
+            hint={`Takes ${fmtGoldao(availableOut)} GOLDAO (cycles first, then the surplus over the fund target) to the fixed treasury address. Network fee: ${fmtGoldao(GOLDAO_FEE_E8S)}.`}
           >
             <Button
               variant="outline"
@@ -561,16 +462,6 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
                       "withdraw",
                       () => actor!.gameAdminWithdraw(WithdrawKind.available),
                       (v) => `Done. Bank is now ${fmtGoldao(v)}.`,
-                      async () => {
-                        await preflight(() =>
-                          actor!.gameAdminCheckWithdraw(WithdrawKind.available),
-                        );
-                        await authorize(
-                          availableOut + GOLDAO_FEE_E8S,
-                          WITHDRAW_WINDOW_MS,
-                        );
-                      },
-                      revokeLeftover,
                     ),
                 })
               }
@@ -583,7 +474,7 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
             title="Withdraw everything"
             hint={
               allBlockers.length === 0
-                ? `Empties the wallet (${fmtGoldao(bank - GOLDAO_FEE_E8S)} GOLDAO) to the fixed treasury address and resets pool, reserve, Top 10 pool and cycles.`
+                ? `Empties the bank (${fmtGoldao(bank - GOLDAO_FEE_E8S)} GOLDAO) to the fixed treasury address and resets pool, reserve, Top 10 pool and cycles.`
                 : `Not available: ${allBlockers.join(", ")}.`
             }
           >
@@ -602,20 +493,6 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
                       "withdraw-all",
                       () => actor!.gameAdminWithdraw(WithdrawKind.all),
                       (v) => `Done. Bank is now ${fmtGoldao(v)}.`,
-                      async () => {
-                        const fresh = await actor!.gameAdminRefreshBank();
-                        if (fresh.__kind__ === "err")
-                          throw new Error(fresh.err);
-                        await preflight(() =>
-                          actor!.gameAdminCheckWithdraw(WithdrawKind.all),
-                        );
-                        // The authorization costs one fee first, then the transfer.
-                        await authorize(
-                          fresh.ok - GOLDAO_FEE_E8S,
-                          WITHDRAW_WINDOW_MS,
-                        );
-                      },
-                      revokeLeftover,
                     ),
                 })
               }
@@ -627,7 +504,7 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
           {connected && (
             <Row
               title="Refresh bank"
-              hint="Reads the wallet balance from the ledger."
+              hint="Reads the bank balance from the ledger."
             >
               <Button
                 variant="outline"
@@ -753,7 +630,7 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
             hint={
               unpaid.length === 0
                 ? "Nothing to pay."
-                : `${fmtGoldao(unpaidTotal)} GOLDAO pending including fees, smallest first, in batches of 20 until done. A payout that does not fit the funds or the authorization waits for the next run.${connected ? " The wallet authorization is set automatically for exactly that amount and expires in 10 minutes." : ""}`
+                : `${fmtGoldao(unpaidTotal)} GOLDAO pending including fees, smallest first, in batches of 20 until done. A payout that does not fit the funds waits for the next run.`
             }
           >
             <Button
@@ -763,31 +640,13 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
                 confirmThen({
                   title: `Pay all pending payouts (${fmtGoldao(unpaidTotal)} GOLDAO)?`,
                   detail:
-                    "Funds leave the admin wallet to the players. Keep this page open until it finishes.",
+                    "Funds leave the game account to the players. Keep this page open until it finishes.",
                   go: payNow,
                 })
               }
             >
               Pay pending ({unpaid.length})
             </Button>
-            {connected && (
-              <Button
-                variant="outline"
-                disabled={working}
-                onClick={() =>
-                  void act(
-                    "revoke",
-                    async () => {
-                      await revokeLeftover();
-                      return { __kind__: "ok" as const, ok: null };
-                    },
-                    () => "Authorization revoked.",
-                  )
-                }
-              >
-                Revoke authorization
-              </Button>
-            )}
           </Row>
 
           <Row
