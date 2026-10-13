@@ -74,6 +74,7 @@ export interface Dashboard {
   'pendingPayout' : bigint,
   'pendingWithdrawal' : bigint,
   'paused' : boolean,
+  'pauseCode' : bigint,
   'endsAt' : bigint,
 }
 export interface DiamondResult { 'won' : bigint, 'stage' : bigint }
@@ -159,6 +160,8 @@ export interface GameSummary {
   'pool' : bigint,
   'tournament' : bigint,
   'paused' : boolean,
+  'pauseCode' : bigint,
+  'stakes' : Array<bigint>,
   'endsAt' : bigint,
 }
 export interface JackpotWin {
@@ -354,6 +357,7 @@ export interface _SERVICE {
   'gameAdminAckAccounting' : ActorMethod<[], Result_5>,
   'gameAdminChangeLedger' : ActorMethod<[], Result>,
   'gameAdminCloseAll' : ActorMethod<[], Result_5>,
+  'gameAdminCloseOpen' : ActorMethod<[], Result>,
   'gameAdminCloseTournament' : ActorMethod<[], Result_5>,
   'gameAdminEnsureConnected' : ActorMethod<[], Result_11>,
   'gameAdminHalt' : ActorMethod<[], Result_5>,
