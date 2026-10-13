@@ -55,6 +55,14 @@ module {
   public let CLOSED_MSG : Text = "The tournament has just closed. Your balance was paid out or carried over to the new tournament: check your wallet and Accumulated prize, then try again.";
   public let ERR_PAY_FUNDS : Text = "The bank does not cover the payout.";
   public let BANK_NOT_READY_MSG : Text = "The bank is not in the game account yet. Use Change ledger with the game empty.";
+  // Smallest balance a player can withdraw, and the pause between two withdrawal attempts of the
+  // same player (each attempt that reaches the ledger is a transfer).
+  public let WITHDRAW_MIN : Nat = 2_000_000_000;
+  public let WITHDRAW_COOLDOWN_NS : Int = 30_000_000_000;
+  public let WITHDRAW_PENALTY_NS : Int = 300_000_000_000;
+  public let WITHDRAW_PAUSED_MSG : Text = "Withdrawals are not available while the game is paused.";
+  public let WITHDRAW_CHANGED_MSG : Text = "Your balance changed. Check it and try again.";
+  public let WITHDRAW_EXPIRED_MSG : Text = "Your last withdrawal got no answer from the ledger and can no longer be retried. The admin will settle it: check your wallet first.";
   public let ERR_PAY_UNCERTAIN : Text = "This payout got no answer from the ledger and its timestamp expired. Look for it in the ledger before paying again.";
   public let NEED_CREDIT_MSG : Text = "Load balance first: your Accumulated prize must cover the stake.";
   public let STAKE_CHANGED_MSG : Text = "The stake amounts changed. Check the new amounts and try again.";
