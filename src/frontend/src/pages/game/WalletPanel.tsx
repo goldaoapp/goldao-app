@@ -15,7 +15,15 @@ import { CopyField } from "./CopyField";
 import { Spinner } from "./Spinner";
 import { TestFaucetCard } from "./TestFaucetCard";
 import { SendForm, useTokenBalances } from "./WalletTokens";
-import { eyebrow, fmtGoldao, gold, ink, inkFaint, panel } from "./game-utils";
+import {
+  eyebrow,
+  fmtGoldao,
+  gold,
+  ink,
+  inkFaint,
+  panel,
+  pauseMessage,
+} from "./game-utils";
 import { TEST_TOKEN_LABEL, isTestLedger } from "./ledger-mode";
 import { errorMessage, useGameAction } from "./useGame";
 import { useWallet } from "./useWallet";
@@ -70,7 +78,7 @@ export function WalletPanel({ dashboard, config }: Props) {
   const loadBlock = !dashboard
     ? "Loading"
     : dashboard.paused
-      ? "Bets are paused."
+      ? pauseMessage(dashboard.pauseCode)
       : !canLoad
         ? `Accumulated prize is full (limit ${fmtGoldao(config?.creditCapE8s ?? 0n)} ${tokenName}). You can load again after you use some of it.`
         : amount < loadMin || amount > maxLoad
