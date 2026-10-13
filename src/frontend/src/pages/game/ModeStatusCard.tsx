@@ -2,7 +2,12 @@ import type { AdminView, GameConfig } from "@/backend";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/context/AuthContext";
 import { loadEnv } from "@/hooks/useBackendActor";
-import { fetchWalletBalance } from "@/lib/goldao-ledger";
+import {
+  approveSpender,
+  fetchAllowance,
+  fetchWalletBalance,
+} from "@/lib/goldao-ledger";
+import { useInternetIdentity } from "@/lib/internet-identity";
 import { cn } from "@/lib/utils";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Check, FlaskConical, X } from "lucide-react";
@@ -26,12 +31,16 @@ import { errorMessage } from "./useGame";
  * Which ledger the game runs on, and the one button that moves it to another ledger.
  *
  * The ledger itself is the MODE constant in the backend (lib/ledger.mo), changed only with a
- * deploy. The game connects to it by itself at start (the bank wallet of each deployment is fixed
- * in Game.BANKS). "Change ledger" is only for moving to another ledger after such a deploy.
+ * deploy. The game connects to it by itself at start (the bank admin of each deployment is fixed
+ * in Game.BANKS; the bank itself is the game canister's own account). "Change ledger" is only
+ * for moving to another ledger after such a deploy.
  *
  * The faucet pool and the "Switching to real GOLDAO" steps are temporary: remove them together
  * with the test faucet when the game is on the real GOLDAO ledger.
  */
+// Allowance the bank admin gives the faucet in one click: 1,000,000 test tokens.
+const FAUCET_ALLOWANCE_E8S = 100_000_000_000_000n;
+
 export function ModeStatusCard({
   view,
   config,
@@ -42,6 +51,7 @@ export function ModeStatusCard({
   const test = isTestLedger(config);
   const real = !!config?.realLedger;
   const { actor } = useAuth();
+  const { identity } = useInternetIdentity();
   const queryClient = useQueryClient();
   const [asking, setAsking] = useState(false);
   const [working, setWorking] = useState(false);
@@ -88,14 +98,43 @@ export function ModeStatusCard({
   const gameAccount =
     envQuery.data && envQuery.data !== "undefined" ? envQuery.data : "";
 
-  // The faucet sends from the game canister's own account on the test ledger.
+  // The faucet pays from the bank admin's own wallet through an allowance given to the game
+  // canister, never from the game account (that is the bank). The pool is what it can still pay.
+  const adminText = identity?.getPrincipal().toText() ?? "";
   const pool = useQuery({
-    queryKey: ["game", "faucet-pool", gameAccount, config?.ledgerId],
-    queryFn: () => fetchWalletBalance(gameAccount, config?.ledgerId),
-    enabled: test && !!gameAccount,
+    queryKey: ["game", "faucet-pool", adminText, gameAccount, config?.ledgerId],
+    queryFn: async () => {
+      const [balance, allowance] = await Promise.all([
+        fetchWalletBalance(adminText, config?.ledgerId),
+        fetchAllowance(adminText, gameAccount, config?.ledgerId),
+      ]);
+      return balance < allowance ? balance : allowance;
+    },
+    enabled: test && !!gameAccount && !!adminText,
     refetchInterval: 30_000,
     retry: false,
   });
+  const [authorizing, setAuthorizing] = useState(false);
+  const [faucetMsg, setFaucetMsg] = useState<string | null>(null);
+  const authorizeFaucet = async () => {
+    if (!identity || !gameAccount || authorizing) return;
+    setFaucetMsg(null);
+    setAuthorizing(true);
+    try {
+      await approveSpender(
+        identity,
+        gameAccount,
+        FAUCET_ALLOWANCE_E8S,
+        undefined,
+        config?.ledgerId,
+      );
+      await pool.refetch();
+    } catch (e) {
+      setFaucetMsg(errorMessage(e));
+    } finally {
+      setAuthorizing(false);
+    }
+  };
 
   const unpaid = view ? view.payouts.filter((p) => !p.paid).length : 0;
   const checks = view
@@ -182,11 +221,29 @@ export function ModeStatusCard({
           </dl>
         )}
 
-        {test && gameAccount && (
-          <CopyField
-            label={`Game account: send ${TEST_TOKEN_LABEL} here to refill the faucet`}
-            value={gameAccount}
-          />
+        {test && (
+          <div className="flex flex-col gap-2">
+            <span className={cn("text-[11px]", inkFaint)}>
+              The faucet pays from the bank admin wallet. Sign in as the bank
+              admin and authorize it to refill the pool; the wallet needs{" "}
+              {TEST_TOKEN_LABEL} too.
+            </span>
+            <div className="flex flex-wrap items-center gap-3">
+              <Button
+                variant="outline"
+                disabled={authorizing || !identity || !gameAccount}
+                onClick={() => void authorizeFaucet()}
+              >
+                {authorizing ? <Spinner /> : null}
+                Authorize faucet
+              </Button>
+              {faucetMsg && (
+                <span className="font-mono text-xs text-destructive">
+                  {faucetMsg}
+                </span>
+              )}
+            </div>
+          </div>
         )}
 
         {checks.length > 0 && (test || !real) && (
@@ -214,8 +271,9 @@ export function ModeStatusCard({
             <span className={cn(eyebrow, inkFaint)}>Change ledger</span>
             <span className={cn("text-[11px]", inkFaint)}>
               Moves the game to the ledger set in the backend code. It checks
-              the fee and the symbol, reads the bank balance and erases all game
-              data. Only the bank wallet can do it, with the game paused.
+              the fee and the symbol, reads the balance of the game account (the
+              bank) and erases all game data. Only the bank admin can do it,
+              with the game paused.
             </span>
             {test && (
               <ol
