@@ -562,8 +562,31 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
           </Row>
 
           <Row
+            title="Start tournament"
+            hint={
+              view?.endsAt === 0n
+                ? "The next tournament is waiting. Start it once the payouts of the previous one are paid."
+                : "Not available: a tournament is already running."
+            }
+          >
+            <Button
+              className="gradient-primary text-primary-foreground"
+              disabled={working || view?.endsAt !== 0n}
+              onClick={() =>
+                act(
+                  "start",
+                  () => actor!.gameAdminStartTournament(),
+                  () => "Tournament started.",
+                )
+              }
+            >
+              Start now
+            </Button>
+          </Row>
+
+          <Row
             title="Close tournament"
-            hint={`Ends it now. Accumulated prize balances of at least ${minPayout} GOLDAO become payouts; smaller ones stay for the next tournament.`}
+            hint={`Ends it now, without the closing window: open excavations are saved from the third pick and the others get their stake back. Accumulated prize balances of at least ${minPayout} GOLDAO become payouts; smaller ones stay for the next tournament.`}
           >
             <Button
               variant="outline"
@@ -653,7 +676,7 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
             hint={
               unpaid.length === 0
                 ? "Nothing to pay."
-                : `${fmtGoldao(unpaidTotal)} GOLDAO pending including fees, smallest first, in batches of 20 until done. A payout that does not fit the funds waits for the next run.`
+                : `${fmtGoldao(unpaidTotal)} GOLDAO pending including fees. They are sent automatically, 20 per minute, smallest first; a payout with an uncertain answer is never retried by itself. Use this button for those or to speed things up.`
             }
           >
             <Button
