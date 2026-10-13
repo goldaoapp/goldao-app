@@ -12,8 +12,9 @@ import Time "mo:core/Time";
 
 // TEST FAUCET API. See lib/test-faucet.mo for what to delete before going to real GOLDAO.
 //
-// A player asks for test tokens and this canister sends them from its own account on the test
-// ledger to the player's wallet. The player then loads balance through the normal game flow.
+// A player asks for test tokens and this canister sends them from the bank admin's wallet on the
+// test ledger to the player's wallet, using an allowance the admin granted to this canister. The
+// player then loads balance through the normal game flow.
 mixin (
   gameState : Types.GameState,
 ) {
@@ -29,9 +30,15 @@ mixin (
     Ledger.MODE == #test and Ledger.ledgerId() == Faucet.TEST_LEDGER and gameState.realLedger;
   };
 
+  // The wallet the faucet pays from: the bank admin of this deployment. The game is connected
+  // (and knows its own id) whenever the faucet is on.
+  func fSource() : ?Principal {
+    switch (gameState.selfId) { case (?me) Game.bankFor(me); case null null };
+  };
+
   func fIsAdminOrBank(p : Principal) : Bool {
     if (Game.isBootstrapAdmin(p)) return true;
-    switch (gameState.bankAccount) { case (?b) b == p; case null false };
+    switch (fSource()) { case (?b) b == p; case null false };
   };
 
   func fUsed(p : Principal) : Nat {
@@ -69,7 +76,7 @@ mixin (
   public shared ({ caller }) func testFaucetClaim(goldao : Nat) : async Result.Result<Nat, Text> {
     if (not fOn()) return #err("The test faucet is not available.");
     if (Principal.isAnonymous(caller)) return #err("Sign in with Internet Identity.");
-    // Admin and bank wallets never receive faucet tokens: they would upset the bank audit.
+    // Admin accounts never receive faucet tokens, and neither does the wallet the faucet pays from.
     if (fIsAdminOrBank(caller)) return #err("Admin accounts cannot use the faucet.");
     if (Array.indexOf<Nat>(Faucet.PRESETS, Nat.equal, goldao) == null) return #err("Choose one of the listed amounts.");
     let amount = goldao * Faucet.E8S;
@@ -91,10 +98,19 @@ mixin (
     // been executed, so it stays counted.
     fClaimed.add(caller, (gameState.tournament, used + amount));
     fLocked.add(caller, Time.now());
+    let source = switch (fSource()) {
+      case (?b) b;
+      case null {
+        fLocked.remove(caller);
+        fRelease(caller, amount);
+        return #err("The test faucet is not available.");
+      };
+    };
     let stamp = Nat.toNat64(Int.abs(Time.now()));
     let answer = try {
-      ?(await Faucet.ledger().icrc1_transfer({
-        from_subaccount = null;
+      ?(await Faucet.ledger().icrc2_transfer_from({
+        spender_subaccount = null;
+        from = Faucet.account(source);
         to = Faucet.account(caller);
         amount;
         fee = null;
@@ -110,6 +126,10 @@ mixin (
       case (?(#Ok block)) #ok(block);
       case (?(#Err(#Duplicate d))) #ok(d.duplicate_of);
       case (?(#Err(#InsufficientFunds _))) {
+        fRelease(caller, amount);
+        #err("The faucet is empty. Ask the admin to refill it.");
+      };
+      case (?(#Err(#InsufficientAllowance _))) {
         fRelease(caller, amount);
         #err("The faucet is empty. Ask the admin to refill it.");
       };
