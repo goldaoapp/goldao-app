@@ -766,6 +766,89 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
         </div>
       )}
 
+      {view && view.withdrawals.length > 0 && (
+        <div className={panel}>
+          <div className={panelHeader}>
+            <span className={cn(eyebrow, gold)}>
+              Pending withdrawals · {fmtGoldao(view.pendingWithdrawals)} GOLDAO
+            </span>
+          </div>
+          <div className="flex flex-col gap-3 p-5">
+            <span className={cn("text-[11px]", inkFaint)}>
+              A withdrawal that got no answer from the ledger. The player can
+              repeat it until its timestamp expires; after that, check the
+              player's wallet and settle it here. "Sent" if the GOLDAO arrived,
+              "Give back" if it did not.
+            </span>
+            {view.withdrawals.map((w) => {
+              const who = w.player.toText();
+              return (
+                <div
+                  key={who}
+                  className="flex flex-wrap items-center gap-3 font-mono text-xs"
+                >
+                  <span className="break-all">{who}</span>
+                  <span>
+                    {fmtGoldao(w.amount - GOLDAO_FEE_E8S)} GOLDAO to the wallet
+                  </span>
+                  <span className={inkFaint}>
+                    {new Date(Number(w.at / 1_000_000n)).toLocaleString()}
+                  </span>
+                  <span className={w.expired ? "text-destructive" : inkFaint}>
+                    {w.expired ? "expired" : "player can still repeat"}
+                  </span>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={working || !w.expired}
+                    onClick={() =>
+                      confirmThen({
+                        title: "Settle as sent?",
+                        detail: `Only if ${fmtGoldao(w.amount - GOLDAO_FEE_E8S)} GOLDAO arrived in the wallet of ${who}. The credit is not given back.`,
+                        word: "SENT",
+                        go: () =>
+                          act(
+                            "withdraw-sent",
+                            () =>
+                              actor!.gameAdminResolveWithdrawal(w.player, true),
+                            () => "Withdrawal settled as sent.",
+                          ),
+                      })
+                    }
+                  >
+                    Sent
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={working || !w.expired}
+                    onClick={() =>
+                      confirmThen({
+                        title: "Give the credit back?",
+                        detail: `Only if nothing arrived in the wallet of ${who}. ${fmtGoldao(w.amount)} GOLDAO returns to the player's game balance.`,
+                        word: "GIVE BACK",
+                        go: () =>
+                          act(
+                            "withdraw-back",
+                            () =>
+                              actor!.gameAdminResolveWithdrawal(
+                                w.player,
+                                false,
+                              ),
+                            () => "Credit given back to the player.",
+                          ),
+                      })
+                    }
+                  >
+                    Give back
+                  </Button>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {security && <SecurityLogPanel />}
 
       {view?.lastClose && (
