@@ -343,6 +343,7 @@ module {
     creditCapE8s : Nat;
     minPayoutE8s : Nat;
     withdrawMinE8s : Nat;
+    closeWindowNs : Nat;
     top10Bps : Nat;
     top10Weights : [Nat];
     top10MinVolumeE8s : Nat;
