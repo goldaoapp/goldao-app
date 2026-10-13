@@ -125,6 +125,12 @@ module {
   public let HALT_BANK : Nat = 4;
   public let HALT_FUND : Nat = 5;
   public let HALT_FEE : Nat = 6;
+  // Public pause codes (0 means not paused). A safety halt is shown without its cause.
+  public let PAUSE_ADMIN : Nat = 1;
+  public let PAUSE_SAFETY : Nat = 2;
+  public let PAUSE_PAYOUTS : Nat = 3;
+  public let PAUSE_BANK : Nat = 4;
+  public let PAUSE_STAKES : Nat = 5;
 
   // Safeguards. The bank may hold up to BANK_TOLERANCE less than the game expects, summed over
   // BANK_WINDOW_NS, before the game halts. The fund is sampled every tick; it halts the game when
