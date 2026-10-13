@@ -156,6 +156,11 @@ export function MineBoard({ dashboard }: Props) {
   // finished (the backend allows it), so the board stays usable for it.
   const paused =
     !!(dashboard?.paused ?? summary?.paused) && !exc && !dashboard?.open;
+  // After the end time an open excavation can still be finished for a while (closing window).
+  const closing =
+    !!dashboard &&
+    dashboard.endsAt !== 0n &&
+    Date.now() >= Number(dashboard.endsAt / 1_000_000n);
   const credit = dashboard?.credit ?? 0n;
   const excNo = dashboard ? Number(dashboard.stats.excavations) : 0;
   const busy = digging !== null || autoRun || working;
@@ -566,6 +571,11 @@ export function MineBoard({ dashboard }: Props) {
   const message = (() => {
     if (error) return { text: error, tone: "err" as const };
     if (notice) return { text: notice, tone: "mid" as const };
+    if (exc && closing)
+      return {
+        text: "The tournament has ended. Finish this excavation: from the third pick you can save, otherwise the stake is lost.",
+        tone: "err" as const,
+      };
     if (paused) return { text: pauseMessage(pauseCode), tone: "err" as const };
     if (!isAuthenticated)
       return { text: "Sign in to start digging.", tone: "mid" as const };
