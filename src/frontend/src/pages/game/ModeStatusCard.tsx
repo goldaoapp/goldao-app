@@ -1,7 +1,6 @@
 import type { AdminView, GameConfig } from "@/backend";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/context/AuthContext";
-import { loadEnv } from "@/hooks/useBackendActor";
 import {
   approveSpender,
   fetchAllowance,
@@ -89,14 +88,9 @@ export function ModeStatusCard({
     }
   };
 
-  // Same query as the admin panel: the game account is the deployed canister itself.
-  const envQuery = useQuery({
-    queryKey: ["game", "spender"],
-    queryFn: async () => (await loadEnv()).backend_canister_id ?? "",
-    staleTime: Number.POSITIVE_INFINITY,
-  });
-  const gameAccount =
-    envQuery.data && envQuery.data !== "undefined" ? envQuery.data : "";
+  // The game account is reported by the backend once the game is connected. Nothing is read from
+  // the deployment files.
+  const gameAccount = view?.selfId?.toText() ?? "";
 
   // The faucet pays from the bank admin's own wallet through an allowance given to the game
   // canister, never from the game account (that is the bank). The pool is what it can still pay.
@@ -227,6 +221,8 @@ export function ModeStatusCard({
               The faucet pays from the bank admin wallet. Sign in as the bank
               admin and authorize it to refill the pool; the wallet needs{" "}
               {TEST_TOKEN_LABEL} too.
+              {!gameAccount &&
+                " The backend has not reported the game account yet, so the faucet cannot be authorized."}
             </span>
             <div className="flex flex-wrap items-center gap-3">
               <Button
