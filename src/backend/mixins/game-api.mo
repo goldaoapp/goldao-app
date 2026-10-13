@@ -209,9 +209,18 @@ mixin (
     gameState.cycles + (if (extra > 0) Int.abs(extra) else 0);
   };
 
+  // The bank is the account of the game canister itself: it receives the loads and sends the
+  // payouts and withdrawals. A game connected to any other account does not move money.
+  func gBankReady() : Bool {
+    switch (gameState.bankAccount, gameState.selfId) {
+      case (?b, ?s) b == s;
+      case _ false;
+    };
+  };
+
   func gPaused() : Bool {
     // A new tournament does not start while the previous one still has unpaid payouts.
-    gameState.halted or gStakes().size() == 0 or gAnyUnpaid();
+    gameState.halted or gStakes().size() == 0 or gAnyUnpaid() or (gameState.realLedger and not gBankReady());
   };
 
   // Halts new bets and records why. The event is logged even if the game was already halted.
@@ -268,9 +277,9 @@ mixin (
     };
   };
 
-  // Safeguard 1: the bank wallet must hold what the game's own books say. Every movement the
+  // Safeguard 1: the bank must hold what the game's own books say. Every movement the
   // game makes (loads, payouts, admin withdrawals) updates the books, so a lower balance means
-  // GOLDAO left the wallet some other way. Only a clean reading is compared (see gInFlight).
+  // GOLDAO left the bank some other way. Only a clean reading is compared (see gInFlight).
   func gAuditBank(read : Nat) {
     let expected = gameState.bank;
     if (gUncertain) {
@@ -292,7 +301,7 @@ mixin (
         Game.HALT_BANK,
         #critical,
         "Unexplained bank withdrawal",
-        "The bank wallet holds " # SecLog.fmt(read) # " GOLDAO but the game expected " # SecLog.fmt(expected) # " (" # SecLog.fmt(gShort) # " missing today). Bets are paused. If you did not move it, check the wallet.",
+        "The bank holds " # SecLog.fmt(read) # " GOLDAO but the game expected " # SecLog.fmt(expected) # " (" # SecLog.fmt(gShort) # " missing today). Bets are paused. If you did not move it, check the ledger.",
       );
       gShort := 0;
     };
@@ -393,6 +402,25 @@ mixin (
     res;
   };
 
+  // Sends GOLDAO out of the bank (the game account) with a plain ledger transfer: no authorization
+  // is involved. Null means the call ended without an answer (the transfer may have been executed).
+  func lSend(to : Principal, amount : Nat, stamp : Nat64) : async ?Ledger.TransferResult {
+    gInFlight += 1;
+    let res = try {
+      ?(await Ledger.ledger().icrc1_transfer({
+        from_subaccount = null;
+        to = Ledger.account(to);
+        amount;
+        fee = ?Game.FEE;
+        memo = null;
+        created_at_time = ?stamp;
+      }));
+    } catch (_) { null };
+    if (gInFlight > 0) gInFlight -= 1;
+    if (res == null) gUncertain := true;
+    res;
+  };
+
   // Pulls the amount from the player's wallet into the bank. The caller grants
   // the credit only after this returns #ok, i.e. after the ledger confirmed it.
   // The first successful load of a player also counts the 10 GOLDAO fee the
@@ -409,6 +437,7 @@ mixin (
     gameState.movSeq += 1;
     let need = amount + Game.FEE;
     let bankAcct = switch (gameState.bankAccount) { case (?a) a; case null return #down };
+    if (not gBankReady()) return #down;
     let answer = await lTransfer(p, bankAcct, amount, stamp);
     gameState.movSeq += 1;
     switch (answer) {
@@ -469,9 +498,9 @@ mixin (
   func lPay(id : Nat, renew : Bool) : async Result.Result<?Nat, Text> {
     let po = switch (gameState.payouts.get(id)) { case (?po) po; case null return #err("Payout not found.") };
     if (po.paid) return #err("Already paid.");
+    if (not gBankReady()) return #err(Game.BANK_NOT_READY_MSG);
     gameState.movSeq += 1;
     let need = po.amount + Game.FEE;
-    let bankAcct = switch (gameState.bankAccount) { case (?a) a; case null return #err("Ledger mode is not configured.") };
     let now = Nat.toNat64(Int.abs(Time.now()));
     var stamp : Nat64 = po.stamp;
     if (stamp == 0 or now >= stamp + Game.STAMP_MAX_AGE_NS) {
@@ -480,7 +509,7 @@ mixin (
     };
     let wasUncertain = po.uncertain;
     gameState.payouts.add(id, { po with stamp; uncertain = true });
-    let answer = await lTransfer(bankAcct, po.to, po.amount, stamp);
+    let answer = await lSend(po.to, po.amount, stamp);
     gameState.movSeq += 1;
     // Anything that is not a definite refusal leaves the payout uncertain.
     let refuse = func(msg : Text) : Result.Result<?Nat, Text> {
@@ -519,7 +548,6 @@ mixin (
         };
       };
       case (?(#Err(#InsufficientFunds _))) refuse(Game.ERR_PAY_FUNDS);
-      case (?(#Err(#InsufficientAllowance _))) refuse(Game.ERR_PAY_ALLOWANCE);
       case (?(#Err _)) refuse("The ledger rejected the payout.");
     };
   };
@@ -976,6 +1004,7 @@ mixin (
     switch (gRequireUser(caller)) { case (?e) return #err(e); case null {} };
     if (gCloseIfDue()) return #err(Game.CLOSED_MSG);
     if (gameState.halted) return #err("Bets are paused. Try again later.");
+    if (gameState.realLedger and not gBankReady()) return #err(Game.BANK_NOT_READY_MSG);
     if (gClosing()) return #err("The tournament is closing. Try again in a few seconds.");
     if (goldao < Game.LOAD_MIN or goldao > Game.LOAD_MAX) {
       return #err("Choose between " # Nat.toText(Game.LOAD_MIN) # " and " # Nat.toText(Game.LOAD_MAX) # " GOLDAO.");
@@ -1525,9 +1554,8 @@ mixin (
     );
   };
 
-  // Free checks for the admin panel: the same refusals the action itself would give, answered
-  // before the wallet signs an authorization (which costs a network fee even if the action is
-  // then refused). Read-only; the action still validates everything on its own.
+  // Free checks for the admin panel: the same refusals the action itself would give. Read-only;
+  // the action still validates everything on its own.
   func gBusyNow() : Bool {
     gameState.payingSince != 0 and Time.now() - gameState.payingSince < Game.BUSY_STALE_NS;
   };
@@ -1587,7 +1615,7 @@ mixin (
           case (#err m) {
             failed += 1;
             if (firstError == null) firstError := ?m;
-            if (m == Game.ERR_PAY_FUNDS or m == Game.ERR_PAY_ALLOWANCE) stop := true;
+            if (m == Game.ERR_PAY_FUNDS) stop := true;
           };
         };
       };
@@ -1662,9 +1690,9 @@ mixin (
   };
 
   func lWithdraw(amount : Nat) : async Result.Result<?Nat, Text> {
+    if (not gBankReady()) return #err(Game.BANK_NOT_READY_MSG);
     gameState.movSeq += 1;
-    let bankAcct = switch (gameState.bankAccount) { case (?a) a; case null return #err("Ledger mode is not configured.") };
-    let answer = await lTransfer(bankAcct, Game.treasury(), amount, Nat.toNat64(Int.abs(Time.now())));
+    let answer = await lSend(Game.treasury(), amount, Nat.toNat64(Int.abs(Time.now())));
     gameState.movSeq += 1;
     switch (answer) {
       case null {
@@ -1676,14 +1704,16 @@ mixin (
         gameState.burned += Game.FEE;
         #ok(?idx);
       };
-      case (?(#Err(#InsufficientAllowance _))) #err("The withdrawal authorization is too low.");
-      case (?(#Err(#InsufficientFunds _))) #err("The bank wallet does not cover the withdrawal.");
+      case (?(#Err(#InsufficientFunds _))) #err("The bank does not cover the withdrawal.");
       case (?(#Err _)) #err("The ledger rejected the withdrawal.");
     };
   };
 
   public shared ({ caller }) func gameAdminWithdraw(kind : Types.WithdrawKind) : async Result.Result<Nat, Text> {
     if (not gIsAdmin(caller)) return #err("Admin only.");
+    // The bank is the game's own account, so no signature of the bank admin is needed to move it.
+    // Only the bank admin of this deployment may start a withdrawal.
+    if (not gIsBankAdmin(caller)) return #err("Only the bank admin can withdraw.");
     let now = Time.now();
     if (gameState.payingSince != 0 and now - gameState.payingSince < Game.BUSY_STALE_NS) {
       return #err("A money movement is in progress.");
@@ -1819,9 +1849,9 @@ mixin (
   };
 
   // Connects the game to the ledger of this deployment (lib/ledger.mo): checks the fee and, in
-  // production, the symbol, reads the bank balance and erases all game data. Used by the automatic
-  // connection at start and by "Change ledger".
-  func gConnect(bankAccount : Principal, selfId : Principal) : async Result.Result<Nat, Text> {
+  // production, the symbol, reads the balance of the game account (the bank) and erases all game
+  // data. Used by the automatic connection at start and by "Change ledger".
+  func gConnect(selfId : Principal) : async Result.Result<Nat, Text> {
     let idle = func() : Bool {
       gameState.owed == 0 and gameState.open.size() == 0 and gameState.credits.size() == 0
       and gameState.pendingLoads.size() == 0
@@ -1834,10 +1864,10 @@ mixin (
       if (Ledger.MODE == #production and (await Ledger.ledger().icrc1_symbol()) != Ledger.PRODUCTION_SYMBOL) {
         return #err("The ledger symbol is not the real GOLDAO one.");
       };
-      await Ledger.ledger().icrc1_balance_of(Ledger.account(bankAccount));
+      await Ledger.ledger().icrc1_balance_of(Ledger.account(selfId));
     } catch (_) { return #err("The ledger is unavailable.") };
     if (not idle()) return #err("The game changed. Try again.");
-    gameState.bankAccount := ?bankAccount;
+    gameState.bankAccount := ?selfId;
     gameState.selfId := ?selfId;
     gameState.pool := 0;
     gameState.reserve := 0;
@@ -1864,6 +1894,13 @@ mixin (
     #ok(balance);
   };
 
+  func gIsBankAdmin(p : Principal) : Bool {
+    switch (gameState.selfId) {
+      case (?me) { Game.bankFor(me) == ?p };
+      case null false;
+    };
+  };
+
   // Connection at start: only a game that was never connected, and only in a canister that has
   // a bank in Game.BANKS. It runs on every tick of the game timer until it works.
   func gTryConnect() : async Result.Result<Nat, Text> {
@@ -1871,9 +1908,9 @@ mixin (
     if (gAutoBusy) return #err("A connection attempt is already running.");
     let me = Prim.getSelfPrincipal<system>();
     switch (Game.bankFor(me)) {
-      case (?bank) {
+      case (?_) {
         gAutoBusy := true;
-        try { await gConnect(bank, me) } finally { gAutoBusy := false };
+        try { await gConnect(me) } finally { gAutoBusy := false };
       };
       case null #err("This canister has no bank configured: " # Principal.toText(me));
     };
@@ -1896,13 +1933,14 @@ mixin (
     };
   };
 
-  // Moves the game to the ledger set in the backend code (MODE in lib/ledger.mo). Only the bank
-  // wallet of this deployment, with the game paused, nothing in flight and nothing owed.
+  // Moves the game to the ledger set in the backend code (MODE in lib/ledger.mo) and makes the
+  // game account the bank. Only the bank admin of this deployment, with the game paused, nothing
+  // in flight and nothing owed.
   public shared ({ caller }) func gameAdminChangeLedger() : async Result.Result<Nat, Text> {
     if (not gIsAdmin(caller)) return #err("Admin only.");
     let me = Prim.getSelfPrincipal<system>();
     let bank = switch (Game.bankFor(me)) { case (?b) b; case null return #err("This canister has no bank configured.") };
-    if (caller != bank) return #err("Only the bank wallet can change the ledger.");
+    if (caller != bank) return #err("Only the bank admin can change the ledger.");
     if (gameState.realLedger) {
       if (not gameState.halted) return #err("Pause new excavations first.");
       if (gAnyBusy()) return #err("Excavations in progress. Try again in a few seconds.");
@@ -1910,6 +1948,6 @@ mixin (
         return #err("A money movement is in progress.");
       };
     };
-    await gConnect(bank, me);
+    await gConnect(me);
   };
 };
