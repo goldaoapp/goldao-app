@@ -110,7 +110,7 @@ export function ModeStatusCard({
   });
   const [authorizing, setAuthorizing] = useState(false);
   const [faucetMsg, setFaucetMsg] = useState<string | null>(null);
-  const authorizeFaucet = async () => {
+  const setFaucetAllowance = async (amount: bigint) => {
     if (!identity || !gameAccount || authorizing) return;
     setFaucetMsg(null);
     setAuthorizing(true);
@@ -118,7 +118,7 @@ export function ModeStatusCard({
       await approveSpender(
         identity,
         gameAccount,
-        FAUCET_ALLOWANCE_E8S,
+        amount,
         undefined,
         config?.ledgerId,
       );
@@ -220,7 +220,8 @@ export function ModeStatusCard({
             <span className={cn("text-[11px]", inkFaint)}>
               The faucet pays from the bank admin wallet. Sign in as the bank
               admin and authorize it to refill the pool; the wallet needs{" "}
-              {TEST_TOKEN_LABEL} too.
+              {TEST_TOKEN_LABEL} too. Revoke it before moving to the real
+              GOLDAO.
               {!gameAccount &&
                 " The backend has not reported the game account yet, so the faucet cannot be authorized."}
             </span>
@@ -228,10 +229,17 @@ export function ModeStatusCard({
               <Button
                 variant="outline"
                 disabled={authorizing || !identity || !gameAccount}
-                onClick={() => void authorizeFaucet()}
+                onClick={() => void setFaucetAllowance(FAUCET_ALLOWANCE_E8S)}
               >
                 {authorizing ? <Spinner /> : null}
                 Authorize faucet
+              </Button>
+              <Button
+                variant="outline"
+                disabled={authorizing || !identity || !gameAccount}
+                onClick={() => void setFaucetAllowance(0n)}
+              >
+                Revoke faucet
               </Button>
               {faucetMsg && (
                 <span className="font-mono text-xs text-destructive">
