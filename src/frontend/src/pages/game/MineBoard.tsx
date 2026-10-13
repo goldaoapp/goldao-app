@@ -43,6 +43,7 @@ import {
   multX100,
   panel,
   panelHeader,
+  pauseMessage,
   tokenForPick,
 } from "./game-utils";
 import {
@@ -51,7 +52,12 @@ import {
   revealSound,
   useSoundToggle,
 } from "./sounds";
-import { errorMessage, useGameAction, useGameConfig } from "./useGame";
+import {
+  errorMessage,
+  useGameAction,
+  useGameConfig,
+  useSummary,
+} from "./useGame";
 
 const CELLS = 25;
 /** The board splits after this many cells when a diamond opens the jackpot. */
@@ -142,10 +148,14 @@ export function MineBoard({ dashboard }: Props) {
 
   const { data: config } = useGameConfig();
   const payoutBps = config ? Number(config.payoutBps) : PAYOUT_BPS;
-  const stakes = dashboard?.stakes ?? [];
+  const { data: summary } = useSummary();
+  // A visitor who is not signed in still sees the stakes and the pause state (public summary).
+  const stakes = dashboard?.stakes ?? summary?.stakes ?? [];
+  const pauseCode = dashboard?.pauseCode ?? summary?.pauseCode;
   // With the fund under its floor no new excavation can start, but one already open can be
   // finished (the backend allows it), so the board stays usable for it.
-  const paused = !!dashboard?.paused && !exc && !dashboard?.open;
+  const paused =
+    !!(dashboard?.paused ?? summary?.paused) && !exc && !dashboard?.open;
   const credit = dashboard?.credit ?? 0n;
   const excNo = dashboard ? Number(dashboard.stats.excavations) : 0;
   const busy = digging !== null || autoRun || working;
@@ -556,13 +566,9 @@ export function MineBoard({ dashboard }: Props) {
   const message = (() => {
     if (error) return { text: error, tone: "err" as const };
     if (notice) return { text: notice, tone: "mid" as const };
+    if (paused) return { text: pauseMessage(pauseCode), tone: "err" as const };
     if (!isAuthenticated)
       return { text: "Sign in to start digging.", tone: "mid" as const };
-    if (paused)
-      return {
-        text: "Bets are paused. Try again later.",
-        tone: "err" as const,
-      };
     if (dashboard && !exc && credit < (stakes[board.stake] ?? 0n))
       return {
         text: "Load balance to start digging.",
@@ -583,7 +589,7 @@ export function MineBoard({ dashboard }: Props) {
       pop={pop?.index === i ? pop : null}
       onStrike={shakeBoard}
       digging={digging === i}
-      disabled={locked || paused || !dashboard}
+      disabled={locked || paused || (isAuthenticated && !dashboard)}
       onClick={() => void dig(i)}
     />
   );
@@ -755,7 +761,9 @@ export function MineBoard({ dashboard }: Props) {
                 )}
                 <AutoPicker
                   value={autoStop}
-                  disabled={locked || !!exc || paused || !dashboard}
+                  disabled={
+                    locked || !!exc || paused || (isAuthenticated && !dashboard)
+                  }
                   busy={autoRun}
                   onChange={setAutoStop}
                   onRun={() => void runAuto()}
