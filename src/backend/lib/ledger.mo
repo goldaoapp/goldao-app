@@ -52,12 +52,35 @@ module {
 
   public type Allowance = { allowance : Nat; expires_at : ?Nat64 };
 
+  public type TransferArgs = {
+    from_subaccount : ?Blob;
+    to : Account;
+    amount : Nat;
+    fee : ?Nat;
+    memo : ?Blob;
+    created_at_time : ?Nat64;
+  };
+
+  public type TransferError = {
+    #BadFee : { expected_fee : Nat };
+    #BadBurn : { min_burn_amount : Nat };
+    #InsufficientFunds : { balance : Nat };
+    #TooOld;
+    #CreatedInFuture : { ledger_time : Nat64 };
+    #Duplicate : { duplicate_of : Nat };
+    #TemporarilyUnavailable;
+    #GenericError : { error_code : Nat; message : Text };
+  };
+
+  public type TransferResult = { #Ok : Nat; #Err : TransferError };
+
   public type Ledger = actor {
     icrc1_balance_of : shared query Account -> async Nat;
     icrc1_fee : shared query () -> async Nat;
     icrc1_symbol : shared query () -> async Text;
     icrc2_allowance : shared query { account : Account; spender : Account } -> async Allowance;
     icrc2_transfer_from : shared TransferFromArgs -> async { #Ok : Nat; #Err : TransferFromError };
+    icrc1_transfer : shared TransferArgs -> async TransferResult;
   };
 
   public func ledger() : Ledger { actor (ledgerId()) : Ledger };
