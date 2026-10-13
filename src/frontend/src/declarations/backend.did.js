@@ -286,6 +286,7 @@ export const Dashboard = IDL.Record({
   'pendingPayout' : IDL.Nat,
   'pendingWithdrawal' : IDL.Nat,
   'paused' : IDL.Bool,
+  'pauseCode' : IDL.Nat,
   'endsAt' : IDL.Int,
 });
 export const PickResult = IDL.Record({
@@ -348,8 +349,10 @@ export const GameSummary = IDL.Record({
   'pool' : IDL.Nat,
   'tournament' : IDL.Nat,
   'paused' : IDL.Bool,
+  'pauseCode' : IDL.Nat,
+  'stakes' : IDL.Vec(IDL.Nat),
   'endsAt' : IDL.Int,
-});
+  });
 export const TreasurySnapshot = IDL.Record({
   'ogy_usd' : IDL.Float64,
   'date' : IDL.Text,
@@ -379,6 +382,7 @@ export const idlService = IDL.Service({
   'gameAdminAckAccounting' : IDL.Func([], [Result_5], []),
   'gameAdminChangeLedger' : IDL.Func([], [Result], []),
   'gameAdminCloseAll' : IDL.Func([], [Result_5], []),
+  'gameAdminCloseOpen' : IDL.Func([], [Result], []),
   'gameAdminCloseTournament' : IDL.Func([], [Result_5], []),
   'gameAdminEnsureConnected' : IDL.Func([], [Result_11], []),
   'gameAdminHalt' : IDL.Func([], [Result_5], []),
@@ -699,6 +703,7 @@ export const idlFactory = ({ IDL }) => {
     'pendingPayout' : IDL.Nat,
     'pendingWithdrawal' : IDL.Nat,
     'paused' : IDL.Bool,
+    'pauseCode' : IDL.Nat,
     'endsAt' : IDL.Int,
   });
   const PickResult = IDL.Record({
@@ -761,6 +766,8 @@ export const idlFactory = ({ IDL }) => {
     'pool' : IDL.Nat,
     'tournament' : IDL.Nat,
     'paused' : IDL.Bool,
+    'pauseCode' : IDL.Nat,
+    'stakes' : IDL.Vec(IDL.Nat),
     'endsAt' : IDL.Int,
   });
   const TreasurySnapshot = IDL.Record({
@@ -792,6 +799,7 @@ export const idlFactory = ({ IDL }) => {
     'gameAdminAckAccounting' : IDL.Func([], [Result_5], []),
     'gameAdminChangeLedger' : IDL.Func([], [Result], []),
     'gameAdminCloseAll' : IDL.Func([], [Result_5], []),
+    'gameAdminCloseOpen' : IDL.Func([], [Result], []),
     'gameAdminCloseTournament' : IDL.Func([], [Result_5], []),
     'gameAdminEnsureConnected' : IDL.Func([], [Result_11], []),
     'gameAdminHalt' : IDL.Func([], [Result_5], []),
