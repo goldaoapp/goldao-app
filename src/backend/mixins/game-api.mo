@@ -7,6 +7,7 @@ import Map "mo:core/Map";
 import List "mo:core/List";
 import Array "mo:core/Array";
 import Nat "mo:core/Nat";
+import Nat64 "mo:core/Nat64";
 import Iter "mo:core/Iter";
 import Int "mo:core/Int";
 import Principal "mo:core/Principal";
@@ -27,6 +28,9 @@ mixin (
   // reaches the ledger bumps movSeq, so an account that keeps failing is cut off before it
   // reaches the ledger again. Each account has its own counter: one account never blocks others.
   transient let gRejects = Map.empty<Principal, (Int, Nat)>();
+  // Players with a withdrawal call in flight (start time) and the start of their last attempt.
+  transient let gWithdrawing = Map.empty<Principal, Int>();
+  transient let gWithdrawLast = Map.empty<Principal, Int>();
   // Real-ledger transfers started and not yet answered. A bank reading taken while one is in
   // flight is not comparable with the game's own books, so it is neither audited nor adopted.
   transient var gInFlight : Nat = 0;
@@ -107,6 +111,18 @@ mixin (
     t;
   };
 
+  // Credit taken by withdrawals that are not settled yet. It is still owed to the player until
+  // the ledger confirms the transfer (or it goes back to the credit).
+  func gPendingWithdrawalsTotal() : Nat {
+    var t = 0;
+    for ((_, pw) in gameState.pendingWithdrawals.entries()) { t += pw.amount };
+    t;
+  };
+
+  func gPendingWithdrawal(p : Principal) : Nat {
+    switch (gameState.pendingWithdrawals.get(p)) { case (?pw) pw.amount; case null 0 };
+  };
+
   // True while any payout of a closed tournament is still unpaid. Derived from the payouts
   // themselves (nothing extra to store), so it survives upgrades.
   func gAnyUnpaid() : Bool {
@@ -125,7 +141,7 @@ mixin (
       held += e.held;
       inPlay += e.stake;
     };
-    gameState.owed == credits + held + inPlay + gUnpaidTotal();
+    gameState.owed == credits + held + inPlay + gUnpaidTotal() + gPendingWithdrawalsTotal();
   };
 
   // The game admin comes only from BOOTSTRAP_ADMINS. Roles from the access-control
@@ -881,6 +897,7 @@ mixin (
     gMaybeClose();
     gWatchFund();
     gExpireLoads();
+    gSweepWithdrawals();
     if (Nat.sub(gTicks, 1) % Game.FEE_CHECK_TICKS == 0) await gCheckFee();
     await gWatchBank();
   };
@@ -987,6 +1004,7 @@ mixin (
       loadMax = Game.LOAD_MAX;
       creditCapE8s = Game.CREDIT_CAP;
       minPayoutE8s = Game.MIN_PAYOUT;
+      withdrawMinE8s = Game.WITHDRAW_MIN;
       top10Bps = Game.TOP10_BPS;
       top10Weights = Game.TOP10_WEIGHTS;
       top10MinVolumeE8s = Game.TOP10_MIN_VOLUME;
@@ -1010,7 +1028,7 @@ mixin (
       return #err("Choose between " # Nat.toText(Game.LOAD_MIN) # " and " # Nat.toText(Game.LOAD_MAX) # " GOLDAO.");
     };
     let amount = goldao * Game.E8S;
-    if (gCredit(caller) + amount > Game.CREDIT_CAP) {
+    if (gCredit(caller) + gPendingWithdrawal(caller) + amount > Game.CREDIT_CAP) {
       return #err("Accumulated prize cannot go above " # Nat.toText(Game.CREDIT_CAP / Game.E8S) # " GOLDAO.");
     };
     if (gLoadBusy(caller)) return #err("A load is already in progress.");
@@ -1053,6 +1071,199 @@ mixin (
         #err("The ledger did not answer. Load " # Nat.toText(amount / Game.E8S) # " GOLDAO again: you will not be charged twice.");
       };
     };
+  };
+
+  // Withdrawal: the player takes the whole free credit (not the stake of an open excavation or a
+  // held jackpot) back to their own wallet. The network fee comes out of the amount, so the
+  // wallet receives the credit minus the fee. Only the caller's own principal is ever paid.
+  //
+  // Order of events: the credit is taken first and kept as a pending withdrawal (still owed), the
+  // ledger is called, and only a confirmed transfer settles it. A refusal of the first call puts
+  // the credit back. A call without an answer leaves it pending: the same call is repeated with
+  // the same stamp, so the ledger never pays twice. A repeated call never gives the credit back,
+  // because the first call may have been executed. When the stamp is too old to repeat, the admin
+  // settles it.
+
+  func gWithdrawBusy(p : Principal) : Bool {
+    switch (gWithdrawing.get(p)) {
+      case (?t) Time.now() - t < Game.BUSY_STALE_NS;
+      case null false;
+    };
+  };
+
+  // Settles or refunds only the withdrawal the answer belongs to (same stamp and amount), so a
+  // late answer of an older call can never touch a newer withdrawal.
+  func gIsPendingWithdrawal(p : Principal, amount : Nat, stamp : Nat64) : Bool {
+    switch (gameState.pendingWithdrawals.get(p)) {
+      case (?pw) pw.stamp == stamp and pw.amount == amount;
+      case null false;
+    };
+  };
+
+  // The ledger confirmed the transfer: the credit leaves the books. The bank is reduced only when
+  // this is the first confirmation (#Ok). After a lost answer the next bank reading is adopted
+  // instead, so the transfer is never subtracted twice.
+  func gSettleWithdrawal(p : Principal, amount : Nat, stamp : Nat64, reduceBank : Bool) {
+    if (not gIsPendingWithdrawal(p, amount, stamp)) return;
+    gameState.pendingWithdrawals.remove(p);
+    gameState.owed := gSub(gameState.owed, amount);
+    if (reduceBank) gameState.bank := gSub(gameState.bank, amount);
+    gameState.burned += Game.FEE;
+  };
+
+  // The ledger did not send it: the credit goes back to the player.
+  func gRefundWithdrawal(p : Principal, amount : Nat, stamp : Nat64) {
+    if (not gIsPendingWithdrawal(p, amount, stamp)) return;
+    gameState.pendingWithdrawals.remove(p);
+    gameState.credits.add(p, gCredit(p) + amount);
+  };
+
+  func gWithdrawalViews() : [Types.WithdrawalView] {
+    let now = Nat.toNat64(Int.abs(Time.now()));
+    gameState.pendingWithdrawals.entries().map(
+      func((p, pw) : (Principal, Types.PendingWithdrawal)) : Types.WithdrawalView {
+        { player = p; amount = pw.amount; at = Nat64.toNat(pw.stamp); expired = now >= pw.stamp + Game.STAMP_MAX_AGE_NS };
+      }
+    ).toArray();
+  };
+
+  // Forgets the bookkeeping of players that are no longer blocked.
+  func gSweepWithdrawals() {
+    let now = Time.now();
+    for ((p, until) in gWithdrawLast.entries().toArray().values()) {
+      if (now >= until) gWithdrawLast.remove(p);
+    };
+    for ((p, t) in gWithdrawing.entries().toArray().values()) {
+      if (now - t >= Game.BUSY_STALE_NS) gWithdrawing.remove(p);
+    };
+  };
+
+  // `expected` is the amount the player saw: the free credit, or the pending withdrawal when
+  // there is one. If it is not what the backend has, nothing moves.
+  public shared ({ caller }) func gameWithdrawCredit(expected : Nat) : async Result.Result<Nat, Text> {
+    gArmTimer<system>();
+    switch (gRequireUser(caller)) { case (?e) return #err(e); case null {} };
+    if (gCloseIfDue()) return #err(Game.CLOSED_MSG);
+    if (not gameState.realLedger) return #err("The ledger is not connected.");
+    if (gameState.saturations > 0 or not gAccountingOk()) return #err("Withdrawals are blocked while the accounting is checked.");
+    if (not gBankReady()) return #err(Game.BANK_NOT_READY_MSG);
+    if (gClosing()) return #err("The tournament is closing. Try again in a few seconds.");
+    let pending = gameState.pendingWithdrawals.get(caller);
+    // A new withdrawal needs the game running. Repeating one that was already sent is allowed
+    // while paused: it is the same transfer, and waiting could let its stamp expire.
+    if (pending == null and gPaused()) return #err(Game.WITHDRAW_PAUSED_MSG);
+    if (gWithdrawBusy(caller)) return #err("A withdrawal is already in progress.");
+    let now = Time.now();
+    switch (gWithdrawLast.get(caller)) {
+      case (?until) { if (now < until) return #err("Wait a few minutes before trying again.") };
+      case null {};
+    };
+    let stampNow = Nat.toNat64(Int.abs(now));
+    var amount = 0;
+    var stamp = stampNow;
+    switch (pending) {
+      case (?pw) {
+        if (stampNow >= pw.stamp + Game.STAMP_MAX_AGE_NS) return #err(Game.WITHDRAW_EXPIRED_MSG);
+        if (expected != pw.amount) return #err(Game.WITHDRAW_CHANGED_MSG);
+        amount := pw.amount;
+        stamp := pw.stamp;
+      };
+      case null {
+        let credit = gCredit(caller);
+        if (credit < Game.WITHDRAW_MIN) {
+          return #err("The minimum withdrawal is " # Nat.toText(Game.WITHDRAW_MIN / Game.E8S) # " GOLDAO.");
+        };
+        if (expected != credit) return #err(Game.WITHDRAW_CHANGED_MSG);
+        // The credit leaves in the same step the pending withdrawal is recorded.
+        gameState.credits.remove(caller);
+        gameState.pendingWithdrawals.add(caller, { amount = credit; stamp });
+        amount := credit;
+      };
+    };
+    let isRetry = pending != null;
+    gWithdrawLast.add(caller, now + Game.WITHDRAW_COOLDOWN_NS);
+    gWithdrawing.add(caller, now);
+    let sent = Nat.sub(amount, Game.FEE);
+    gameState.movSeq += 1;
+    let answer = try { await lSend(caller, sent, stamp) } finally {
+      // Only the call that took the lock gives it back.
+      switch (gWithdrawing.get(caller)) {
+        case (?t) { if (t == now) gWithdrawing.remove(caller) };
+        case null {};
+      };
+    };
+    gameState.movSeq += 1;
+    // After a refusal the player waits longer before reaching the ledger again.
+    let slowDown = func() { gWithdrawLast.add(caller, Time.now() + Game.WITHDRAW_PENALTY_NS) };
+    // A refusal of the first call means nothing was sent. A refusal of a repeated call proves
+    // nothing about the first one, so the withdrawal stays pending.
+    let refused = func(msg : Text) : Result.Result<Nat, Text> {
+      slowDown();
+      if (isRetry) return #err("The ledger could not confirm the withdrawal yet. Try again in a few minutes: you will not be paid twice.");
+      gRefundWithdrawal(caller, amount, stamp);
+      #err(msg);
+    };
+    switch (answer) {
+      case null {
+        gLedgerFail();
+        gLog(#warning, "withdraw_player_no_answer", "Withdrawal without an answer", "A withdrawal of " # SecLog.fmt(amount) # " GOLDAO by " # Principal.toText(caller) # " got no answer from the ledger. The player can repeat it: the ledger will not pay twice.");
+        #err("The ledger did not answer. Press Withdraw again: you will not be paid twice.");
+      };
+      case (?(#Ok _)) {
+        gLedgerOk();
+        gSettleWithdrawal(caller, amount, stamp, true);
+        #ok(sent);
+      };
+      case (?(#Err(#Duplicate _))) {
+        // The first attempt did reach the ledger. The next clean bank reading is adopted.
+        gLedgerOk();
+        gUncertain := true;
+        gSettleWithdrawal(caller, amount, stamp, false);
+        #ok(sent);
+      };
+      case (?(#Err(#TooOld))) {
+        // The stamp is outside the ledger window: this call did nothing, but an earlier attempt
+        // with the same stamp is unknown. Only the admin can settle it now.
+        slowDown();
+        gLog(#warning, "withdraw_player_expired", "Withdrawal needs the admin", "A withdrawal of " # SecLog.fmt(amount) # " GOLDAO by " # Principal.toText(caller) # " cannot be repeated any more. Check the player's wallet and settle it.");
+        #err(Game.WITHDRAW_EXPIRED_MSG);
+      };
+      case (?(#Err(#InsufficientFunds _))) {
+        if (not isRetry) {
+          gLog(#warning, "withdraw_bank_short", "Bank cannot cover a withdrawal", "The ledger refused a withdrawal of " # SecLog.fmt(amount) # " GOLDAO by " # Principal.toText(caller) # " for lack of funds in the bank. The credit was given back.");
+        };
+        refused("The bank cannot cover this withdrawal right now. Your balance was kept.");
+      };
+      case (?(#Err(#TemporarilyUnavailable))) refused("The ledger is busy. Your balance was kept: try again in a moment.");
+      case (?(#Err _)) refused("The ledger rejected the withdrawal. Your balance was kept.");
+    };
+  };
+
+  // Settles a withdrawal whose stamp expired without an answer. `sent`: the admin checked the
+  // player's wallet and the transfer arrived; otherwise the credit goes back to the player.
+  public shared ({ caller }) func gameAdminResolveWithdrawal(player : Principal, sent : Bool) : async Result.Result<(), Text> {
+    if (not gIsAdmin(caller)) return #err("Admin only.");
+    let pw = switch (gameState.pendingWithdrawals.get(player)) {
+      case (?pw) pw;
+      case null return #err("That player has no pending withdrawal.");
+    };
+    if (gWithdrawBusy(player)) return #err("A withdrawal call is still in progress for that player.");
+    if (Nat.toNat64(Int.abs(Time.now())) < pw.stamp + Game.STAMP_MAX_AGE_NS) {
+      return #err("The player can still repeat it. Settle it after its timestamp expires.");
+    };
+    if (gBusyNow()) return #err("A money movement is in progress.");
+    if (sent) {
+      // The bank reading taken right after adopts the real balance: nothing is subtracted here.
+      gSettleWithdrawal(player, pw.amount, pw.stamp, false);
+      gUncertain := true;
+      gameState.movSeq += 1;
+      gLogAction("withdraw_settled", "Withdrawal settled as sent", "The withdrawal of " # SecLog.fmt(pw.amount) # " GOLDAO by " # Principal.toText(player) # " was recorded as sent by the admin.");
+      ignore await lBankRefresh();
+    } else {
+      gRefundWithdrawal(player, pw.amount, pw.stamp);
+      gLogAction("withdraw_refunded", "Withdrawal given back", "The withdrawal of " # SecLog.fmt(pw.amount) # " GOLDAO by " # Principal.toText(player) # " was recorded as not sent and the credit was given back.");
+    };
+    #ok(());
   };
 
   // Play
@@ -1295,6 +1506,7 @@ mixin (
       stakes;
       credit = gCredit(caller);
       pendingPayout = pending;
+      pendingWithdrawal = gPendingWithdrawal(caller);
       pool = gameState.pool;
       top10Pool = gameState.top10;
       top10Rank;
@@ -1458,6 +1670,8 @@ mixin (
       smallPlayers;
       heldJackpots = inPlay;
       unpaidPayouts = gUnpaidTotal();
+      pendingWithdrawals = gPendingWithdrawalsTotal();
+      withdrawals = gWithdrawalViews();
       pool = gameState.pool;
       reserve = gameState.reserve;
       cycles = gameState.cycles;
@@ -1558,27 +1772,6 @@ mixin (
   // the action still validates everything on its own.
   func gBusyNow() : Bool {
     gameState.payingSince != 0 and Time.now() - gameState.payingSince < Game.BUSY_STALE_NS;
-  };
-
-  public shared query ({ caller }) func gameAdminCheckPay() : async Result.Result<(), Text> {
-    if (not gIsAdmin(caller)) return #err("Admin only.");
-    if (gBusyNow()) return #err("A payment run is in progress.");
-    if (gameState.saturations > 0 or not gAccountingOk()) return #err("Accounting check failed. Payments are blocked.");
-    if (gUnpaidTotal() == 0) return #err("There are no pending payouts.");
-    #ok(());
-  };
-
-  public shared query ({ caller }) func gameAdminCheckWithdraw(kind : Types.WithdrawKind) : async Result.Result<(), Text> {
-    if (not gIsAdmin(caller)) return #err("Admin only.");
-    if (gBusyNow()) return #err("A money movement is in progress.");
-    switch (gWithdrawBlocked(kind)) { case (?m) return #err(m); case null {} };
-    let spendable = Game.sub(gameState.bank, Game.FEE);
-    let amount = switch (kind) {
-      case (#all) spendable;
-      case (#available) Nat.min(gWithdrawable(), spendable);
-    };
-    if (amount == 0) return #err("Nothing to withdraw.");
-    #ok(());
   };
 
   // Pays pending payouts, smallest first, at most `max` of them (and never more than PAY_BATCH).
@@ -1840,21 +2033,13 @@ mixin (
     try { #ok(await Ledger.ledger().icrc1_balance_of(Ledger.account(who))) } catch (_) { #err("The ledger is unavailable.") };
   };
 
-  public shared ({ caller }) func gameAdminLedgerAllowance(who : Principal, spender : Principal) : async Result.Result<Nat, Text> {
-    if (not gIsAdmin(caller)) return #err("Admin only.");
-    try {
-      let a = await Ledger.ledger().icrc2_allowance({ account = Ledger.account(who); spender = Ledger.account(spender) });
-      #ok(a.allowance);
-    } catch (_) { #err("The ledger is unavailable.") };
-  };
-
   // Connects the game to the ledger of this deployment (lib/ledger.mo): checks the fee and, in
   // production, the symbol, reads the balance of the game account (the bank) and erases all game
   // data. Used by the automatic connection at start and by "Change ledger".
   func gConnect(selfId : Principal) : async Result.Result<Nat, Text> {
     let idle = func() : Bool {
       gameState.owed == 0 and gameState.open.size() == 0 and gameState.credits.size() == 0
-      and gameState.pendingLoads.size() == 0
+      and gameState.pendingLoads.size() == 0 and gameState.pendingWithdrawals.size() == 0
       and gameState.payouts.values().filter(func(po : Types.Payout) : Bool { not po.paid }).toArray().size() == 0;
     };
     if (not idle()) return #err("The game must be empty: close the tournament and pay everything first.");
@@ -1883,6 +2068,7 @@ mixin (
     gameState.tournaments.clear();
     gameState.payouts.clear();
     gameState.pendingLoads.clear();
+    gameState.pendingWithdrawals.clear();
     gameState.jackpots := [];
     gameState.tournament := 1;
     gameState.endsAt := Time.now() + gameState.durationDays * Game.DAY_NS;
