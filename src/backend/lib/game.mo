@@ -131,6 +131,9 @@ module {
   public let PAUSE_PAYOUTS : Nat = 3;
   public let PAUSE_BANK : Nat = 4;
   public let PAUSE_STAKES : Nat = 5;
+  public let PAUSE_WAITING : Nat = 6;
+  // After the end time open excavations can still be finished for this long (30 minutes).
+  public let CLOSE_WINDOW_NS : Nat = 1_800_000_000_000;
 
   // Safeguards. The bank may hold up to BANK_TOLERANCE less than the game expects, summed over
   // BANK_WINDOW_NS, before the game halts. The fund is sampled every tick; it halts the game when
