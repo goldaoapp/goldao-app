@@ -53,8 +53,8 @@ module {
   public let BUSY_STALE_NS : Int = 600_000_000_000;
   public let STAMP_MAX_AGE_NS : Nat64 = 72_000_000_000_000;
   public let CLOSED_MSG : Text = "The tournament has just closed. Your balance was paid out or carried over to the new tournament: check your wallet and Accumulated prize, then try again.";
-  public let ERR_PAY_FUNDS : Text = "The bank wallet does not cover the payout.";
-  public let ERR_PAY_ALLOWANCE : Text = "The payout authorization is too low.";
+  public let ERR_PAY_FUNDS : Text = "The bank does not cover the payout.";
+  public let BANK_NOT_READY_MSG : Text = "The bank is not in the game account yet. Use Change ledger with the game empty.";
   public let ERR_PAY_UNCERTAIN : Text = "This payout got no answer from the ledger and its timestamp expired. Look for it in the ledger before paying again.";
   public let NEED_CREDIT_MSG : Text = "Load balance first: your Accumulated prize must cover the stake.";
   public let STAKE_CHANGED_MSG : Text = "The stake amounts changed. Check the new amounts and try again.";
@@ -85,10 +85,11 @@ module {
   "nxdvu-ipwv3-xgadl-ws3fw-ply6m-vf5st-nd5mq-4hv5c-nzvgc-o6swr-oae",
   ];
 
-  // The bank wallet of each deployment, by game canister id. It is an admin principal that signs
-  // the payments. The game connects to the ledger by itself only when its own canister id is in
-  // this list; anywhere else it stays disconnected. Internet Identity gives a different principal
-  // per login origin, so each deployment has its own bank.
+  // The bank admin of each deployment, by game canister id. It is the only account that can
+  // change the ledger. The game connects to the ledger by itself only when its own canister id
+  // is in this list; anywhere else it stays disconnected. The funds themselves are kept in the
+  // account of the game canister. Internet Identity gives a different principal per login
+  // origin, so each deployment has its own bank admin.
   public let BANKS : [(Text, Text)] = [
     // Draft (test) backend canister.
     ("cohf5-6aaaa-aaaaa-qajya-cai", "nxdvu-ipwv3-xgadl-ws3fw-ply6m-vf5st-nd5mq-4hv5c-nzvgc-o6swr-oae"),
@@ -117,11 +118,9 @@ module {
   public let HALT_FUND : Nat = 5;
   public let HALT_FEE : Nat = 6;
 
-  // Safeguards. The admin wallet pays a ledger fee for each authorization it signs, which the game
-  // cannot see: the bank wallet may hold up to BANK_TOLERANCE less than the game expects, summed
-  // over BANK_WINDOW_NS (about ten authorizations), before the game halts. The fund is sampled
-  // every tick; it halts the game when it falls by FUND_DROP_PCT percent (and at least
-  // FUND_DROP_MIN) within the samples kept.
+  // Safeguards. The bank may hold up to BANK_TOLERANCE less than the game expects, summed over
+  // BANK_WINDOW_NS, before the game halts. The fund is sampled every tick; it halts the game when
+  // it falls by FUND_DROP_PCT percent (and at least FUND_DROP_MIN) within the samples kept.
   public let BANK_TOLERANCE : Nat = 10_000_000_000;
   public let BANK_WINDOW_NS : Int = 86_400_000_000_000;
   public let FUND_SAMPLES : Nat = 10;
