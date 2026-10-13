@@ -12,8 +12,9 @@
 //     never refers to the real GOLDAO ledger, so it cannot move real GOLDAO even if it is left
 //     in by mistake.
 //   - The mixin also refuses to run unless the ledger the game uses is exactly this test ledger.
-//   - The tokens it hands out come from this canister's own account on the test ledger, never
-//     from the admin (bank) wallet, so the bank audit is not affected.
+//   - The tokens it hands out come from the bank admin's own wallet on the test ledger, through
+//     an allowance the admin grants to this canister. They never come from the game account,
+//     which is the bank, so the bank audit is not affected.
 //   - It keeps no stable state: nothing here needs a migration, and nothing here is part of the
 //     game books.
 module {
@@ -64,7 +65,30 @@ module {
     #GenericError : { error_code : Nat; message : Text };
   };
 
+  public type TransferFromArg = {
+    spender_subaccount : ?Blob;
+    from : Account;
+    to : Account;
+    amount : Nat;
+    fee : ?Nat;
+    memo : ?Blob;
+    created_at_time : ?Nat64;
+  };
+
+  public type TransferFromError = {
+    #BadFee : { expected_fee : Nat };
+    #BadBurn : { min_burn_amount : Nat };
+    #InsufficientFunds : { balance : Nat };
+    #InsufficientAllowance : { allowance : Nat };
+    #TooOld;
+    #CreatedInFuture : { ledger_time : Nat64 };
+    #Duplicate : { duplicate_of : Nat };
+    #TemporarilyUnavailable;
+    #GenericError : { error_code : Nat; message : Text };
+  };
+
   public type TestLedger = actor {
+    icrc2_transfer_from : shared TransferFromArg -> async { #Ok : Nat; #Err : TransferFromError };
     icrc1_transfer : shared TransferArg -> async { #Ok : Nat; #Err : TransferError };
   };
 
