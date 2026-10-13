@@ -6,7 +6,7 @@ import {
   useQueryClient,
 } from "@tanstack/react-query";
 import { useCallback, useState } from "react";
-import { getBoard } from "./board-store";
+import { getBoard, setBoard } from "./board-store";
 
 const KEY = "game";
 
@@ -32,7 +32,8 @@ export function useDashboard(live: boolean) {
     queryKey: [KEY, "dashboard", principalId],
     queryFn: async () => {
       const fresh = await actor!.gameMyDashboard();
-      if (!getBoard().hold) return fresh;
+      // Keep the balance already on screen while a jackpot is shown or a stake is not reflected yet.
+      if (!getBoard().hold && getBoard().pendingCharge === 0n) return fresh;
       // A jackpot or auto run is still being shown: keep the balance on screen.
       const shown = queryClient.getQueryData<Dashboard>([
         KEY,
@@ -239,6 +240,8 @@ export function useGameAction() {
         { queryKey: [KEY, "dashboard"] },
         (old) => (old ? { ...old, credit, pool } : old),
       );
+      // This balance comes from the backend, so it already has the stake taken.
+      setBoard({ pendingCharge: 0n });
     },
     [queryClient],
   );
