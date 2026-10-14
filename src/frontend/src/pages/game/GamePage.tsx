@@ -100,7 +100,7 @@ export default function GamePage() {
         tag="Game"
         tagIcon={Pickaxe}
         title="Gold Mine"
-        description="Dig, decide when to save and chase the diamond jackpot. Tournaments run on a fixed schedule."
+        description="Dig, decide when to save and chase the diamond jackpot. Each tournament runs for a set time; the next one opens once the previous one is paid."
       >
         {tournament !== undefined && (
           <motion.span
@@ -202,11 +202,7 @@ export default function GamePage() {
         </TabsContent>
         <TabsContent value="guide">
           <Fade>
-            <PrizeGuide
-              config={config}
-              stakes={dashboard?.stakes}
-              pool={summary?.pool}
-            />
+            <PrizeGuide config={config} stakes={dashboard?.stakes} />
           </Fade>
         </TabsContent>
         {adminView && (
