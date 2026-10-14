@@ -6,23 +6,45 @@ import Game "game";
 
 // Ordering of the ranking table. Pure functions: the mixin only reads the state and hands the rows over.
 module {
-  // True when `a` ranks above `b` by volume. Equal volumes go to the lower principal, so the order is total.
-  public func better(a : (Principal, Nat), b : (Principal, Nat)) : Bool {
-    a.1 > b.1 or (a.1 == b.1 and Principal.compare(a.0, b.0) == #less);
+  // What decides the Top 10 order, from the stats of the tournament.
+  public type Key = {
+    staked : Nat;
+    excavations : Nat;
+    deepest : Nat;
+    collapses : Nat;
+    // Returned plus jackpots minus staked. The Top 10 prize is left out: it depends on the rank.
+    net : Int;
+  };
+
+  public func keyOf(s : Types.TournamentStats) : Key {
+    { staked = s.staked; excavations = s.excavations; deepest = s.deepest; collapses = s.collapses; net = Game.net(s.returned, s.jackpotWon, 0, s.staked) };
+  };
+
+  // True when `a` ranks above `b`. Order: more volume, more excavations, deeper pick, fewer
+  // collapses, higher net result; the lower principal settles what is still equal, so the order is total.
+  public func better(a : (Principal, Key), b : (Principal, Key)) : Bool {
+    let x = a.1;
+    let y = b.1;
+    if (x.staked != y.staked) return x.staked > y.staked;
+    if (x.excavations != y.excavations) return x.excavations > y.excavations;
+    if (x.deepest != y.deepest) return x.deepest > y.deepest;
+    if (x.collapses != y.collapses) return x.collapses < y.collapses;
+    if (x.net != y.net) return x.net > y.net;
+    Principal.compare(a.0, b.0) == #less;
   };
 
   // Players in Top 10 order (volume). Fills in pos, rank, the Top 10 prize paid at that rank and the net
   // result, which counts that prize.
-  public func byVolume(rows : [Types.PlayerRow], top10 : Nat) : [Types.PlayerRow] {
+  public func byVolume(rows : [(Types.PlayerRow, Key)], top10 : Nat) : [Types.PlayerRow] {
     let sorted = rows.sort(
-      func(a : Types.PlayerRow, b : Types.PlayerRow) : { #less; #equal; #greater } {
-        if (better((a.player, a.staked), (b.player, b.staked))) #less else #greater;
+      func(a : (Types.PlayerRow, Key), b : (Types.PlayerRow, Key)) : { #less; #equal; #greater } {
+        if (better((a.0.player, a.1), (b.0.player, b.1))) #less else #greater;
       },
     );
     Array.tabulate(
       sorted.size(),
       func(i : Nat) : Types.PlayerRow {
-        let r = sorted[i];
+        let r = sorted[i].0;
         let prize = Game.top10Prize(top10, i + 1, r.staked);
         { r with pos = i + 1; rank = i + 1; prize; net = Game.net(r.returned, r.jackpotWon, prize, r.staked) };
       },
