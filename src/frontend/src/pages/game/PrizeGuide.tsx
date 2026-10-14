@@ -86,18 +86,16 @@ export function PrizeGuide({ config, stakes }: Props) {
             pays the {fmtGoldao(config.feeE8s)} GOLDAO network fee.
           </p>
           <p>
-            When the tournament closes, your Accumulated prize is paid to your
-            wallet if it is at least {fmtGoldao(config.minPayoutE8s)} GOLDAO
-            (the payment costs the network fee). Smaller balances stay in your
-            Accumulated prize for the next tournament. While a tournament is
-            running you can also withdraw at any time (at least{" "}
+            Your Accumulated prize stays in the game, from one tournament to the
+            next, until you withdraw it. You can withdraw at any time (at least{" "}
             {fmtGoldao(config.withdrawMinE8s)} GOLDAO; the network fee comes out
-            of it). Withdrawals are not available between the end of a
-            tournament and its payout.
+            of it), except for the few minutes while a tournament closes, while
+            the game is paused for a safety check, and while the game is being
+            closed (then every balance is sent to its wallet).
           </p>
           <p>
             Top 10: {Number(config.top10Bps) / 100}% of every stake goes to a
-            prize pool paid when the tournament closes to the ten players with
+            prize pool added to the Accumulated prize of the ten players with
             the most volume staked (
             {config.top10Weights.map((w) => `${Number(w)}%`).join(", ")} of the
             pool, from first to tenth). You need at least{" "}
