@@ -1,11 +1,8 @@
 import type { GameConfig } from "@/backend";
 import { collapsePoints, multX100 } from "./game-utils";
 
-/** Long-run RTP shown to players (average over many excavations and pool sizes). */
-export const LONG_RUN_RTP_TEXT = "~98.5%";
-
-/** The live RTP is shown only while the jackpot pool is above this amount (e8s): 10,000 GOLDAO. */
-export const LIVE_RTP_MIN_POOL = 10_000n * 100_000_000n;
+/** RTP range shown to players: it depends on the jackpot pool size. */
+export const RTP_RANGE_TEXT = "~98.5% to 105%";
 
 /** Chance of making `picks` safe picks in a row: the first `safe` picks are always safe. */
 function reachProb(
@@ -73,23 +70,4 @@ export function diamondChances(
     mini: (d1 * d2 * (odds - 1)) / odds,
     full: (d1 * d2) / odds,
   };
-}
-
-/**
- * Return of the next excavation, in percent, for the pool of this moment: the base game, the
- * Top 10 share and the jackpot part that the pool pays (full and mini). It is an average for a
- * player who saves between pick 3 and pick 10, so it moves about a point with the way of playing.
- * The long-run RTP is an average over many pools and must not be added to this number.
- */
-export function liveRtpPct(config: GameConfig, pool: bigint): number {
-  const { base, safePicks } = averagePlay(config);
-  const top10 = Number(config.top10Bps) / 10_000;
-  // Full jackpot chance per safe pick is the same for every stake once divided by the stake.
-  const perGoldao = diamondChances(config, 100_000_000n).full;
-  const odds = Number(config.diamond3Odds);
-  const miniShare = Number(config.miniBps) / 10_000;
-  const poolGoldao = Number(pool / 100_000_000n);
-  const jackpot =
-    safePicks * perGoldao * (1 + miniShare * (odds - 1)) * poolGoldao;
-  return (base + top10 + jackpot) * 100;
 }
