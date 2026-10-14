@@ -100,7 +100,7 @@ export default function GamePage() {
         tag="Game"
         tagIcon={Pickaxe}
         title="Gold Mine"
-        description="Dig, decide when to save and chase the diamond jackpot. Each tournament runs for a set time; the next one opens once the previous one is paid."
+        description="Dig, decide when to save and chase the diamond jackpot. Each tournament runs for a set time; the next one opens a few minutes after the previous one closes."
       >
         {tournament !== undefined && (
           <motion.span
