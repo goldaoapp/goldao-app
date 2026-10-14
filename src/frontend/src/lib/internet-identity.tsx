@@ -20,6 +20,12 @@ import {
   useRef,
   useState,
 } from "react";
+import {
+  ADMIN_SESSION_MS,
+  PLAYER_SESSION_MS,
+  msToNs,
+  sessionEndsAtMs,
+} from "./session";
 
 // authorize de II: lo resuelve vite.config.js (process.env.II_URL) según
 // DFX_NETWORK; fallback a id.ai en producción.
@@ -50,6 +56,8 @@ interface LoginOptions {
   identityProvider?: string;
   /** Login directo con un proveedor OpenID, salteando la pantalla de II. */
   openIdProvider?: OpenIdProvider;
+  /** Sesión corta (8 h) para el admin del juego; sin esto dura 7 días. */
+  shortSession?: boolean;
 }
 
 interface InternetIdentityContextValue {
@@ -58,6 +66,10 @@ interface InternetIdentityContextValue {
   isLoggingIn: boolean;
   identity: Identity | null;
   login: (options?: LoginOptions) => void;
+  /** Vuelve a iniciar sesión con la duración corta del admin. Debe llamarse desde un clic. */
+  renewShort: () => void;
+  /** Fin de la sesión actual (ms), o null si no se puede leer. */
+  sessionEndsAt: number | null;
   clear: () => void;
 }
 
@@ -68,8 +80,6 @@ const IDLE_OPTIONS = {
   disableIdle: true,
   disableDefaultIdleCallback: true,
 } as const;
-
-const THIRTY_DAYS_NS = BigInt(30 * 24 * 60 * 60) * BigInt(1_000_000_000);
 
 export function InternetIdentityProvider({
   children,
@@ -118,6 +128,29 @@ export function InternetIdentityProvider({
     };
   }, [buildClient]);
 
+  const signIn = useCallback((client: AuthClient, short: boolean) => {
+    setIsLoggingIn(true);
+    client
+      .signIn({
+        maxTimeToLive: msToNs(short ? ADMIN_SESSION_MS : PLAYER_SESSION_MS),
+      })
+      .then((id) => {
+        setIdentity(id);
+        setIsAuthenticated(true);
+      })
+      .catch(() => {})
+      .finally(() => setIsLoggingIn(false));
+  }, []);
+
+  // The admin signs in again for 8 hours. A new client is used and the old session stays until the
+  // new one is confirmed. Nothing is awaited before signIn, so the browser still allows the popup.
+  const renewShort = useCallback(() => {
+    if (isLoggingIn) return;
+    const client = buildClient();
+    clientRef.current = client;
+    signIn(client, true);
+  }, [isLoggingIn, buildClient, signIn]);
+
   const login = useCallback(
     (options?: LoginOptions) => {
       if (isLoggingIn || isAuthenticated) return;
@@ -131,17 +164,9 @@ export function InternetIdentityProvider({
       if (!client) return;
       clientRef.current = client;
 
-      setIsLoggingIn(true);
-      client
-        .signIn({ maxTimeToLive: THIRTY_DAYS_NS })
-        .then((id) => {
-          setIdentity(id);
-          setIsAuthenticated(true);
-        })
-        .catch(() => {})
-        .finally(() => setIsLoggingIn(false));
+      signIn(client, options?.shortSession === true);
     },
-    [isLoggingIn, isAuthenticated, buildClient],
+    [isLoggingIn, isAuthenticated, buildClient, signIn],
   );
 
   const clear = useCallback(() => {
@@ -161,6 +186,8 @@ export function InternetIdentityProvider({
         isLoggingIn,
         identity,
         login,
+        renewShort,
+        sessionEndsAt: sessionEndsAtMs(identity),
         clear,
       }}
     >
