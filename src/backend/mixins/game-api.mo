@@ -52,6 +52,16 @@ mixin (
     SecLog.append(gameState.securityLog, Time.now(), #info, code, title, description);
   };
 
+  // Keeps only the newest `n` entries of a list.
+  func keepLast<T>(l : List.List<T>, n : Nat) {
+    let size = l.size();
+    if (size > n) {
+      let tail = l.sliceToArray(Nat.sub(size, n), size);
+      l.clear();
+      for (x in tail.values()) l.add(x);
+    };
+  };
+
   func gSub(a : Nat, b : Nat) : Nat {
     if (b > a) {
       gameState.saturations += 1;
@@ -848,6 +858,7 @@ mixin (
         };
       };
       l.add(result);
+      keepLast(l, Game.HISTORY_KEEP);
     };
     gameState.tournaments.add({
       tournament = t;
@@ -863,6 +874,7 @@ mixin (
       forfeited;
       closedAt = Time.now();
     });
+    keepLast(gameState.tournaments, Game.TOURNAMENTS_KEEP);
 
     for ((id, po) in gameState.payouts.entries().toArray().values()) {
       if (po.paid and po.tournament + Game.PAYOUT_KEEP < t) gameState.payouts.remove(id);
@@ -1571,7 +1583,7 @@ mixin (
       bestReturn = switch (gameState.best.get(caller)) { case (?v) v; case null 0 };
       net = Game.net(stats.returned, stats.jackpotWon, top10Prize, stats.staked);
       history = switch (gameState.history.get(caller)) {
-        case (?l) l.toArray().map(
+        case (?l) l.sliceToArray(Nat.sub(l.size(), Nat.min(l.size(), Game.HISTORY_KEEP)), l.size()).map(
           func(r : Types.PlayerTournamentResult) : Types.PastResult {
             {
               tournament = r.tournament;
