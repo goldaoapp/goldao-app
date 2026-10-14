@@ -53,18 +53,18 @@ module {
   public let DAY_NS : Int = 86_400_000_000_000;
   public let BUSY_STALE_NS : Int = 600_000_000_000;
   public let STAMP_MAX_AGE_NS : Nat64 = 72_000_000_000_000;
-  public let CLOSED_MSG : Text = "The tournament has just closed. Your balance was paid out or carried over to the new tournament: check your wallet and Accumulated prize, then try again.";
-  public let ERR_PAY_FUNDS : Text = "The bank does not cover the payout.";
+  public let CLOSED_MSG : Text = "The tournament has just closed. Your balance stays in the game: check your Accumulated prize, then try again.";
   public let BANK_NOT_READY_MSG : Text = "The bank is not in the game account yet. Use Change ledger with the game empty.";
   // Smallest balance a player can withdraw, and the pause between two withdrawal attempts of the
   // same player (each attempt that reaches the ledger is a transfer).
   public let WITHDRAW_MIN : Nat = 2_000_000_000;
   public let WITHDRAW_COOLDOWN_NS : Int = 30_000_000_000;
   public let WITHDRAW_PENALTY_NS : Int = 300_000_000_000;
-  public let WITHDRAW_PAUSED_MSG : Text = "Withdrawals are not available while the game is paused.";
+  public let WITHDRAW_SAFETY_MSG : Text = "Withdrawals are paused while the game is being checked. Your balance is safe: try again later.";
+  public let WITHDRAW_EVAC_MSG : Text = "The game is being closed: your balance will be sent to your wallet.";
+  public let WITHDRAW_LOAD_MSG : Text = "Your last load is still being confirmed. Load that same amount again to confirm it, then withdraw.";
   public let WITHDRAW_CHANGED_MSG : Text = "Your balance changed. Check it and try again.";
   public let WITHDRAW_EXPIRED_MSG : Text = "Your last withdrawal got no answer from the ledger and can no longer be retried. The admin will settle it: check your wallet first.";
-  public let ERR_PAY_UNCERTAIN : Text = "This payout got no answer from the ledger and its timestamp expired. Look for it in the ledger before paying again.";
   public let NEED_CREDIT_MSG : Text = "Load balance first: your Accumulated prize must cover the stake.";
   public let STAKE_CHANGED_MSG : Text = "The stake amounts changed. Check the new amounts and try again.";
   public let EXC_CHANGED_MSG : Text = "Your excavation changed (another tab or device?). Reload the board and try again.";
@@ -78,9 +78,11 @@ module {
   // transfers overlapped every attempt, so the reading was not comparable) or down (no answer).
   public type BankReading = { #adopted; #busy; #down };
   public let BUSY_BANK_MSG : Text = "Other money movements are in progress. Try again in a few seconds.";
-  public let PAY_BATCH : Nat = 20;
-  // Paid payouts are kept for this many tournaments: they are the payment record.
-  public let PAYOUT_KEEP : Nat = 10;
+  // Balances sent per call of the evacuation (each one is a ledger transfer).
+  public let EVAC_BATCH : Nat = 20;
+  // After a tournament closes, the books are reviewed once more and the next one starts. The wait
+  // gives the players time to see the results.
+  public let REVIEW_WAIT_NS : Int = 180_000_000_000;
   // Closed tournaments kept per player and in the global list.
   public let HISTORY_KEEP : Nat = 10;
   public let TOURNAMENTS_KEEP : Nat = 52;
@@ -89,7 +91,6 @@ module {
   public let LOAD_MIN : Nat = 1_000;
   public let LOAD_MAX : Nat = 50_000;
   public let CREDIT_CAP : Nat = 20_000_000_000_000;
-  public let MIN_PAYOUT : Nat = 5_000_000_000;
 
   // Principals that are always admin. Paste Internet Identity principals here before deploying.
   public let BOOTSTRAP_ADMINS : [Text] = [
@@ -129,13 +130,16 @@ module {
   public let HALT_BANK : Nat = 4;
   public let HALT_FUND : Nat = 5;
   public let HALT_FEE : Nat = 6;
+  public let HALT_EVAC : Nat = 7;
+  public let HALT_REVIEW : Nat = 8;
   // Public pause codes (0 means not paused). A safety halt is shown without its cause.
   public let PAUSE_ADMIN : Nat = 1;
   public let PAUSE_SAFETY : Nat = 2;
-  public let PAUSE_PAYOUTS : Nat = 3;
+  // 3 was the wait for payouts: it is not used any more.
   public let PAUSE_BANK : Nat = 4;
   public let PAUSE_STAKES : Nat = 5;
   public let PAUSE_WAITING : Nat = 6;
+  public let PAUSE_EVAC : Nat = 7;
   // After the end time open excavations can still be finished for this long (30 minutes).
   public let CLOSE_WINDOW_NS : Nat = 1_800_000_000_000;
 
@@ -154,7 +158,7 @@ module {
   public let SECURITY_LOG_MAX_DAY : Nat = 100;
 
   public func haltReason(code : Nat) : Text {
-    if (code == HALT_LEDGER) "ledger failures" else if (code == HALT_MANUAL) "paused by admin" else if (code == HALT_BANK) "unexplained bank withdrawal" else if (code == HALT_FUND) "fund drop" else if (code == HALT_FEE) "ledger fee changed" else "unknown";
+    if (code == HALT_LEDGER) "ledger failures" else if (code == HALT_MANUAL) "paused by admin" else if (code == HALT_BANK) "unexplained bank withdrawal" else if (code == HALT_FUND) "fund drop" else if (code == HALT_FEE) "ledger fee changed" else if (code == HALT_EVAC) "game being closed" else if (code == HALT_REVIEW) "tournament review failed" else "unknown";
   };
 
   public func isBootstrapAdmin(p : Principal) : Bool {
