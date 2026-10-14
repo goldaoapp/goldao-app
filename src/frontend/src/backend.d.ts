@@ -31,9 +31,8 @@ export interface AdminView {
     heldJackpots: bigint;
     toCollectPlayers: bigint;
     realLedger: boolean;
-    payouts: Array<Payout>;
     paused: boolean;
-    unpaidPayouts: bigint;
+    pendingLoads: bigint;
     endsAt: bigint;
 }
 export interface AutoResult {
@@ -66,7 +65,6 @@ export interface Dashboard {
     bestReturn: bigint;
     allowance: bigint;
     top10Entry: bigint;
-    pendingPayout: bigint;
     paused: boolean;
     endsAt: bigint;
 }
@@ -171,7 +169,6 @@ export interface GameConfig {
     poolSeedE8s: bigint;
     payoutBps: bigint;
     safePicks: bigint;
-    minPayoutE8s: bigint;
     stakeMinE8s: bigint;
     realLedger: boolean;
 }
@@ -201,17 +198,6 @@ export interface PastResult {
     credit: bigint;
     returned: bigint;
     payout: bigint;
-}
-export interface Payout {
-    id: bigint;
-    to: Principal;
-    paid: boolean;
-    txId?: bigint;
-    tournament: bigint;
-    uncertain: boolean;
-    stamp: bigint;
-    amount: bigint;
-    paidAt: bigint;
 }
 export interface PickResult {
     end?: EndResult;
@@ -261,7 +247,7 @@ export type Result_1 = {
 export type Result_10 = {
     __kind__: "ok";
     ok: {
-        paid: bigint;
+        sent: bigint;
         remaining: bigint;
         failed: bigint;
     };
@@ -328,20 +314,6 @@ export type Result_6 = {
 export type Result_7 = {
     __kind__: "ok";
     ok: SecurityView;
-} | {
-    __kind__: "err";
-    err: string;
-};
-export type Result_8 = {
-    __kind__: "ok";
-    ok: Array<Payout>;
-} | {
-    __kind__: "err";
-    err: string;
-};
-export type Result_9 = {
-    __kind__: "ok";
-    ok: bigint | null;
 } | {
     __kind__: "err";
     err: string;
@@ -478,16 +450,13 @@ export interface backendInterface {
     gameAdminChangeLedger(): Promise<Result>;
     gameAdminCheckPay(): Promise<Result_5>;
     gameAdminCheckWithdraw(kind: WithdrawKind): Promise<Result_5>;
-    gameAdminCloseAll(): Promise<Result_5>;
     gameAdminCloseTournament(): Promise<Result_5>;
+    gameAdminEvacSend(): Promise<Result_10>;
+    gameAdminEvacStart(): Promise<Result_5>;
     gameAdminEnsureConnected(): Promise<Result_11>;
     gameAdminHalt(): Promise<Result_5>;
     gameAdminLedgerAllowance(who: Principal, spender: Principal): Promise<Result>;
     gameAdminLedgerBalance(who: Principal): Promise<Result>;
-    gameAdminMarkPaid(id: bigint, txId: bigint): Promise<Result_5>;
-    gameAdminPay(max: bigint): Promise<Result_10>;
-    gameAdminPayOne(id: bigint, renew: boolean): Promise<Result_9>;
-    gameAdminPayouts(tournament: bigint): Promise<Result_8>;
     gameAdminRefreshBank(): Promise<Result>;
     gameAdminReleaseBusy(player: Principal): Promise<Result_5>;
     gameAdminResume(): Promise<Result_5>;
