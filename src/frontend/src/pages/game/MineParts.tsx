@@ -946,6 +946,13 @@ function RankPanel({ dashboard }: { dashboard: Dashboard | undefined }) {
   if (dashboard && rank > 10) gap = `${rank - 10} spots to Top 10`;
   else if (dashboard && rank === 0)
     gap = `Stake ${fmtGoldao(dashboard.top10Entry)} to enter`;
+  else if (
+    dashboard &&
+    inTop &&
+    prize === 0n &&
+    dashboard.stats.staked < dashboard.top10Entry
+  )
+    gap = `Stake ${fmtGoldao(dashboard.top10Entry - dashboard.stats.staked)} more to qualify`;
   return (
     <div className="flex min-w-0 flex-col justify-center gap-4 rounded-[14px] border border-[rgba(92,79,71,.18)] bg-white/20 px-3.5 pb-3.5 pt-3 dark:border-white/[.07] dark:bg-black/[.18]">
       <div className="flex items-center justify-between">
