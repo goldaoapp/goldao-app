@@ -90,9 +90,8 @@ export function ModeStatusCard({
     }
   };
 
-  // The game account is reported by the backend once the game is connected. Nothing is read from
-  // the deployment files.
-  // Used only if it matches the canister this page talks to.
+  // The game account is reported by the backend once the game is connected. It is used only if it
+  // matches the canister this page talks to.
   const pageCanister = usePageCanister();
   const gameAccount = trustedSpender(view?.selfId?.toText(), pageCanister.data);
 
