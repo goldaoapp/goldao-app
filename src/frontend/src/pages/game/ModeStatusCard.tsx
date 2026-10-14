@@ -133,12 +133,14 @@ export function ModeStatusCard({
     }
   };
 
-  const unpaid = view ? view.payouts.filter((p) => !p.paid).length : 0;
   const checks = view
     ? [
         { ok: view.paused, text: "The game is paused" },
         { ok: view.owed === 0n, text: "Nothing is owed to players" },
-        { ok: unpaid === 0, text: "There are no pending payouts" },
+        {
+          ok: view.pendingWithdrawals === 0n,
+          text: "There are no pending withdrawals",
+        },
       ]
     : [];
 
@@ -290,8 +292,8 @@ export function ModeStatusCard({
                 )}
               >
                 <li>
-                  With MODE still #test: pause new excavations, wait for the
-                  tournament to close and pay or mark as paid every payout.
+                  With MODE still #test: start the evacuation, close the
+                  tournament and send every balance to its owner.
                 </li>
                 <li>
                   Withdraw everything (all) to the treasury. Owed, credits and
