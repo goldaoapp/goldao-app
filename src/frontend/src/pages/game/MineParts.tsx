@@ -1182,7 +1182,7 @@ export function CreditBar({
             </div>
           </div>
           <div className={cn("text-[11.5px]", FOOT)}>
-            Paid when the tournament closes
+            Stays in the game · withdraw any time
             {dashboard ? ` · ${fmtCountdown(dashboard.endsAt)}` : ""}
           </div>
         </div>
