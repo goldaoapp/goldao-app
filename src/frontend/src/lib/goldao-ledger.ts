@@ -183,7 +183,7 @@ interface LedgerActor {
   icrc2_allowance: (a: {
     account: Icrc1Account;
     spender: Icrc1Account;
-  }) => Promise<{ allowance: bigint }>;
+  }) => Promise<{ allowance: bigint; expires_at: [] | [bigint] }>;
   icrc2_approve: (a: {
     from_subaccount: [];
     spender: Icrc1Account;
@@ -374,18 +374,31 @@ export async function fetchWalletBalance(
   return l.icrc1_balance_of(acct(owner));
 }
 
+/** What the spender may still take from the owner, and when that authorization ends (ms, if it does). */
+export async function fetchAllowanceInfo(
+  owner: string,
+  spender: string,
+  ledgerId?: string,
+): Promise<{ allowance: bigint; expiresAtMs?: number }> {
+  const l = await getGameLedger(ledgerId);
+  const r = await l.icrc2_allowance({
+    account: acct(owner),
+    spender: acct(spender),
+  });
+  const exp = r.expires_at[0];
+  return {
+    allowance: r.allowance,
+    expiresAtMs: exp === undefined ? undefined : Number(exp / 1_000_000n),
+  };
+}
+
 /** Amount (e8s) the spender may still take from the owner. */
 export async function fetchAllowance(
   owner: string,
   spender: string,
   ledgerId?: string,
 ): Promise<bigint> {
-  const l = await getGameLedger(ledgerId);
-  const r = await l.icrc2_allowance({
-    account: acct(owner),
-    spender: acct(spender),
-  });
-  return r.allowance;
+  return (await fetchAllowanceInfo(owner, spender, ledgerId)).allowance;
 }
 
 async function signedLedger(
