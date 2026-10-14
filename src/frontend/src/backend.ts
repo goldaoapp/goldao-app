@@ -119,6 +119,7 @@ export interface Dashboard {
     top10Entry: bigint;
     pendingPayout: bigint;
     pendingWithdrawal: bigint;
+    pendingLoad: bigint;
     paused: boolean;
     pauseCode: bigint;
     endsAt: bigint;
@@ -226,6 +227,7 @@ export interface GameConfig {
     minPayoutE8s: bigint;
     withdrawMinE8s: bigint;
     closeWindowNs: bigint;
+    spender: string;
     stakeMinE8s: bigint;
     realLedger: boolean;
 }
@@ -1654,6 +1656,7 @@ function from_candid_record_n61(_uploadFile: (file: ExternalBlob) => Promise<Uin
     top10Entry: bigint;
     pendingPayout: bigint;
     pendingWithdrawal: bigint;
+    pendingLoad: bigint;
     paused: boolean;
     pauseCode: bigint;
     endsAt: bigint;
@@ -1673,6 +1676,7 @@ function from_candid_record_n61(_uploadFile: (file: ExternalBlob) => Promise<Uin
     top10Entry: bigint;
     pendingPayout: bigint;
     pendingWithdrawal: bigint;
+    pendingLoad: bigint;
     paused: boolean;
     pauseCode: bigint;
     endsAt: bigint;
@@ -1693,6 +1697,7 @@ function from_candid_record_n61(_uploadFile: (file: ExternalBlob) => Promise<Uin
         top10Entry: value.top10Entry,
         pendingPayout: value.pendingPayout,
         pendingWithdrawal: value.pendingWithdrawal,
+        pendingLoad: value.pendingLoad,
         paused: value.paused,
         pauseCode: value.pauseCode,
         endsAt: value.endsAt
