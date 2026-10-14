@@ -80,6 +80,9 @@ module {
   public let PAY_BATCH : Nat = 20;
   // Paid payouts are kept for this many tournaments: they are the payment record.
   public let PAYOUT_KEEP : Nat = 10;
+  // Closed tournaments kept per player and in the global list.
+  public let HISTORY_KEEP : Nat = 10;
+  public let TOURNAMENTS_KEEP : Nat = 52;
   // The ledger fee is read once per this many ticks (one tick per minute).
   public let FEE_CHECK_TICKS : Nat = 60;
   public let LOAD_MIN : Nat = 1_000;
