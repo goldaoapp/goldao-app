@@ -92,7 +92,7 @@ export function ModeStatusCard({
 
   // The game account is reported by the backend once the game is connected. Nothing is read from
   // the deployment files.
-  // It is only used if it is the canister this page talks to: a query answer could be forged.
+  // Used only if it matches the canister this page talks to.
   const pageCanister = usePageCanister();
   const gameAccount = trustedSpender(view?.selfId?.toText(), pageCanister.data);
 
