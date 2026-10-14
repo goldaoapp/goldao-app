@@ -1,10 +1,9 @@
 import type { GameConfig } from "@/backend";
 import { useAuth } from "@/context/AuthContext";
-import { loadEnv } from "@/hooks/useBackendActor";
 import {
   GOLDAO_FEE_E8S,
   approveSpender,
-  fetchAllowance,
+  fetchAllowanceInfo,
   fetchWalletBalance,
 } from "@/lib/goldao-ledger";
 import { useInternetIdentity } from "@/lib/internet-identity";
@@ -23,27 +22,25 @@ export function useWallet(config: GameConfig | undefined) {
   const { identity } = useInternetIdentity();
   const ledgerId = config?.ledgerId;
 
-  const spender = useQuery({
-    queryKey: ["game", "spender"],
-    queryFn: async () => (await loadEnv()).backend_canister_id ?? "",
-    staleTime: Number.POSITIVE_INFINITY,
-  });
+  // The game's own account, told by the game itself. Empty only if it is not ready.
+  const spender = config?.spender ?? "";
 
   const ledger = useQuery({
-    queryKey: ["game", "wallet", principalId, spender.data, ledgerId],
+    queryKey: ["game", "wallet", principalId, spender, ledgerId],
     queryFn: async () => {
-      const [balance, allowance] = await Promise.all([
+      const [balance, auth] = await Promise.all([
         fetchWalletBalance(principalId as string, ledgerId),
-        fetchAllowance(principalId as string, spender.data as string, ledgerId),
+        fetchAllowanceInfo(principalId as string, spender, ledgerId),
       ]);
-      return { balance, allowance };
+      return { balance, ...auth };
     },
-    enabled: !!principalId && !!spender.data && !!ledgerId,
+    enabled: !!principalId && !!spender && !!ledgerId,
     refetchInterval: 15_000,
   });
 
   const balance = ledger.data?.balance ?? 0n;
   const allowance = ledger.data?.allowance ?? 0n;
+  const expiresAtMs = ledger.data?.expiresAtMs;
 
   /** Authorizes the game when `need` (e8s, fee included) is not covered. */
   const ensureAllowance = useCallback(
@@ -56,20 +53,34 @@ export function useWallet(config: GameConfig | undefined) {
       if (funds < need + GOLDAO_FEE_E8S) {
         throw new Error("Insufficient GOLDAO in your wallet.");
       }
-      if (!identity || !spender.data) {
+      if (!identity || !spender) {
         throw new Error("Sign in again to continue.");
       }
       await approveSpender(
         identity,
-        spender.data,
+        spender,
         BigInt(AUTHORIZE_GOLDAO) * E8S,
         AUTHORIZE_DAYS * 24 * 60 * 60 * 1000,
         ledgerId,
       );
       await ledger.refetch();
     },
-    [ledger, identity, spender.data, ledgerId],
+    [ledger, identity, spender, ledgerId],
   );
 
-  return { balance, allowance, ensureAllowance };
+  /** Takes the authorization back. The player can authorize again at any time. */
+  const revoke = useCallback(async (): Promise<void> => {
+    if (!identity || !spender) throw new Error("Sign in again to continue.");
+    await approveSpender(identity, spender, 0n, undefined, ledgerId);
+    await ledger.refetch();
+  }, [ledger, identity, spender, ledgerId]);
+
+  return {
+    balance,
+    allowance,
+    expiresAtMs,
+    ensureAllowance,
+    revoke,
+    spenderMissing: !!config && !spender,
+  };
 }
