@@ -14,9 +14,9 @@ import type { Backend, UserRole } from "../backend";
 
 interface AuthContextValue {
   isAuthenticated: boolean;
-  /** II inicializando o login en curso */
+  /** II is initializing or a login is in progress */
   isLoading: boolean;
-  /** Resolviendo rol/admin desde el canister */
+  /** Resolving the role/admin from the canister */
   roleLoading: boolean;
   isAdmin: boolean;
   role: UserRole | null;
@@ -28,7 +28,7 @@ interface AuthContextValue {
   /** End of the current sign-in (ms), or null when it cannot be read. */
   sessionEndsAt: number | null;
   logout: () => void;
-  /** Re-lee isCallerAdmin/getCallerUserRole (p.ej. tras asignarse un rol) */
+  /** Re-reads isCallerAdmin/getCallerUserRole (for example after a role is assigned) */
   refresh: () => Promise<void>;
 }
 
@@ -85,7 +85,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  // Limpiar al cerrar sesión
+  // Clean up on sign out
   useEffect(() => {
     if (!isAuthenticated) {
       setIsAdmin(false);
@@ -95,7 +95,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [isAuthenticated]);
 
-  // Autenticado + actor listo: inicializar control de acceso y resolver rol.
+  // Signed in and actor ready: initialize access control and resolve the role.
   useEffect(() => {
     if (!actor || !isAuthenticated || !principalId) return;
     if (initializedFor.current === principalId) return;
@@ -104,8 +104,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     void (async () => {
       setRoleLoading(true);
       try {
-        // Idempotente: el primer principal que lo llama queda como admin;
-        // el resto queda registrado como user. Seguro de llamar en cada login.
+        // Idempotent: safe to call on every login.
         await actor._initialize_access_control();
       } catch {}
       await refresh();
