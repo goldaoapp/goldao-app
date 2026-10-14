@@ -7,6 +7,7 @@ import {
   fetchWalletBalance,
 } from "@/lib/goldao-ledger";
 import { useInternetIdentity } from "@/lib/internet-identity";
+import { trustedSpender } from "@/lib/session";
 import { cn } from "@/lib/utils";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Check, FlaskConical, X } from "lucide-react";
@@ -25,6 +26,7 @@ import {
 } from "./game-utils";
 import { TEST_TOKEN_LABEL, isTestLedger } from "./ledger-mode";
 import { errorMessage } from "./useGame";
+import { usePageCanister } from "./usePageCanister";
 
 /**
  * Which ledger the game runs on, and the one button that moves it to another ledger.
@@ -90,7 +92,9 @@ export function ModeStatusCard({
 
   // The game account is reported by the backend once the game is connected. Nothing is read from
   // the deployment files.
-  const gameAccount = view?.selfId?.toText() ?? "";
+  // It is only used if it is the canister this page talks to: a query answer could be forged.
+  const pageCanister = usePageCanister();
+  const gameAccount = trustedSpender(view?.selfId?.toText(), pageCanister.data);
 
   // The faucet pays from the bank admin's own wallet through an allowance given to the game
   // canister, never from the game account (that is the bank). The pool is what it can still pay.
