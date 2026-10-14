@@ -24,8 +24,6 @@ mixin (
   // Players with a credit load in flight (start time): one at a time. A lock older than
   // BUSY_STALE_NS is ignored, so a lost continuation can never block a player for good.
   transient let gLoading = Map.empty<Principal, Int>();
-  // Automatic retries made for the pending load of each player.
-  transient let gLoadTries = Map.empty<Principal, Nat>();
   // Rejected loads (no funds, no allowance) per account in the current window. Every load that
   // reaches the ledger bumps movSeq, so an account that keeps failing is cut off before it
   // reaches the ledger again. Each account has its own counter: one account never blocks others.
@@ -74,7 +72,6 @@ mixin (
   // If the first attempt had been executed, the player was charged without credit: logged for review.
   func gLoadForget(p : Principal, pl : Types.PendingLoad) {
     gameState.pendingLoads.remove(p);
-    gLoadTries.remove(p);
     gLog(#warning, "load_expired", "Unconfirmed load expired", "A load of " # Nat.toText(pl.amount / Game.E8S) # " GOLDAO from " # Principal.toText(p) # " never got an answer and its timestamp expired. Check the ledger: the player may have been charged without credit.");
   };
 
@@ -936,7 +933,6 @@ mixin (
     gMaybeClose();
     gWatchFund();
     gExpireLoads();
-    await gRetryLoads();
     gSweepWithdrawals();
     await gAutoPay();
     if (Nat.sub(gTicks, 1) % Game.FEE_CHECK_TICKS == 0) await gCheckFee();
@@ -1076,82 +1072,60 @@ mixin (
       return #err("Choose between " # Nat.toText(Game.LOAD_MIN) # " and " # Nat.toText(Game.LOAD_MAX) # " GOLDAO.");
     };
     let amount = goldao * Game.E8S;
-    if (gCredit(caller) + gPendingWithdrawal(caller) + amount > Game.CREDIT_CAP) {
-      return #err("Accumulated prize cannot go above " # Nat.toText(Game.CREDIT_CAP / Game.E8S) # " GOLDAO.");
-    };
     if (gLoadBusy(caller)) return #err("A load is already in progress.");
     let pending = gameState.pendingLoads.get(caller);
     if (pending == null and gLoadThrottled(caller)) return #err("Too many rejected loads right now. Try again in a minute.");
     // A load that got no answer from the ledger is retried with the same amount and timestamp.
     // The ledger recognizes it and never charges twice. Older than the ledger window: forgotten.
     var stamp = Nat.toNat64(Int.abs(Time.now()));
+    var repeat = false;
     switch (pending) {
       case (?pl) {
         if (pl.amount != amount) {
           return #err("Your previous load of " # Nat.toText(pl.amount / Game.E8S) # " GOLDAO is still being confirmed. Load that same amount again.");
         };
-        if (stamp < pl.stamp + Game.STAMP_MAX_AGE_NS) stamp := pl.stamp else gLoadForget(caller, pl);
+        if (stamp < pl.stamp + Game.STAMP_MAX_AGE_NS) {
+          stamp := pl.stamp;
+          repeat := true;
+        } else gLoadForget(caller, pl);
       };
       case null {};
+    };
+    // The cap is checked for a new load only. Repeating one that may already have been charged must
+    // not be blocked by prizes won in the meantime.
+    if (not repeat and gCredit(caller) + gPendingWithdrawal(caller) + amount > Game.CREDIT_CAP) {
+      return #err("Accumulated prize cannot go above " # Nat.toText(Game.CREDIT_CAP / Game.E8S) # " GOLDAO.");
     };
     gameState.pendingLoads.add(caller, { amount; stamp });
     gLoading.add(caller, Time.now());
     let res = try { await lLoad(caller, amount, stamp) } finally { gLoading.remove(caller) };
-    gFinishLoad(caller, amount, res);
-  };
-
-  // Applies the ledger's answer to a load. An answer of #unknown keeps the load pending, to be
-  // repeated with the same timestamp (by the player or by the timer): the ledger never charges twice.
-  func gFinishLoad(p : Principal, amount : Nat, res : Types.Charge) : Result.Result<Nat, Text> {
     let need = amount + Game.FEE;
-    if (res != #unknown) {
-      gameState.pendingLoads.remove(p);
-      gLoadTries.remove(p);
+    // Only the call that still finds this very load pending may credit it. Without this a second
+    // call that overlapped the first (after a stale lock) would be answered Duplicate and credit again.
+    let current = switch (gameState.pendingLoads.get(caller)) { case (?cur) cur.stamp == stamp and cur.amount == amount; case null false };
+    if (not current) return #err("This load was already confirmed. Check your balance.");
+    // A definite answer closes the load. A failed repeat does not: the first attempt may have been charged.
+    if (res == #ok or res == #allowance or res == #funds or (res == #down and pending == null)) {
+      gameState.pendingLoads.remove(caller);
     };
     switch (res) {
       case (#ok) {
-        gameState.credits.add(p, gCredit(p) + amount);
+        gameState.credits.add(caller, gCredit(caller) + amount);
         gameState.owed += amount;
-        #ok(gCredit(p));
+        #ok(gCredit(caller));
       };
       case (#allowance) {
-        gLoadRejected(p);
+        gLoadRejected(caller);
         #err("Authorize the game to charge up to " # Nat.toText(need / Game.E8S) # " GOLDAO.");
       };
       case (#funds) {
-        gLoadRejected(p);
+        gLoadRejected(caller);
         #err("Insufficient balance: you need " # Nat.toText(need / Game.E8S) # " GOLDAO (amount plus the network fee).");
       };
       case (#down) #err("The ledger is unavailable. Try again later.");
       case (#unknown) {
-        gLog(#warning, "load_no_answer", "Load without an answer", "A credit load of " # Nat.toText(amount / Game.E8S) # " GOLDAO from " # Principal.toText(p) # " got no answer from the ledger. It is retried with the same timestamp, so it cannot be charged twice.");
+        gLog(#warning, "load_no_answer", "Load without an answer", "A credit load of " # Nat.toText(amount / Game.E8S) # " GOLDAO from " # Principal.toText(caller) # " got no answer from the ledger. It is retried with the same timestamp, so it cannot be charged twice.");
         #err("The ledger did not answer. Load " # Nat.toText(amount / Game.E8S) # " GOLDAO again: you will not be charged twice.");
-      };
-    };
-  };
-
-  // The timer repeats the loads that got no answer, with their own timestamp. If the first attempt
-  // had been executed the ledger answers Duplicate and the credit is given; otherwise the load
-  // the player asked for is completed now. Not during a safety halt, and each load is retried a
-  // bounded number of times.
-  func gRetryLoads() : async () {
-    if (gHardHalt() or not gBankReady()) return;
-    let now = Nat64.fromNat(Int.abs(Time.now()));
-    var done = 0;
-    for ((p, pl) in gameState.pendingLoads.entries().toArray().values()) {
-      let tries = switch (gLoadTries.get(p)) { case (?n) n; case null 0 };
-      // The snapshot is old after an await: the player may have finished this load by hand. A
-      // load is retried only while the very same one is still pending, because the ledger answers
-      // Duplicate to a load that already went through and that would be credited again.
-      let same = switch (gameState.pendingLoads.get(p)) { case (?cur) cur.stamp == pl.stamp and cur.amount == pl.amount; case null false };
-      if (same and done < Game.LOAD_RETRY_BATCH and tries < Game.LOAD_RETRY_MAX and not gLoadBusy(p) and now < pl.stamp + Game.STAMP_MAX_AGE_NS) {
-        done += 1;
-        gLoadTries.add(p, tries + 1);
-        gLoading.add(p, Time.now());
-        let res = try { await lLoad(p, pl.amount, pl.stamp) } finally { gLoading.remove(p) };
-        ignore gFinishLoad(p, pl.amount, res);
-        // The ledger is not answering: leave the rest for the next minute (one failure per minute at most).
-        if (res == #unknown) return;
       };
     };
   };
