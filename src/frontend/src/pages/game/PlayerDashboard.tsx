@@ -97,7 +97,7 @@ export function PlayerDashboard({ dashboard }: Props) {
       <div className={panel}>
         <div className={panelHeader}>
           <span className={cn(eyebrow, gold, "flex items-center gap-2")}>
-            <History className="size-3.5" /> Past tournaments
+            <History className="size-3.5" /> Last 10 tournaments
           </span>
         </div>
         {dashboard.history.length === 0 ? (
