@@ -1089,8 +1089,7 @@ mixin (
       };
       case null {};
     };
-    // The cap is checked for a new load only. Repeating one that may already have been charged must
-    // not be blocked by prizes won in the meantime.
+    // The cap is checked for a new load only; a repeat of a pending load is always allowed.
     if (not repeat and gCredit(caller) + gPendingWithdrawal(caller) + amount > Game.CREDIT_CAP) {
       return #err("Accumulated prize cannot go above " # Nat.toText(Game.CREDIT_CAP / Game.E8S) # " GOLDAO.");
     };
@@ -1098,11 +1097,10 @@ mixin (
     gLoading.add(caller, Time.now());
     let res = try { await lLoad(caller, amount, stamp) } finally { gLoading.remove(caller) };
     let need = amount + Game.FEE;
-    // Only the call that still finds this very load pending may credit it. Without this a second
-    // call that overlapped the first (after a stale lock) would be answered Duplicate and credit again.
+    // A load is credited once: only the call that still finds this exact load pending may credit it.
     let current = switch (gameState.pendingLoads.get(caller)) { case (?cur) cur.stamp == stamp and cur.amount == amount; case null false };
     if (not current) return #err("This load was already confirmed. Check your balance.");
-    // A definite answer closes the load. A failed repeat does not: the first attempt may have been charged.
+    // A definite answer closes the load. A repeat that fails without a definite answer keeps it pending.
     if (res == #ok or res == #allowance or res == #funds or (res == #down and pending == null)) {
       gameState.pendingLoads.remove(caller);
     };
