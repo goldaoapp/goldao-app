@@ -273,7 +273,7 @@ export function MineBoard({ dashboard }: Props) {
         exc: null,
         inPlay: 0n,
         notice: closed
-          ? "The tournament closed. Your excavation was settled or its stake was returned: check your Accumulated prize."
+          ? "The tournament closed while your excavation was open. It was saved if you had reached the third pick; otherwise the stake was lost, unless the admin ended the tournament early, which returns it. Check your Accumulated prize."
           : null,
       });
     }
@@ -803,8 +803,8 @@ export function MineBoard({ dashboard }: Props) {
 
       <p className={cn("text-center font-mono text-[11px]", inkFaint)}>
         Your stake leaves your Accumulated prize at your first pick. Every prize
-        shown includes your stake. The balance is paid when the tournament
-        closes, and you can withdraw it before that.
+        shown includes your stake. The balance stays in the game and you can
+        withdraw it any time.
       </p>
     </div>
   );
