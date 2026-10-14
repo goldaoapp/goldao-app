@@ -1,13 +1,13 @@
-// Proveedor de Internet Identity para GOLDAO usando @icp-sdk/auth v7.
-// Expone { isAuthenticated, isInitializing, isLoggingIn, login, clear, identity }.
+// Internet Identity provider for GOLDAO using @icp-sdk/auth v7.
+// Exposes { isAuthenticated, isInitializing, isLoggingIn, login, clear, identity }.
 //
-// Notas de la API v7 (distinta a @dfinity/auth-client):
-//  - se importa desde "@icp-sdk/auth/client" (el módulo raíz lanza error a propósito)
-//  - se instancia con `new AuthClient(opts)` (no hay `create()` estático)
-//  - `identityProvider` y `derivationOrigin` se fijan en el constructor
-//  - `signIn()/signOut()` en vez de `login()/logout()`, con Promises (sin callbacks)
-//  - `getIdentity()` es async; `isAuthenticated()` es sync
-//  - `openIdProvider` ('google'|'apple'|'microsoft') permite login directo.
+// Notes on the v7 API (different from @dfinity/auth-client):
+//  - import from "@icp-sdk/auth/client" (the root module throws on purpose)
+//  - create with `new AuthClient(opts)` (there is no static `create()`)
+//  - `identityProvider` and `derivationOrigin` are fixed in the constructor
+//  - `signIn()/signOut()` replace `login()/logout()` and return Promises (no callbacks)
+//  - `getIdentity()` is async; `isAuthenticated()` is sync
+//  - `openIdProvider` ('google'|'apple'|'microsoft') allows a direct login.
 
 import { AuthClient, type OpenIdProvider } from "@icp-sdk/auth/client";
 import type { Identity } from "@icp-sdk/core/agent";
@@ -27,16 +27,16 @@ import {
   sessionEndsAtMs,
 } from "./session";
 
-// authorize de II: lo resuelve vite.config.js (process.env.II_URL) según
-// DFX_NETWORK; fallback a id.ai en producción.
+// II authorize URL: resolved by vite.config.js (process.env.II_URL) from
+// DFX_NETWORK; falls back to id.ai in production.
 function iiUrl(): string {
   const url = process.env.II_URL as string | undefined;
   return url && url !== "undefined" ? url : "https://id.ai/authorize";
 }
 
-// derivationOrigin lo inyecta caffeine en /env.json al deployar. Solo se usa
-// si trae un valor real (el repo shipea "undefined"). Mantiene el principal
-// estable entre los distintos orígenes desde los que se sirve la app.
+// derivationOrigin is injected into /env.json at deploy time. It is used only
+// when it holds a real value (the repo ships "undefined"). It keeps the principal
+// stable across the origins the app is served from.
 async function readDerivationOrigin(): Promise<string | undefined> {
   try {
     const res = await fetch(`${location.origin}/env.json`, {
@@ -52,11 +52,11 @@ async function readDerivationOrigin(): Promise<string | undefined> {
 }
 
 interface LoginOptions {
-  /** Override del identityProvider (p.ej. un authorize distinto). */
+  /** Overrides the identityProvider (for example a different authorize URL). */
   identityProvider?: string;
-  /** Login directo con un proveedor OpenID, salteando la pantalla de II. */
+  /** Direct login with an OpenID provider, skipping the II screen. */
   openIdProvider?: OpenIdProvider;
-  /** Sesión corta (8 h) para el admin del juego; sin esto dura 7 días. */
+  /** Short sign-in (8 hours) for the game admin; otherwise it lasts 7 days. */
   shortSession?: boolean;
 }
 
@@ -66,9 +66,9 @@ interface InternetIdentityContextValue {
   isLoggingIn: boolean;
   identity: Identity | null;
   login: (options?: LoginOptions) => void;
-  /** Vuelve a iniciar sesión con la duración corta del admin. Debe llamarse desde un clic. */
+  /** Signs in again with the short admin duration. Must be called from a click. */
   renewShort: () => void;
-  /** Fin de la sesión actual (ms), o null si no se puede leer. */
+  /** End of the current sign-in (ms), or null when it cannot be read. */
   sessionEndsAt: number | null;
   clear: () => void;
 }
@@ -105,7 +105,7 @@ export function InternetIdentityProvider({
     });
   }, []);
 
-  // Init: resolver derivationOrigin, crear cliente y restaurar sesión previa.
+  // Init: resolve derivationOrigin, create the client and restore a previous session.
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -114,7 +114,7 @@ export function InternetIdentityProvider({
       if (cancelled) return;
       clientRef.current = client;
 
-      // getIdentity() restaura la sesión persistida si existe.
+      // getIdentity() restores the stored session if there is one.
       const restored = await client.getIdentity();
       if (cancelled) return;
       if (client.isAuthenticated()) {
@@ -155,8 +155,8 @@ export function InternetIdentityProvider({
     (options?: LoginOptions) => {
       if (isLoggingIn || isAuthenticated) return;
 
-      // Un override de proveedor requiere reconstruir el cliente (esas opciones
-      // van en el constructor). Si no hay override, reusamos el cliente base.
+      // A provider override needs a new client (those options go in the constructor).
+      // Without an override the base client is reused.
       const client =
         options?.identityProvider || options?.openIdProvider
           ? buildClient(options)
