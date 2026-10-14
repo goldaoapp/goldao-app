@@ -113,17 +113,29 @@ export function WalletPanel({ dashboard, config }: Props) {
   // A withdrawal that got no answer from the ledger is repeated with the same button.
   const withdrawMin = config?.withdrawMinE8s ?? 0n;
   const waiting = dashboard?.pendingWithdrawal ?? 0n;
+  const pauseNo = Number(dashboard?.pauseCode ?? 0n);
+  // After the end time the tournament closes within minutes and withdrawals wait for it.
+  const closing =
+    !!dashboard &&
+    dashboard.endsAt !== 0n &&
+    Number(dashboard.endsAt / 1_000_000n) <= Date.now();
   const withdrawBase = waiting > 0n ? waiting : credit;
   const receive = withdrawBase > fee ? withdrawBase - fee : 0n;
   const withdrawBlock = !dashboard
     ? "Loading"
     : waiting > 0n
       ? null
-      : dashboard.paused
-        ? "Withdrawals are not available while the game is paused."
-        : credit < withdrawMin
-          ? `The minimum withdrawal is ${fmtGoldao(withdrawMin)} ${tokenName}. A smaller balance stays in the game for the next tournament.`
-          : null;
+      : closing
+        ? "The tournament is closing. Withdrawals are back in a few minutes."
+        : pauseNo === 7
+          ? "The game is being closed: your balance will be sent to your wallet."
+          : pauseNo === 2 || pauseNo === 4
+            ? "Withdrawals are paused while the game is being checked. Your balance is safe: try again later."
+            : waitingLoad > 0n
+              ? "Your last load is still being confirmed. Press Confirm load, then withdraw."
+              : credit < withdrawMin
+                ? `The minimum withdrawal is ${fmtGoldao(withdrawMin)} ${tokenName}. A smaller balance stays in the game.`
+                : null;
 
   // The confirmation step goes away by itself.
   useEffect(() => {
@@ -370,9 +382,7 @@ export function WalletPanel({ dashboard, config }: Props) {
         <span className={cn("font-mono text-[11px]", inkFaint)}>
           {loadBlock && dashboard
             ? loadBlock
-            : dashboard && dashboard.pendingPayout > 0n
-              ? `Pending payout: ${fmtGoldao(dashboard.pendingPayout)}`
-              : `Fee ${fmtGoldao(fee)}${needsAuthFee ? ` + ${fmtGoldao(fee)} to authorize the game` : ""}`}
+            : `Fee ${fmtGoldao(fee)}${needsAuthFee ? ` + ${fmtGoldao(fee)} to authorize the game` : ""}`}
         </span>
         {allowance > 0n && (
           <div className="flex flex-wrap items-center gap-2">
