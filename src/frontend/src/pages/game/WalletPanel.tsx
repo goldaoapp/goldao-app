@@ -16,6 +16,8 @@ import { Spinner } from "./Spinner";
 import { TestFaucetCard } from "./TestFaucetCard";
 import { SendForm, useTokenBalances } from "./WalletTokens";
 import {
+  AUTHORIZE_DAYS,
+  AUTHORIZE_GOLDAO,
   eyebrow,
   fmtGoldao,
   gold,
@@ -41,7 +43,14 @@ export function WalletPanel({ dashboard, config }: Props) {
   const { run, pending } = useGameAction();
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
-  const { balance, allowance, ensureAllowance } = useWallet(config);
+  const {
+    balance,
+    allowance,
+    expiresAtMs,
+    ensureAllowance,
+    revoke,
+    spenderMissing,
+  } = useWallet(config);
   const { tokens, active, balances } = useTokenBalances(config);
   // The token the game does not use, shown only as a small note.
   const other = tokens.find((t) => t.ledgerId !== active.ledgerId);
@@ -56,12 +65,23 @@ export function WalletPanel({ dashboard, config }: Props) {
   const [loading, setLoading] = useState(false);
   const [withdrawing, setWithdrawing] = useState(false);
   const [confirming, setConfirming] = useState(false);
+  // The first load asks for the player's consent to the authorization before it is signed.
+  const [consent, setConsent] = useState(false);
+  const [revoking, setRevoking] = useState(false);
   const fee = config?.feeE8s ?? 1_000_000_000n;
   const credit = dashboard?.credit ?? 0n;
   const need = BigInt(amount) * E8S + fee;
   // If the game is not authorized yet (first load, or the authorization expired), the wallet
   // also pays the fee of that authorization.
   const needsAuthFee = allowance < need;
+  // A load the ledger did not answer yet. Repeating it is safe: it is credited only once.
+  const waitingLoad = dashboard?.pendingLoad ?? 0n;
+  const authExpiry = expiresAtMs
+    ? new Date(expiresAtMs).toLocaleString("en-US", {
+        dateStyle: "medium",
+        timeStyle: "short",
+      })
+    : null;
   const room =
     config && config.creditCapE8s > credit ? config.creditCapE8s - credit : 0n;
   const roomGoldao = Number(room / E8S);
@@ -77,15 +97,17 @@ export function WalletPanel({ dashboard, config }: Props) {
   const tokenName = testLedger ? TEST_TOKEN_LABEL : "GOLDAO";
   const loadBlock = !dashboard
     ? "Loading"
-    : dashboard.paused
-      ? pauseMessage(dashboard.pauseCode)
-      : !canLoad
-        ? `Accumulated prize is full (limit ${fmtGoldao(config?.creditCapE8s ?? 0n)} ${tokenName}). You can load again after you use some of it.`
-        : amount < loadMin || amount > maxLoad
-          ? `Choose between ${loadMin.toLocaleString("en-US")} and ${maxLoad.toLocaleString("en-US")} ${tokenName}.`
-          : balance < need
-            ? `Not enough ${tokenName} in your wallet.`
-            : null;
+    : spenderMissing
+      ? "The game is not ready to take loads yet. Try again in a moment."
+      : dashboard.paused
+        ? pauseMessage(dashboard.pauseCode)
+        : !canLoad
+          ? `Accumulated prize is full (limit ${fmtGoldao(config?.creditCapE8s ?? 0n)} ${tokenName}). You can load again after you use some of it.`
+          : amount < loadMin || amount > maxLoad
+            ? `Choose between ${loadMin.toLocaleString("en-US")} and ${maxLoad.toLocaleString("en-US")} ${tokenName}.`
+            : balance < need + (needsAuthFee ? fee : 0n)
+              ? `Not enough ${tokenName} in your wallet.`
+              : null;
 
   // Withdrawal: the whole game balance goes to the wallet and the network fee comes out of it.
   // A withdrawal that got no answer from the ledger is repeated with the same button.
@@ -100,7 +122,7 @@ export function WalletPanel({ dashboard, config }: Props) {
       : dashboard.paused
         ? "Withdrawals are not available while the game is paused."
         : credit < withdrawMin
-          ? `The minimum withdrawal is ${fmtGoldao(withdrawMin)} ${tokenName}.`
+          ? `The minimum withdrawal is ${fmtGoldao(withdrawMin)} ${tokenName}. A smaller balance stays in the game for the next tournament.`
           : null;
 
   // The confirmation step goes away by itself.
@@ -124,10 +146,20 @@ export function WalletPanel({ dashboard, config }: Props) {
     return () => window.clearTimeout(t);
   }, [msg]);
 
+  // Changing the amount asks for consent again.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: reset only when the amount changes
+  useEffect(() => setConsent(false), [amount]);
+
   const loadCredit = async () => {
-    if (!actor || loading || loadBlock) return;
+    if (!actor || loading || loadBlock || waitingLoad > 0n) return;
+    // Nothing is signed before the player has read what the authorization means.
+    if (needsAuthFee && !consent) {
+      setConsent(true);
+      return;
+    }
     setMsg(null);
     setLoading(true);
+    setConsent(false);
     try {
       await ensureAllowance(need);
       const total = await run(
@@ -143,6 +175,42 @@ export function WalletPanel({ dashboard, config }: Props) {
       setMsg({ ok: false, text: errorMessage(e) });
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Repeats a load that got no answer from the ledger, with the amount the game remembers.
+  const confirmLoad = async () => {
+    if (!actor || loading || waitingLoad === 0n) return;
+    setMsg(null);
+    setLoading(true);
+    try {
+      const total = await run(
+        "load",
+        () => actor.gameLoadCredit(waitingLoad / E8S),
+        "live",
+      );
+      setMsg({
+        ok: true,
+        text: `Accumulated prize is now ${fmtGoldao(total)} ${tokenName}.`,
+      });
+    } catch (e) {
+      setMsg({ ok: false, text: errorMessage(e) });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const revokeAuth = async () => {
+    if (revoking) return;
+    setMsg(null);
+    setRevoking(true);
+    try {
+      await revoke();
+      setMsg({ ok: true, text: "Authorization removed." });
+    } catch (e) {
+      setMsg({ ok: false, text: errorMessage(e) });
+    } finally {
+      setRevoking(false);
     }
   };
 
@@ -261,14 +329,44 @@ export function WalletPanel({ dashboard, config }: Props) {
           )}
           <Button
             size="sm"
-            disabled={loading || !!pending || !!loadBlock}
+            disabled={loading || !!pending || !!loadBlock || waitingLoad > 0n}
             onClick={() => void loadCredit()}
             className="gradient-primary text-primary-foreground"
           >
             {loading ? <Spinner /> : null}
-            Load {amount.toLocaleString("en-US")}
+            {consent
+              ? `Authorize and load ${amount.toLocaleString("en-US")}`
+              : `Load ${amount.toLocaleString("en-US")}`}
           </Button>
         </div>
+        {consent && (
+          <p className={cn("font-mono text-[11px] leading-relaxed", inkFaint)}>
+            To load, you authorize the game to take up to{" "}
+            {AUTHORIZE_GOLDAO.toLocaleString("en-US")} {tokenName} from your
+            wallet for {AUTHORIZE_DAYS} days, so you do not pay the
+            authorization fee ({fmtGoldao(fee)}) on every load. The game only
+            takes what you ask it to load. You can remove the authorization at
+            any time.
+          </p>
+        )}
+        {waitingLoad > 0n && (
+          <div className="flex flex-wrap items-center gap-2">
+            <span className={cn("font-mono text-[11px]", inkFaint)}>
+              Your load of {fmtGoldao(waitingLoad)} {tokenName} is waiting for
+              the ledger. The game keeps checking; you will not be charged
+              twice.
+            </span>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={loading || !!pending}
+              onClick={() => void confirmLoad()}
+            >
+              {loading ? <Spinner /> : null}
+              Confirm load
+            </Button>
+          </div>
+        )}
         <span className={cn("font-mono text-[11px]", inkFaint)}>
           {loadBlock && dashboard
             ? loadBlock
@@ -276,6 +374,23 @@ export function WalletPanel({ dashboard, config }: Props) {
               ? `Pending payout: ${fmtGoldao(dashboard.pendingPayout)}`
               : `Fee ${fmtGoldao(fee)}${needsAuthFee ? ` + ${fmtGoldao(fee)} to authorize the game` : ""}`}
         </span>
+        {allowance > 0n && (
+          <div className="flex flex-wrap items-center gap-2">
+            <span className={cn("font-mono text-[11px]", inkFaint)}>
+              Game authorized for up to {fmtGoldao(allowance)} {tokenName}
+              {authExpiry ? `, until ${authExpiry}` : ""}.
+            </span>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={revoking || loading}
+              onClick={() => void revokeAuth()}
+            >
+              {revoking ? <Spinner /> : null}
+              Revoke
+            </Button>
+          </div>
+        )}
       </div>
 
       <div className="flex flex-col gap-2 border-t border-[color:var(--term-border-faint)] p-5 md:col-span-2">
