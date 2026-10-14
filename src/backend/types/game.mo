@@ -247,6 +247,8 @@ module {
     pendingPayout : Nat;
     /** Credit taken by a withdrawal that is not settled yet (0 when there is none). */
     pendingWithdrawal : Nat;
+    /** A load the ledger has not confirmed yet (0 when there is none). */
+    pendingLoad : Nat;
     pool : Nat;
     top10Pool : Nat;
     top10Rank : Nat;
@@ -344,6 +346,8 @@ module {
     minPayoutE8s : Nat;
     withdrawMinE8s : Nat;
     closeWindowNs : Nat;
+    /** Account that players authorize to load (the game canister), empty until connected. */
+    spender : Text;
     top10Bps : Nat;
     top10Weights : [Nat];
     top10MinVolumeE8s : Nat;
