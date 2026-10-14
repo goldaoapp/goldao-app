@@ -98,7 +98,7 @@ export function WalletPanel({ dashboard, config }: Props) {
   const loadBlock = !dashboard
     ? "Loading"
     : spenderMissing
-      ? "The game is not ready to take loads yet. Try again in a moment."
+      ? "The game address could not be verified. Reload the page; do not load until it works."
       : dashboard.paused
         ? pauseMessage(dashboard.pauseCode)
         : !canLoad
