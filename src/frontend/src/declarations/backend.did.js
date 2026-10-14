@@ -232,6 +232,7 @@ export const GameConfig = IDL.Record({
   'minPayoutE8s' : IDL.Nat,
   'withdrawMinE8s' : IDL.Nat,
   'closeWindowNs' : IDL.Nat,
+  'spender' : IDL.Text,
   'stakeMinE8s' : IDL.Nat,
   'realLedger' : IDL.Bool,
 });
@@ -286,6 +287,7 @@ export const Dashboard = IDL.Record({
   'top10Entry' : IDL.Nat,
   'pendingPayout' : IDL.Nat,
   'pendingWithdrawal' : IDL.Nat,
+  'pendingLoad' : IDL.Nat,
   'paused' : IDL.Bool,
   'pauseCode' : IDL.Nat,
   'endsAt' : IDL.Int,
@@ -651,6 +653,7 @@ export const idlFactory = ({ IDL }) => {
     'minPayoutE8s' : IDL.Nat,
     'withdrawMinE8s' : IDL.Nat,
     'closeWindowNs' : IDL.Nat,
+    'spender' : IDL.Text,
     'stakeMinE8s' : IDL.Nat,
     'realLedger' : IDL.Bool,
   });
@@ -705,6 +708,7 @@ export const idlFactory = ({ IDL }) => {
     'top10Entry' : IDL.Nat,
     'pendingPayout' : IDL.Nat,
     'pendingWithdrawal' : IDL.Nat,
+    'pendingLoad' : IDL.Nat,
     'paused' : IDL.Bool,
     'pauseCode' : IDL.Nat,
     'endsAt' : IDL.Int,
