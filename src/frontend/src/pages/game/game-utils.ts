@@ -135,15 +135,15 @@ export const STAKE_LABELS = ["Min", "Mid", "Max"];
 export function pauseMessage(code: bigint | number | undefined): string {
   switch (Number(code ?? 0)) {
     case 1:
-      return "Maintenance break: new excavations are paused. An excavation in progress can still be finished.";
+      return "Maintenance break: new excavations and loads are paused. An excavation in progress can still be finished, and you can withdraw your balance.";
     case 2:
       return "Bets are paused for a safety check. Excavations that can be saved were saved.";
-    case 3:
-      return "The prizes of the last tournament are being paid. The next one starts soon.";
     case 4:
       return "The game is not ready yet. Try again later.";
     case 6:
-      return "The next tournament has not started yet. It starts soon.";
+      return "The next tournament starts in a few minutes, after the review of the last one. Your balance stays in the game.";
+    case 7:
+      return "The game is being closed: your balance will be sent to your wallet.";
     default:
       return "Bets are paused. Try again later.";
   }
