@@ -3,7 +3,7 @@ import type { Identity } from "@icp-sdk/core/agent";
 /** Sign-in length for players, and for the game admin. */
 export const PLAYER_SESSION_MS = 7 * 24 * 60 * 60 * 1000;
 export const ADMIN_SESSION_MS = 8 * 60 * 60 * 1000;
-/** A session a little longer than the admin one (clock drift, a few minutes of use) is still accepted. */
+/** Small tolerance over the admin session length. */
 const ADMIN_SESSION_MARGIN_MS = 10 * 60 * 1000;
 
 export const msToNs = (ms: number): bigint => BigInt(ms) * 1_000_000n;
@@ -36,9 +36,8 @@ export function sessionTooLongForAdmin(
 }
 
 /**
- * The address players authorize is the one the game tells in its config, but only if it is the
- * canister this page was built to talk to. A query answer is not certified, so a forged one
- * could point the player's authorization at someone else.
+ * The address players authorize comes from the game config. It is used only if it matches the
+ * canister this page talks to.
  */
 export function trustedSpender(
   claimed: string | undefined,
