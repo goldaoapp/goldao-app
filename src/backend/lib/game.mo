@@ -69,10 +69,6 @@ module {
   public let EXC_CHANGED_MSG : Text = "Your excavation changed (another tab or device?). Reload the board and try again.";
   // Rejected loads (no funds, no allowance) allowed per account in one window. Each one reaches
   // the ledger, so an account that keeps failing is cut off until the window ends.
-  // An unconfirmed load is retried by the timer once a minute, at most this many times each and
-  // this many loads per run. After that the player can still repeat it by hand until it expires.
-  public let LOAD_RETRY_MAX : Nat = 60;
-  public let LOAD_RETRY_BATCH : Nat = 10;
   public let LOAD_REJECT_MAX : Nat = 5;
   public let LOAD_REJECT_WINDOW_NS : Int = 60_000_000_000;
   // Most accounts tracked at once by the rejected-load counter (expired ones are dropped first).
