@@ -18,18 +18,11 @@ import {
   panelHeader,
   prizeName,
 } from "./game-utils";
-import {
-  LIVE_RTP_MIN_POOL,
-  LONG_RUN_RTP_TEXT,
-  diamondChances,
-  liveRtpPct,
-} from "./rtp";
+import { RTP_RANGE_TEXT, diamondChances } from "./rtp";
 
 interface Props {
   config: GameConfig | undefined;
   stakes: bigint[] | undefined;
-  /** Current jackpot pool (e8s), used for the live RTP. */
-  pool: bigint | undefined;
 }
 
 /** Chance (%) of reaching `picks` safe picks: the first two are free. */
@@ -39,7 +32,7 @@ function reachPct(picks: number, cells: number, mines: number, safe: number) {
   return p * 100;
 }
 
-export function PrizeGuide({ config, stakes, pool }: Props) {
+export function PrizeGuide({ config, stakes }: Props) {
   if (!config) {
     return (
       <div className={cn(panel, "flex justify-center p-8")}>
@@ -53,7 +46,9 @@ export function PrizeGuide({ config, stakes, pool }: Props) {
   const pts = config.pointsTable.map(Number);
   const bps = Number(config.payoutBps);
   const miniPct = Number(config.miniBps) / 100;
-  const showLiveRtp = pool !== undefined && pool > LIVE_RTP_MIN_POOL;
+  const closeMinutes = Math.round(
+    Number(config.closeWindowNs) / 60_000_000_000,
+  );
   const oneIn = (chance: number) =>
     Math.round(1 / chance).toLocaleString("en-US");
 
@@ -83,16 +78,22 @@ export function PrizeGuide({ config, stakes, pool }: Props) {
             collapses you keep GOLDAO secured, about half of your stake or more,
             shown in the If it collapses column; the rest of the stake is
             deducted. The stake leaves your Accumulated prize at your first
-            pick. If the excavation cannot start, or the tournament closes
-            before your third pick, it goes back to your Accumulated prize. The
-            wallet is only touched when you load balance, and each load pays the{" "}
-            {fmtGoldao(config.feeE8s)} GOLDAO network fee.
+            pick. If the excavation cannot start, it goes back to your
+            Accumulated prize. If you leave an excavation open when a tournament
+            ends, you have {closeMinutes} minutes to finish it: after that it is
+            saved if you reached the third pick and lost otherwise. The wallet
+            is only touched when you load balance or withdraw, and each load
+            pays the {fmtGoldao(config.feeE8s)} GOLDAO network fee.
           </p>
           <p>
             When the tournament closes, your Accumulated prize is paid to your
             wallet if it is at least {fmtGoldao(config.minPayoutE8s)} GOLDAO
             (the payment costs the network fee). Smaller balances stay in your
-            Accumulated prize for the next tournament.
+            Accumulated prize for the next tournament. While a tournament is
+            running you can also withdraw at any time (at least{" "}
+            {fmtGoldao(config.withdrawMinE8s)} GOLDAO; the network fee comes out
+            of it). Withdrawals are not available between the end of a
+            tournament and its payout.
           </p>
           <p>
             Top 10: {Number(config.top10Bps) / 100}% of every stake goes to a
@@ -102,33 +103,21 @@ export function PrizeGuide({ config, stakes, pool }: Props) {
             pool, from first to tenth). You need at least{" "}
             {fmtGoldao(config.top10MinVolumeE8s)} GOLDAO staked to qualify; the
             shares nobody qualifies for stay in the pool for the next
-            tournament. Your place shows next to your Accumulated prize.
+            tournament. Ties are broken by more excavations, then the deepest
+            pick, then fewer collapses, then the higher net result. Your place
+            shows next to your Accumulated prize.
           </p>
           <div className="mt-2 flex flex-col gap-2 border-t border-[color:var(--term-border-faint)] pt-4">
             <span className={cn(eyebrow, gold)}>RTP</span>
             <p>
               <span className={cn("font-mono text-lg font-semibold", ink)}>
-                RTP: {LONG_RUN_RTP_TEXT}
+                RTP: {RTP_RANGE_TEXT}
               </span>
               <br />
-              Return to player: on average, about 98.5 GOLDAO come back for
-              every 100 GOLDAO staked, counting the jackpots. It is an average
-              over many excavations and jackpot pool sizes.
+              Return to player. Based on thousands of simulations with different
+              jackpots: ~98.5% is the average, and the return rises with the
+              jackpot pool.
             </p>
-            {showLiveRtp && pool !== undefined && (
-              <p>
-                <span className={cn("font-mono text-lg font-semibold", gold)}>
-                  Live RTP: {liveRtpPct(config, pool).toFixed(1)}%
-                </span>
-                <br />
-                The jackpot pool is above {fmtGoldao(LIVE_RTP_MIN_POOL)} GOLDAO
-                ({fmtGoldao(pool)} now), so the return of your next excavation
-                is above average. It counts the prizes, the Top 10 share and the
-                part of the pool that two or three diamonds pay, for a player
-                who saves between pick 3 and pick 10, and it changes as the pool
-                changes.
-              </p>
-            )}
           </div>
         </div>
       </div>
