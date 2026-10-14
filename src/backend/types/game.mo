@@ -55,8 +55,7 @@ module {
     top10Prize : Nat;
   };
 
-  // txId is the ledger block index of the payment (null while pending, and in test mode).
-  // uncertain: a payment attempt got no answer from the ledger, so it may have been executed.
+  // Kept only because the saved state has it. The game no longer creates payouts.
   public type Payout = {
     id : Nat;
     tournament : Nat;
@@ -244,7 +243,6 @@ module {
     pauseCode : Nat;
     stakes : [Nat];
     credit : Nat;
-    pendingPayout : Nat;
     /** Credit taken by a withdrawal that is not settled yet (0 when there is none). */
     pendingWithdrawal : Nat;
     /** A load the ledger has not confirmed yet (0 when there is none). */
@@ -343,7 +341,6 @@ module {
     loadMin : Nat;
     loadMax : Nat;
     creditCapE8s : Nat;
-    minPayoutE8s : Nat;
     withdrawMinE8s : Nat;
     closeWindowNs : Nat;
     /** Account that players authorize to load (the game canister), empty until connected. */
@@ -366,10 +363,12 @@ module {
     owed : Nat;
     toCollect : Nat;
     toCollectPlayers : Nat;
+    /** Balances at or below the network fee: they cannot be sent and stay in the bank. */
     smallBalances : Nat;
     smallPlayers : Nat;
     heldJackpots : Nat;
-    unpaidPayouts : Nat;
+    /** Loads the ledger has not confirmed yet. */
+    pendingLoads : Nat;
     pendingWithdrawals : Nat;
     withdrawals : [WithdrawalView];
     pool : Nat;
@@ -384,7 +383,6 @@ module {
     staked : Nat;
     bankAccount : ?Principal;
     selfId : ?Principal;
-    payouts : [Payout];
     lastClose : ?TournamentSummary;
   };
 };
