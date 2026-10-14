@@ -7,9 +7,11 @@ import {
   fetchWalletBalance,
 } from "@/lib/goldao-ledger";
 import { useInternetIdentity } from "@/lib/internet-identity";
+import { trustedSpender } from "@/lib/session";
 import { useQuery } from "@tanstack/react-query";
 import { useCallback } from "react";
 import { AUTHORIZE_DAYS, AUTHORIZE_GOLDAO } from "./game-utils";
+import { usePageCanister } from "./usePageCanister";
 
 const E8S = 100_000_000n;
 
@@ -22,8 +24,10 @@ export function useWallet(config: GameConfig | undefined) {
   const { identity } = useInternetIdentity();
   const ledgerId = config?.ledgerId;
 
-  // The game's own account, told by the game itself. Empty only if it is not ready.
-  const spender = config?.spender ?? "";
+  // The game's own account, told by the game itself. It is used only if it is the canister this
+  // page is talking to: an answer from a query is not certified and could be forged.
+  const pageCanister = usePageCanister();
+  const spender = trustedSpender(config?.spender, pageCanister.data);
 
   const ledger = useQuery({
     queryKey: ["game", "wallet", principalId, spender, ledgerId],
@@ -81,6 +85,6 @@ export function useWallet(config: GameConfig | undefined) {
     expiresAtMs,
     ensureAllowance,
     revoke,
-    spenderMissing: !!config && !spender,
+    spenderMissing: !!config && !pageCanister.isLoading && !spender,
   };
 }
