@@ -353,8 +353,8 @@ export function WalletPanel({ dashboard, config }: Props) {
           <div className="flex flex-wrap items-center gap-2">
             <span className={cn("font-mono text-[11px]", inkFaint)}>
               Your load of {fmtGoldao(waitingLoad)} {tokenName} is waiting for
-              the ledger. The game keeps checking; you will not be charged
-              twice.
+              the ledger. Press Confirm load to finish it: you will not be
+              charged twice.
             </span>
             <Button
               size="sm"
