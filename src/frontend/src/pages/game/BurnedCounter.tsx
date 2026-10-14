@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { fmtGoldao, inkFaint, toGoldao } from "./game-utils";
 
 /**
- * Public counter of all GOLDAO burned by the game (fees of loads, payouts and
+ * Public counter of all GOLDAO burned by the game (fees of loads and
  * withdrawals). When the number grows it counts up and the flame flares.
  */
 export function BurnedCounter({ value }: { value: bigint }) {
@@ -46,7 +46,7 @@ export function BurnedCounter({ value }: { value: bigint }) {
   return (
     <div
       className="relative flex shrink-0 items-center gap-2 whitespace-nowrap px-1"
-      title="All GOLDAO burned by the game: fees of loads, payouts and withdrawals"
+      title="All GOLDAO burned by the game: fees of loads and withdrawals"
     >
       <motion.span
         key={gain?.id ?? "idle"}
