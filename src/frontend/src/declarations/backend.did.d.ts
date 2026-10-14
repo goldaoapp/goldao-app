@@ -73,6 +73,7 @@ export interface Dashboard {
   'top10Entry' : bigint,
   'pendingPayout' : bigint,
   'pendingWithdrawal' : bigint,
+  'pendingLoad' : bigint,
   'paused' : boolean,
   'pauseCode' : bigint,
   'endsAt' : bigint,
@@ -151,6 +152,7 @@ export interface GameConfig {
   'minPayoutE8s' : bigint,
   'withdrawMinE8s' : bigint,
   'closeWindowNs' : bigint,
+  'spender' : string,
   'stakeMinE8s' : bigint,
   'realLedger' : boolean,
 }
