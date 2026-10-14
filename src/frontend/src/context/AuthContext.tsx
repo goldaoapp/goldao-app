@@ -23,6 +23,10 @@ interface AuthContextValue {
   principalId: string | null;
   actor: Backend | null;
   login: (options?: { identityProvider?: string }) => void;
+  /** Admin of the game: sign in again for 8 hours (call from a click). */
+  renewShort: () => void;
+  /** End of the current sign-in (ms), or null when it cannot be read. */
+  sessionEndsAt: number | null;
   logout: () => void;
   /** Re-lee isCallerAdmin/getCallerUserRole (p.ej. tras asignarse un rol) */
   refresh: () => Promise<void>;
@@ -36,6 +40,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     isInitializing,
     isLoggingIn,
     login,
+    renewShort,
+    sessionEndsAt,
     clear,
     identity,
   } = useInternetIdentity();
@@ -125,6 +131,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         principalId,
         actor,
         login,
+        renewShort,
+        sessionEndsAt,
         logout,
         refresh,
       }}
