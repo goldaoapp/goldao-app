@@ -18,7 +18,8 @@ module {
   public let STAKE_CAP : Nat = 100_000_000_000;
   public let STAKE_STEP : Nat = 10_000_000_000;
   public let MID_STEP : Nat = 1_000_000_000;
-  public let MAX_STAKE_BPS : Nat = 50;
+  // Highest stake as a share of the cushion above FUND_FLOOR, in basis points.
+  public let MAX_STAKE_BPS : Nat = 100;
   public let PAYOUT_BPS : Nat = 9_250;
   public let POOL_BPS : Nat = 250;
   public let RESERVE_BPS : Nat = 250;
@@ -30,7 +31,7 @@ module {
   public let POOL_SEED_MAX : Nat = 2_000_000_000_000;
   public let RESERVE_CAP : Nat = 2_000_000_000_000;
   public let FUND_FLOOR : Nat = 9_000_000_000_000;
-  public let FUND_TARGET : Nat = 22_000_000_000_000;
+  public let FUND_TARGET : Nat = 30_000_000_000_000;
   public let DIAMOND1_BPS : Nat = 200;
   // Diamond chain, rolled on every safe pick. One diamond pays nothing, two diamonds pay the mini
   // jackpot (MINI_BPS of the pool) and three diamonds pay the whole pool.
@@ -221,7 +222,7 @@ module {
 
   public func stakes(f : Int) : [Nat] {
     if (f < FUND_FLOOR) return [];
-    let raw = Int.abs(f) * MAX_STAKE_BPS / 10_000;
+    let raw = Int.abs(f - FUND_FLOOR) * MAX_STAKE_BPS / 10_000;
     let max = Nat.min(STAKE_CAP, Nat.max(STAKE_MIN, raw / STAKE_STEP * STAKE_STEP));
     let mid = ((STAKE_MIN + max) / 2 + MID_STEP / 2) / MID_STEP * MID_STEP;
     [STAKE_MIN, mid, max];
