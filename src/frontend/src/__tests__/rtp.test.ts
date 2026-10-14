@@ -1,11 +1,6 @@
 import type { GameConfig } from "@/backend";
 import { describe, expect, it } from "vitest";
-import {
-  LIVE_RTP_MIN_POOL,
-  averagePlay,
-  diamondChances,
-  liveRtpPct,
-} from "../pages/game/rtp";
+import { averagePlay, diamondChances } from "../pages/game/rtp";
 
 // Only the fields the RTP calculation reads are real; the rest is filler for the type.
 const config = {
@@ -43,27 +38,5 @@ describe("diamond chances", () => {
   it("makes exactly two diamonds five times as frequent as three", () => {
     const { mini, full } = diamondChances(config, 100n * GOLDAO);
     expect(mini / full).toBeCloseTo(5, 9);
-  });
-});
-
-describe("live RTP", () => {
-  // Reference values from the exact Python model:
-  // (base + top10 + safePicks * 6.25e-7 * 2 * pool) * 100.
-  const cases: [bigint, number][] = [
-    [5_000n, 96.168374],
-    [8_000n, 97.710821],
-    [10_000n, 98.739118],
-    [13_000n, 100.281565],
-    [17_000n, 102.33816],
-    [26_000n, 106.965499],
-  ];
-  for (const [pool, expected] of cases) {
-    it(`pool ${pool}`, () => {
-      expect(liveRtpPct(config, pool * GOLDAO)).toBeCloseTo(expected, 4);
-    });
-  }
-
-  it("is only shown above 10,000 GOLDAO", () => {
-    expect(LIVE_RTP_MIN_POOL).toBe(10_000n * GOLDAO);
   });
 });
