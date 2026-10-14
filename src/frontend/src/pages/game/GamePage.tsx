@@ -2,6 +2,7 @@ import { PageHeader } from "@/components/common";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/context/AuthContext";
+import { sessionTooLongForAdmin } from "@/lib/session";
 import { cn } from "@/lib/utils";
 import { Link } from "@tanstack/react-router";
 import {
@@ -16,6 +17,7 @@ import {
 import { motion } from "motion/react";
 import { type ReactNode, useState } from "react";
 import { AdminGamePanel } from "./AdminGamePanel";
+import { AdminSessionLock } from "./AdminSessionLock";
 import { BurnedCounter } from "./BurnedCounter";
 import { GameStatus } from "./GameStatus";
 import { JackpotNotice } from "./JackpotNotice";
@@ -38,12 +40,22 @@ import {
  * Gold mine game — /gamefi/mine.
  */
 export default function GamePage() {
-  const { actor, isAuthenticated, isLoading, login } = useAuth();
+  const {
+    actor,
+    isAuthenticated,
+    isLoading,
+    login,
+    renewShort,
+    sessionEndsAt,
+  } = useAuth();
   const configQuery = useGameConfig();
   const summaryQuery = useSummary();
   const { data: adminView } = useAdminView(isAuthenticated);
 
   const isAdmin = !!adminView;
+  // The admin works with a short sign-in only (see lib/session.ts).
+  const sessionTooLong =
+    isAdmin && sessionTooLongForAdmin(sessionEndsAt, Date.now());
   // Admins land on the admin tab; an admin view that arrives late still wins.
   const [picked, setPicked] = useState<string | null>(null);
   const tab = picked ?? (isAdmin ? "admin" : "mine");
@@ -200,7 +212,11 @@ export default function GamePage() {
         {adminView && (
           <TabsContent value="admin">
             <Fade>
-              <AdminGamePanel view={adminView} />
+              {sessionTooLong ? (
+                <AdminSessionLock onRenew={renewShort} busy={isLoading} />
+              ) : (
+                <AdminGamePanel view={adminView} />
+              )}
             </Fade>
           </TabsContent>
         )}
