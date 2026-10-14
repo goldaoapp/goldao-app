@@ -24,8 +24,8 @@ export function useWallet(config: GameConfig | undefined) {
   const { identity } = useInternetIdentity();
   const ledgerId = config?.ledgerId;
 
-  // The game's own account, told by the game itself. It is used only if it is the canister this
-  // page is talking to: an answer from a query is not certified and could be forged.
+  // The game account comes from the game config. It is used only if it matches the canister this
+  // page talks to.
   const pageCanister = usePageCanister();
   const spender = trustedSpender(config?.spender, pageCanister.data);
 
