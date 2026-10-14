@@ -10,12 +10,6 @@ import type { ActorMethod } from '@icp-sdk/core/agent';
 import type { IDL } from '@icp-sdk/core/candid';
 import type { Principal } from '@icp-sdk/core/principal';
 
-export interface WithdrawalView {
-  'player' : Principal,
-  'amount' : bigint,
-  'at' : bigint,
-  'expired' : boolean,
-}
 export interface AdminView {
   'durationDays' : bigint,
   'staked' : bigint,
@@ -24,6 +18,7 @@ export interface AdminView {
   'smallBalances' : bigint,
   'toCollect' : bigint,
   'bankAccount' : [] | [Principal],
+  'pendingWithdrawals' : bigint,
   'bank' : bigint,
   'fund' : bigint,
   'owed' : bigint,
@@ -32,6 +27,7 @@ export interface AdminView {
   'reserve' : bigint,
   'selfId' : [] | [Principal],
   'cycles' : bigint,
+  'withdrawals' : Array<WithdrawalView>,
   'lastClose' : [] | [TournamentSummary],
   'withdrawable' : bigint,
   'smallPlayers' : bigint,
@@ -39,11 +35,8 @@ export interface AdminView {
   'heldJackpots' : bigint,
   'toCollectPlayers' : bigint,
   'realLedger' : boolean,
-  'payouts' : Array<Payout>,
   'paused' : boolean,
-  'unpaidPayouts' : bigint,
-  'pendingWithdrawals' : bigint,
-  'withdrawals' : Array<WithdrawalView>,
+  'pendingLoads' : bigint,
   'endsAt' : bigint,
 }
 export interface AutoResult {
@@ -63,6 +56,8 @@ export interface Dashboard {
   'top10Rank' : bigint,
   'stakes' : Array<bigint>,
   'top10Prize' : bigint,
+  'pendingWithdrawal' : bigint,
+  'pauseCode' : bigint,
   'open' : [] | [ExcavationView],
   'pool' : bigint,
   'tournament' : bigint,
@@ -70,12 +65,9 @@ export interface Dashboard {
   'credit' : bigint,
   'stats' : TournamentStats,
   'bestReturn' : bigint,
-  'top10Entry' : bigint,
-  'pendingPayout' : bigint,
-  'pendingWithdrawal' : bigint,
   'pendingLoad' : bigint,
+  'top10Entry' : bigint,
   'paused' : boolean,
-  'pauseCode' : bigint,
   'endsAt' : bigint,
 }
 export interface DiamondResult { 'won' : bigint, 'stage' : bigint }
@@ -145,26 +137,25 @@ export interface GameConfig {
   'maxPicks' : bigint,
   'diamond3Odds' : bigint,
   'top10MinVolumeE8s' : bigint,
+  'closeWindowNs' : bigint,
   'poolSeedMaxE8s' : bigint,
   'poolSeedE8s' : bigint,
   'payoutBps' : bigint,
   'safePicks' : bigint,
-  'minPayoutE8s' : bigint,
-  'withdrawMinE8s' : bigint,
-  'closeWindowNs' : bigint,
-  'spender' : string,
   'stakeMinE8s' : bigint,
+  'withdrawMinE8s' : bigint,
   'realLedger' : boolean,
+  'spender' : string,
 }
 export interface GameSummary {
   'top10Pool' : bigint,
   'staked' : bigint,
+  'stakes' : Array<bigint>,
   'totalPlayers' : bigint,
+  'pauseCode' : bigint,
   'pool' : bigint,
   'tournament' : bigint,
   'paused' : boolean,
-  'pauseCode' : bigint,
-  'stakes' : Array<bigint>,
   'endsAt' : bigint,
 }
 export interface JackpotWin {
@@ -184,17 +175,6 @@ export interface PastResult {
   'credit' : bigint,
   'returned' : bigint,
   'payout' : bigint,
-}
-export interface Payout {
-  'id' : bigint,
-  'to' : Principal,
-  'paid' : boolean,
-  'txId' : [] | [bigint],
-  'tournament' : bigint,
-  'uncertain' : boolean,
-  'stamp' : bigint,
-  'amount' : bigint,
-  'paidAt' : bigint,
 }
 export interface PickResult {
   'end' : [] | [EndResult],
@@ -236,7 +216,7 @@ export type Result = { 'ok' : bigint } |
 export type Result_1 = { 'ok' : EndResult } |
   { 'err' : string };
 export type Result_10 = {
-    'ok' : { 'paid' : bigint, 'remaining' : bigint, 'failed' : bigint }
+    'ok' : { 'sent' : bigint, 'remaining' : bigint, 'failed' : bigint }
   } |
   { 'err' : string };
 export type Result_11 = { 'ok' : boolean } |
@@ -256,10 +236,6 @@ export type Result_5 = { 'ok' : null } |
 export type Result_6 = { 'ok' : SecurityLogView } |
   { 'err' : string };
 export type Result_7 = { 'ok' : SecurityView } |
-  { 'err' : string };
-export type Result_8 = { 'ok' : Array<Payout> } |
-  { 'err' : string };
-export type Result_9 = { 'ok' : [] | [bigint] } |
   { 'err' : string };
 export interface Result__1 { 'hasMore' : boolean, 'rows' : Array<Array<Cell>> }
 export interface SecurityDay {
@@ -349,6 +325,12 @@ export type Value = { 'int' : bigint } |
   { 'text' : string };
 export type WithdrawKind = { 'all' : null } |
   { 'available' : null };
+export interface WithdrawalView {
+  'at' : bigint,
+  'expired' : boolean,
+  'player' : Principal,
+  'amount' : bigint,
+}
 export interface _SERVICE {
   '_initialize_access_control' : ActorMethod<[], undefined>,
   '_internet_identity_sign_in_finish' : ActorMethod<[], Result_13>,
@@ -359,17 +341,13 @@ export interface _SERVICE {
   'execute' : ActorMethod<[string], Result__1>,
   'gameAdminAckAccounting' : ActorMethod<[], Result_5>,
   'gameAdminChangeLedger' : ActorMethod<[], Result>,
-  'gameAdminCloseAll' : ActorMethod<[], Result_5>,
   'gameAdminCloseOpen' : ActorMethod<[], Result>,
-  'gameAdminStartTournament' : ActorMethod<[], Result_5>,
   'gameAdminCloseTournament' : ActorMethod<[], Result_5>,
+  'gameAdminEvacSend' : ActorMethod<[], Result_10>,
+  'gameAdminEvacStart' : ActorMethod<[], Result_5>,
   'gameAdminEnsureConnected' : ActorMethod<[], Result_11>,
   'gameAdminHalt' : ActorMethod<[], Result_5>,
   'gameAdminLedgerBalance' : ActorMethod<[Principal], Result>,
-  'gameAdminMarkPaid' : ActorMethod<[bigint, bigint], Result_5>,
-  'gameAdminPay' : ActorMethod<[bigint], Result_10>,
-  'gameAdminPayOne' : ActorMethod<[bigint, boolean], Result_9>,
-  'gameAdminPayouts' : ActorMethod<[bigint], Result_8>,
   'gameAdminRefreshBank' : ActorMethod<[], Result>,
   'gameAdminReleaseBusy' : ActorMethod<[Principal], Result_5>,
   'gameAdminResolveWithdrawal' : ActorMethod<[Principal, boolean], Result_5>,
@@ -378,6 +356,7 @@ export interface _SERVICE {
   'gameAdminSecurityLog' : ActorMethod<[bigint], Result_6>,
   'gameAdminSeedPool' : ActorMethod<[bigint], Result>,
   'gameAdminSetDuration' : ActorMethod<[bigint], Result_5>,
+  'gameAdminStartTournament' : ActorMethod<[], Result_5>,
   'gameAdminView' : ActorMethod<[], Result_4>,
   'gameAdminWithdraw' : ActorMethod<[WithdrawKind], Result>,
   'gameAuto' : ActorMethod<[StakeOption, bigint, bigint], Result_3>,
