@@ -87,8 +87,8 @@ export function PlayerDashboard({ dashboard }: Props) {
         <dl className="grid grid-cols-2 gap-4 p-5 font-mono text-xs sm:grid-cols-3">
           <Item label="Accumulated prize" value={fmtGoldao(dashboard.credit)} />
           <Item
-            label="Pending payout"
-            value={fmtGoldao(dashboard.pendingPayout)}
+            label="Withdrawal in progress"
+            value={fmtGoldao(dashboard.pendingWithdrawal)}
           />
           <Item label="Jackpot pool" value={fmtGoldao(dashboard.pool)} />
         </dl>
@@ -111,7 +111,9 @@ export function PlayerDashboard({ dashboard }: Props) {
                   <th className="px-3 py-2 font-medium">Excavations</th>
                   <th className="px-3 py-2 font-medium">Volume</th>
                   <th className="px-3 py-2 font-medium">Net result</th>
-                  <th className="px-5 py-2 text-right font-medium">Paid out</th>
+                  <th className="px-5 py-2 text-right font-medium">
+                    Balance at close
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -131,7 +133,7 @@ export function PlayerDashboard({ dashboard }: Props) {
                     <td
                       className={cn("px-5 py-2.5 text-right tabular-nums", ink)}
                     >
-                      {fmtGoldao(h.payout)}
+                      {fmtGoldao(h.credit)}
                     </td>
                   </tr>
                 ))}
