@@ -802,9 +802,9 @@ export function MineBoard({ dashboard }: Props) {
       </div>
 
       <p className={cn("text-center font-mono text-[11px]", inkFaint)}>
-        Your stake leaves your Accumulated prize when you start digging. Every
-        prize shown includes your stake, and the balance is paid when the
-        tournament closes.
+        Your stake leaves your Accumulated prize at your first pick. Every prize
+        shown includes your stake. The balance is paid when the tournament
+        closes, and you can withdraw it before that.
       </p>
     </div>
   );
