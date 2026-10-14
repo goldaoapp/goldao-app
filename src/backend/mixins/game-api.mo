@@ -176,22 +176,18 @@ mixin (
     Game.fund(gameState.bank, gameState.owed, gameState.pool, gameState.reserve, gameState.cycles, gameState.top10);
   };
 
-  // Top-10 ranking by volume staked in the current tournament. Ties go to the lower principal.
-  func gBetter(a : (Principal, Nat), b : (Principal, Nat)) : Bool {
-    Ranking.better(a, b);
-  };
-
-  func gTopList() : [(Principal, Nat)] {
+  // Top-10 ranking by volume staked in the current tournament. Ties are settled by Ranking.better.
+  func gTopList() : [(Principal, Ranking.Key)] {
     let n = Game.TOP10_WEIGHTS.size();
-    var top : [(Principal, Nat)] = [];
+    var top : [(Principal, Ranking.Key)] = [];
     for ((p, s) in gameState.stats.entries()) {
       if (s.staked > 0) {
-        let cand = (p, s.staked);
-        if (top.size() < n or gBetter(cand, top[top.size() - 1])) {
+        let cand = (p, Ranking.keyOf(s));
+        if (top.size() < n or Ranking.better(cand, top[top.size() - 1])) {
           let next = Array.sort(
             Array.concat(top, [cand]),
-            func(a : (Principal, Nat), b : (Principal, Nat)) : { #less; #equal; #greater } {
-              if (gBetter(a, b)) #less else if (gBetter(b, a)) #greater else #equal;
+            func(a : (Principal, Ranking.Key), b : (Principal, Ranking.Key)) : { #less; #equal; #greater } {
+              if (Ranking.better(a, b)) #less else if (Ranking.better(b, a)) #greater else #equal;
             },
           );
           top := if (next.size() > n) Array.sliceToArray(next, 0, n) else next;
@@ -202,11 +198,13 @@ mixin (
   };
 
   func gRankOf(p : Principal) : Nat {
-    let mine = gStats(p).staked;
-    if (mine == 0) return 0;
+    let mine = gStats(p);
+    if (mine.staked == 0) return 0;
+    let me = (p, Ranking.keyOf(mine));
     var rank = 1;
     for ((q, s) in gameState.stats.entries()) {
-      if (q != p and gBetter((q, s.staked), (p, mine))) rank += 1;
+      // A smaller volume can never rank above: skip it before building the key.
+      if (q != p and s.staked >= mine.staked and Ranking.better((q, Ranking.keyOf(s)), me)) rank += 1;
     };
     rank;
   };
@@ -214,7 +212,7 @@ mixin (
   func gTopEntry() : Nat {
     let top = gTopList();
     let n = Game.TOP10_WEIGHTS.size();
-    if (top.size() < n) Game.TOP10_MIN_VOLUME else Nat.max(Game.TOP10_MIN_VOLUME, top[n - 1].1);
+    if (top.size() < n) Game.TOP10_MIN_VOLUME else Nat.max(Game.TOP10_MIN_VOLUME, top[n - 1].1.staked);
   };
 
   func gStakes() : [Nat] { Game.stakes(gFund()) };
@@ -415,8 +413,7 @@ mixin (
   func gWatchBank() : async () {
     if (gWatching or not gameState.realLedger) return;
     gWatching := true;
-    ignore await lBankRefreshWith(false);
-    gWatching := false;
+    try { ignore await lBankRefreshWith(false) } finally { gWatching := false };
   };
 
   // The only place that sends GOLDAO out of or into the bank through the ledger. Null means
@@ -786,7 +783,8 @@ mixin (
     var topPaid = 0;
     let topWinners = List.empty<Types.TopPrize>();
     var rank = 1;
-    for ((p, volume) in gTopList().values()) {
+    for ((p, key) in gTopList().values()) {
+      let volume = key.staked;
       let prize = Game.top10Prize(bucket, rank, volume);
       if (prize > 0) {
         gameState.credits.add(p, gCredit(p) + prize);
@@ -1614,10 +1612,10 @@ mixin (
 
   // One row per player with stats this tournament, in no particular order. pos, rank and prize are
   // filled in by Ranking.byVolume.
-  func gPlayerRows() : [Types.PlayerRow] {
-    let rows = List.empty<Types.PlayerRow>();
+  func gPlayerRows() : [(Types.PlayerRow, Ranking.Key)] {
+    let rows = List.empty<(Types.PlayerRow, Ranking.Key)>();
     for ((p, s) in gameState.stats.entries()) {
-      rows.add({
+      rows.add(({
         player = p;
         pos = 0;
         excavations = s.excavations;
@@ -1628,7 +1626,7 @@ mixin (
         bestReturn = switch (gameState.best.get(p)) { case (?v) v; case null 0 };
         rank = 0;
         prize = 0;
-      });
+      }, Ranking.keyOf(s)));
     };
     rows.toArray();
   };
@@ -1846,11 +1844,16 @@ mixin (
     gameState.payingSince := 0;
   };
 
+  // One entry per day for all the payouts sent (with a counter), so that a big close never fills the
+  // log and hides critical events. Each payout stays listed in the payouts themselves.
   func gPayLogLine(id : Nat, to : Principal, amount : Nat, txId : ?Nat) {
-    gLogAction(
+    SecLog.record(
+      gameState.securityLog,
+      Time.now(),
+      #info,
       "payout_sent",
       "Payout sent",
-      "Payout #" # Nat.toText(id) # ": " # SecLog.fmt(amount) # " GOLDAO to " # Principal.toText(to) # (switch (txId) { case (?t) ", ledger transaction " # Nat.toText(t); case null "" }) # ".",
+      "Last payout #" # Nat.toText(id) # ": " # SecLog.fmt(amount) # " GOLDAO to " # Principal.toText(to) # (switch (txId) { case (?t) ", ledger transaction " # Nat.toText(t); case null "" }) # ".",
     );
   };
 
