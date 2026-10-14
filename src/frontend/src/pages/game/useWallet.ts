@@ -57,8 +57,11 @@ export function useWallet(config: GameConfig | undefined) {
       if (funds < need + GOLDAO_FEE_E8S) {
         throw new Error("Insufficient GOLDAO in your wallet.");
       }
-      if (!identity || !spender) {
-        throw new Error("Sign in again to continue.");
+      if (!identity) throw new Error("Sign in again to continue.");
+      if (!spender) {
+        throw new Error(
+          "The game address could not be verified. Reload the page.",
+        );
       }
       await approveSpender(
         identity,
@@ -74,7 +77,12 @@ export function useWallet(config: GameConfig | undefined) {
 
   /** Takes the authorization back. The player can authorize again at any time. */
   const revoke = useCallback(async (): Promise<void> => {
-    if (!identity || !spender) throw new Error("Sign in again to continue.");
+    if (!identity) throw new Error("Sign in again to continue.");
+    if (!spender) {
+      throw new Error(
+        "The game address could not be verified. Reload the page.",
+      );
+    }
     await approveSpender(identity, spender, 0n, undefined, ledgerId);
     await ledger.refetch();
   }, [ledger, identity, spender, ledgerId]);
