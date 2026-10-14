@@ -1,4 +1,4 @@
-import { type AdminView, type Payout, WithdrawKind } from "@/backend";
+import { type AdminView, WithdrawKind } from "@/backend";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/context/AuthContext";
 import { GOLDAO_FEE_E8S, fetchWalletBalance } from "@/lib/goldao-ledger";
@@ -10,7 +10,6 @@ import { useState } from "react";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { CopyField } from "./CopyField";
 import { ModeStatusCard } from "./ModeStatusCard";
-import { PayoutLogPanel } from "./PayoutLogPanel";
 import { SecurityLogPanel } from "./SecurityLogPanel";
 import { Spinner } from "./Spinner";
 import {
@@ -41,6 +40,8 @@ const HALT_TEXT: Record<number, string> = {
   4: "unexplained bank withdrawal",
   5: "fund drop",
   6: "ledger fee changed",
+  7: "game being closed",
+  8: "tournament review failed",
 };
 
 const E8S = 100_000_000n;
@@ -69,7 +70,6 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
   const { run, pending } = useGameAction();
   const { data: security } = useSecurityView(!!view);
   const { data: config } = useGameConfig();
-  const minPayout = config ? fmtGoldao(config.minPayoutE8s) : "-";
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [ask, setAsk] = useState<Ask | null>(null);
   const [days, setDays] = useState("");
@@ -92,9 +92,6 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
     enabled: !!bankAddr && !!config?.ledgerId,
     refetchInterval: 15_000,
   });
-
-  const unpaid = view?.payouts.filter((p) => !p.paid) ?? [];
-  const unpaidTotal = view?.unpaidPayouts ?? 0n;
 
   // Every action goes through here: one at a time, result always shown.
   const act = async <T,>(
@@ -126,6 +123,8 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
   };
 
   const halted = !!security?.halted;
+  // Evacuation is a full pause with halt code 7.
+  const evacuating = halted && security?.haltCode === 7n;
   const bank = view?.bank ?? 0n;
   const availableOut = (() => {
     if (!view) return 0n;
@@ -146,41 +145,49 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
 
   const allBlockers: string[] = [];
   if (view) {
-    if (!halted) allBlockers.push("pause new excavations first");
+    if (!evacuating) allBlockers.push("start the evacuation first");
     if (view.owed > 0n)
       allBlockers.push(
-        "players still hold an Accumulated prize or unpaid prizes (use Close and pay everything, then Pay pending)",
+        "players still hold balances (send them with the evacuation first)",
       );
-    if (unpaid.length > 0) allBlockers.push("pending payouts must be paid");
+    if (view.pendingLoads > 0n)
+      allBlockers.push("a load is still waiting for the ledger");
     if (bank <= GOLDAO_FEE_E8S) allBlockers.push("the bank is empty");
   }
 
-  // Every batch of 20 back to back.
-  const payNow = async () => {
+  // Sends the balances in batches until none is left, or until a batch sends nothing.
+  const evacSend = async () => {
     if (!actor || working) return;
     setMsg(null);
     setBusy(true);
-    let paid = 0;
+    let sent = 0;
     let failed = 0;
-    let remaining = unpaid.length;
+    let remaining = 0;
     try {
       for (let i = 0; i < 500; i++) {
-        const r = await run("pay", () => actor.gameAdminPay(20n), false);
-        paid += Number(r.paid);
-        failed += Number(r.failed);
+        const r = await run(
+          "evac-send",
+          () => actor.gameAdminEvacSend(),
+          false,
+        );
+        sent += Number(r.sent);
+        failed = Number(r.failed);
         remaining = Number(r.remaining);
-        if (remaining === 0 || r.paid === 0n) break;
+        if (remaining === 0 || r.sent === 0n) break;
       }
       setMsg({
-        ok: failed === 0 && remaining === 0,
-        text: `Paid ${paid}, failed ${failed}, remaining ${remaining}.`,
+        ok: remaining === 0,
+        text:
+          remaining === 0
+            ? `All balances sent (${sent} in this run).`
+            : `Sent ${sent}, not sent yet ${failed}, remaining ${remaining}. Press the button again.`,
       });
     } catch (e) {
       setMsg({
         ok: false,
         text:
-          paid > 0
-            ? `Paid ${paid} before an error: ${errorMessage(e)}`
+          sent > 0
+            ? `Sent ${sent} before an error: ${errorMessage(e)}`
             : errorMessage(e),
       });
     } finally {
@@ -189,72 +196,21 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
     }
   };
 
-  // One payout.
-  const payOne = async (p: Payout, renew: boolean) => {
-    if (!actor || working) return;
-    setMsg(null);
-    setBusy(true);
-    try {
-      const tx = await run(
-        "pay-one",
-        () => actor.gameAdminPayOne(p.id, renew),
-        "all",
-      );
-      setMsg({
-        ok: true,
-        text:
-          tx !== undefined
-            ? `Paid ${fmtGoldao(p.amount)} GOLDAO. Ledger transaction ${tx}.`
-            : `Paid ${fmtGoldao(p.amount)} GOLDAO (test mode, no ledger transaction).`,
-      });
-    } catch (e) {
-      setMsg({ ok: false, text: errorMessage(e) });
-    } finally {
-      await queryClient.invalidateQueries({ queryKey: ["game"] });
-      setBusy(false);
-    }
-  };
-
-  // The next `n` smallest pending payouts: the backend picks them, smallest first.
-  const payNext = async (n: number) => {
-    if (!actor || working) return;
-    setMsg(null);
-    setBusy(true);
-    try {
-      const r = await run("pay", () => actor.gameAdminPay(BigInt(n)), "all");
-      setMsg({
-        ok: r.failed === 0n,
-        text: `Paid ${Number(r.paid)}, failed ${Number(r.failed)}, remaining ${Number(r.remaining)}.`,
-      });
-    } catch (e) {
-      setMsg({ ok: false, text: errorMessage(e) });
-    } finally {
-      await queryClient.invalidateQueries({ queryKey: ["game"] });
-      setBusy(false);
-    }
-  };
-
-  const markPaid = (p: Payout, txId: bigint) =>
-    act(
-      "mark-paid",
-      () => actor!.gameAdminMarkPaid(p.id, txId),
-      () => `Recorded as paid with transaction ${txId}.`,
-    );
-
   return (
     <div className="flex flex-col gap-6">
       {view?.paused && (
         <div className="rounded-lg border border-destructive/50 bg-destructive/10 px-4 py-3 font-mono text-xs text-destructive">
-          Bets are paused:{" "}
-          {view.stakes.length === 0
-            ? "the bank fund is below its floor."
-            : "play was halted."}
+          {evacuating
+            ? "The game is being closed: loads, plays and withdrawals are stopped until the balances are sent or the evacuation is cancelled."
+            : view.stakes.length === 0
+              ? "Bets are paused: the bank fund is below its floor."
+              : "Bets are paused: play was halted."}
         </div>
       )}
       {connected && view && !bankReady && (
         <div className="rounded-lg border border-destructive/50 bg-destructive/10 px-4 py-3 font-mono text-xs text-destructive">
           The bank is not in the game account yet, so the game moves no money.
-          Pause new excavations, close the tournament and pay everything, send
+          Start the evacuation, send every balance and withdraw everything, send
           the GOLDAO to the game account address shown under Funds, then use
           Change ledger.
         </div>
@@ -347,23 +303,24 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
               value={fmtGoldao(view.toCollect)}
             />
             <Item
-              label="Pending payouts (with fees)"
-              value={fmtGoldao(view.unpaidPayouts)}
+              label="Pending withdrawals"
+              value={fmtGoldao(view.pendingWithdrawals)}
             />
             <Item
               label="Jackpots in play"
               value={fmtGoldao(view.heldJackpots)}
             />
             <Item
-              label={`Under ${minPayout} (${Number(view.smallPlayers)} players)`}
+              label={`At or under the fee (${Number(view.smallPlayers)} players)`}
               value={fmtGoldao(view.smallBalances)}
             />
           </dl>
           <p className={cn("px-5 pb-5 font-mono text-[11px]", inkFaint)}>
-            Owed = Accumulated prize + pending payouts + jackpots in play. The
-            last figure is already inside Accumulated prize: balances under the
-            minimum are not paid at a normal close and carry over to the next
-            tournament.
+            Owed = Accumulated prize + pending withdrawals + the stakes and
+            jackpots of excavations in play. Balances stay in the game until
+            their owner withdraws them. The last figure is already inside
+            Accumulated prize: balances at or under the network fee cannot be
+            withdrawn and are written off in an evacuation.
           </p>
         </div>
       )}
@@ -454,7 +411,8 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
                     act(
                       "withdraw",
                       () => actor!.gameAdminWithdraw(WithdrawKind.available),
-                      (v) => `Done. Bank is now ${fmtGoldao(v)}.`,
+                      (v) =>
+                        `Done. Sent ${fmtGoldao(v)} GOLDAO to the treasury.`,
                     ),
                 })
               }
@@ -485,7 +443,8 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
                     act(
                       "withdraw-all",
                       () => actor!.gameAdminWithdraw(WithdrawKind.all),
-                      (v) => `Done. Bank is now ${fmtGoldao(v)}.`,
+                      (v) =>
+                        `Done. Sent ${fmtGoldao(v)} GOLDAO to the treasury.`,
                     ),
                 })
               }
@@ -565,7 +524,7 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
             title="Start tournament"
             hint={
               view?.endsAt === 0n
-                ? "The next tournament is waiting. Start it once the payouts of the previous one are paid."
+                ? "The next tournament is waiting. It starts by itself after the review of the previous one, or start it now."
                 : "Not available: a tournament is already running."
             }
           >
@@ -586,7 +545,7 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
 
           <Row
             title="Close tournament"
-            hint={`Ends it now, without the closing window: open excavations are saved from the third pick and the others get their stake back. Accumulated prize balances of at least ${minPayout} GOLDAO become payouts; smaller ones stay for the next tournament.`}
+            hint="Ends it now, without the closing window or the review: open excavations are saved from the third pick and the others get their stake back. The Top 10 prize is added to the winners' balances. Balances stay in the game, and the next tournament waits for Start."
           >
             <Button
               variant="outline"
@@ -595,7 +554,7 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
                 confirmThen({
                   title: "Close the current tournament now?",
                   detail:
-                    "It cannot be undone. Large Accumulated prize balances become pending payouts.",
+                    "It cannot be undone. The Top 10 prize is added to the winners' balances; nothing is paid out.",
                   word: "CLOSE",
                   go: () =>
                     act(
@@ -611,41 +570,10 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
           </Row>
 
           <Row
-            title="Close and pay everything"
-            hint={
-              halted
-                ? "Pays every Accumulated prize balance, small ones included. Each payment costs the network fee, taken from the player's balance. Use it before withdrawing everything."
-                : "Not available: pause new excavations first."
-            }
-          >
-            <Button
-              variant="outline"
-              className="border-destructive/50 text-destructive"
-              disabled={working || !halted}
-              onClick={() =>
-                confirmThen({
-                  title: "Close the tournament and pay everything?",
-                  detail:
-                    "Every Accumulated prize balance becomes a payout, whatever its size. Each payout costs the network fee, taken from the player's balance.",
-                  word: "CLOSE ALL",
-                  go: () =>
-                    act(
-                      "close-all",
-                      () => actor!.gameAdminCloseAll(),
-                      () => "Closed. Pay the pending payouts next.",
-                    ),
-                })
-              }
-            >
-              Close and pay everything
-            </Button>
-          </Row>
-
-          <Row
             title="Close open excavations"
             hint={
               halted
-                ? "Ends every excavation in progress without closing the tournament. Saved ones are paid, the ones still on their free picks get their stake back."
+                ? "Ends every excavation in progress without closing the tournament. Saved ones are settled, the ones still on their free picks get their stake back."
                 : "Not available: pause new excavations first."
             }
           >
@@ -668,30 +596,6 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
               }
             >
               Close open excavations
-            </Button>
-          </Row>
-
-          <Row
-            title="Pay pending"
-            hint={
-              unpaid.length === 0
-                ? "Nothing to pay."
-                : `${fmtGoldao(unpaidTotal)} GOLDAO pending including fees. They are sent automatically, 20 per minute, smallest first; a payout with an uncertain answer is never retried by itself. Use this button for those or to speed things up.`
-            }
-          >
-            <Button
-              disabled={working || unpaid.length === 0}
-              className="gradient-primary text-primary-foreground"
-              onClick={() =>
-                confirmThen({
-                  title: `Pay all pending payouts (${fmtGoldao(unpaidTotal)} GOLDAO)?`,
-                  detail:
-                    "Funds leave the game account to the players. Keep this page open until it finishes.",
-                  go: payNow,
-                })
-              }
-            >
-              Pay pending ({unpaid.length})
             </Button>
           </Row>
 
@@ -726,6 +630,113 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
           </Row>
         </div>
       </div>
+
+      {view && (
+        <div className={panel}>
+          <div className={panelHeader}>
+            <span className={cn(eyebrow, gold, "flex items-center gap-2")}>
+              <Shield className="size-3.5" /> Evacuation
+            </span>
+            <span
+              className={cn(
+                "font-mono text-[11px]",
+                evacuating ? "text-destructive" : inkFaint,
+              )}
+            >
+              {evacuating ? "Active" : "Not active"}
+            </span>
+          </div>
+          <div className="flex flex-col gap-5 p-5">
+            <span className={cn("font-mono text-[11px]", inkFaint)}>
+              To empty the bank (an update, say): 1. Start the evacuation, which
+              stops loads, plays and withdrawals. 2. Close the tournament. 3.
+              Send the balances to their owners; repeat until none is left.
+              Balances at or under the network fee stay in the bank. 4. Withdraw
+              everything to the treasury. Only the bank admin can do these
+              steps.
+            </span>
+            <Row
+              title="Start evacuation"
+              hint={
+                evacuating
+                  ? "The evacuation is active."
+                  : "Stops the game completely. Cancel it any time before the final withdrawal."
+              }
+            >
+              <Button
+                variant="outline"
+                className="border-destructive/50 text-destructive"
+                disabled={working || evacuating}
+                onClick={() =>
+                  confirmThen({
+                    title: "Start the evacuation?",
+                    detail:
+                      "Players cannot load, play or withdraw until it is cancelled or finished.",
+                    word: "EVACUATE",
+                    go: () =>
+                      act(
+                        "evac-start",
+                        () => actor!.gameAdminEvacStart(),
+                        () => "Evacuation started.",
+                      ),
+                  })
+                }
+              >
+                Start evacuation
+              </Button>
+            </Row>
+            <Row
+              title="Send balances"
+              hint={
+                !evacuating
+                  ? "Not available: start the evacuation first."
+                  : view.endsAt !== 0n
+                    ? "Not available: close the tournament first."
+                    : `${Number(view.toCollectPlayers) - Number(view.smallPlayers)} balances to send, ${Number(view.smallPlayers)} at or under the fee (${fmtGoldao(view.smallBalances)} GOLDAO, they stay in the bank), ${view.withdrawals.length} withdrawals waiting, ${Number(view.pendingLoads)} loads waiting.`
+              }
+            >
+              <Button
+                className="gradient-primary text-primary-foreground"
+                disabled={working || !evacuating || view.endsAt !== 0n}
+                onClick={() =>
+                  confirmThen({
+                    title: "Send the balances to their owners?",
+                    detail:
+                      "Each player's balance goes to their own wallet, minus the network fee. Keep this page open until it finishes.",
+                    go: evacSend,
+                  })
+                }
+              >
+                Send balances
+              </Button>
+            </Row>
+            <Row
+              title="Cancel evacuation"
+              hint="Opens the game again. Balances already sent stay sent."
+            >
+              <Button
+                variant="outline"
+                disabled={working || !evacuating}
+                onClick={() =>
+                  confirmThen({
+                    title: "Cancel the evacuation?",
+                    detail:
+                      "The game opens again. The next tournament waits for Start.",
+                    go: () =>
+                      act(
+                        "evac-cancel",
+                        () => actor!.gameAdminResume(),
+                        () => "Evacuation cancelled.",
+                      ),
+                  })
+                }
+              >
+                Cancel evacuation
+              </Button>
+            </Row>
+          </div>
+        </div>
+      )}
 
       {security && (
         <div className={panel}>
@@ -796,7 +807,7 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
               >
                 {security.accountingOk && security.saturations === 0n
                   ? "Accounting OK"
-                  : `Accounting check failed (${Number(security.saturations)}). Payments blocked.`}
+                  : `Accounting check failed (${Number(security.saturations)}). Withdrawals blocked.`}
               </span>
               {security.accountingOk && security.saturations > 0n && (
                 <Button
@@ -937,45 +948,8 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
               label="Of which mini"
               value={`${Number(view.lastClose.minis)} · ${fmtGoldao(view.lastClose.miniPaid)}`}
             />
-            <Item
-              label="Payouts"
-              value={fmtGoldao(view.lastClose.payoutTotal)}
-            />
           </dl>
         </div>
-      )}
-
-      {view && view.payouts.length > 0 && (
-        <PayoutLogPanel
-          view={view}
-          working={working}
-          onPayOne={(p, renew) =>
-            renew
-              ? confirmThen({
-                  title: "Renew this payout?",
-                  detail:
-                    "Only if you checked in the ledger that it was NOT sent. A new timestamp is assigned and the next payment sends it for real.",
-                  word: "RENEW",
-                  go: () => payOne(p, true),
-                })
-              : void payOne(p, false)
-          }
-          onPayNext={(n) =>
-            confirmThen({
-              title: `Pay the next ${n} payouts?`,
-              detail:
-                "Smallest first. Funds leave the admin wallet to the players. Keep this page open until it finishes.",
-              go: () => payNext(n),
-            })
-          }
-          onMarkPaid={(p, txId) =>
-            confirmThen({
-              title: `Mark as paid with transaction ${txId}?`,
-              detail: `${shortPrincipal(p.to.toText())} · ${fmtGoldao(p.amount)} GOLDAO. Only if you saw this transaction in the ledger.`,
-              go: () => markPaid(p, txId),
-            })
-          }
-        />
       )}
 
       {ask && (
