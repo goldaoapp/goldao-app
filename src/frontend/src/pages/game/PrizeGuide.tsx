@@ -1,6 +1,7 @@
 import type { GameConfig } from "@/backend";
 import { cn } from "@/lib/utils";
 import { BookOpen, Gem, Mountain } from "lucide-react";
+import type { ReactNode } from "react";
 import { Spinner } from "./Spinner";
 import {
   DIAMOND_TEXT,
@@ -30,6 +31,15 @@ function reachPct(picks: number, cells: number, mines: number, safe: number) {
   let p = 1;
   for (let n = safe; n < picks; n++) p *= 1 - mines / (cells - n);
   return p * 100;
+}
+
+function Step({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <div className="flex flex-col gap-1 sm:flex-row sm:gap-4">
+      <span className={cn("shrink-0 font-semibold sm:w-36", ink)}>{title}</span>
+      <p>{children}</p>
+    </div>
+  );
 }
 
 export function PrizeGuide({ config, stakes }: Props) {
@@ -64,57 +74,52 @@ export function PrizeGuide({ config, stakes }: Props) {
             <BookOpen className="size-3.5" /> How it works
           </span>
         </div>
-        <div className={cn("flex flex-col gap-3 p-5 text-sm", inkMid)}>
-          <p>
-            Choose a stake and dig. The board has {cells} cells and {mines} of
-            them collapse the mine. The first {safe} picks are always safe. From
-            the third pick you can save: you receive{" "}
-            <span className={ink}>your stake x the multiplier</span> shown
-            below.
-          </p>
-          <p>
-            Before digging, load balance from your wallet into your Accumulated
-            prize. Every stake comes out of it: wins are added, and if the mine
-            collapses you keep GOLDAO secured, about half of your stake or more,
-            shown in the If it collapses column; the rest of the stake is
-            deducted. The stake leaves your Accumulated prize at your first
-            pick. If the excavation cannot start, it goes back to your
-            Accumulated prize. If you leave an excavation open when a tournament
-            ends, you have {closeMinutes} minutes to finish it: after that it is
-            saved if you reached the third pick and lost otherwise. The wallet
-            is only touched when you load balance or withdraw, and each load
-            pays the {fmtGoldao(config.feeE8s)} GOLDAO network fee.
-          </p>
-          <p>
-            Your Accumulated prize stays in the game, from one tournament to the
-            next, until you withdraw it. You can withdraw at any time (at least{" "}
-            {fmtGoldao(config.withdrawMinE8s)} GOLDAO; the network fee comes out
-            of it), except for the few minutes while a tournament closes, while
-            the game is paused for a safety check, and while the game is being
-            closed (then every balance is sent to its wallet).
-          </p>
-          <p>
-            Top 10: {Number(config.top10Bps) / 100}% of every stake goes to a
-            prize pool added to the Accumulated prize of the ten players with
-            the most volume staked (
+        <div className={cn("flex flex-col gap-4 p-5 text-sm", inkMid)}>
+          <Step title="Dig">
+            Pick cells on a board of {cells}. {mines} of them collapse the
+            mine. The first {safe} picks are always safe. From pick {safe + 1}{" "}
+            you can save and receive{" "}
+            <span className={ink}>your stake x the multiplier</span> (see the
+            table below).
+          </Step>
+          <Step title="Accumulated prize">
+            Load balance from your wallet first ({fmtGoldao(config.feeE8s)}{" "}
+            GOLDAO network fee per load). Each stake is taken from it at your
+            first pick and wins are added back. It stays in the game between
+            tournaments until you withdraw. If an excavation cannot start, the
+            stake is returned.
+          </Step>
+          <Step title="If it collapses">
+            You keep part of your stake secured, about half or more (see the
+            collapse column below). The rest is lost.
+          </Step>
+          <Step title="Tournament end">
+            An open excavation has {closeMinutes} minutes to finish. After
+            that it is saved if you reached pick {safe + 1}, and lost otherwise.
+          </Step>
+          <Step title="Withdraw">
+            Any time, minimum {fmtGoldao(config.withdrawMinE8s)} GOLDAO (the
+            network fee comes out of it). Not available while a tournament
+            closes or during a safety pause. If the game closes, every balance
+            is sent back to its wallet.
+          </Step>
+          <Step title="Top 10">
+            {Number(config.top10Bps) / 100}% of every stake goes to a prize
+            pool for the ten players with the most volume staked (
             {config.top10Weights.map((w) => `${Number(w)}%`).join(", ")} of the
-            pool, from first to tenth). You need at least{" "}
-            {fmtGoldao(config.top10MinVolumeE8s)} GOLDAO staked to qualify; the
-            shares nobody qualifies for stay in the pool for the next
-            tournament. Ties are broken by more excavations, then the deepest
-            pick, then fewer collapses, then the higher net result. Your place
-            shows next to your Accumulated prize.
-          </p>
-          <div className="mt-2 flex flex-col gap-2 border-t border-[color:var(--term-border-faint)] pt-4">
+            pool, first to tenth). Minimum {fmtGoldao(config.top10MinVolumeE8s)}{" "}
+            GOLDAO staked to qualify. Unclaimed shares roll over to the next
+            tournament. Ties: more excavations, then deepest pick, then fewer
+            collapses, then higher net result.
+          </Step>
+          <div className="mt-2 flex flex-col gap-1 border-t border-[color:var(--term-border-faint)] pt-4">
             <span className={cn(eyebrow, gold)}>RTP</span>
+            <span className={cn("font-mono text-lg font-semibold", ink)}>
+              {RTP_RANGE_TEXT}
+            </span>
             <p>
-              <span className={cn("font-mono text-lg font-semibold", ink)}>
-                RTP: {RTP_RANGE_TEXT}
-              </span>
-              <br />
-              Return to player. Based on thousands of simulations with different
-              jackpots: ~98.5% is the average, and the return rises with the
-              jackpot pool.
+              Average return to players, based on thousands of simulations:
+              ~98.5%, rising with the jackpot pool.
             </p>
           </div>
         </div>
