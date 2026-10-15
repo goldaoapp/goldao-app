@@ -149,6 +149,33 @@ export const AdminView = IDL.Record({
   'pendingLoads' : IDL.Nat,
   'endsAt' : IDL.Int,
 });
+export const TransferKind = IDL.Variant({
+  'loaded' : IDL.Null,
+  'loadUnanswered' : IDL.Null,
+  'loadForgotten' : IDL.Null,
+  'withdrawn' : IDL.Null,
+  'withdrawUnanswered' : IDL.Null,
+  'withdrawSettled' : IDL.Null,
+  'withdrawRefunded' : IDL.Null,
+});
+export const TransferEntry = IDL.Record({
+  'id' : IDL.Nat,
+  'at' : IDL.Int,
+  'kind' : TransferKind,
+  'player' : IDL.Principal,
+  'amount' : IDL.Nat,
+  'txId' : IDL.Opt(IDL.Nat),
+});
+export const PlayerInfo = IDL.Record({
+  'credit' : IDL.Nat,
+  'stake' : IDL.Nat,
+  'held' : IDL.Nat,
+  'pendingLoad' : IDL.Nat,
+  'pendingWithdrawal' : IDL.Nat,
+  'entries' : IDL.Vec(TransferEntry),
+});
+export const Result_14 = IDL.Variant({ 'ok' : PlayerInfo, 'err' : IDL.Text });
+export const Result_15 = IDL.Variant({ 'ok' : IDL.Vec(TransferEntry), 'err' : IDL.Text });
 export const Result_4 = IDL.Variant({ 'ok' : AdminView, 'err' : IDL.Text });
 export const WithdrawKind = IDL.Variant({
   'all' : IDL.Null,
@@ -367,6 +394,8 @@ export const idlService = IDL.Service({
   'gameAdminEnsureConnected' : IDL.Func([], [Result_11], []),
   'gameAdminHalt' : IDL.Func([], [Result_5], []),
   'gameAdminLedgerBalance' : IDL.Func([IDL.Principal], [Result], []),
+  'gameAdminTransferLog' : IDL.Func([], [Result_15], ['query']),
+  'gameAdminPlayerInfo' : IDL.Func([IDL.Principal], [Result_14], ['query']),
   'gameAdminEvacSend' : IDL.Func([], [Result_10], []),
   'gameAdminEvacStart' : IDL.Func([], [Result_5], []),
   'gameAdminRefreshBank' : IDL.Func([], [Result], []),
@@ -555,6 +584,33 @@ export const idlFactory = ({ IDL }) => {
     'pendingLoads' : IDL.Nat,
     'endsAt' : IDL.Int,
   });
+  const TransferKind = IDL.Variant({
+    'loaded' : IDL.Null,
+    'loadUnanswered' : IDL.Null,
+    'loadForgotten' : IDL.Null,
+    'withdrawn' : IDL.Null,
+    'withdrawUnanswered' : IDL.Null,
+    'withdrawSettled' : IDL.Null,
+    'withdrawRefunded' : IDL.Null,
+  });
+  const TransferEntry = IDL.Record({
+    'id' : IDL.Nat,
+    'at' : IDL.Int,
+    'kind' : TransferKind,
+    'player' : IDL.Principal,
+    'amount' : IDL.Nat,
+    'txId' : IDL.Opt(IDL.Nat),
+  });
+  const PlayerInfo = IDL.Record({
+    'credit' : IDL.Nat,
+    'stake' : IDL.Nat,
+    'held' : IDL.Nat,
+    'pendingLoad' : IDL.Nat,
+    'pendingWithdrawal' : IDL.Nat,
+    'entries' : IDL.Vec(TransferEntry),
+  });
+  const Result_14 = IDL.Variant({ 'ok' : PlayerInfo, 'err' : IDL.Text });
+  const Result_15 = IDL.Variant({ 'ok' : IDL.Vec(TransferEntry), 'err' : IDL.Text });
   const Result_4 = IDL.Variant({ 'ok' : AdminView, 'err' : IDL.Text });
   const WithdrawKind = IDL.Variant({
     'all' : IDL.Null,
@@ -773,6 +829,8 @@ export const idlFactory = ({ IDL }) => {
     'gameAdminEnsureConnected' : IDL.Func([], [Result_11], []),
     'gameAdminHalt' : IDL.Func([], [Result_5], []),
     'gameAdminLedgerBalance' : IDL.Func([IDL.Principal], [Result], []),
+    'gameAdminTransferLog' : IDL.Func([], [Result_15], ['query']),
+    'gameAdminPlayerInfo' : IDL.Func([IDL.Principal], [Result_14], ['query']),
     'gameAdminEvacSend' : IDL.Func([], [Result_10], []),
     'gameAdminEvacStart' : IDL.Func([], [Result_5], []),
     'gameAdminRefreshBank' : IDL.Func([], [Result], []),
