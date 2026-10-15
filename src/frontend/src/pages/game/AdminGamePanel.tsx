@@ -212,8 +212,8 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
         <div className="rounded-lg border border-destructive/50 bg-destructive/10 px-4 py-3 font-mono text-xs text-destructive">
           The bank is not in the game account yet, so the game moves no money.
           Start the evacuation, send every balance and withdraw everything, send
-          the GOLDAO to the game account address shown under Funds, then use
-          Change ledger.
+          the GOLDAO to the game account address shown under Funds, then delete
+          the game data so the game connects again.
         </div>
       )}
       <ModeStatusCard view={view} config={config} />
@@ -349,7 +349,7 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
             label={
               connected && bankReady
                 ? "Game account address (the bank): send GOLDAO here to fund the game"
-                : "Game account address: it becomes the bank when you change the ledger"
+                : "Game account address: it becomes the bank when the game connects"
             }
             value={
               selfText ??
