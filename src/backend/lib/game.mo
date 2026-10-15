@@ -101,24 +101,25 @@ module {
   "nxdvu-ipwv3-xgadl-ws3fw-ply6m-vf5st-nd5mq-4hv5c-nzvgc-o6swr-oae",
   ];
 
-  // The bank admin of each deployment, by game canister id. It is the only account that can
-  // change the ledger. The game connects to the ledger by itself only when its own canister id
-  // is in this list; anywhere else it stays disconnected. The funds themselves are kept in the
-  // account of the game canister. Internet Identity gives a different principal per login
-  // origin, so each deployment has its own bank admin.
+  // The bank admin of each deployment. The production canister has its own bank admin, listed
+  // here by canister id. Every other canister (the test canister changes with each deployment)
+  // uses TEST_BANK. The bank admin is the only account that can change the ledger. The funds
+  // themselves are kept in the account of the game canister. Internet Identity gives a
+  // different principal per login origin, so production and test have different bank admins.
   public let BANKS : [(Text, Text)] = [
-    // Draft (test) backend canister.
-    ("cohf5-6aaaa-aaaaa-qajya-cai", "nxdvu-ipwv3-xgadl-ws3fw-ply6m-vf5st-nd5mq-4hv5c-nzvgc-o6swr-oae"),
     // Production backend canister.
     ("epksw-wiaaa-aaaad-agwna-cai", "o4k5k-q4hdh-hmf4x-qnqbw-m53ao-c4u6t-6vyft-ejkie-iepjy-ziitc-3ae"),
   ];
+
+  // Bank admin of every canister that is not in BANKS.
+  public let TEST_BANK : Text = "nxdvu-ipwv3-xgadl-ws3fw-ply6m-vf5st-nd5mq-4hv5c-nzvgc-o6swr-oae";
 
   public func bankFor(game : Principal) : ?Principal {
     let t = Principal.toText(game);
     for ((id, bank) in BANKS.values()) {
       if (id == t) return ?Principal.fromText(bank);
     };
-    null;
+    ?Principal.fromText(TEST_BANK);
   };
 
   public let TREASURY : Text = "mkbc4-kaq3u-voc2z-j7yut-xgc3h-2gcgd-hfuzl-ss6uo-4q5q7-egfp4-qqe";
