@@ -181,6 +181,36 @@ export interface GameSummary {
     paused: boolean;
     endsAt: bigint;
 }
+export interface TransferEntry {
+    id: bigint;
+    at: bigint;
+    kind: TransferKind;
+    player: Principal;
+    amount: bigint;
+    txId?: bigint;
+}
+export interface PlayerInfo {
+    credit: bigint;
+    stake: bigint;
+    held: bigint;
+    pendingLoad: bigint;
+    pendingWithdrawal: bigint;
+    entries: Array<TransferEntry>;
+}
+export type Result_14 = {
+    __kind__: "ok";
+    ok: PlayerInfo;
+} | {
+    __kind__: "err";
+    err: string;
+};
+export type Result_15 = {
+    __kind__: "ok";
+    ok: Array<TransferEntry>;
+} | {
+    __kind__: "err";
+    err: string;
+};
 export interface JackpotWin {
     at: bigint;
     player: Principal;
@@ -411,6 +441,15 @@ export type Value = {
     __kind__: "text";
     text: string;
 };
+export enum TransferKind {
+    loaded = "loaded",
+    loadUnanswered = "loadUnanswered",
+    loadForgotten = "loadForgotten",
+    withdrawn = "withdrawn",
+    withdrawUnanswered = "withdrawUnanswered",
+    withdrawSettled = "withdrawSettled",
+    withdrawRefunded = "withdrawRefunded"
+}
 export enum EndKind {
     maxed = "maxed",
     collapsed = "collapsed",
@@ -457,6 +496,8 @@ export interface backendInterface {
     gameAdminHalt(): Promise<Result_5>;
     gameAdminLedgerAllowance(who: Principal, spender: Principal): Promise<Result>;
     gameAdminLedgerBalance(who: Principal): Promise<Result>;
+    gameAdminTransferLog(): Promise<Result_15>;
+    gameAdminPlayerInfo(player: Principal): Promise<Result_14>;
     gameAdminRefreshBank(): Promise<Result>;
     gameAdminReleaseBusy(player: Principal): Promise<Result_5>;
     gameAdminResume(): Promise<Result_5>;
