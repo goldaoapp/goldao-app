@@ -233,6 +233,36 @@ export interface GameSummary {
     paused: boolean;
     endsAt: bigint;
 }
+export interface TransferEntry {
+    id: bigint;
+    at: bigint;
+    kind: TransferKind;
+    player: Principal;
+    amount: bigint;
+    txId?: bigint;
+}
+export interface PlayerInfo {
+    credit: bigint;
+    stake: bigint;
+    held: bigint;
+    pendingLoad: bigint;
+    pendingWithdrawal: bigint;
+    entries: Array<TransferEntry>;
+}
+export type Result_14 = {
+    __kind__: "ok";
+    ok: PlayerInfo;
+} | {
+    __kind__: "err";
+    err: string;
+};
+export type Result_15 = {
+    __kind__: "ok";
+    ok: Array<TransferEntry>;
+} | {
+    __kind__: "err";
+    err: string;
+};
 export interface JackpotWin {
     at: bigint;
     player: Principal;
@@ -469,6 +499,15 @@ export interface WithdrawalView {
     player: Principal;
     amount: bigint;
 }
+export enum TransferKind {
+    loaded = "loaded",
+    loadUnanswered = "loadUnanswered",
+    loadForgotten = "loadForgotten",
+    withdrawn = "withdrawn",
+    withdrawUnanswered = "withdrawUnanswered",
+    withdrawSettled = "withdrawSettled",
+    withdrawRefunded = "withdrawRefunded"
+}
 export enum EndKind {
     maxed = "maxed",
     collapsed = "collapsed",
@@ -516,6 +555,8 @@ export interface backendInterface {
     gameAdminEnsureConnected(): Promise<Result_11>;
     gameAdminHalt(): Promise<Result_5>;
     gameAdminLedgerBalance(who: Principal): Promise<Result>;
+    gameAdminTransferLog(): Promise<Result_15>;
+    gameAdminPlayerInfo(player: Principal): Promise<Result_14>;
     gameAdminRefreshBank(): Promise<Result>;
     gameAdminReleaseBusy(player: Principal): Promise<Result_5>;
     gameAdminResolveWithdrawal(player: Principal, sent: boolean): Promise<Result_5>;
@@ -557,7 +598,7 @@ export interface backendInterface {
     testFaucetConfig(): Promise<FaucetConfig>;
     whoAmI(): Promise<string>;
 }
-import type { AdminView as _AdminView, AutoResult as _AutoResult, AutoStep as _AutoStep, Cell as _Cell, Dashboard as _Dashboard, DiamondResult as _DiamondResult, EndKind as _EndKind, EndResult as _EndResult, Error as _Error, ExcavationView as _ExcavationView, JackpotWin as _JackpotWin, PastResult as _PastResult, PickResult as _PickResult, PlayerRow as _PlayerRow, RankingPage as _RankingPage, RankingSort as _RankingSort, Result as _Result, Result_1 as _Result_1, Result_10 as _Result_10, Result_11 as _Result_11, Result_12 as _Result_12, Result_13 as _Result_13, Result_2 as _Result_2, Result_3 as _Result_3, Result_4 as _Result_4, Result_5 as _Result_5, Result_6 as _Result_6, Result_7 as _Result_7, Result__1 as _Result__1, SecurityDay as _SecurityDay, SecurityEvent as _SecurityEvent, SecurityLevel as _SecurityLevel, SecurityLogView as _SecurityLogView, SecurityView as _SecurityView, StakeOption as _StakeOption, TopPrize as _TopPrize, TournamentStats as _TournamentStats, TournamentSummary as _TournamentSummary, UserRole as _UserRole, Value as _Value, WithdrawKind as _WithdrawKind, WithdrawalView as _WithdrawalView } from "./declarations/backend.did.d.ts";
+import type { AdminView as _AdminView, AutoResult as _AutoResult, AutoStep as _AutoStep, Cell as _Cell, Dashboard as _Dashboard, DiamondResult as _DiamondResult, EndKind as _EndKind, EndResult as _EndResult, Error as _Error, ExcavationView as _ExcavationView, JackpotWin as _JackpotWin, TransferEntry as _TransferEntry, TransferKind as _TransferKind, PastResult as _PastResult, PickResult as _PickResult, PlayerInfo as _PlayerInfo, PlayerRow as _PlayerRow, RankingPage as _RankingPage, RankingSort as _RankingSort, Result as _Result, Result_1 as _Result_1, Result_10 as _Result_10, Result_11 as _Result_11, Result_12 as _Result_12, Result_13 as _Result_13, Result_14 as _Result_14, Result_15 as _Result_15, Result_2 as _Result_2, Result_3 as _Result_3, Result_4 as _Result_4, Result_5 as _Result_5, Result_6 as _Result_6, Result_7 as _Result_7, Result__1 as _Result__1, SecurityDay as _SecurityDay, SecurityEvent as _SecurityEvent, SecurityLevel as _SecurityLevel, SecurityLogView as _SecurityLogView, SecurityView as _SecurityView, StakeOption as _StakeOption, TopPrize as _TopPrize, TournamentStats as _TournamentStats, TournamentSummary as _TournamentSummary, UserRole as _UserRole, Value as _Value, WithdrawKind as _WithdrawKind, WithdrawalView as _WithdrawalView } from "./declarations/backend.did.d.ts";
 export class Backend implements backendInterface {
     constructor(private actor: ActorSubclass<_SERVICE>, private _uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, private _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, private processError?: (error: unknown) => never){}
     async _initialize_access_control(): Promise<void> {
@@ -838,6 +879,34 @@ export class Backend implements backendInterface {
         } else {
             const result = await this.actor.gameAdminResume();
             return from_candid_Result_5_n19(this._uploadFile, this._downloadFile, result);
+        }
+    }
+    async gameAdminTransferLog(): Promise<Result_15> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.gameAdminTransferLog();
+                return from_candid_Result_15_n201(this._uploadFile, this._downloadFile, result);
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.gameAdminTransferLog();
+            return from_candid_Result_15_n201(this._uploadFile, this._downloadFile, result);
+        }
+    }
+    async gameAdminPlayerInfo(arg0: Principal): Promise<Result_14> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.gameAdminPlayerInfo(arg0);
+                return from_candid_Result_14_n203(this._uploadFile, this._downloadFile, result);
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.gameAdminPlayerInfo(arg0);
+            return from_candid_Result_14_n203(this._uploadFile, this._downloadFile, result);
         }
     }
     async gameAdminSecurity(): Promise<Result_7> {
@@ -1266,6 +1335,47 @@ function from_candid_Result_1_n74(_uploadFile: (file: ExternalBlob) => Promise<U
 }
 function from_candid_Result_2_n64(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _Result_2): Result_2 {
     return from_candid_variant_n65(_uploadFile, _downloadFile, value);
+}
+function from_candid_TransferKind_n200(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _TransferKind): TransferKind {
+    return "loaded" in value ? TransferKind.loaded : "loadUnanswered" in value ? TransferKind.loadUnanswered : "loadForgotten" in value ? TransferKind.loadForgotten : "withdrawn" in value ? TransferKind.withdrawn : "withdrawUnanswered" in value ? TransferKind.withdrawUnanswered : "withdrawSettled" in value ? TransferKind.withdrawSettled : "withdrawRefunded" in value ? TransferKind.withdrawRefunded : value;
+}
+function from_candid_TransferEntry_n205(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _TransferEntry): TransferEntry {
+    return {
+        id: value.id,
+        at: value.at,
+        kind: from_candid_TransferKind_n200(_uploadFile, _downloadFile, value.kind),
+        player: value.player,
+        amount: value.amount,
+        txId: record_opt_to_undefined(from_candid_opt_n29(_uploadFile, _downloadFile, value.txId))
+    };
+}
+function from_candid_PlayerInfo_n204(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _PlayerInfo): PlayerInfo {
+    return {
+        credit: value.credit,
+        stake: value.stake,
+        held: value.held,
+        pendingLoad: value.pendingLoad,
+        pendingWithdrawal: value.pendingWithdrawal,
+        entries: value.entries.map((x) => from_candid_TransferEntry_n205(_uploadFile, _downloadFile, x))
+    };
+}
+function from_candid_Result_14_n203(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _Result_14): Result_14 {
+    return "ok" in value ? {
+        __kind__: "ok",
+        ok: from_candid_PlayerInfo_n204(_uploadFile, _downloadFile, value.ok)
+    } : {
+        __kind__: "err",
+        err: value.err
+    };
+}
+function from_candid_Result_15_n201(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _Result_15): Result_15 {
+    return "ok" in value ? {
+        __kind__: "ok",
+        ok: value.ok.map((x) => from_candid_TransferEntry_n205(_uploadFile, _downloadFile, x))
+    } : {
+        __kind__: "err",
+        err: value.err
+    };
 }
 function from_candid_Result_3_n53(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _Result_3): Result_3 {
     return from_candid_variant_n54(_uploadFile, _downloadFile, value);
