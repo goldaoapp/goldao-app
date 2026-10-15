@@ -1,5 +1,6 @@
 import type { Dashboard, ExcavationView, RankingSort } from "@/backend";
 import { useAuth } from "@/context/AuthContext";
+import type { Principal } from "@icp-sdk/core/principal";
 import {
   keepPreviousData,
   useQuery,
@@ -150,6 +151,37 @@ export function useSecurityLog(day: number, enabled: boolean) {
     },
     enabled: !!actor && enabled,
     refetchInterval: (q) => (q.state.status === "error" ? false : 30_000),
+    retry: false,
+  });
+}
+
+/** Latest lines of the transfer log (every player), newest first. Admin only. */
+export function useTransferLog(enabled: boolean) {
+  const { actor, principalId } = useAuth();
+  return useQuery({
+    queryKey: [KEY, "transfer-log", principalId],
+    queryFn: async () => {
+      const res = await actor!.gameAdminTransferLog();
+      if (res.__kind__ === "err") throw new Error(res.err);
+      return res.ok;
+    },
+    enabled: !!actor && enabled,
+    refetchInterval: (q) => (q.state.status === "error" ? false : 30_000),
+    retry: false,
+  });
+}
+
+/** What the game holds for one player, with the log lines of that player. Admin only. */
+export function usePlayerInfo(player: Principal | null) {
+  const { actor, principalId } = useAuth();
+  return useQuery({
+    queryKey: [KEY, "player-info", principalId, player?.toText() ?? ""],
+    queryFn: async () => {
+      const res = await actor!.gameAdminPlayerInfo(player!);
+      if (res.__kind__ === "err") throw new Error(res.err);
+      return res.ok;
+    },
+    enabled: !!actor && !!player,
     retry: false,
   });
 }
