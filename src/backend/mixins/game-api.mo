@@ -904,7 +904,7 @@ mixin (
 
   func gTick() : async () {
     gTicks += 1;
-    if (not gameState.realLedger) await gAutoConnect();
+    if (not gameState.realLedger and not gameState.halted) await gAutoConnect();
     if (gHardHalt()) gSaveReady();
     await gAutoClose();
     gWatchFund();
@@ -2077,26 +2077,13 @@ mixin (
     try { #ok(await Ledger.ledger().icrc1_balance_of(Ledger.account(who))) } catch (_) { #err("The ledger is unavailable.") };
   };
 
-  // Connects the game to the ledger of this deployment (lib/ledger.mo): checks the fee and, in
-  // production, the symbol, reads the balance of the game account (the bank) and erases all game
-  // data. Used by the automatic connection at start and by "Change ledger".
-  func gConnect(selfId : Principal) : async Result.Result<Nat, Text> {
-    let idle = func() : Bool {
-      gameState.owed == 0 and gameState.open.size() == 0 and gameState.credits.size() == 0
-      and gameState.pendingLoads.size() == 0 and gameState.pendingWithdrawals.size() == 0;
-    };
-    if (not idle()) return #err("The game must be empty: close the tournament and withdraw everything first.");
-    let balance = try {
-      let fee = await Ledger.ledger().icrc1_fee();
-      if (fee != Game.FEE) return #err("The ledger fee differs from the game fee.");
-      if (Ledger.MODE == #production and (await Ledger.ledger().icrc1_symbol()) != Ledger.PRODUCTION_SYMBOL) {
-        return #err("The ledger symbol is not the real GOLDAO one.");
-      };
-      await Ledger.ledger().icrc1_balance_of(Ledger.account(selfId));
-    } catch (_) { return #err("The ledger is unavailable.") };
-    if (not idle()) return #err("The game changed. Try again.");
-    gameState.bankAccount := ?selfId;
-    gameState.selfId := ?selfId;
+  func gIdle() : Bool {
+    gameState.owed == 0 and gameState.open.size() == 0 and gameState.credits.size() == 0
+    and gameState.pendingLoads.size() == 0 and gameState.pendingWithdrawals.size() == 0;
+  };
+
+  // Erases all game data: pools, statistics, history and tournaments. Only called on an empty game.
+  func gWipe() {
     gameState.pool := 0;
     gameState.reserve := 0;
     gameState.cycles := 0;
@@ -2104,7 +2091,6 @@ mixin (
     gameState.lastTop10 := [];
     gameState.burned := 0;
     gameState.loaded.clear();
-    // Fresh start: all statistics, history and tournaments are erased.
     gameState.stats.clear();
     gameState.best.clear();
     gameState.history.clear();
@@ -2118,9 +2104,28 @@ mixin (
     gameState.endsAt := 0;
     gReviewedFor := 0;
     gStartAt := null;
+    gameState.ledgerFails := 0;
+  };
+
+  // Connects the game to the ledger of this deployment (lib/ledger.mo): checks the fee and, in
+  // production, the symbol, reads the balance of the game account (the bank) and erases all game
+  // data. Used by the connection at start.
+  func gConnect(selfId : Principal) : async Result.Result<Nat, Text> {
+    if (not gIdle()) return #err("The game must be empty: close the tournament and withdraw everything first.");
+    let balance = try {
+      let fee = await Ledger.ledger().icrc1_fee();
+      if (fee != Game.FEE) return #err("The ledger fee differs from the game fee.");
+      if (Ledger.MODE == #production and (await Ledger.ledger().icrc1_symbol()) != Ledger.PRODUCTION_SYMBOL) {
+        return #err("The ledger symbol is not the real GOLDAO one.");
+      };
+      await Ledger.ledger().icrc1_balance_of(Ledger.account(selfId));
+    } catch (_) { return #err("The ledger is unavailable.") };
+    if (not gIdle()) return #err("The game changed. Try again.");
+    gameState.bankAccount := ?selfId;
+    gameState.selfId := ?selfId;
+    gWipe();
     gameState.bank := balance;
     gameState.realLedger := true;
-    gameState.ledgerFails := 0;
     gFundReset();
     gLogAction("real_ledger", "Ledger set", "The game now uses the ledger " # Ledger.ledgerId() # ". Bank balance: " # SecLog.fmt(balance) # " GOLDAO.");
     #ok(balance);
@@ -2165,21 +2170,24 @@ mixin (
     };
   };
 
-  // Moves the game to the ledger set in the backend code (MODE in lib/ledger.mo) and makes the
-  // game account the bank. Only the bank admin of this deployment, with the game paused, nothing
-  // in flight and nothing owed.
-  public shared ({ caller }) func gameAdminChangeLedger() : async Result.Result<Nat, Text> {
+  // Test deployments only. Erases all game data and disconnects the game, which stays paused.
+  // The bank admin runs it after the evacuation, before deploying the production code: the
+  // admin panel then connects to the new ledger and the game is resumed by hand.
+  public shared ({ caller }) func gameAdminResetGame() : async Result.Result<(), Text> {
     if (not gIsAdmin(caller)) return #err("Admin only.");
-    let me = Prim.getSelfPrincipal<system>();
-    let bank = switch (Game.bankFor(me)) { case (?b) b; case null return #err("This canister has no bank configured.") };
-    if (caller != bank) return #err("Only the bank admin can change the ledger.");
-    if (gameState.realLedger) {
-      if (not gameState.halted) return #err("Pause new excavations first.");
-      if (gAnyBusy()) return #err("Excavations in progress. Try again in a few seconds.");
-      if (gameState.payingSince != 0 and Time.now() - gameState.payingSince < Game.BUSY_STALE_NS) {
-        return #err("A money movement is in progress.");
-      };
+    if (Ledger.MODE != #test) return #err("Not available on the real ledger.");
+    if (not gIsBankAdmin(caller)) return #err("Only the bank admin can delete the game data.");
+    if (not gameState.halted) return #err("Pause new excavations first.");
+    if (gAnyBusy()) return #err("Excavations in progress. Try again in a few seconds.");
+    if (gameState.payingSince != 0 and Time.now() - gameState.payingSince < Game.BUSY_STALE_NS) {
+      return #err("A money movement is in progress.");
     };
-    await gConnect(me);
+    if (not gIdle()) return #err("The game must be empty: run the evacuation and send every balance first.");
+    gWipe();
+    gameState.bank := 0;
+    gameState.realLedger := false;
+    gFundReset();
+    gLogAction("reset", "Game data deleted", "All game data was deleted and the game was disconnected. It stays paused.");
+    #ok(());
   };
 };
