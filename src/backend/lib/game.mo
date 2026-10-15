@@ -46,6 +46,9 @@ module {
   public let DEFAULT_DURATION_DAYS : Nat = 7;
   public let MAX_DURATION_DAYS : Nat = 60;
   public let JACKPOT_LOG : Nat = 50;
+  // Lines kept in the transfer log (the oldest are dropped), and lines the admin gets per request.
+  public let TRANSFER_LOG_MAX : Nat = 1_000;
+  public let TRANSFER_LOG_SHOWN : Nat = 100;
   // Players per page of the ranking. Fixed here: the caller picks a page, never its size.
   public let RANKING_PAGE : Nat = 50;
   // Most recent jackpots sent along with the ranking (the log itself keeps JACKPOT_LOG).
