@@ -547,7 +547,7 @@ export interface backendInterface {
     assignCallerUserRole(user: Principal, role: UserRole): Promise<void>;
     execute(qJson: string): Promise<Result__1>;
     gameAdminAckAccounting(): Promise<Result_5>;
-    gameAdminChangeLedger(): Promise<Result>;
+    gameAdminResetGame(): Promise<Result_5>;
     gameAdminCloseOpen(): Promise<Result>;
     gameAdminCloseTournament(): Promise<Result_5>;
     gameAdminEvacSend(): Promise<Result_10>;
@@ -713,18 +713,18 @@ export class Backend implements backendInterface {
             return from_candid_Result_5_n19(this._uploadFile, this._downloadFile, result);
         }
     }
-    async gameAdminChangeLedger(): Promise<Result> {
+    async gameAdminResetGame(): Promise<Result_5> {
         if (this.processError) {
             try {
-                const result = await this.actor.gameAdminChangeLedger();
-                return from_candid_Result_n21(this._uploadFile, this._downloadFile, result);
+                const result = await this.actor.gameAdminResetGame();
+                return from_candid_Result_5_n19(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
-            const result = await this.actor.gameAdminChangeLedger();
-            return from_candid_Result_n21(this._uploadFile, this._downloadFile, result);
+            const result = await this.actor.gameAdminResetGame();
+            return from_candid_Result_5_n19(this._uploadFile, this._downloadFile, result);
         }
     }
     async gameAdminEvacSend(): Promise<Result_10> {
