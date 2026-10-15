@@ -331,6 +331,33 @@ export interface WithdrawalView {
   'player' : Principal,
   'amount' : bigint,
 }
+export type TransferKind = { 'loaded' : null } |
+  { 'loadUnanswered' : null } |
+  { 'loadForgotten' : null } |
+  { 'withdrawn' : null } |
+  { 'withdrawUnanswered' : null } |
+  { 'withdrawSettled' : null } |
+  { 'withdrawRefunded' : null };
+export interface TransferEntry {
+  'id' : bigint,
+  'at' : bigint,
+  'kind' : TransferKind,
+  'player' : Principal,
+  'amount' : bigint,
+  'txId' : [] | [bigint],
+}
+export interface PlayerInfo {
+  'credit' : bigint,
+  'stake' : bigint,
+  'held' : bigint,
+  'pendingLoad' : bigint,
+  'pendingWithdrawal' : bigint,
+  'entries' : Array<TransferEntry>,
+}
+export type Result_14 = { 'ok' : PlayerInfo } |
+  { 'err' : string };
+export type Result_15 = { 'ok' : Array<TransferEntry> } |
+  { 'err' : string };
 export interface _SERVICE {
   '_initialize_access_control' : ActorMethod<[], undefined>,
   '_internet_identity_sign_in_finish' : ActorMethod<[], Result_13>,
@@ -348,6 +375,8 @@ export interface _SERVICE {
   'gameAdminEnsureConnected' : ActorMethod<[], Result_11>,
   'gameAdminHalt' : ActorMethod<[], Result_5>,
   'gameAdminLedgerBalance' : ActorMethod<[Principal], Result>,
+  'gameAdminTransferLog' : ActorMethod<[], Result_15>,
+  'gameAdminPlayerInfo' : ActorMethod<[Principal], Result_14>,
   'gameAdminRefreshBank' : ActorMethod<[], Result>,
   'gameAdminReleaseBusy' : ActorMethod<[Principal], Result_5>,
   'gameAdminResolveWithdrawal' : ActorMethod<[Principal, boolean], Result_5>,
