@@ -154,24 +154,28 @@ export function SendForm({
   };
 
   const field =
-    "rounded-md border border-[color:var(--term-border)] bg-transparent px-3 py-1.5 font-mono text-xs";
+    "rounded-md border border-[color:var(--term-border)] bg-transparent px-3 py-1.5 font-mono text-xs text-[color:var(--term-ink)] placeholder:text-[color:var(--term-ink-faint)]";
 
   return (
     <div className="flex flex-col gap-2">
       <div className="flex flex-wrap items-center gap-2">
         {tokens.length > 1 && (
-          <select
-            value={selected.ledgerId}
-            onChange={(e) => setPicked(e.target.value)}
-            disabled={sending}
-            className={field}
-          >
+          <div className="flex gap-1">
             {tokens.map((t) => (
-              <option key={t.ledgerId} value={t.ledgerId}>
+              <Button
+                key={t.ledgerId}
+                size="sm"
+                variant={
+                  t.ledgerId === selected.ledgerId ? "default" : "outline"
+                }
+                disabled={sending}
+                onClick={() => setPicked(t.ledgerId)}
+                className="font-mono text-xs"
+              >
                 {t.label}
-              </option>
+              </Button>
             ))}
-          </select>
+          </div>
         )}
         <input
           value={dest}
