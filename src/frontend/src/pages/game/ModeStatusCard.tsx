@@ -29,15 +29,14 @@ import { errorMessage } from "./useGame";
 import { usePageCanister } from "./usePageCanister";
 
 /**
- * Which ledger the game runs on, and the one button that moves it to another ledger.
+ * Which ledger the game runs on, and the test-only button that deletes all game data.
  *
  * The ledger itself is the MODE constant in the backend (lib/ledger.mo), changed only with a
  * deploy. The game connects to it by itself at start (the bank admin of each deployment is fixed
- * in Game.BANKS; the bank itself is the game canister's own account). "Change ledger" is only
- * for moving to another ledger after such a deploy.
+ * in Game.BANKS; the bank itself is the game canister's own account).
  *
- * The faucet pool and the "Switching to real GOLDAO" steps are temporary: remove them together
- * with the test faucet when the game is on the real GOLDAO ledger.
+ * The faucet pool, the "Switching to real GOLDAO" steps and the delete button are temporary:
+ * remove them together with the test faucet when the game is on the real GOLDAO ledger.
  */
 // Allowance the bank admin gives the faucet in one click: 1,000,000 test tokens.
 const FAUCET_ALLOWANCE_E8S = 100_000_000_000_000n;
@@ -71,17 +70,17 @@ export function ModeStatusCard({
       .catch((e) => setConnectErr(errorMessage(e)));
   }, [actor, config, queryClient]);
 
-  const changeLedger = async () => {
+  const resetGame = async () => {
     if (!actor || working) return;
     setMsg(null);
     setWorking(true);
     try {
-      const res = await actor.gameAdminChangeLedger();
+      const res = await actor.gameAdminResetGame();
       if (res.__kind__ === "err") throw new Error(res.err);
       await queryClient.invalidateQueries({ queryKey: ["game"] });
       setMsg({
         ok: true,
-        text: `Ledger changed. Bank is ${fmtGoldao(res.ok)} GOLDAO.`,
+        text: "All game data deleted. The game stays paused.",
       });
     } catch (e) {
       setMsg({ ok: false, text: errorMessage(e) });
@@ -275,41 +274,39 @@ export function ModeStatusCard({
           </div>
         )}
 
-        {real && (
+        {test && real && (
           <div className="flex flex-col gap-2">
-            <span className={cn(eyebrow, inkFaint)}>Change ledger</span>
+            <span className={cn(eyebrow, inkFaint)}>Delete all game data</span>
             <span className={cn("text-[11px]", inkFaint)}>
-              Moves the game to the ledger set in the backend code. It checks
-              the fee and the symbol, reads the balance of the game account (the
-              bank) and erases all game data. Only the bank admin can do it,
-              with the game paused.
+              Erases every player, balance, tournament and statistic and
+              disconnects the game. Only the bank admin can do it, with the game
+              paused and empty. Test deployments only.
             </span>
-            {test && (
-              <ol
-                className={cn(
-                  "list-decimal space-y-1 pl-5 font-mono text-[11px]",
-                  inkMid,
-                )}
-              >
-                <li>
-                  With MODE still #test: start the evacuation, close the
-                  tournament and send every balance to its owner.
-                </li>
-                <li>
-                  Withdraw everything (all) to the treasury. Owed, credits and
-                  open excavations must be zero.
-                </li>
-                <li>
-                  Deploy with MODE = #production and without the test faucet
-                  files. Nothing changes in the game until step 4.
-                </li>
-                <li>
-                  Press "Change ledger" here. The game stays paused: fund the
-                  jackpot pool, check the bank balance and the ledger id, then
-                  resume.
-                </li>
-              </ol>
-            )}
+            <ol
+              className={cn(
+                "list-decimal space-y-1 pl-5 font-mono text-[11px]",
+                inkMid,
+              )}
+            >
+              <li>
+                Start the evacuation, close the tournament and send every
+                balance to its owner.
+              </li>
+              <li>
+                Withdraw everything (all) to the treasury. Owed, credits and
+                open excavations must be zero.
+              </li>
+              <li>Press "Delete all game data" here. The game stays paused.</li>
+              <li>
+                Deploy with MODE = #production and without the test faucet
+                files.
+              </li>
+              <li>
+                Open the admin panel: the game connects to the real ledger. Fund
+                the jackpot pool, check the bank balance and the ledger id, then
+                resume.
+              </li>
+            </ol>
             <div className="flex flex-wrap items-center gap-3">
               <Button
                 variant="outline"
@@ -317,7 +314,7 @@ export function ModeStatusCard({
                 onClick={() => setAsking(true)}
               >
                 {working ? <Spinner /> : null}
-                Change ledger
+                Delete all game data
               </Button>
               {msg && (
                 <span
@@ -337,14 +334,14 @@ export function ModeStatusCard({
 
         {asking && (
           <ConfirmDialog
-            title="Change the ledger?"
-            detail="The game must be paused and empty. All game data is erased and the bank is read from the ledger set in the backend code."
-            word="CHANGE LEDGER"
+            title="Delete all game data?"
+            detail="The game must be paused and empty. Every player, tournament and statistic is erased and the game is disconnected. This cannot be undone."
+            word="DELETE GAME DATA"
             busy={working}
             onCancel={() => setAsking(false)}
             onConfirm={() => {
               setAsking(false);
-              void changeLedger();
+              void resetGame();
             }}
           />
         )}
