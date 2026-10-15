@@ -2133,8 +2133,8 @@ mixin (
     };
   };
 
-  // Connection at start: only a game that was never connected, and only in a canister that has
-  // a bank in Game.BANKS. It runs on every tick of the game timer until it works.
+  // Connection at start: only a game that was never connected. It runs on every tick of the game
+  // timer until it works.
   func gTryConnect() : async Result.Result<Nat, Text> {
     if (gameState.realLedger) return #err("Already connected.");
     if (gAutoBusy) return #err("A connection attempt is already running.");
