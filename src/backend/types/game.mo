@@ -86,7 +86,7 @@ module {
   // #loadForgotten: the unanswered load expired and was dropped. #withdrawn: the wallet was paid.
   // #withdrawUnanswered: the ledger gave no answer, the player repeats it. #withdrawSettled and
   // #withdrawRefunded: the admin closed an expired withdrawal as sent or as not sent.
-  public type MoneyKind = {
+  public type TransferKind = {
     #loaded;
     #loadUnanswered;
     #loadForgotten;
@@ -96,14 +96,14 @@ module {
     #withdrawRefunded;
   };
 
-  // One line of the money log. `amount` is what the ledger transfer moves (the network fee is
+  // One line of the transfer log. `amount` is what the ledger transfer moves (the network fee is
   // not included). For #withdrawRefunded no transfer was made: it is the amount of the
   // withdrawal that was given back, without the fee. `txId` is the ledger transaction id, when
   // the ledger confirmed the transfer.
-  public type MoneyEntry = {
+  public type TransferEntry = {
     id : Nat;
     at : Int;
-    kind : MoneyKind;
+    kind : TransferKind;
     player : Principal;
     amount : Nat;
     txId : ?Nat;
@@ -116,7 +116,7 @@ module {
     held : Nat;
     pendingLoad : Nat;
     pendingWithdrawal : Nat;
-    entries : [MoneyEntry];
+    entries : [TransferEntry];
   };
 
   public type JackpotWin = {
@@ -195,7 +195,7 @@ module {
     pendingLoads : Map.Map<Principal, PendingLoad>;
     var saturations : Nat;
     pendingWithdrawals : Map.Map<Principal, PendingWithdrawal>;
-    var moneyLog : [MoneyEntry];
+    var transferLog : [TransferEntry];
   };
 
   // Security log. #info: something happened (admin action, recovery). #warning: worth a look.
