@@ -486,7 +486,7 @@ export interface backendInterface {
     assignCallerUserRole(user: Principal, role: UserRole): Promise<void>;
     execute(qJson: string): Promise<Result__1>;
     gameAdminAckAccounting(): Promise<Result_5>;
-    gameAdminChangeLedger(): Promise<Result>;
+    gameAdminResetGame(): Promise<Result_5>;
     gameAdminCheckPay(): Promise<Result_5>;
     gameAdminCheckWithdraw(kind: WithdrawKind): Promise<Result_5>;
     gameAdminCloseTournament(): Promise<Result_5>;
