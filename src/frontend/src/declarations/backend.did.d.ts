@@ -367,7 +367,7 @@ export interface _SERVICE {
   'assignCallerUserRole' : ActorMethod<[Principal, UserRole], undefined>,
   'execute' : ActorMethod<[string], Result__1>,
   'gameAdminAckAccounting' : ActorMethod<[], Result_5>,
-  'gameAdminChangeLedger' : ActorMethod<[], Result>,
+  'gameAdminResetGame' : ActorMethod<[], Result_5>,
   'gameAdminCloseOpen' : ActorMethod<[], Result>,
   'gameAdminCloseTournament' : ActorMethod<[], Result_5>,
   'gameAdminEvacSend' : ActorMethod<[], Result_10>,
