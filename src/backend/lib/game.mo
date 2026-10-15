@@ -57,7 +57,7 @@ module {
   public let BUSY_STALE_NS : Int = 600_000_000_000;
   public let STAMP_MAX_AGE_NS : Nat64 = 72_000_000_000_000;
   public let CLOSED_MSG : Text = "The tournament has just closed. Your balance stays in the game: check your Accumulated prize, then try again.";
-  public let BANK_NOT_READY_MSG : Text = "The bank is not in the game account yet. Use Change ledger with the game empty.";
+  public let BANK_NOT_READY_MSG : Text = "The bank is not in the game account yet. Delete the game data so the game connects again.";
   // Smallest balance a player can withdraw, and the pause between two withdrawal attempts of the
   // same player (each attempt that reaches the ledger is a transfer).
   public let WITHDRAW_MIN : Nat = 2_000_000_000;
@@ -103,7 +103,7 @@ module {
 
   // The bank admin of each deployment. The production canister has its own bank admin, listed
   // here by canister id. Every other canister (the test canister changes with each deployment)
-  // uses TEST_BANK. The bank admin is the only account that can change the ledger. The funds
+  // uses TEST_BANK. The bank admin is the only account that can delete the game data. The funds
   // themselves are kept in the account of the game canister. Internet Identity gives a
   // different principal per login origin, so production and test have different bank admins.
   public let BANKS : [(Text, Text)] = [
