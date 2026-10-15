@@ -248,6 +248,16 @@ export function WalletPanel({ dashboard, config }: Props) {
     }
   };
 
+  // One short line under the withdraw button.
+  const withdrawHint = !dashboard
+    ? null
+    : (withdrawBlock ??
+      (waiting > 0n
+        ? "Waiting for the ledger. Retry: you will not be paid twice."
+        : credit > 0n
+          ? `You receive ${fmtGoldao(receive)} (fee ${fmtGoldao(fee)})`
+          : null));
+
   return (
     <div className={cn(panel, "grid gap-0 overflow-hidden md:grid-cols-2")}>
       <div className="flex flex-col gap-3 border-b border-[color:var(--term-border-faint)] p-5 md:border-b-0 md:border-r">
@@ -268,9 +278,9 @@ export function WalletPanel({ dashboard, config }: Props) {
             {tokenName}
           </span>
         </motion.span>
-        {other && (
+        {other && otherBalance > 0n && (
           <span className={cn("font-mono text-[11px]", inkFaint)}>
-            Also in your wallet: {fmtGoldao(otherBalance)} {other.label}
+            Also: {fmtGoldao(otherBalance)} {other.label}
           </span>
         )}
         <div className="flex flex-wrap gap-2">
@@ -300,7 +310,7 @@ export function WalletPanel({ dashboard, config }: Props) {
         </div>
       </div>
 
-      <div className="flex flex-col gap-3 p-5">
+      <div className="flex flex-col gap-4 p-5">
         <span className={cn(eyebrow, inkFaint, "flex items-center gap-1.5")}>
           <Coins className="size-3.5" /> Game balance
         </span>
@@ -315,104 +325,79 @@ export function WalletPanel({ dashboard, config }: Props) {
             {tokenName}
           </span>
         </span>
-        <div className="flex flex-wrap items-center gap-2">
-          {presets.map((a) => (
-            <Button
-              key={a}
-              size="sm"
-              variant={a === amount ? "default" : "outline"}
-              disabled={loading || !!pending}
-              onClick={() => setAmount(a)}
-              className="font-mono text-xs"
-            >
-              {a.toLocaleString("en-US")}
-            </Button>
-          ))}
-          {showMax && (
-            <Button
-              size="sm"
-              variant={amount === maxLoad ? "default" : "outline"}
-              disabled={loading || !!pending}
-              onClick={() => setAmount(maxLoad)}
-              className="font-mono text-xs"
-            >
-              Max {maxLoad.toLocaleString("en-US")}
-            </Button>
-          )}
-          <Button
-            size="sm"
-            disabled={loading || !!pending || !!loadBlock || waitingLoad > 0n}
-            onClick={() => void loadCredit()}
-            className="gradient-primary text-primary-foreground"
-          >
-            {loading ? <Spinner /> : null}
-            {consent
-              ? `Authorize and load ${amount.toLocaleString("en-US")}`
-              : `Load ${amount.toLocaleString("en-US")}`}
-          </Button>
-        </div>
-        {consent && (
-          <p className={cn("font-mono text-[11px] leading-relaxed", inkFaint)}>
-            To load, you authorize the game to take up to{" "}
-            {AUTHORIZE_GOLDAO.toLocaleString("en-US")} {tokenName} from your
-            wallet for {AUTHORIZE_DAYS} days, so you do not pay the
-            authorization fee ({fmtGoldao(fee)}) on every load. The game only
-            takes what you ask it to load. You can remove the authorization at
-            any time.
-          </p>
-        )}
-        {waitingLoad > 0n && (
+
+        <div className="flex flex-col gap-2">
           <div className="flex flex-wrap items-center gap-2">
-            <span className={cn("font-mono text-[11px]", inkFaint)}>
-              Your load of {fmtGoldao(waitingLoad)} {tokenName} is waiting for
-              the ledger. Press Confirm load to finish it: you will not be
-              charged twice.
-            </span>
+            {presets.map((a) => (
+              <Button
+                key={a}
+                size="sm"
+                variant={a === amount ? "default" : "outline"}
+                disabled={loading || !!pending}
+                onClick={() => setAmount(a)}
+                className="font-mono text-xs"
+              >
+                {a.toLocaleString("en-US")}
+              </Button>
+            ))}
+            {showMax && (
+              <Button
+                size="sm"
+                variant={amount === maxLoad ? "default" : "outline"}
+                disabled={loading || !!pending}
+                onClick={() => setAmount(maxLoad)}
+                className="font-mono text-xs"
+              >
+                Max {maxLoad.toLocaleString("en-US")}
+              </Button>
+            )}
             <Button
               size="sm"
-              variant="outline"
-              disabled={loading || !!pending}
-              onClick={() => void confirmLoad()}
+              disabled={loading || !!pending || !!loadBlock || waitingLoad > 0n}
+              onClick={() => void loadCredit()}
+              className="gradient-primary text-primary-foreground"
             >
               {loading ? <Spinner /> : null}
-              Confirm load
+              {consent
+                ? `Authorize and load ${amount.toLocaleString("en-US")}`
+                : `Load ${amount.toLocaleString("en-US")}`}
             </Button>
           </div>
-        )}
-        <span className={cn("font-mono text-[11px]", inkFaint)}>
-          {loadBlock && dashboard
-            ? loadBlock
-            : `Fee ${fmtGoldao(fee)}${needsAuthFee ? ` + ${fmtGoldao(fee)} to authorize the game` : ""}`}
-        </span>
-        {allowance > 0n && (
-          <div className="flex flex-wrap items-center gap-2">
-            <span className={cn("font-mono text-[11px]", inkFaint)}>
-              Game authorized for up to {fmtGoldao(allowance)} {tokenName}
-              {authExpiry ? `, until ${authExpiry}` : ""}.
-            </span>
-            <Button
-              size="sm"
-              variant="outline"
-              disabled={revoking || loading}
-              onClick={() => void revokeAuth()}
+          {consent && (
+            <p
+              className={cn("font-mono text-[11px] leading-relaxed", inkFaint)}
             >
-              {revoking ? <Spinner /> : null}
-              Revoke
-            </Button>
-          </div>
-        )}
-      </div>
+              This lets the game take up to{" "}
+              {AUTHORIZE_GOLDAO.toLocaleString("en-US")} {tokenName} from your
+              wallet for {AUTHORIZE_DAYS} days (one-time fee {fmtGoldao(fee)}).
+              It only takes what you load. You can revoke it at any time.
+            </p>
+          )}
+          {waitingLoad > 0n && (
+            <div className="flex flex-wrap items-center gap-2">
+              <span className={cn("font-mono text-[11px]", inkFaint)}>
+                Load of {fmtGoldao(waitingLoad)} {tokenName} not confirmed yet.
+                You will not be charged twice.
+              </span>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={loading || !!pending}
+                onClick={() => void confirmLoad()}
+              >
+                {loading ? <Spinner /> : null}
+                Confirm load
+              </Button>
+            </div>
+          )}
+          <span className={cn("font-mono text-[11px]", inkFaint)}>
+            {loadBlock && dashboard
+              ? loadBlock
+              : `Fee ${fmtGoldao(fee)}${needsAuthFee ? ` + ${fmtGoldao(fee)} to authorize` : ""}`}
+          </span>
+        </div>
 
-      <div className="flex flex-col gap-2 border-t border-[color:var(--term-border-faint)] p-5 md:col-span-2">
-        <span className={cn(eyebrow, inkFaint, "flex items-center gap-1.5")}>
-          <ArrowUpFromLine className="size-3.5" /> Withdraw
-        </span>
-        <span className={cn("font-mono text-[11px]", inkFaint)}>
-          {waiting > 0n
-            ? `A withdrawal of ${fmtGoldao(waiting)} ${tokenName} is waiting for the ledger. Press Retry: you will not be paid twice.`
-            : `Sends your whole game balance (${fmtGoldao(credit)} ${tokenName}) to your wallet. The network fee ${fmtGoldao(fee)} comes out of it, so you receive ${fmtGoldao(receive)}. Stakes in play stay in the game.`}
-        </span>
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-[color:var(--term-border-faint)] pt-4">
           <Button
             size="sm"
             variant={confirming ? "default" : "outline"}
@@ -422,19 +407,49 @@ export function WalletPanel({ dashboard, config }: Props) {
               else setConfirming(true);
             }}
           >
-            {withdrawing ? <Spinner /> : null}
+            {withdrawing ? (
+              <Spinner />
+            ) : (
+              <ArrowUpFromLine className="size-3.5" />
+            )}
             {waiting > 0n
               ? "Retry withdrawal"
               : confirming
                 ? `Confirm: receive ${fmtGoldao(receive)}`
                 : "Withdraw all"}
           </Button>
-          {withdrawBlock && dashboard && (
+          {withdrawHint && (
             <span className={cn("font-mono text-[11px]", inkFaint)}>
-              {withdrawBlock}
+              {withdrawHint}
             </span>
           )}
         </div>
+
+        {allowance > 0n && (
+          <div
+            className={cn(
+              "flex items-center justify-between gap-2 font-mono text-[11px]",
+              inkFaint,
+            )}
+          >
+            <span
+              title={`Game authorized for up to ${fmtGoldao(allowance)} ${tokenName}`}
+            >
+              Game authorized{authExpiry ? ` until ${authExpiry}` : ""}
+            </span>
+            <Button
+              size="sm"
+              variant="ghost"
+              disabled={revoking || loading}
+              onClick={() => void revokeAuth()}
+              title={`Removes the authorization. Costs the network fee (${fmtGoldao(fee)}) from your wallet.`}
+              className="h-6 px-2 font-mono text-[11px] text-[color:var(--term-ink-faint)] underline-offset-2 hover:underline"
+            >
+              {revoking ? <Spinner /> : null}
+              Revoke
+            </Button>
+          </div>
+        )}
       </div>
 
       {open && (
