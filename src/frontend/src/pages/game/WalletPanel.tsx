@@ -308,6 +308,23 @@ export function WalletPanel({ dashboard, config }: Props) {
             </Button>
           )}
         </div>
+        {open && (
+          <div className="border-t border-[color:var(--term-border-faint)] pt-4">
+            {open === "receive" && principalId && (
+              <CopyField label="Your address" value={principalId} />
+            )}
+            {open === "send" && (
+              <SendForm
+                config={config}
+                tokens={tokens}
+                active={active}
+                balances={balances}
+                onResult={setMsg}
+              />
+            )}
+            {open === "faucet" && testLedger && <TestFaucetCard />}
+          </div>
+        )}
       </div>
 
       <div className="flex flex-col gap-4 p-5">
@@ -451,24 +468,6 @@ export function WalletPanel({ dashboard, config }: Props) {
           </div>
         )}
       </div>
-
-      {open && (
-        <div className="border-t border-[color:var(--term-border-faint)] p-5 md:col-span-2">
-          {open === "receive" && principalId && (
-            <CopyField label="Your address" value={principalId} />
-          )}
-          {open === "send" && (
-            <SendForm
-              config={config}
-              tokens={tokens}
-              active={active}
-              balances={balances}
-              onResult={setMsg}
-            />
-          )}
-          {open === "faucet" && testLedger && <TestFaucetCard />}
-        </div>
-      )}
 
       {msg && (
         <p
