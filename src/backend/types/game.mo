@@ -13,9 +13,9 @@ module {
 
   public type WithdrawKind = { #available; #all };
 
-  // #down: the ledger refused or failed (nothing was moved). #unknown: no answer, the transfer
-  // may have been executed.
-  public type Charge = { #ok; #allowance; #funds; #down; #unknown };
+  // #ok carries the ledger transaction id. #down: the ledger refused or failed (nothing was
+  // moved). #unknown: no answer, the transfer may have been executed.
+  public type Charge = { #ok : Nat; #allowance; #funds; #down; #unknown };
 
   public type Excavation = {
     tournament : Nat;
@@ -80,6 +80,44 @@ module {
   // What the admin sees of a pending withdrawal. `at`: time of the first attempt (ns). `expired`: the stamp is too old for the player
   // to retry, so only the admin can settle it.
   public type WithdrawalView = { player : Principal; amount : Nat; at : Nat; expired : Bool };
+
+  // What happened to a transfer between a player's wallet and the game.
+  // #loaded: the load was credited. #loadUnanswered: the ledger gave no answer, the player repeats it.
+  // #loadForgotten: the unanswered load expired and was dropped. #withdrawn: the wallet was paid.
+  // #withdrawUnanswered: the ledger gave no answer, the player repeats it. #withdrawSettled and
+  // #withdrawRefunded: the admin closed an expired withdrawal as sent or as not sent.
+  public type MoneyKind = {
+    #loaded;
+    #loadUnanswered;
+    #loadForgotten;
+    #withdrawn;
+    #withdrawUnanswered;
+    #withdrawSettled;
+    #withdrawRefunded;
+  };
+
+  // One line of the money log. `amount` is what the ledger transfer moves (the network fee is
+  // not included). For #withdrawRefunded no transfer was made: it is the amount of the
+  // withdrawal that was given back, without the fee. `txId` is the ledger transaction id, when
+  // the ledger confirmed the transfer.
+  public type MoneyEntry = {
+    id : Nat;
+    at : Int;
+    kind : MoneyKind;
+    player : Principal;
+    amount : Nat;
+    txId : ?Nat;
+  };
+
+  // What the admin sees of one player: the balances the game holds for them and their log lines.
+  public type PlayerInfo = {
+    credit : Nat;
+    stake : Nat;
+    held : Nat;
+    pendingLoad : Nat;
+    pendingWithdrawal : Nat;
+    entries : [MoneyEntry];
+  };
 
   public type JackpotWin = {
     tournament : Nat;
@@ -157,6 +195,7 @@ module {
     pendingLoads : Map.Map<Principal, PendingLoad>;
     var saturations : Nat;
     pendingWithdrawals : Map.Map<Principal, PendingWithdrawal>;
+    var moneyLog : [MoneyEntry];
   };
 
   // Security log. #info: something happened (admin action, recovery). #warning: worth a look.
