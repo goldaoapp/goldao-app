@@ -182,7 +182,7 @@ export function SendForm({
           onChange={(e) => setDest(e.target.value)}
           placeholder="To (address)"
           disabled={sending}
-          className={cn(field, "w-80 max-w-full")}
+          className={cn(field, "w-full")}
         />
         <input
           value={text}
