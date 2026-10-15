@@ -12,6 +12,7 @@ import { CopyField } from "./CopyField";
 import { ModeStatusCard } from "./ModeStatusCard";
 import { SecurityLogPanel } from "./SecurityLogPanel";
 import { Spinner } from "./Spinner";
+import { TransferLogPanel } from "./TransferLogPanel";
 import {
   DIAMOND_TEXT,
   eyebrow,
@@ -914,6 +915,8 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
       )}
 
       {security && <SecurityLogPanel />}
+
+      {security && <TransferLogPanel />}
 
       {view?.lastClose && (
         <div className={panel}>
