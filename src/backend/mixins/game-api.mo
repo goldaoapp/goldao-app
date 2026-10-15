@@ -52,6 +52,16 @@ mixin (
     SecLog.append(gameState.securityLog, Time.now(), #info, code, title, description);
   };
 
+  // Transfer log: one line per transfer between a player's wallet and the game. It keeps the newest
+  // TRANSFER_LOG_MAX lines. Only definite outcomes and unanswered calls are written, never rejected
+  // attempts, so nobody can fill it with noise.
+  func gRecordTransfer(kind : Types.TransferKind, player : Principal, amount : Nat, txId : ?Nat) {
+    let log = gameState.transferLog;
+    let id = if (log.size() == 0) 1 else log[Nat.sub(log.size(), 1)].id + 1;
+    let all = Array.concat(log, [{ id; at = Time.now(); kind; player; amount; txId }]);
+    gameState.transferLog := if (all.size() > Game.TRANSFER_LOG_MAX) Array.sliceToArray(all, Nat.sub(all.size(), Game.TRANSFER_LOG_MAX), all.size()) else all;
+  };
+
   // Keeps only the newest `n` entries of a list.
   func keepLast<T>(l : List.List<T>, n : Nat) {
     let size = l.size();
@@ -82,6 +92,7 @@ mixin (
   // If the first attempt had been executed, the player was charged without credit: logged for review.
   func gLoadForget(p : Principal, pl : Types.PendingLoad) {
     gameState.pendingLoads.remove(p);
+    gRecordTransfer(#loadForgotten, p, pl.amount, null);
     gLog(#warning, "load_expired", "Unconfirmed load expired", "A load of " # Nat.toText(pl.amount / Game.E8S) # " GOLDAO from " # Principal.toText(p) # " never got an answer and its timestamp expired. Check the ledger: the player may have been charged without credit.");
   };
 
@@ -471,21 +482,21 @@ mixin (
         gLedgerFail();
         #unknown;
       };
-      case (?(#Ok _)) {
+      case (?(#Ok txId)) {
         gLedgerOk();
         gameState.bank += amount;
         gameState.burned += Game.FEE;
         gMarkLoaded(p);
-        #ok;
+        #ok txId;
       };
-      case (?(#Err(#Duplicate _))) {
+      case (?(#Err(#Duplicate d))) {
         // The first attempt did reach the ledger. The next clean bank reading is adopted.
         gLedgerOk();
         gUncertain := true;
         gameState.bank += amount;
         gameState.burned += Game.FEE;
         gMarkLoaded(p);
-        #ok;
+        #ok(d.duplicate_of);
       };
       case (?(#Err(#InsufficientAllowance _))) #allowance;
       case (?(#Err(#InsufficientFunds _))) #funds;
@@ -1076,13 +1087,19 @@ mixin (
     let current = switch (gameState.pendingLoads.get(caller)) { case (?cur) cur.stamp == stamp and cur.amount == amount; case null false };
     if (not current) return #err("This load was already confirmed. Check your balance.");
     // A definite answer closes the load. A repeat that fails without a definite answer keeps it pending.
-    if (res == #ok or res == #allowance or res == #funds or (res == #down and pending == null)) {
-      gameState.pendingLoads.remove(caller);
+    let definite = switch (res) {
+      case (#ok _) true;
+      case (#allowance) true;
+      case (#funds) true;
+      case (#down) pending == null;
+      case (#unknown) false;
     };
+    if (definite) gameState.pendingLoads.remove(caller);
     switch (res) {
-      case (#ok) {
+      case (#ok txId) {
         gameState.credits.add(caller, gCredit(caller) + amount);
         gameState.owed += amount;
+        gRecordTransfer(#loaded, caller, amount, ?txId);
         #ok(gCredit(caller));
       };
       case (#allowance) {
@@ -1095,6 +1112,7 @@ mixin (
       };
       case (#down) #err("The ledger is unavailable. Try again later.");
       case (#unknown) {
+        if (not repeat) gRecordTransfer(#loadUnanswered, caller, amount, null);
         gLog(#warning, "load_no_answer", "Load without an answer", "A credit load of " # Nat.toText(amount / Game.E8S) # " GOLDAO from " # Principal.toText(caller) # " got no answer from the ledger. It is retried with the same timestamp, so it cannot be charged twice.");
         #err("The ledger did not answer. Load " # Nat.toText(amount / Game.E8S) # " GOLDAO again: you will not be charged twice.");
       };
@@ -1131,9 +1149,10 @@ mixin (
   // The ledger confirmed the transfer: the credit leaves the books. The bank is reduced only when
   // this is the first confirmation (#Ok). After a lost answer the next bank reading is adopted
   // instead, so the transfer is never subtracted twice.
-  func gSettleWithdrawal(p : Principal, amount : Nat, stamp : Nat64, reduceBank : Bool) {
+  func gSettleWithdrawal(p : Principal, amount : Nat, stamp : Nat64, reduceBank : Bool, kind : Types.TransferKind, txId : ?Nat) {
     if (not gIsPendingWithdrawal(p, amount, stamp)) return;
     gameState.pendingWithdrawals.remove(p);
+    gRecordTransfer(kind, p, Game.sub(amount, Game.FEE), txId);
     gameState.owed := gSub(gameState.owed, amount);
     if (reduceBank) gameState.bank := gSub(gameState.bank, amount);
     gameState.burned += Game.FEE;
@@ -1250,19 +1269,20 @@ mixin (
     switch (answer) {
       case null {
         gLedgerFail();
+        if (not isRetry) gRecordTransfer(#withdrawUnanswered, p, sent, null);
         gLog(#warning, "withdraw_player_no_answer", "Withdrawal without an answer", "A withdrawal of " # SecLog.fmt(amount) # " GOLDAO by " # Principal.toText(p) # " got no answer from the ledger. The player can repeat it: the ledger will not pay twice.");
         #err("The ledger did not answer. Press Withdraw again: you will not be paid twice.");
       };
-      case (?(#Ok _)) {
+      case (?(#Ok txId)) {
         gLedgerOk();
-        gSettleWithdrawal(p, amount, stamp, true);
+        gSettleWithdrawal(p, amount, stamp, true, #withdrawn, ?txId);
         #ok(sent);
       };
-      case (?(#Err(#Duplicate _))) {
+      case (?(#Err(#Duplicate d))) {
         // The first attempt did reach the ledger. The next clean bank reading is adopted.
         gLedgerOk();
         gUncertain := true;
-        gSettleWithdrawal(p, amount, stamp, false);
+        gSettleWithdrawal(p, amount, stamp, false, #withdrawn, ?d.duplicate_of);
         #ok(sent);
       };
       case (?(#Err(#TooOld))) {
@@ -1298,13 +1318,14 @@ mixin (
     if (gBusyNow()) return #err("A money movement is in progress.");
     if (sent) {
       // The bank reading taken right after adopts the real balance: nothing is subtracted here.
-      gSettleWithdrawal(player, pw.amount, pw.stamp, false);
+      gSettleWithdrawal(player, pw.amount, pw.stamp, false, #withdrawSettled, null);
       gUncertain := true;
       gameState.movSeq += 1;
       gLogAction("withdraw_settled", "Withdrawal settled as sent", "The withdrawal of " # SecLog.fmt(pw.amount) # " GOLDAO by " # Principal.toText(player) # " was recorded as sent by the admin.");
       ignore await lBankRefresh();
     } else {
       gRefundWithdrawal(player, pw.amount, pw.stamp);
+      gRecordTransfer(#withdrawRefunded, player, Game.sub(pw.amount, Game.FEE), null);
       gLogAction("withdraw_refunded", "Withdrawal given back", "The withdrawal of " # SecLog.fmt(pw.amount) # " GOLDAO by " # Principal.toText(player) # " was recorded as not sent and the credit was given back.");
     };
     #ok(());
@@ -1712,6 +1733,37 @@ mixin (
     });
   };
 
+  // Newest lines first, at most TRANSFER_LOG_SHOWN. With a player: only that player's lines.
+  func gTransferNewest(who : ?Principal) : [Types.TransferEntry] {
+    let out = List.empty<Types.TransferEntry>();
+    var i = gameState.transferLog.size();
+    while (i > 0 and out.size() < Game.TRANSFER_LOG_SHOWN) {
+      i := Nat.sub(i, 1);
+      let e = gameState.transferLog[i];
+      let keep = switch (who) { case (?p) e.player == p; case null true };
+      if (keep) out.add(e);
+    };
+    out.toArray();
+  };
+
+  public shared query ({ caller }) func gameAdminTransferLog() : async Result.Result<[Types.TransferEntry], Text> {
+    if (not gIsAdmin(caller)) return #err("Admin only.");
+    #ok(gTransferNewest(null));
+  };
+
+  public shared query ({ caller }) func gameAdminPlayerInfo(player : Principal) : async Result.Result<Types.PlayerInfo, Text> {
+    if (not gIsAdmin(caller)) return #err("Admin only.");
+    let (stake, held) = switch (gameState.open.get(player)) { case (?e) (e.stake, e.held); case null (0, 0) };
+    #ok({
+      credit = gCredit(player);
+      stake;
+      held;
+      pendingLoad = switch (gameState.pendingLoads.get(player)) { case (?pl) pl.amount; case null 0 };
+      pendingWithdrawal = switch (gameState.pendingWithdrawals.get(player)) { case (?pw) pw.amount; case null 0 };
+      entries = gTransferNewest(?player);
+    });
+  };
+
   public shared ({ caller }) func gameAdminCloseTournament() : async Result.Result<(), Text> {
     gArmTimer<system>();
     if (not gIsAdmin(caller)) return #err("Admin only.");
@@ -2061,6 +2113,7 @@ mixin (
     gameState.pendingLoads.clear();
     gameState.pendingWithdrawals.clear();
     gameState.jackpots := [];
+    gameState.transferLog := [];
     gameState.tournament := 1;
     gameState.endsAt := 0;
     gReviewedFor := 0;
