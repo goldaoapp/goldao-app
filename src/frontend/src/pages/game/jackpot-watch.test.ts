@@ -1,44 +1,39 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import {
-  MAX_GAP_MS,
-  observePool,
-  poolFell,
-  resetPoolWatch,
+  jackpotIsNew,
+  observeJackpot,
+  resetJackpotWatch,
 } from "./jackpot-watch";
 
-const read = (pool: bigint, at: number, tournament = 1n) => ({
-  tournament,
-  pool,
-  at,
-});
-
 describe("jackpot watch", () => {
-  beforeEach(resetPoolWatch);
+  beforeEach(resetJackpotWatch);
 
-  it("stays quiet on the first reading and while the pool grows", () => {
-    expect(observePool(read(100n, 0))).toBe(false);
-    expect(observePool(read(100n, 20_000))).toBe(false);
-    expect(observePool(read(150n, 40_000))).toBe(false);
+  it("stays quiet on the first reading, even with an old win", () => {
+    expect(observeJackpot(500n, false)).toBe(false);
+    expect(observeJackpot(500n, false)).toBe(false);
   });
 
-  it("fires when the pool falls", () => {
-    observePool(read(500n, 0));
-    expect(observePool(read(100n, 20_000))).toBe(true);
-    // the new level is the baseline: no second notice
-    expect(observePool(read(120n, 40_000))).toBe(false);
+  it("fires once when a newer stamp appears", () => {
+    observeJackpot(500n, false);
+    expect(observeJackpot(900n, false)).toBe(true);
+    expect(observeJackpot(900n, false)).toBe(false);
   });
 
-  it("ignores a fall seen after a long gap", () => {
-    observePool(read(500n, 0));
-    expect(observePool(read(100n, MAX_GAP_MS + 1))).toBe(false);
+  it("a stamp that goes down is a new baseline, not a win", () => {
+    observeJackpot(900n, false);
+    expect(observeJackpot(0n, false)).toBe(false);
+    expect(observeJackpot(10n, false)).toBe(true);
   });
 
-  it("ignores a change of tournament", () => {
-    observePool(read(500n, 0));
-    expect(observePool(read(100n, 20_000, 2n))).toBe(false);
+  it("does not announce while the game is paused, and does not repeat later", () => {
+    observeJackpot(500n, false);
+    expect(observeJackpot(900n, true)).toBe(false);
+    expect(observeJackpot(900n, false)).toBe(false);
   });
 
-  it("poolFell needs a previous reading", () => {
-    expect(poolFell(null, read(1n, 0))).toBe(false);
+  it("needs a previous reading", () => {
+    expect(jackpotIsNew(null, 5n)).toBe(false);
+    expect(jackpotIsNew(5n, 5n)).toBe(false);
+    expect(jackpotIsNew(5n, 6n)).toBe(true);
   });
 });
