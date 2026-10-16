@@ -1,6 +1,6 @@
-// Construye el actor bindgen del backend firmado con la identidad de II.
-// Resuelve el canister id igual que lib/treasury-history.ts: primero
-// process.env.CANISTER_ID_BACKEND, luego el /env.json inyectado en deploy.
+// Builds the bindgen backend actor signed with the Internet Identity identity.
+// Resolves the canister id like lib/treasury-history.ts: first
+// process.env.CANISTER_ID_BACKEND, then the /env.json injected at deploy time.
 
 import { useInternetIdentity } from "@/lib/internet-identity";
 import { HttpAgent, type Identity } from "@icp-sdk/core/agent";
@@ -79,9 +79,9 @@ export function useBackendActor() {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           identity: identity as any,
           host: isLocal ? "http://localhost:4943" : "https://icp-api.io",
-          // El canister corre en una subnet EcdsaP256 que el SDK v5 no verifica
-          // bien en queries. La seguridad real viene de las update calls con
-          // consenso y del sistema de roles del canister.
+          // The canister runs on an EcdsaP256 subnet that SDK v5 does not verify
+          // well on queries. Real security comes from update calls (which go
+          // through consensus) and from the canister role system.
           verifyQuerySignatures: false,
         });
 
@@ -89,8 +89,8 @@ export function useBackendActor() {
           await agent.fetchRootKey().catch(() => {});
         }
 
-        // GOLDAO no usa blobs por el actor; los callbacks son posicionales
-        // pero nunca se invocan.
+        // GOLDAO does not use blobs through the actor; the callbacks are
+        // positional but are never called.
         const uploadFile = async (_f: ExternalBlob): Promise<Uint8Array> => {
           throw new Error("Blob upload not supported.");
         };
