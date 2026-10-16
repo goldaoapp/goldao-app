@@ -24,10 +24,13 @@ import { TreasureOverlay, isTreasure } from "./TreasureOverlay";
 import {
   type Cell,
   clearBoardCells,
+  clearLastResult,
   getBoard,
   loadBoardCells,
+  loadLastResult,
   resetBoard,
   saveBoardCells,
+  saveLastResult,
   setBoard,
   useBoard,
 } from "./board-store";
@@ -154,8 +157,16 @@ export function MineBoard({ dashboard }: Props) {
   const pauseCode = dashboard?.pauseCode ?? summary?.pauseCode;
   // With the fund under its floor no new excavation can start, but one already open can be
   // finished (the backend allows it), so the board stays usable for it.
+  // A hard stop (safety check, game being closed) also stops an excavation in progress.
+  const hardHalt = Number(pauseCode ?? 0) === 2 || Number(pauseCode ?? 0) === 7;
   const paused =
-    !!(dashboard?.paused ?? summary?.paused) && !exc && !dashboard?.open;
+    !!(dashboard?.paused ?? summary?.paused) &&
+    ((!exc && !dashboard?.open) || hardHalt);
+  // Latest moment at which the closing of the tournament is done (shown while it closes).
+  const closeByMs =
+    dashboard && dashboard.endsAt !== 0n && config
+      ? Number((dashboard.endsAt + config.closeWindowNs) / 1_000_000n)
+      : undefined;
   // After the end time an open excavation can still be finished for a while (closing window).
   const closing =
     !!dashboard &&
@@ -241,6 +252,25 @@ export function MineBoard({ dashboard }: Props) {
   // that timed out, an action from another tab). A cache that is behind never rewinds the board;
   // the next pick is checked by the backend itself (expectedPicks).
   const open = dashboard?.open;
+  // After a reload, show how the last excavation ended (kept in this browser, once per visit).
+  const restoredResult = useRef(false);
+  useEffect(() => {
+    if (restoredResult.current || !dashboard || !principalId) return;
+    if (board.owner !== principalId || working || autoRun) return;
+    restoredResult.current = true;
+    if (exc || open || result) return;
+    const saved = loadLastResult(principalId, dashboard.tournament);
+    if (saved) setBoard({ result: saved });
+  }, [
+    dashboard,
+    principalId,
+    board.owner,
+    working,
+    autoRun,
+    exc,
+    open,
+    result,
+  ]);
   // Tournament an on-screen excavation belongs to, to tell a close from a finish elsewhere.
   const excTournament = useRef<number | null>(null);
   useEffect(() => {
@@ -273,8 +303,8 @@ export function MineBoard({ dashboard }: Props) {
         exc: null,
         inPlay: 0n,
         notice: closed
-          ? "The tournament closed while your excavation was open. It was saved if you had reached the third pick; otherwise the stake was lost, unless the admin ended the tournament early, which returns it. Check your Accumulated prize."
-          : null,
+          ? `The tournament closed while your excavation was open. It was saved if you had reached the third pick; otherwise the stake was lost, unless the admin ended the tournament early, which returns it. Your Accumulated prize is now ${fmtGoldao(dashboard.credit)} GOLDAO.`
+          : `Your excavation ended while this screen was not looking. Your Accumulated prize is now ${fmtGoldao(dashboard.credit)} GOLDAO.`,
       });
     }
   }, [
@@ -309,6 +339,8 @@ export function MineBoard({ dashboard }: Props) {
       skipRestoreUntil: Date.now() + 6000,
     });
     clearBoardCells();
+    if (principalId && dashboard)
+      saveLastResult(principalId, dashboard.tournament, end);
     void setOpenExcavation(null);
     // One celebration at a time: a jackpot already had its own, so no Treasure on top of it.
     const treasureWin =
@@ -454,7 +486,7 @@ export function MineBoard({ dashboard }: Props) {
     if (!actor || !exc?.canSave || getBoard().working) return;
     setBoard({ working: true, error: null });
     try {
-      const end = await run("save", () => actor.gameSave(), false);
+      const end = await run("save", () => actor.gameSave(exc.picks), false);
       void setCredit(end.credit, dashboard?.pool ?? 0n);
       finish(end, exc.stake);
     } catch (e) {
@@ -552,8 +584,10 @@ export function MineBoard({ dashboard }: Props) {
     }
   };
 
-  const newGame = () =>
+  const newGame = () => {
+    clearLastResult();
     setBoard({ cells: {}, result: null, error: null, notice: null });
+  };
   const closeJackpot = useCallback(() => {
     const held = getBoard().heldBalance;
     setBoard({ jackpot: null });
@@ -576,7 +610,8 @@ export function MineBoard({ dashboard }: Props) {
         text: "The tournament has ended. Finish this excavation: from the third pick you can save, otherwise the stake is lost.",
         tone: "err" as const,
       };
-    if (paused) return { text: pauseMessage(pauseCode), tone: "err" as const };
+    if (paused)
+      return { text: pauseMessage(pauseCode, closeByMs), tone: "err" as const };
     if (!isAuthenticated)
       return { text: "Sign in to start digging.", tone: "mid" as const };
     if (dashboard && !exc && credit < (stakes[board.stake] ?? 0n))
