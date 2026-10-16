@@ -3,12 +3,17 @@
  *
  * Standalone Actor (no bindgen dependency). Three functions:
  *   hasSnapshot(date) → bool     — cheap query, check before saving
- *   saveSnapshot(data) → bool    — write-once per day, canister rejects dupes
+ *   saveSnapshot(data, identity) → bool — write-once per day, admin only, canister rejects dupes
  *   getHistory() → Snapshot[]    — full history sorted by date
  */
 
-import { Actor, HttpAgent } from "@dfinity/agent";
+import {
+  Actor,
+  type Identity as AgentIdentity,
+  HttpAgent,
+} from "@dfinity/agent";
 import type { IDL as IDLType } from "@dfinity/candid";
+import type { Identity } from "@icp-sdk/core/agent";
 
 /* ── Types ──────────────────────────────────────────────────────────────── */
 
@@ -105,10 +110,17 @@ export async function hasSnapshot(date: string): Promise<boolean> {
 
 export async function saveSnapshot(
   data: Omit<TreasurySnapshot, "date" | "timestamp">,
+  identity: Identity,
 ): Promise<boolean> {
   try {
-    const a = await getActor();
-    if (!a) return false;
+    const id = await resolveCanisterId();
+    if (!id) return false;
+    // Only an admin can save: the call is signed with the signed-in identity.
+    const agent = await HttpAgent.create({
+      host: "https://icp-api.io",
+      identity: identity as unknown as AgentIdentity,
+    });
+    const a: any = Actor.createActor(idlFactory, { agent, canisterId: id });
     const snapshot: TreasurySnapshot = {
       ...data,
       date: new Date().toISOString().slice(0, 10),
