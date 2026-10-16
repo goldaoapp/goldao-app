@@ -38,6 +38,9 @@ export interface AdminView {
   'paused' : boolean,
   'pendingLoads' : bigint,
   'endsAt' : bigint,
+  'pauseCode' : bigint,
+  'openExcavations' : bigint,
+  'closeEndsAt' : bigint,
 }
 export interface AutoResult {
   'end' : EndResult,
@@ -157,6 +160,7 @@ export interface GameSummary {
   'tournament' : bigint,
   'paused' : boolean,
   'endsAt' : bigint,
+  'lastJackpotAt' : bigint,
 }
 export interface JackpotWin {
   'at' : bigint,
@@ -395,7 +399,7 @@ export interface _SERVICE {
   'gameMyDashboard' : ActorMethod<[], Dashboard>,
   'gamePick' : ActorMethod<[[] | [StakeOption], bigint, bigint], Result_2>,
   'gameRankingPage' : ActorMethod<[RankingSort, bigint], RankingPage>,
-  'gameSave' : ActorMethod<[], Result_1>,
+  'gameSave' : ActorMethod<[bigint], Result_1>,
   'gameSummary' : ActorMethod<[], GameSummary>,
   'gameTournaments' : ActorMethod<[], Array<TournamentSummary>>,
   'gameWithdrawCredit' : ActorMethod<[bigint], Result>,
