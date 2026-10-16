@@ -1,6 +1,7 @@
 import { PageHeader } from "@/components/common";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DEFAULTS, type FairValueParams } from "@/lib/fairvalue-calc";
+import { useInternetIdentity } from "@/lib/internet-identity";
 import {
   type TreasurySnapshot,
   getCanisterId,
@@ -739,6 +740,7 @@ function SnapshotDebug() {
 /* ── Page ────────────────────────────────────────────────────────────────── */
 
 export default function TreasuryPage() {
+  const { identity } = useInternetIdentity();
   const { params: liveParams, extra } = useLiveData();
   const [history, setHistory] = useState<TreasurySnapshot[]>([]);
 
@@ -814,6 +816,8 @@ export default function TreasuryPage() {
 
   useEffect(() => {
     if (saveState.current !== "waiting") return;
+    // Only the admin can save the daily snapshot, so there is nothing to do without a sign-in.
+    if (!identity || identity.getPrincipal().isAnonymous()) return;
     if (!isComplete(reading)) return;
 
     const prev = prevReading.current;
@@ -827,18 +831,21 @@ export default function TreasuryPage() {
 
     // Data verified — save once
     saveState.current = "saved";
-    saveSnapshot({
-      icp_amount: reading.icp_amount,
-      icp_usd: reading.icp_usd,
-      ogy_amount: reading.ogy_amount,
-      ogy_usd: reading.ogy_usd,
-      wtn_amount: reading.wtn_amount,
-      wtn_usd: reading.wtn_usd,
-      total_usd: reading.total_usd,
-    }).then((ok) => {
+    saveSnapshot(
+      {
+        icp_amount: reading.icp_amount,
+        icp_usd: reading.icp_usd,
+        ogy_amount: reading.ogy_amount,
+        ogy_usd: reading.ogy_usd,
+        wtn_amount: reading.wtn_amount,
+        wtn_usd: reading.wtn_usd,
+        total_usd: reading.total_usd,
+      },
+      identity,
+    ).then((ok) => {
       if (ok) getHistory().then((h) => setHistory(h));
     });
-  }, [reading]);
+  }, [reading, identity]);
 
   // Only snapshots with all three legs present feed the chart and day-over-day.
   const validHistory = useMemo(() => history.filter(isChartable), [history]);
