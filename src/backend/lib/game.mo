@@ -83,6 +83,8 @@ module {
   public let BUSY_BANK_MSG : Text = "Other money movements are in progress. Try again in a few seconds.";
   // Tries of a bank reading that holds the load lock: loads already in flight finish meanwhile.
   public let LOCKED_READING_TRIES : Nat = 8;
+  public let CLOSING_MSG : Text = "The tournament is closing. New excavations and loads reopen when the next tournament starts.";
+  public let REVIEW_MSG : Text = "The tournament books are being reviewed. Try again in a few seconds.";
   public let BANK_CHECK_MSG : Text = "The bank is being checked. Try again in a few seconds.";
   // Balances sent per call of the evacuation (each one is a ledger transfer).
   public let EVAC_BATCH : Nat = 20;
@@ -147,6 +149,8 @@ module {
   public let PAUSE_STAKES : Nat = 5;
   public let PAUSE_WAITING : Nat = 6;
   public let PAUSE_EVAC : Nat = 7;
+  // The tournament time is over and open excavations are being finished (the closing window).
+  public let PAUSE_CLOSING : Nat = 8;
   // After the end time open excavations can still be finished for this long (30 minutes).
   public let CLOSE_WINDOW_NS : Nat = 1_800_000_000_000;
 
