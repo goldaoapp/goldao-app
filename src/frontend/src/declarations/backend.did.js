@@ -148,6 +148,9 @@ export const AdminView = IDL.Record({
   'paused' : IDL.Bool,
   'pendingLoads' : IDL.Nat,
   'endsAt' : IDL.Int,
+  'pauseCode' : IDL.Nat,
+  'openExcavations' : IDL.Nat,
+  'closeEndsAt' : IDL.Int,
 });
 export const TransferKind = IDL.Variant({
   'loaded' : IDL.Null,
@@ -360,6 +363,7 @@ export const GameSummary = IDL.Record({
   'tournament' : IDL.Nat,
   'paused' : IDL.Bool,
   'endsAt' : IDL.Int,
+  'lastJackpotAt' : IDL.Int,
 });
 export const TreasurySnapshot = IDL.Record({
   'ogy_usd' : IDL.Float64,
@@ -428,7 +432,7 @@ export const idlService = IDL.Service({
       [RankingPage],
       ['query'],
     ),
-  'gameSave' : IDL.Func([], [Result_1], []),
+  'gameSave' : IDL.Func([IDL.Nat], [Result_1], []),
   'gameSummary' : IDL.Func([], [GameSummary], ['query']),
   'gameTournaments' : IDL.Func([], [IDL.Vec(TournamentSummary)], ['query']),
   'gameWithdrawCredit' : IDL.Func([IDL.Nat], [Result], []),
@@ -583,6 +587,9 @@ export const idlFactory = ({ IDL }) => {
     'paused' : IDL.Bool,
     'pendingLoads' : IDL.Nat,
     'endsAt' : IDL.Int,
+    'pauseCode' : IDL.Nat,
+    'openExcavations' : IDL.Nat,
+    'closeEndsAt' : IDL.Int,
   });
   const TransferKind = IDL.Variant({
     'loaded' : IDL.Null,
@@ -795,6 +802,7 @@ export const idlFactory = ({ IDL }) => {
     'tournament' : IDL.Nat,
     'paused' : IDL.Bool,
     'endsAt' : IDL.Int,
+    'lastJackpotAt' : IDL.Int,
   });
   const TreasurySnapshot = IDL.Record({
     'ogy_usd' : IDL.Float64,
@@ -863,7 +871,7 @@ export const idlFactory = ({ IDL }) => {
         [RankingPage],
         ['query'],
       ),
-    'gameSave' : IDL.Func([], [Result_1], []),
+    'gameSave' : IDL.Func([IDL.Nat], [Result_1], []),
     'gameSummary' : IDL.Func([], [GameSummary], ['query']),
     'gameTournaments' : IDL.Func([], [IDL.Vec(TournamentSummary)], ['query']),
     'gameWithdrawCredit' : IDL.Func([IDL.Nat], [Result], []),
