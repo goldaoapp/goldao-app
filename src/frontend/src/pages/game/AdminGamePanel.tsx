@@ -65,6 +65,32 @@ const selectCls =
 const inputCls =
   "w-80 max-w-full rounded-md border border-[color:var(--term-border)] bg-transparent px-3 py-1.5 font-mono text-xs";
 
+/** Why the game is paused, from the code the backend reports, in words for the admin. */
+function pauseReason(view: AdminView): string {
+  const open = Number(view.openExcavations);
+  switch (Number(view.pauseCode)) {
+    case 7:
+      return "The game is being closed: loads, plays and withdrawals are stopped until the balances are sent or the evacuation is cancelled.";
+    case 8: {
+      const by = new Date(Number(view.closeEndsAt / 1_000_000n));
+      return `The tournament is closing: new excavations and loads are paused until the next one starts. ${open} open excavation${open === 1 ? "" : "s"} can still be finished; the close is done by ${by.toLocaleTimeString()} at the latest. Withdrawals stay open.`;
+    }
+    case 6:
+      return "The next tournament is waiting to start after the review of the last one. Balances stay in the game.";
+    case 5:
+      return "Bets are paused: the stakes are not ready.";
+    case 4:
+      return "Bets are paused: the bank is not ready or does not match the ledger.";
+    case 2:
+      return `Bets are paused: play was halted by the safety check. ${open} open excavation${open === 1 ? "" : "s"} waiting.`;
+    case 1:
+      return "Bets are paused: play was halted by the admin.";
+    default:
+      return view.stakes.length === 0
+        ? "Bets are paused: the bank fund is below its floor."
+        : "Bets are paused.";
+  }
+}
 export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
   const { actor } = useAuth();
   const queryClient = useQueryClient();
@@ -201,11 +227,7 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
     <div className="flex flex-col gap-6">
       {view?.paused && (
         <div className="rounded-lg border border-destructive/50 bg-destructive/10 px-4 py-3 font-mono text-xs text-destructive">
-          {evacuating
-            ? "The game is being closed: loads, plays and withdrawals are stopped until the balances are sent or the evacuation is cancelled."
-            : view.stakes.length === 0
-              ? "Bets are paused: the bank fund is below its floor."
-              : "Bets are paused: play was halted."}
+          {pauseReason(view)}
         </div>
       )}
       {connected && view && !bankReady && (
@@ -533,11 +555,18 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
               className="gradient-primary text-primary-foreground"
               disabled={working || view?.endsAt !== 0n}
               onClick={() =>
-                act(
-                  "start",
-                  () => actor!.gameAdminStartTournament(),
-                  () => "Tournament started.",
-                )
+                confirmThen({
+                  title: "Start the tournament now?",
+                  detail:
+                    "A new tournament opens right away, without waiting for the review timer.",
+                  word: "START",
+                  go: () =>
+                    act(
+                      "start",
+                      () => actor!.gameAdminStartTournament(),
+                      () => "Tournament started.",
+                    ),
+                })
               }
             >
               Start now
@@ -784,6 +813,7 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
                   confirmThen({
                     title: "Resume play?",
                     detail: "Players can start new excavations again.",
+                    word: "RESUME",
                     go: () =>
                       act(
                         "resume",
