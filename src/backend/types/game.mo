@@ -343,6 +343,8 @@ module {
     top10Pool : Nat;
     staked : Nat;
     totalPlayers : Nat;
+    /** When the newest jackpot was paid (0 when none). Used for the notice that a jackpot was won. */
+    lastJackpotAt : Int;
   };
 
   // One page of the ranking (Game.RANKING_PAGE rows) plus what only the Ranking tab shows.
@@ -419,6 +421,12 @@ module {
     withdrawable : Nat;
     stakes : [Nat];
     paused : Bool;
+    /** Why new excavations cannot start (0 when they can). */
+    pauseCode : Nat;
+    /** Excavations that are still open. */
+    openExcavations : Nat;
+    /** Latest end of the closing window (0 when the tournament has no end time). */
+    closeEndsAt : Int;
     staked : Nat;
     bankAccount : ?Principal;
     selfId : ?Principal;
