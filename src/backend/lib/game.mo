@@ -81,6 +81,9 @@ module {
   // transfers overlapped every attempt, so the reading was not comparable) or down (no answer).
   public type BankReading = { #adopted; #busy; #down };
   public let BUSY_BANK_MSG : Text = "Other money movements are in progress. Try again in a few seconds.";
+  // Tries of a bank reading that holds the load lock: loads already in flight finish meanwhile.
+  public let LOCKED_READING_TRIES : Nat = 8;
+  public let BANK_CHECK_MSG : Text = "The bank is being checked. Try again in a few seconds.";
   // Balances sent per call of the evacuation (each one is a ledger transfer).
   public let EVAC_BATCH : Nat = 20;
   // After a tournament closes, the books are reviewed once more and the next one starts. The wait
