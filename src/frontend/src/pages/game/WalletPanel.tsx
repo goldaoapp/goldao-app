@@ -95,12 +95,18 @@ export function WalletPanel({ dashboard, config }: Props) {
   );
   const showMax = !!config && canLoad && !presets.includes(maxLoad);
   const tokenName = testLedger ? TEST_TOKEN_LABEL : "GOLDAO";
+  // Withdrawals stay open while the tournament closes; the backend only pauses them for the few
+  // seconds of the prize check.
+  const closeByMs =
+    dashboard && dashboard.endsAt !== 0n && config
+      ? Number((dashboard.endsAt + config.closeWindowNs) / 1_000_000n)
+      : undefined;
   const loadBlock = !dashboard
     ? "Loading"
     : spenderMissing
       ? "The game address could not be verified. Reload the page; do not load until it works."
       : dashboard.paused
-        ? pauseMessage(dashboard.pauseCode)
+        ? pauseMessage(dashboard.pauseCode, closeByMs)
         : !canLoad
           ? `Accumulated prize is full (limit ${fmtGoldao(config?.creditCapE8s ?? 0n)} ${tokenName}). You can load again after you use some of it.`
           : amount < loadMin || amount > maxLoad
@@ -114,28 +120,21 @@ export function WalletPanel({ dashboard, config }: Props) {
   const withdrawMin = config?.withdrawMinE8s ?? 0n;
   const waiting = dashboard?.pendingWithdrawal ?? 0n;
   const pauseNo = Number(dashboard?.pauseCode ?? 0n);
-  // After the end time the tournament closes within minutes and withdrawals wait for it.
-  const closing =
-    !!dashboard &&
-    dashboard.endsAt !== 0n &&
-    Number(dashboard.endsAt / 1_000_000n) <= Date.now();
   const withdrawBase = waiting > 0n ? waiting : credit;
   const receive = withdrawBase > fee ? withdrawBase - fee : 0n;
   const withdrawBlock = !dashboard
     ? "Loading"
     : waiting > 0n
       ? null
-      : closing
-        ? "The tournament is closing. Withdrawals are back in a few minutes."
-        : pauseNo === 7
-          ? "The game is being closed: your balance will be sent to your wallet."
-          : pauseNo === 2 || pauseNo === 4
-            ? "Withdrawals are paused while the game is being checked. Your balance is safe: try again later."
-            : waitingLoad > 0n
-              ? "Your last load is still being confirmed. Press Confirm load, then withdraw."
-              : credit < withdrawMin
-                ? `The minimum withdrawal is ${fmtGoldao(withdrawMin)} ${tokenName}. A smaller balance stays in the game.`
-                : null;
+      : pauseNo === 7
+        ? "The game is being closed: your balance will be sent to your wallet."
+        : pauseNo === 2 || pauseNo === 4
+          ? "Withdrawals are paused while the game is being checked. Your balance is safe: try again later."
+          : waitingLoad > 0n
+            ? "Your last load is still being confirmed. Press Confirm load, then withdraw."
+            : credit < withdrawMin
+              ? `The minimum withdrawal is ${fmtGoldao(withdrawMin)} ${tokenName}. A smaller balance stays in the game.`
+              : null;
 
   // The confirmation step goes away by itself.
   useEffect(() => {
