@@ -81,6 +81,9 @@ export interface AdminView {
     paused: boolean;
     pendingLoads: bigint;
     endsAt: bigint;
+    pauseCode: bigint;
+    openExcavations: bigint;
+    closeEndsAt: bigint
 }
 export interface AutoResult {
     end: EndResult;
@@ -232,6 +235,7 @@ export interface GameSummary {
     tournament: bigint;
     paused: boolean;
     endsAt: bigint;
+    lastJackpotAt: bigint
 }
 export interface TransferEntry {
     id: bigint;
@@ -575,7 +579,7 @@ export interface backendInterface {
     gameMyDashboard(): Promise<Dashboard>;
     gamePick(stake: StakeOption | null, expectedStake: bigint, expectedPicks: bigint): Promise<Result_2>;
     gameRankingPage(sort: RankingSort, page: bigint): Promise<RankingPage>;
-    gameSave(): Promise<Result_1>;
+    gameSave(expectedPicks: bigint): Promise<Result_1>;
     gameSummary(): Promise<GameSummary>;
     gameTournaments(): Promise<Array<TournamentSummary>>;
     gameWithdrawCredit(expected: bigint): Promise<Result>;
@@ -1105,17 +1109,17 @@ export class Backend implements backendInterface {
             return from_candid_RankingPage_n70(this._uploadFile, this._downloadFile, result);
         }
     }
-    async gameSave(): Promise<Result_1> {
+    async gameSave(arg0: bigint): Promise<Result_1> {
         if (this.processError) {
             try {
-                const result = await this.actor.gameSave();
+                const result = await this.actor.gameSave(arg0);
                 return from_candid_Result_1_n74(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
-            const result = await this.actor.gameSave();
+            const result = await this.actor.gameSave(arg0);
             return from_candid_Result_1_n74(this._uploadFile, this._downloadFile, result);
         }
     }
@@ -1525,6 +1529,9 @@ function from_candid_record_n48(_uploadFile: (file: ExternalBlob) => Promise<Uin
     paused: boolean;
     pendingLoads: bigint;
     endsAt: bigint;
+    pauseCode: bigint;
+    openExcavations: bigint;
+    closeEndsAt: bigint;
 }): {
     durationDays: bigint;
     staked: bigint;
@@ -1553,6 +1560,9 @@ function from_candid_record_n48(_uploadFile: (file: ExternalBlob) => Promise<Uin
     paused: boolean;
     pendingLoads: bigint;
     endsAt: bigint;
+    pauseCode: bigint;
+    openExcavations: bigint;
+    closeEndsAt: bigint;
 } {
     return {
         durationDays: value.durationDays,
@@ -1581,7 +1591,10 @@ function from_candid_record_n48(_uploadFile: (file: ExternalBlob) => Promise<Uin
         realLedger: value.realLedger,
         paused: value.paused,
         pendingLoads: value.pendingLoads,
-        endsAt: value.endsAt
+        endsAt: value.endsAt,
+        pauseCode: value.pauseCode,
+        openExcavations: value.openExcavations,
+        closeEndsAt: value.closeEndsAt
     };
 }
 function from_candid_record_n56(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
