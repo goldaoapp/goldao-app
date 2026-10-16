@@ -34,6 +34,9 @@ export interface AdminView {
     paused: boolean;
     pendingLoads: bigint;
     endsAt: bigint;
+    pauseCode: bigint;
+    openExcavations: bigint;
+    closeEndsAt: bigint
 }
 export interface AutoResult {
     end: EndResult;
@@ -180,6 +183,7 @@ export interface GameSummary {
     tournament: bigint;
     paused: boolean;
     endsAt: bigint;
+    lastJackpotAt: bigint
 }
 export interface TransferEntry {
     id: bigint;
@@ -514,7 +518,7 @@ export interface backendInterface {
     gameMyDashboard(): Promise<Dashboard>;
     gamePick(stake: StakeOption | null, expectedStake: bigint, expectedPicks: bigint): Promise<Result_2>;
     gameRankingPage(sort: RankingSort, page: bigint): Promise<RankingPage>;
-    gameSave(): Promise<Result_1>;
+    gameSave(expectedPicks: bigint): Promise<Result_1>;
     gameSummary(): Promise<GameSummary>;
     gameTournaments(): Promise<Array<TournamentSummary>>;
     getCallerUserRole(): Promise<UserRole>;
