@@ -2120,8 +2120,23 @@ mixin (
     and gameState.pendingLoads.size() == 0 and gameState.pendingWithdrawals.size() == 0;
   };
 
-  // Erases all game data: pools, statistics, history and tournaments. Only called on an empty game.
+  // Erases all game data: pools, statistics, history, tournaments, security events, transfer log
+  // and every internal counter, so the game starts as if it were new. Only called on an empty
+  // game. The pause and the connection are not touched here: the caller decides them.
   func gWipe() {
+    gameState.securityLog.clear();
+    gameState.saturations := 0;
+    gameState.seq := 0;
+    gameState.movSeq := 0;
+    gameState.nextPayoutId := 0;
+    gameState.payingSince := 0;
+    gameState.durationDays := Game.DEFAULT_DURATION_DAYS;
+    gRejects.clear();
+    gWithdrawLast.clear();
+    gShort := 0;
+    gShortSince := 0;
+    gUncertain := false;
+    gReviewFails := 0;
     gameState.pool := 0;
     gameState.reserve := 0;
     gameState.cycles := 0;
@@ -2225,7 +2240,6 @@ mixin (
     gameState.bank := 0;
     gameState.realLedger := false;
     gFundReset();
-    gLogAction("reset", "Game data deleted", "All game data was deleted and the game was disconnected. It stays paused.");
     #ok(());
   };
 };
