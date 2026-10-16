@@ -1,40 +1,33 @@
 /**
- * Detects that someone won a jackpot, from the public pool alone.
+ * Detects that someone won a jackpot, from the public summary.
  *
- * The pool only grows (every excavation adds to it) unless a jackpot is paid: a full jackpot
- * reseeds it and a mini jackpot takes a share of it. So a lower pool than the one seen before
- * means a win. The backend stays the only source of the number; this file only compares two
- * values it handed out.
+ * The backend stamps the time of the last jackpot it paid (`lastJackpotAt`). A later stamp than
+ * the one seen before means a new win. The first reading only sets the baseline, so opening the
+ * page never announces an old win. A stamp that goes down (new tournament, game reset) is a new
+ * baseline, not a win. The backend stays the only source of the value; this file only compares
+ * two values it handed out.
  */
 
-/** Two readings further apart than this tell nothing (a background tab stops polling). */
-export const MAX_GAP_MS = 45_000;
+let last: bigint | null = null;
 
-interface Reading {
-  tournament: bigint;
-  pool: bigint;
-  at: number;
+/** Pure rule: is `next` a newer jackpot stamp than the baseline `prev`? */
+export function jackpotIsNew(prev: bigint | null, next: bigint): boolean {
+  return prev !== null && next > prev;
 }
 
-let last: Reading | null = null;
-
-/** Pure rule: did the pool fall between two readings of the same tournament, close in time? */
-export function poolFell(prev: Reading | null, next: Reading): boolean {
-  return (
-    prev !== null &&
-    prev.tournament === next.tournament &&
-    next.at - prev.at <= MAX_GAP_MS &&
-    next.pool < prev.pool
-  );
+/**
+ * Feed every summary reading. True when it shows a jackpot paid since the previous reading.
+ * While the game is paused nothing is announced, but the baseline still follows the server.
+ */
+export function observeJackpot(
+  lastJackpotAt: bigint,
+  paused: boolean,
+): boolean {
+  const isNew = jackpotIsNew(last, lastJackpotAt);
+  last = lastJackpotAt;
+  return isNew && !paused;
 }
 
-/** Feed every pool reading from the server. True when it shows that a jackpot was paid. */
-export function observePool(reading: Reading): boolean {
-  const fell = poolFell(last, reading);
-  last = reading;
-  return fell;
-}
-
-export function resetPoolWatch(): void {
+export function resetJackpotWatch(): void {
   last = null;
 }
