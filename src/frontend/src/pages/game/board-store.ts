@@ -190,3 +190,76 @@ export function loadBoardCells(
     return null;
   }
 }
+
+const RESULT_KEY = "goldao.game.lastResult";
+
+interface SavedResult {
+  owner: string;
+  tournament: string;
+  at: number;
+  end: Record<string, string>;
+}
+
+/** Remember the last finished excavation in this browser, so a reload still shows how it ended. */
+export function saveLastResult(
+  owner: string,
+  tournament: bigint,
+  end: EndResult,
+) {
+  try {
+    const flat: Record<string, string> = {};
+    for (const [k, v] of Object.entries(end)) flat[k] = String(v);
+    const data: SavedResult = {
+      owner,
+      tournament: String(tournament),
+      at: Date.now(),
+      end: flat,
+    };
+    localStorage.setItem(RESULT_KEY, JSON.stringify(data));
+  } catch {
+    // Storage unavailable: the result is still on screen.
+  }
+}
+
+export function clearLastResult() {
+  try {
+    localStorage.removeItem(RESULT_KEY);
+  } catch {
+    // Nothing to clear.
+  }
+}
+
+const RESULT_MAX_AGE_MS = 24 * 60 * 60 * 1000;
+
+/** The saved result of this player in this tournament, if it is recent. */
+export function loadLastResult(
+  owner: string,
+  tournament: bigint,
+): EndResult | null {
+  try {
+    const raw = localStorage.getItem(RESULT_KEY);
+    if (!raw) return null;
+    const d = JSON.parse(raw) as SavedResult;
+    if (
+      d.owner !== owner ||
+      d.tournament !== String(tournament) ||
+      Date.now() - d.at > RESULT_MAX_AGE_MS
+    ) {
+      return null;
+    }
+    const e = d.end;
+    return {
+      won: BigInt(e.won),
+      jackpotWon: BigInt(e.jackpotWon),
+      kind: e.kind as EndResult["kind"],
+      lost: BigInt(e.lost),
+      credit: BigInt(e.credit),
+      stake: BigInt(e.stake),
+      gross: BigInt(e.gross),
+      picks: BigInt(e.picks),
+      points: BigInt(e.points),
+    };
+  } catch {
+    return null;
+  }
+}
