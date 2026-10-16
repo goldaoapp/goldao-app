@@ -47,7 +47,7 @@ export default function AdminPage() {
       }
     } catch (e) {
       setRolesError(
-        e instanceof Error ? e.message : "No se pudo cargar la lista.",
+        e instanceof Error ? e.message : "Could not load the list.",
       );
     }
   }, [actor, isAdmin]);
@@ -88,7 +88,7 @@ export default function AdminPage() {
     try {
       principal = Principal.fromText(target.trim());
     } catch {
-      setStatus({ type: "err", msg: "Principal inválido." });
+      setStatus({ type: "err", msg: "Invalid principal." });
       return;
     }
 
@@ -97,16 +97,16 @@ export default function AdminPage() {
       await actor.assignCallerUserRole(principal, selectedRole);
       setStatus({
         type: "ok",
-        msg: `Rol "${selectedRole}" asignado a ${target.trim()}.`,
+        msg: `Role "${selectedRole}" assigned to ${target.trim()}.`,
       });
-      // Si me reasigné a mí mismo, refrescar el estado local.
+      // If the caller changed their own role, refresh the local state.
       if (principalId && target.trim() === principalId) await refresh();
       setTarget("");
       await loadRoles();
     } catch (e) {
       setStatus({
         type: "err",
-        msg: e instanceof Error ? e.message : "No se pudo asignar el rol.",
+        msg: e instanceof Error ? e.message : "Could not assign the role.",
       });
     } finally {
       setSubmitting(false);
@@ -118,15 +118,15 @@ export default function AdminPage() {
       <PageHeader
         tag="Admin"
         tagIcon={Shield}
-        title="Panel de administración"
-        description="Gestión de roles de acceso del canister GOLDAO."
+        title="Admin panel"
+        description="Access role management for the GOLDAO canister."
       />
       {children}
     </section>
   );
 
   if (isLoading || (isAuthenticated && roleLoading)) {
-    return shell(<p className="text-sm text-muted-foreground">Cargando…</p>);
+    return shell(<p className="text-sm text-muted-foreground">Loading…</p>);
   }
 
   if (!isAuthenticated) {
@@ -134,14 +134,14 @@ export default function AdminPage() {
       <Card className="border-border/80 shadow-subtle">
         <CardContent className="flex flex-col items-start gap-4 py-8">
           <p className="text-sm text-muted-foreground">
-            Iniciá sesión con Internet Identity para acceder al panel.
+            Sign in with Internet Identity to open the panel.
           </p>
           <Button
             onClick={() => login()}
             className="rounded-full gradient-primary text-primary-foreground font-medium shadow-subtle hover:opacity-90"
           >
             <Shield className="size-4" />
-            Iniciar sesión
+            Sign in
           </Button>
         </CardContent>
       </Card>,
@@ -154,10 +154,10 @@ export default function AdminPage() {
         <CardContent className="flex items-start gap-3 py-8">
           <ShieldAlert className="size-5 flex-shrink-0 text-destructive" />
           <div className="flex flex-col gap-1">
-            <p className="text-sm font-medium">Acceso no autorizado</p>
+            <p className="text-sm font-medium">Access denied</p>
             <p className="text-sm text-muted-foreground">
-              Tu principal no tiene rol de administrador
-              {role ? ` (rol actual: ${role})` : ""}.
+              Your principal does not have the admin role
+              {role ? ` (current role: ${role})` : ""}.
             </p>
             <div className="mt-3 flex items-center gap-2">
               <code className="flex-1 truncate rounded-lg border border-border bg-muted/20 px-3 py-2 font-mono text-xs">
@@ -168,7 +168,7 @@ export default function AdminPage() {
                 variant="outline"
                 size="icon"
                 onClick={copyPrincipal}
-                aria-label="Copiar principal"
+                aria-label="Copy principal"
               >
                 {copied ? (
                   <Check className="size-4 text-primary" />
@@ -185,11 +185,11 @@ export default function AdminPage() {
 
   return shell(
     <div className="flex flex-col gap-6">
-      {/* Identidad del admin */}
+      {/* Caller identity */}
       <Card className="border-border/80 shadow-subtle">
         <CardHeader>
           <CardTitle className="text-sm font-medium uppercase tracking-wider text-muted-foreground">
-            Tu sesión
+            Your session
           </CardTitle>
         </CardHeader>
         <CardContent className="flex flex-col gap-3">
@@ -208,7 +208,7 @@ export default function AdminPage() {
               variant="outline"
               size="icon"
               onClick={copyPrincipal}
-              aria-label="Copiar principal"
+              aria-label="Copy principal"
             >
               {copied ? (
                 <Check className="size-4 text-primary" />
@@ -220,12 +220,12 @@ export default function AdminPage() {
         </CardContent>
       </Card>
 
-      {/* Asignar rol a un principal */}
+      {/* Assign a role to a principal */}
       <Card className="border-border/80 shadow-subtle">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-sm font-medium uppercase tracking-wider text-muted-foreground">
             <UserCog className="size-4 text-primary" />
-            Asignar rol
+            Assign role
           </CardTitle>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
@@ -252,7 +252,7 @@ export default function AdminPage() {
               htmlFor="admin-role"
               className="text-xs font-medium text-muted-foreground"
             >
-              Rol
+              Role
             </label>
             <select
               id="admin-role"
@@ -273,7 +273,7 @@ export default function AdminPage() {
               onClick={handleAssign}
               disabled={submitting || target.trim().length === 0}
             >
-              {submitting ? "Asignando…" : "Asignar rol"}
+              {submitting ? "Assigning…" : "Assign role"}
             </Button>
             {status && (
               <span
@@ -289,9 +289,9 @@ export default function AdminPage() {
           </div>
 
           <p className="text-xs text-muted-foreground">
-            El primer principal que inicia sesión queda como admin
-            automáticamente. Desde acá podés promover otros principals o
-            cambiarte el rol.
+            Only the bootstrap principal set in the backend becomes admin
+            automatically. From here you can promote other principals or change
+            a role.
           </p>
         </CardContent>
       </Card>
@@ -301,7 +301,7 @@ export default function AdminPage() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-sm font-medium uppercase tracking-wider text-muted-foreground">
             <Users className="size-4 text-primary" />
-            Principals con rol
+            Principals with a role
           </CardTitle>
         </CardHeader>
         <CardContent className="flex flex-col gap-2">
@@ -310,7 +310,7 @@ export default function AdminPage() {
           )}
           {roles.length === 0 && !rolesError && (
             <span className="text-xs text-muted-foreground">
-              Sin roles asignados.
+              No roles assigned.
             </span>
           )}
           {roles.map(([p, r]) => (
