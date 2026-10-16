@@ -132,8 +132,18 @@ export function fmtDate(ns: bigint): string {
 export const STAKE_LABELS = ["Min", "Mid", "Max"];
 
 /** Pause codes sent by the backend (0 means not paused). Only a category is shown, never details. */
-export function pauseMessage(code: bigint | number | undefined): string {
+export function pauseMessage(
+  code: bigint | number | undefined,
+  /** Latest moment (ms) at which the closing of the tournament is done, when known. */
+  closeByMs?: number,
+): string {
   switch (Number(code ?? 0)) {
+    case 8: {
+      const by = closeByMs
+        ? ` It should be done by ${new Date(closeByMs).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} at the latest.`
+        : "";
+      return `The tournament is closing: new excavations and loads reopen when the next tournament starts.${by} You can still finish an excavation in progress and withdraw your balance.`;
+    }
     case 1:
       return "Maintenance break: new excavations and loads are paused. An excavation in progress can still be finished, and you can withdraw your balance.";
     case 2:
