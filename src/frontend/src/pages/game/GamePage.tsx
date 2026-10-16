@@ -121,7 +121,9 @@ export default function GamePage() {
               {paused
                 ? summary?.pauseCode === 6n
                   ? "waiting to start"
-                  : "paused"
+                  : summary?.pauseCode === 8n
+                    ? "closing"
+                    : "paused"
                 : summary
                   ? `ends in ${fmtCountdown(summary.endsAt)}`
                   : "open"}
