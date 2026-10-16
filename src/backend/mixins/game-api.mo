@@ -349,10 +349,14 @@ mixin (
   // the result is #busy. #down means the ledger gave no answer. `countFails` is false for the
   // background check, so an unreachable ledger never halts the game by itself.
   func lBankReading(countFails : Bool) : async Game.BankReading {
+    await lBankReadingTries(countFails, 3);
+  };
+
+  func lBankReadingTries(countFails : Bool, maxTries : Nat) : async Game.BankReading {
     if (not gameState.realLedger) return #adopted;
     let acct = switch (gameState.bankAccount) { case (?a) a; case null return #down };
     var tries = 0;
-    while (tries < 3) {
+    while (tries < maxTries) {
       let before = gameState.movSeq;
       let idle = gInFlight == 0;
       let bal = try { ?(await Ledger.ledger().icrc1_balance_of(Ledger.account(acct))) } catch (_) { null };
@@ -373,6 +377,16 @@ mixin (
       tries += 1;
     };
     #busy;
+  };
+
+  // Readings that must come out clean (the tournament review, admin withdrawals and evacuation
+  // sends) hold this lock: new loads are refused while it is held, so loads that were already in
+  // flight finish and the reading can be compared with the books.
+  transient var gReadLocks : Nat = 0;
+
+  func gCleanReading(countFails : Bool) : async Game.BankReading {
+    gReadLocks += 1;
+    try { await lBankReadingTries(countFails, Game.LOCKED_READING_TRIES) } finally { gReadLocks := Nat.sub(gReadLocks, 1) };
   };
 
   func lBankRefreshWith(countFails : Bool) : async Bool { (await lBankReading(countFails)) == #adopted };
@@ -832,7 +846,7 @@ mixin (
       };
       if (gameState.saturations > 0 or not gAccountingOk()) return fail("the accounting does not add up");
       let haltedBefore = gameState.halted;
-      switch (await lBankReading(false)) {
+      switch (await gCleanReading(false)) {
         case (#adopted) {};
         case (_) {
           gReviewFails += 1;
@@ -999,6 +1013,15 @@ mixin (
     #ok(started);
   };
 
+  // If the start call itself fails (for example a full message queue), the busy mark of the
+  // placeholder is released at once instead of blocking the player until it goes stale.
+  func gStartSafe(p : Principal, token : Nat, idx : Nat, expectedStake : Nat) : async Result.Result<Types.Excavation, Text> {
+    try { await gStart(p, token, idx, expectedStake) } catch (_) {
+      gDrop(p, token);
+      #err("Try again.");
+    };
+  };
+
   // Test wallet
 
   public query func gameBurned() : async Nat { gameState.burned };
@@ -1041,6 +1064,7 @@ mixin (
     switch (gRequireUser(caller)) { case (?e) return #err(e); case null {} };
     if (gCloseIfDue()) return #err(Game.CLOSED_MSG);
     if (gameState.realLedger and not gBankReady()) return #err(Game.BANK_NOT_READY_MSG);
+    if (gReadLocks > 0) return #err(Game.BANK_CHECK_MSG);
     // A new load needs the game running. Repeating one that was already sent is allowed while
     // paused: it is the same transfer, and waiting could let its timestamp expire.
     let pending = gameState.pendingLoads.get(caller);
@@ -1360,7 +1384,7 @@ mixin (
         switch (gOpen(caller, stake)) {
           case (#err m) return #err(m);
           case (#ok(placeholder, idx)) {
-            switch (await gStart(caller, placeholder.token, idx, expectedStake)) {
+            switch (await gStartSafe(caller, placeholder.token, idx, expectedStake)) {
               case (#ok e) e;
               case (#err m) return #err(m);
             };
@@ -1475,7 +1499,7 @@ mixin (
     var ex : Types.Excavation = switch (gOpen(caller, ?stake)) {
       case (#err m) return #err(m);
       case (#ok(placeholder, idx)) {
-        switch (await gStart(caller, placeholder.token, idx, expectedStake)) {
+        switch (await gStartSafe(caller, placeholder.token, idx, expectedStake)) {
           case (#ok e) e;
           case (#err m) return #err(m);
         };
@@ -1838,20 +1862,21 @@ mixin (
     null;
   };
 
-  func lWithdraw(amount : Nat) : async Result.Result<?Nat, Text> {
+  // #unanswered: the ledger gave no answer, so the transfer may have been executed.
+  func lWithdraw(amount : Nat) : async { #sent : ?Nat; #unanswered; #err : Text } {
     if (not gBankReady()) return #err(Game.BANK_NOT_READY_MSG);
     gameState.movSeq += 1;
     let answer = await lSend(Game.treasury(), amount, Nat.toNat64(Int.abs(Time.now())));
     gameState.movSeq += 1;
     switch (answer) {
       case null {
-        gLog(#warning, "withdraw_no_answer", "Withdrawal without an answer", "A withdrawal of " # SecLog.fmt(amount) # " GOLDAO got no answer from the ledger. It may have been sent: refresh the bank and check the treasury before trying again.");
-        #err("The ledger did not answer. Refresh the bank and check the treasury before trying again.");
+        gLog(#warning, "withdraw_no_answer", "Withdrawal without an answer", "A withdrawal of " # SecLog.fmt(amount) # " GOLDAO got no answer from the ledger. It may have been sent: check the treasury before trying again.");
+        #unanswered;
       };
       case (?(#Ok idx)) {
         gameState.bank := gSub(gameState.bank, amount + Game.FEE);
         gameState.burned += Game.FEE;
-        #ok(?idx);
+        #sent(?idx);
       };
       case (?(#Err(#InsufficientFunds _))) #err("The bank does not cover the withdrawal.");
       case (?(#Err _)) #err("The ledger rejected the withdrawal.");
@@ -1869,7 +1894,7 @@ mixin (
     };
     switch (gWithdrawBlocked(kind)) { case (?m) return #err(m); case null {} };
     gameState.payingSince := now;
-    switch (await lBankReading(true)) {
+    switch (await gCleanReading(true)) {
       case (#adopted) {};
       case (#busy) {
         gameState.payingSince := 0;
@@ -1898,9 +1923,12 @@ mixin (
     };
     let res = await lWithdraw(amount);
     gameState.payingSince := 0;
-    let txId : ?Nat = switch (res) {
+    // A lost answer is booked as sent: if it was not, the amount stays in the bank as excess, which
+    // is the safe side. Booking it only on success would let a retry send the same part twice.
+    let (txId, unanswered) : (?Nat, Bool) = switch (res) {
       case (#err m) return #err(m);
-      case (#ok t) t;
+      case (#sent t) (t, false);
+      case (#unanswered) (null, true);
     };
     switch (kind) {
       case (#all) {
@@ -1915,6 +1943,7 @@ mixin (
     };
     ignore await lBankRefresh();
     gFundReset();
+    if (unanswered) return #err("The ledger did not answer. The withdrawal may have been sent: check the treasury before trying again.");
     gLogAction("withdraw", "Admin withdrawal", "Withdrew " # SecLog.fmt(amount) # " GOLDAO to the treasury (" # (switch (kind) { case (#all) "everything"; case (#available) "available excess" }) # ")" # (switch (txId) { case (?t) ", ledger transaction " # Nat.toText(t); case null "" }) # ".");
     #ok(amount);
   };
@@ -1964,7 +1993,7 @@ mixin (
     var sent = 0;
     var failed = 0;
     try {
-      switch (await lBankReading(true)) {
+      switch (await gCleanReading(true)) {
         case (#adopted) {};
         case (#busy) return #err(Game.BUSY_BANK_MSG);
         case (#down) return #err("The ledger is unavailable.");
