@@ -34,7 +34,8 @@ export function useDashboard(live: boolean) {
     queryFn: async () => {
       const fresh = await actor!.gameMyDashboard();
       // Keep the balance already on screen while a jackpot is shown or a stake is not reflected yet.
-      if (!getBoard().hold && getBoard().pendingCharge === 0n) return fresh;
+      const b = getBoard();
+      if (!b.hold && !b.working && b.pendingCharge === 0n) return fresh;
       // A jackpot or auto run is still being shown: keep the balance on screen.
       const shown = queryClient.getQueryData<Dashboard>([
         KEY,
@@ -265,11 +266,37 @@ export function useGameAction() {
   return { run, pending, refreshAll, setOpenExcavation, setCredit };
 }
 
+/** Technical errors of the network layer, in words a player can act on. */
+const TECHNICAL_ERRORS: [RegExp, string][] = [
+  [
+    /Failed to fetch|NetworkError|Load failed|network request failed/i,
+    "Could not reach the network. Check your connection and try again.",
+  ],
+  [
+    /timed? ?out|Timeout|deadline/i,
+    "The network took too long to answer. Your action may have gone through: check your balance before trying again.",
+  ],
+  [
+    /canister ranges|certificate|Lookup status|signature could not be verified/i,
+    "The answer could not be verified. Your action may have gone through: check your balance before trying again.",
+  ],
+  [
+    /IC0508|IC0207|out of cycles|is stopped|is stopping|IC0504|IC0537/i,
+    "The game is not available right now. Try again in a few minutes.",
+  ],
+  [
+    /IC0406|rate.?limit|429|too many requests|overloaded|busy/i,
+    "The network is busy. Try again in a few seconds.",
+  ],
+];
+
 export function errorMessage(e: unknown): string {
   if (e instanceof Error) {
     // Agent errors carry the reject text deep inside the message.
     const m = e.message.match(/Reject text: (.*)/);
-    return m ? m[1] : e.message;
+    const text = m ? m[1] : e.message;
+    const known = TECHNICAL_ERRORS.find(([re]) => re.test(text));
+    return known ? known[1] : text;
   }
   return "Something went wrong. Try again.";
 }
