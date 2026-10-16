@@ -11,7 +11,7 @@ import { trustedSpender } from "@/lib/session";
 import { cn } from "@/lib/utils";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Check, FlaskConical, X } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { CopyField } from "./CopyField";
 import { Spinner } from "./Spinner";
@@ -57,6 +57,15 @@ export function ModeStatusCard({
   const [working, setWorking] = useState(false);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [connectErr, setConnectErr] = useState<string | null>(null);
+
+  // Opening the admin panel starts the game timer, which only starts with a call that changes
+  // data after each deploy. Once per visit is enough.
+  const armed = useRef(false);
+  useEffect(() => {
+    if (!actor || armed.current) return;
+    armed.current = true;
+    void actor.gameAdminEnsureConnected().catch(() => undefined);
+  }, [actor]);
 
   // A game that is not connected yet connects by itself: asking once starts the retries.
   useEffect(() => {
