@@ -436,19 +436,32 @@ export async function approveSpender(
   ledgerId?: string,
 ): Promise<void> {
   const l = await signedLedger(identity, ledgerId);
-  const res = await l.icrc2_approve({
-    from_subaccount: [],
-    spender: acct(spender),
-    amount,
-    expected_allowance: [],
-    expires_at:
-      expiresInMs === undefined
-        ? []
-        : [BigInt(Date.now() + expiresInMs) * 1_000_000n],
-    fee: [],
-    memo: [],
-    created_at_time: [],
-  });
+  let res: { Ok: bigint } | { Err: Record<string, unknown> };
+  try {
+    res = await l.icrc2_approve({
+      from_subaccount: [],
+      spender: acct(spender),
+      amount,
+      expected_allowance: [],
+      expires_at:
+        expiresInMs === undefined
+          ? []
+          : [BigInt(Date.now() + expiresInMs) * 1_000_000n],
+      fee: [],
+      memo: [],
+      created_at_time: [],
+    });
+  } catch (e) {
+    // The certificate check failed after the call was sent: the approval may be in place.
+    if (isCertError(e)) {
+      const owner = (identity as { getPrincipal(): Principal })
+        .getPrincipal()
+        .toText();
+      const allowance = await fetchAllowance(owner, spender, ledgerId);
+      if (allowance >= amount) return;
+    }
+    throw e;
+  }
   if ("Err" in res) {
     throw new Error("The authorization was rejected by the ledger.");
   }
