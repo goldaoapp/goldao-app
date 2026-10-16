@@ -99,9 +99,10 @@ export function PrizeGuide({ config, stakes }: Props) {
           </Step>
           <Step title="Withdraw">
             Any time, minimum {fmtGoldao(config.withdrawMinE8s)} GOLDAO (the
-            network fee comes out of it). Not available while a tournament
-            closes or during a safety pause. If the game closes, every balance
-            is sent back to its wallet.
+            network fee comes out of it). It stays open while a tournament
+            closes, except for a few seconds while the Top 10 prizes are
+            checked, and it is not available during a safety pause. If the game
+            closes, every balance is sent back to its wallet.
           </Step>
           <Step title="Top 10">
             {Number(config.top10Bps) / 100}% of every stake goes to a prize
