@@ -243,6 +243,8 @@ mixin (
       if (gameState.haltCode == Game.HALT_EVAC) return Game.PAUSE_EVAC;
       return if (gameState.haltCode == Game.HALT_MANUAL) Game.PAUSE_ADMIN else Game.PAUSE_SAFETY;
     };
+    // The time is over: open excavations are being finished before the tournament closes.
+    if (gClosing()) return Game.PAUSE_CLOSING;
     // A tournament that is not started has no end time yet (see gameAdminStartTournament).
     if (gameState.endsAt == 0) return Game.PAUSE_WAITING;
     if (gameState.realLedger and not gBankReady()) return Game.PAUSE_BANK;
@@ -1069,8 +1071,8 @@ mixin (
     // paused: it is the same transfer, and waiting could let its timestamp expire.
     let pending = gameState.pendingLoads.get(caller);
     if (pending == null) {
+      if (gClosing()) return #err(Game.CLOSING_MSG);
       if (gPaused()) return #err("Loads are paused while the game is paused. Try again later.");
-      if (gClosing()) return #err("The tournament is closing. Try again in a few seconds.");
     };
     if (goldao < Game.LOAD_MIN or goldao > Game.LOAD_MAX) {
       return #err("Choose between " # Nat.toText(Game.LOAD_MIN) # " and " # Nat.toText(Game.LOAD_MAX) # " GOLDAO.");
@@ -1093,8 +1095,8 @@ mixin (
         } else {
           // Too old to repeat: it counts as a new load, which needs the game running.
           gLoadForget(caller, pl);
+          if (gClosing()) return #err(Game.CLOSING_MSG);
           if (gPaused()) return #err("Loads are paused while the game is paused. Try again later.");
-          if (gClosing()) return #err("The tournament is closing. Try again in a few seconds.");
         };
       };
       case null {};
@@ -1218,12 +1220,13 @@ mixin (
     if (not gameState.realLedger) return #err("The ledger is not connected.");
     if (gameState.saturations > 0 or not gAccountingOk()) return #err("Withdrawals are blocked while the accounting is checked.");
     if (not gBankReady()) return #err(Game.BANK_NOT_READY_MSG);
-    // A pause by the admin does not stop a withdrawal. The closing window, a safety stop and the
-    // evacuation do, and so does a load that is still being confirmed. Repeating a withdrawal that
-    // was already sent is always allowed: it is the same transfer, and waiting could let its stamp
-    // expire.
+    // A pause by the admin and the closing window do not stop a withdrawal. A safety stop and the
+    // evacuation do, and so does a load that is still being confirmed. The few seconds of the
+    // tournament review wait too: a transfer in flight would spoil its bank reading. Repeating a
+    // withdrawal that was already sent is allowed outside the review: it is the same transfer, and
+    // waiting could let its stamp expire.
+    if (gReviewing) return #err(Game.REVIEW_MSG);
     if (gameState.pendingWithdrawals.get(caller) == null) {
-      if (gClosing()) return #err("The tournament is closing. Try again in a few seconds.");
       if (gameState.halted and gameState.haltCode == Game.HALT_EVAC) return #err(Game.WITHDRAW_EVAC_MSG);
       if (gHardHalt()) return #err(Game.WITHDRAW_SAFETY_MSG);
       if (gameState.pendingLoads.get(caller) != null) return #err(Game.WITHDRAW_LOAD_MSG);
@@ -1380,7 +1383,7 @@ mixin (
       };
       case null {
         if (expectedPicks != 0) return #err(Game.EXC_CHANGED_MSG);
-        if (gClosing()) return #err("The tournament is closing. Try again in a few seconds.");
+        if (gClosing()) return #err(Game.CLOSING_MSG);
         switch (gOpen(caller, stake)) {
           case (#err m) return #err(m);
           case (#ok(placeholder, idx)) {
@@ -1466,7 +1469,7 @@ mixin (
     });
   };
 
-  public shared ({ caller }) func gameSave() : async Result.Result<Types.EndResult, Text> {
+  public shared ({ caller }) func gameSave(expectedPicks : Nat) : async Result.Result<Types.EndResult, Text> {
     gArmTimer<system>();
     switch (gRequireUser(caller)) { case (?e) return #err(e); case null {} };
     let ex = switch (gameState.open.get(caller)) {
@@ -1474,6 +1477,8 @@ mixin (
       case null return #err("There is no open excavation.");
     };
     if (ex.busy and gFresh(ex)) return #err("Wait for the pick to finish.");
+    // What the player sees must be what the backend has: another tab or device may have moved on.
+    if (ex.picks != expectedPicks) return #err(Game.EXC_CHANGED_MSG);
     if (ex.stake == 0 or not Game.canSave(ex.picks)) return #err("The first two picks are free: you can save from the third one.");
     let points = Game.pointsAt(ex.picks);
     let f = gFlush(caller, ex);
@@ -1488,7 +1493,7 @@ mixin (
     if (gCloseIfDue()) return #err(Game.CLOSED_MSG);
     if (gameState.halted) return #err("Bets are paused. Try again later.");
     if (stopAt <= Game.SAFE or stopAt > Game.MAX_PICKS) return #err("Choose a pick between 3 and 10.");
-    if (gClosing()) return #err("The tournament is closing. Try again in a few seconds.");
+    if (gClosing()) return #err(Game.CLOSING_MSG);
     switch (gameState.open.get(caller)) {
       case (?e) {
         if (e.busy and gFresh(e)) return #err("Wait for the previous pick to finish.");
@@ -1636,6 +1641,7 @@ mixin (
       top10Pool = gameState.top10;
       staked;
       totalPlayers = gameState.stats.size();
+      lastJackpotAt = if (gameState.jackpots.size() == 0) 0 else gameState.jackpots[Nat.sub(gameState.jackpots.size(), 1)].at;
     };
   };
 
@@ -1750,6 +1756,9 @@ mixin (
       withdrawable = gWithdrawable();
       stakes;
       paused = gPaused();
+      pauseCode = gPauseCode();
+      openExcavations = gameState.open.size();
+      closeEndsAt = if (gameState.endsAt == 0) 0 else gameState.endsAt + Game.CLOSE_WINDOW_NS;
       staked;
       bankAccount = gameState.bankAccount;
       selfId = gameState.selfId;
