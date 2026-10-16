@@ -287,9 +287,10 @@ export function ModeStatusCard({
           <div className="flex flex-col gap-2">
             <span className={cn(eyebrow, inkFaint)}>Delete all game data</span>
             <span className={cn("text-[11px]", inkFaint)}>
-              Erases every player, balance, tournament and statistic and
-              disconnects the game. Only the bank admin can do it, with the game
-              paused and empty. Test deployments only.
+              Erases every player, balance, tournament, statistic, event and
+              log, resets every counter and disconnects the game. Only the bank
+              admin can do it, with the game paused and empty. Test deployments
+              only.
             </span>
             <ol
               className={cn(
@@ -344,7 +345,7 @@ export function ModeStatusCard({
         {asking && (
           <ConfirmDialog
             title="Delete all game data?"
-            detail="The game must be paused and empty. Every player, tournament and statistic is erased and the game is disconnected. This cannot be undone."
+            detail="The game must be paused and empty. Every player, tournament, statistic, event and log is erased, every counter is reset and the game is disconnected. This cannot be undone."
             word="DELETE GAME DATA"
             busy={working}
             onCancel={() => setAsking(false)}
