@@ -1,5 +1,6 @@
 import TreasuryTypes "../types/treasury";
 import TreasuryLib "../lib/treasury";
+import Game "../lib/game";
 import Map "mo:core/Map";
 import Time "mo:core/Time";
 
@@ -11,10 +12,12 @@ mixin (
     TreasuryLib.has(treasurySnapshots, date);
   };
 
-  /// Save a daily snapshot. Write-once per day, only for today's date (UTC), validated in the lib.
-  public func saveTreasurySnapshot(
+  /// Save a daily snapshot. Only the game admins can save. Write-once per day, only for today's
+  /// date (UTC), validated in the lib.
+  public shared ({ caller }) func saveTreasurySnapshot(
     snapshot : TreasuryTypes.TreasurySnapshot,
   ) : async Bool {
+    if (not Game.isBootstrapAdmin(caller)) return false;
     TreasuryLib.save(treasurySnapshots, snapshot, Time.now());
   };
 
