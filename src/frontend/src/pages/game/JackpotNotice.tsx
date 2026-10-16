@@ -6,34 +6,36 @@ import { useEffect, useState } from "react";
 import { ShinyDiamond } from "./Diamonds";
 import { useBoard } from "./board-store";
 import { DIAMOND_IMG, DIAMOND_TEXT, eyebrow, inkFaint } from "./game-utils";
-import { observePool } from "./jackpot-watch";
+import { observeJackpot } from "./jackpot-watch";
 
 const SHOWN_MS = 7_000;
 
 /**
  * Floating notice, shown on every tab of the game page when a jackpot was paid to anyone,
- * the viewer included. No amounts and no names. Driven by the pool of the public summary
- * (see jackpot-watch).
+ * the viewer included. No amounts and no names. Driven by the time of the last jackpot in the public
+ * summary (see jackpot-watch). It never shows before the player's own reveal ends.
  */
 export function JackpotNotice({
   summary,
   readAt,
 }: { summary: GameSummary | undefined; readAt: number }) {
   const [shown, setShown] = useState(0);
-  // A fall seen while the player's own jackpot is on screen (or an auto run is replaying) waits
+  // A win seen while the player's own jackpot is on screen (or an auto run is replaying) waits
   // until that celebration is over, so the notice never lands on top of it or spoils it.
   const [pending, setPending] = useState(false);
-  const { jackpot, hold } = useBoard();
-  const celebrating = jackpot !== null || hold;
-  const pool = summary?.pool;
-  const tournament = summary?.tournament;
+  // `working` covers a pick in flight: the notice never lands before the player's own reveal.
+  const { jackpot, hold, working } = useBoard();
+  const celebrating = jackpot !== null || hold || working;
+  const lastJackpotAt = summary?.lastJackpotAt;
+  const paused = summary?.paused ?? false;
 
-  // One reading per answer from the server (readAt changes even when the pool does not).
+  // One reading per answer from the server.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: readAt marks each new answer
   useEffect(() => {
-    if (pool === undefined || tournament === undefined) return;
-    // Also shown to the winner: it proves the notice appears whenever a jackpot is paid.
-    if (observePool({ tournament, pool, at: readAt })) setPending(true);
-  }, [readAt, pool, tournament]);
+    if (lastJackpotAt === undefined) return;
+    // Also shown to the winner, once their own celebration is over.
+    if (observeJackpot(lastJackpotAt, paused)) setPending(true);
+  }, [readAt, lastJackpotAt, paused]);
 
   useEffect(() => {
     if (!pending || celebrating) return;
