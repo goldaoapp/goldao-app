@@ -922,13 +922,14 @@ mixin (
     gTicks += 1;
     if (not gameState.realLedger and not gameState.halted) await gAutoConnect();
     if (gHardHalt()) gSaveReady();
-    await gAutoClose();
+    // Cheap watchers first: if the close below traps, they have already run.
     gWatchFund();
     gExpireLoads();
     gSweepWithdrawals();
+    await gWatchBank();
+    await gAutoClose();
     await gAutoStart();
     if (Nat.sub(gTicks, 1) % Game.FEE_CHECK_TICKS == 0) await gCheckFee();
-    await gWatchBank();
   };
 
   func gArmTimer<system>() {
