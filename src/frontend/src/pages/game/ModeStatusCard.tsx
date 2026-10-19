@@ -39,7 +39,7 @@ import { usePageCanister } from "./usePageCanister";
  * remove them together with the test faucet when the game is on the real GOLDAO ledger.
  */
 // Allowance the bank admin gives the faucet in one click: 1,000,000 test tokens.
-const FAUCET_ALLOWANCE_E8S = 100_000_000_000_000n;
+const FAUCET_ALLOWANCE_E8S = 500_000_000_000_000n;
 
 export function ModeStatusCard({
   view,
