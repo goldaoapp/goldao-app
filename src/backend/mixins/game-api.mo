@@ -1802,7 +1802,12 @@ mixin (
     if (not gIsAdmin(caller)) return #err("Admin only.");
     if (gameState.endsAt == 0) return #err("The tournament has not started.");
     if (gAnyBusy()) return #err("Excavations in progress. Try again in a few seconds.");
+    // The same two checks the review makes before an automatic close.
+    if (gameState.saturations > 0 or not gAccountingOk()) return #err("The accounting check fails. Fix it before closing.");
+    if (gFund() < 0) return #err("The bank does not cover what the game owes.");
+    let t = gameState.tournament;
     gCloseTournament(false);
+    gLogAction("close_now", "Tournament closed by admin", "Tournament " # Nat.toText(t) # " was closed from the admin panel.");
     #ok(());
   };
 
@@ -1835,6 +1840,7 @@ mixin (
     if (not gIsAdmin(caller)) return #err("Admin only.");
     if (days == 0 or days > Game.MAX_DURATION_DAYS) return #err("Duration must be between 1 and 60 days.");
     gameState.durationDays := days;
+    gLogAction("duration", "Duration changed", "The tournament duration was set to " # Nat.toText(days) # " day(s).");
     #ok(());
   };
 
@@ -2056,6 +2062,7 @@ mixin (
       case (?e) {
         if (gFresh(e)) return #err("The pick is still in progress.");
         if (e.picks == 0) gDrop(player, e.token) else gameState.open.add(player, { e with busy = false; token = 0 });
+        gLogAction("release_busy", "Excavation released", "A stuck excavation of " # Principal.toText(player) # " was released from the admin panel.");
         #ok(());
       };
       case null #err("No open excavation.");
@@ -2095,6 +2102,7 @@ mixin (
 
   public shared ({ caller }) func gameAdminResume() : async Result.Result<(), Text> {
     if (not gIsAdmin(caller)) return #err("Admin only.");
+    if (gameState.saturations > 0 or not gAccountingOk()) return #err("The accounting check still fails. Fix it and acknowledge it before resuming.");
     // Only the bank admin ends an evacuation.
     if (gEvacuating()) {
       if (not gIsBankAdmin(caller)) return #err("Only the bank admin can cancel the evacuation.");
