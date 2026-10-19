@@ -11,8 +11,8 @@
  *  - Coinbase spot                    -> ICP/USD (for the GLDT/ICP figure)
  *  - gold-api.com                     -> gold spot USD/oz
  *
- * The canonical price used for derived metrics is the GeckoTerminal aggregate
- * (representative across pools), falling back to the on-chain quote.
+ * The canonical price used for derived metrics is the on-chain ICPSwap quote from
+ * the deepest pool (GLDT/ckUSDT), falling back to the GeckoTerminal aggregate.
  *
  * GLDT peg: 1 GLDT = 0.01 g of gold  (100 GLDT = 1 g).
  */
@@ -210,7 +210,7 @@ export interface GldtData {
   transferFee: number | null;
   totalSupply: number | null;
   // market — two price sources + aggregated figures
-  priceUsd: number | null; // canonical (gecko aggregate, else on-chain)
+  priceUsd: number | null; // canonical (on-chain pool quote, else gecko aggregate)
   priceUsdGecko: number | null;
   priceUsdOnchain: number | null;
   priceIcp: number | null;
@@ -221,7 +221,7 @@ export interface GldtData {
   volume24hUsd: number | null;
   // volume — extended (manual / external; null until wired)
   volume7dUsd: number | null;
-  volume7dPctStored: number | null; // 7d vol as % of backingValueUsd
+  volume7dPctStored: number | null; // 7d vol as % of market cap
   totalVolumeUsd: number | null; // all-time cumulative volume
   // gold
   goldSpotOzUsd: number | null;
@@ -255,7 +255,7 @@ async function fetchGldtData(): Promise<GldtData> {
 
   const priceUsdGecko = num(gecko?.priceUsd);
   const priceUsdOnchain = num(onchainPrice);
-  const priceUsd = priceUsdGecko ?? priceUsdOnchain;
+  const priceUsd = priceUsdOnchain ?? priceUsdGecko;
 
   const marketCapUsd =
     totalSupply !== null && priceUsd !== null ? totalSupply * priceUsd : null;
