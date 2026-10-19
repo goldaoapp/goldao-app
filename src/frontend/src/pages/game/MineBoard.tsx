@@ -464,7 +464,12 @@ export function MineBoard({ dashboard }: Props) {
       }
     } catch (e) {
       const m = errorMessage(e);
-      setBoard({ error: m });
+      // The answer of a pick can get lost on the way: the board is rebuilt from the backend.
+      setBoard({
+        error: m.startsWith(EXC_CHANGED)
+          ? "The board was out of date (another tab, or the last answer was lost). It was reloaded: check your progress and continue."
+          : m,
+      });
       await refreshAll();
       // Another tab or device moved the excavation on: rebuild the board from the backend.
       if (m.startsWith(EXC_CHANGED)) {
