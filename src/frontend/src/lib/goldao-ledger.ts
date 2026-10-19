@@ -15,6 +15,18 @@ import {
 import { Principal } from "@icp-sdk/core/principal";
 
 export const GOLDAO_LEDGER = "tyyy3-4aaaa-aaaaq-aab7a-cai";
+/** Test token ledger used by the test deployment. */
+export const GOLDAO_TEST_LEDGER = "q4yq5-miaaa-aaaaj-qsjca-cai";
+/** The only ledgers a wallet signature may be requested for, whatever the backend reports. */
+const SIGNABLE_LEDGERS: readonly string[] = [GOLDAO_LEDGER, GOLDAO_TEST_LEDGER];
+
+/** Throws unless the ledger is one of the known ones. No id means the real GOLDAO ledger. */
+export function assertKnownLedger(ledgerId?: string): void {
+  if (ledgerId && !SIGNABLE_LEDGERS.includes(ledgerId)) {
+    throw new Error("Unknown ledger. The operation was cancelled.");
+  }
+}
+
 export const GOLDAO_ORIGINAL_SUPPLY = 1_000_000_000;
 /** Default ledger fee (10 GOLDAO). No fee collector → every fee is burned. */
 export const GOLDAO_FEE_E8S = 1_000_000_000n;
@@ -405,6 +417,7 @@ async function signedLedger(
   identity: unknown,
   ledgerId?: string,
 ): Promise<LedgerActor> {
+  assertKnownLedger(ledgerId);
   const agent = await SignedAgent.create({
     identity: identity as never,
     host: "https://icp-api.io",
