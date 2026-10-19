@@ -15,7 +15,6 @@ module {
   public let POINTS : [Nat] = [0, 50, 100, 114, 131, 151, 176, 208, 248, 299, 367];
 
   public let STAKE_MIN : Nat = 10_000_000_000;
-  // Do not raise STAKE_CAP above 5,333 GOLDAO without simulating again (DIAMOND2 odds pass 100%).
   public let STAKE_CAP : Nat = 100_000_000_000;
   // Absolute ceiling for any single bet (1000 GOLDAO), whatever STAKE_CAP says.
   public let STAKE_HARD_MAX : Nat = 100_000_000_000;
