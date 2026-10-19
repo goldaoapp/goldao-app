@@ -1,4 +1,4 @@
-import { type AdminView, WithdrawKind } from "@/backend";
+import { type AdminView, type SecurityView, WithdrawKind } from "@/backend";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/context/AuthContext";
 import { GOLDAO_FEE_E8S, fetchWalletBalance } from "@/lib/goldao-ledger";
@@ -64,6 +64,26 @@ const selectCls =
   "rounded-md border border-[color:var(--term-border)] bg-[var(--term-card)] px-3 py-1.5 font-mono text-sm";
 const inputCls =
   "w-80 max-w-full rounded-md border border-[color:var(--term-border)] bg-transparent px-3 py-1.5 font-mono text-xs";
+
+/** What the admin is about to do with Close now, with the numbers the panel already has. */
+function closeNowDetail(view: AdminView | undefined): string {
+  if (!view) {
+    return "It cannot be undone. The Top 10 prize is added to the winners' balances; nothing is paid out.";
+  }
+  const open = Number(view.openExcavations);
+  return `It cannot be undone. Open excavations: ${open}. The ones with fewer than 3 picks lose their stake; the others are saved. The Top 10 prize (${fmtGoldao(view.top10)} GOLDAO) is added to the winners' balances. Nothing is paid out: ${fmtGoldao(view.owed)} GOLDAO stay in the game as balances.`;
+}
+
+/** What the admin is about to do with Resume: why the game stopped and whether the books add up. */
+function resumeDetail(security: SecurityView | undefined): string {
+  if (!security) return "Players can start new excavations again.";
+  const why = HALT_TEXT[Number(security.haltCode)] ?? "unknown";
+  const books =
+    security.accountingOk && security.saturations === 0n
+      ? "The accounting check is fine."
+      : "The accounting check fails: Resume is refused until it is fixed and acknowledged.";
+  return `Players can start new excavations again. The game was stopped by: ${why}. ${books}`;
+}
 
 /** Why the game is paused, from the code the backend reports, in words for the admin. */
 function pauseReason(view: AdminView): string {
@@ -583,8 +603,7 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
               onClick={() =>
                 confirmThen({
                   title: "Close the current tournament now?",
-                  detail:
-                    "It cannot be undone. The Top 10 prize is added to the winners' balances; nothing is paid out.",
+                  detail: closeNowDetail(view),
                   word: "CLOSE",
                   go: () =>
                     act(
@@ -812,7 +831,7 @@ export function AdminGamePanel({ view }: { view: AdminView | undefined }) {
                 onClick={() =>
                   confirmThen({
                     title: "Resume play?",
-                    detail: "Players can start new excavations again.",
+                    detail: resumeDetail(security),
                     word: "RESUME",
                     go: () =>
                       act(
