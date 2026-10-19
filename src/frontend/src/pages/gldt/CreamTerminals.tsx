@@ -17,7 +17,8 @@ import { BG_SRC, fmtNum, fmtUsd, fmtUsdCompact } from "./types";
 
 const GLDT_LOGO_SRC = "/assets/gldt/gldt-emblem.svg";
 const TROY_OZ_GRAMS = 31.1035;
-const FIRST_TRADE = new Date("2024-10-30");
+// Fixed UTC timestamp so the day count does not depend on the viewer timezone
+const FIRST_TRADE_UTC = Date.UTC(2024, 9, 30);
 
 /* ── Theme tokens ────────────────────────────────────────────────────────── */
 
@@ -149,11 +150,14 @@ function fmtTerminalDate(d: Date): string {
     .toUpperCase();
 }
 
-function daysSince(from: Date): number {
+function daysSinceUtc(fromUtc: number): number {
   const now = new Date();
-  const utcNow = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
-  const utcFrom = Date.UTC(from.getFullYear(), from.getMonth(), from.getDate());
-  return Math.floor((utcNow - utcFrom) / 86_400_000);
+  const utcNow = Date.UTC(
+    now.getUTCFullYear(),
+    now.getUTCMonth(),
+    now.getUTCDate(),
+  );
+  return Math.floor((utcNow - fromUtc) / 86_400_000);
 }
 
 /* ── PNG export (SVG foreignObject, html2canvas as fallback) ─────────────── */
@@ -575,7 +579,7 @@ const GldtStatusTerminal = forwardRef<HTMLDivElement, TerminalProps>(
     const goldGrams = d?.goldGramsBacked ?? null;
     const goldOz = d?.goldOzBacked ?? null;
     const marketCap = d?.marketCapUsd ?? null;
-    const uptime = daysSince(FIRST_TRADE);
+    const uptime = daysSinceUtc(FIRST_TRADE_UTC);
     const vol7d = d?.volume7dUsd ?? null;
     // Manual override wins; otherwise 7d volume as % of market cap
     const vol7dPct =
@@ -637,7 +641,7 @@ const GldtStatusTerminal = forwardRef<HTMLDivElement, TerminalProps>(
             <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr 1fr", background: t.tableHeaderBg, padding: "18px 28px", alignItems: "center" }}>
               <div style={{ fontSize: 15, color: t.headerLabel, letterSpacing: 2, fontWeight: 600, lineHeight: "1.2" }}>METRIC</div>
               <div style={{ fontSize: 15, color: t.headerLabel, letterSpacing: 2, fontWeight: 600, textAlign: "right", lineHeight: "1.2" }}>VALUE</div>
-              <div style={{ fontSize: 15, color: t.headerLabel, letterSpacing: 2, fontWeight: 600, textAlign: "right", lineHeight: "1.2" }}>% OF STORED</div>
+              <div style={{ fontSize: 15, color: t.headerLabel, letterSpacing: 2, fontWeight: 600, textAlign: "right", lineHeight: "1.2" }}>% OF MARKET CAP</div>
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr 1fr", padding: "26px 28px", borderBottom: `1px solid ${t.rowBorder}`, alignItems: "center" }}>
               <div style={{ fontWeight: 700, fontSize: 28, color: t.ink, lineHeight: "1.2" }}>VOLUME 7D</div>
