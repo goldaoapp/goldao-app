@@ -9,7 +9,9 @@ const THEME_EVENT = "goldao-theme-change";
 function useDarkMode() {
   const [dark, setDark] = useState(() => {
     try {
-      return localStorage.getItem("theme") === "dark";
+      const stored = localStorage.getItem("theme");
+      // Dark is the default until the visitor chooses otherwise.
+      return stored === null ? true : stored === "dark";
     } catch {
       return document.documentElement.classList.contains("dark");
     }
