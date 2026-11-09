@@ -932,8 +932,11 @@ mixin (
     if (Nat.sub(gTicks, 1) % Game.FEE_CHECK_TICKS == 0) await gCheckFee();
   };
 
+  // Set to true to start the automatic tick again.
+  transient let gTimerEnabled : Bool = false;
+
   func gArmTimer<system>() {
-    if (gTimerOn) return;
+    if (not gTimerEnabled or gTimerOn) return;
     gTimerOn := true;
     ignore Prim.setTimer<system>(60_000_000_000, true, gTick);
   };
