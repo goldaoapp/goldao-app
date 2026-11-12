@@ -119,7 +119,7 @@ export function useLiveData(): LiveData {
     goldaoEligible: 0,
     pctStakers: 33,
     pctGldt: 33,
-    nnsApy: 8.15,
+    nnsApy: 8.36,
   });
 
   useEffect(() => {
