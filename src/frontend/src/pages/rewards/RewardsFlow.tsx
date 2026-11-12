@@ -26,7 +26,7 @@ const MIN_CYCLE_ICP = 1000;
 const MIN_GOLDAO_PER_ICP = 500;
 const MIN_OGY_PER_ICP = 1000;
 const BUYBACK_RATE = 0.0238; // Rate(2_380_950) per run
-const FALLBACK_APY = 0.0815;
+const FALLBACK_APY = 0.0836;
 const SPLIT_STAKERS = 0.33;
 const DAY_MS = 86_400_000;
 
