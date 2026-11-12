@@ -163,7 +163,7 @@ export interface RewardAssumptions {
 
 export const ASSUMPTION_DEFAULTS: RewardAssumptions = {
   icp_staked: 555_880,
-  nns_apy: 8.15,
+  nns_apy: 8.36,
   pct_stakers: 33,
   pct_gldt: 33,
   ogy_staked: 0,
