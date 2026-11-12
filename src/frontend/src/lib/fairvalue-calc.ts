@@ -10,15 +10,20 @@
  * The 33% buyback (burn/OGY/compound) and 1% Good DAO are NOT staker
  * yield — they are treasury actions.
  *
- * Equilibrium: price at which annual GOLDAO yield equals NNS APY.
- *   price_eq = yield_per_goldao / APY_NNS
+ * Equilibrium: price at which annual GOLDAO yield equals the benchmark APY
+ * (what a new 2-year NNS neuron earns). The DAO neuron has its own yield
+ * (nns_apy), which only feeds the gross ICP pool.
+ *   price_eq = yield_per_goldao / benchmark_apy
  *   ratio_eq = 1 / price_eq
  */
 
 export interface FairValueParams {
   // NNS
   icp_staked: number;
+  /** Real yield of the DAO neuron (all its bonuses included), % per year. */
   nns_apy: number;
+  /** Yield a new 2-year neuron earns today, % per year. Equilibrium benchmark. */
+  benchmark_apy: number;
   price_icp_usd: number;
 
   // Distribution (33/33/33/1)
@@ -105,7 +110,8 @@ export interface FairValueResult {
 
 export const DEFAULTS: FairValueParams = {
   icp_staked: 555_880,
-  nns_apy: 8.15,
+  nns_apy: 8.36,
+  benchmark_apy: 6.63,
   price_icp_usd: 0,
 
   pct_stakers: 33,
@@ -162,7 +168,7 @@ export function calcular(p: FairValueParams): FairValueResult {
   const apy_efectivo = (yield_directo / price_goldao_icp_mkt) * 100;
 
   // Step 7 — Equilibrium price and ratio
-  const apy = p.nns_apy / 100;
+  const apy = p.benchmark_apy / 100;
   let precio_eq = 0;
   let ratio_eq = 0;
 
