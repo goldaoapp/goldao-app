@@ -69,7 +69,8 @@ const MODEL_SECTIONS: SectionDef[] = [
     title: "NNS neuron",
     fields: [
       { key: "icp_staked", label: "ICP staked", unit: "ICP" },
-      { key: "nns_apy", label: "NNS max APY", unit: "%" },
+      { key: "nns_apy", label: "DAO neuron APY", unit: "%" },
+      { key: "benchmark_apy", label: "NNS benchmark APY (2y)", unit: "%" },
     ],
   },
   {
@@ -508,7 +509,7 @@ function Hero({ r, params }: { r: FairValueResult; params: FairValueParams }) {
         />
         <Stat
           label="NNS benchmark APY"
-          value={`${fmtNum(params.nns_apy, 2)}%`}
+          value={`${fmtNum(params.benchmark_apy, 2)}%`}
           sub="Yield target for equilibrium"
         />
         <Stat
@@ -677,13 +678,13 @@ function Equilibrium({
             />
             <Row
               label="NNS benchmark"
-              value={`${fmtNum(params.nns_apy, 2)}%`}
+              value={`${fmtNum(params.benchmark_apy, 2)}%`}
             />
           </div>
         </div>
 
         <div>
-          <Label>3 · Equilibrium (yield = NNS APY)</Label>
+          <Label>3 · Equilibrium (yield = benchmark APY)</Label>
           <div className="mt-1">
             {hasActive && (
               <Row
@@ -707,7 +708,7 @@ function Equilibrium({
           <Note>
             yield = direct pool ÷ GOLDAO · APY = yield ÷ GOLDAO price in ICP
           </Note>
-          <Note>price_eq = yield ÷ NNS APY · ratio_eq = 1 ÷ price_eq</Note>
+          <Note>price_eq = yield ÷ benchmark APY · ratio_eq = 1 ÷ price_eq</Note>
           {hasActive && (
             <Note>
               Active voters: {fmtNum(r.goldao_active_eligible / 1e6)}M of{" "}
