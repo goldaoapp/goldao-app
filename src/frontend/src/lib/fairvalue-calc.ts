@@ -110,7 +110,7 @@ export interface FairValueResult {
 
 export const DEFAULTS: FairValueParams = {
   icp_staked: 555_880,
-  nns_apy: 8.36,
+  nns_apy: 8.15,
   benchmark_apy: 6.63,
   price_icp_usd: 0,
 
