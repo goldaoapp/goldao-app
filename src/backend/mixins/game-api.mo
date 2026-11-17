@@ -933,7 +933,7 @@ mixin (
   };
 
   // Set to true to start the automatic tick again.
-  transient let gTimerEnabled : Bool = false;
+  transient let gTimerEnabled : Bool = true;
 
   func gArmTimer<system>() {
     if (not gTimerEnabled or gTimerOn) return;
